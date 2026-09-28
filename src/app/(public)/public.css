@@ -1,0 +1,59 @@
+/*
+ * Public-site design tokens, ported 1:1 from the approved landing-page
+ * reference (.ai/landing-page-design/css/style.css). Scoped to the
+ * `.kdb-public` wrapper so the admin panel's shadcn/ui theme tokens are
+ * never touched — the approved visual language is preserved verbatim
+ * rather than reinterpreted through the admin's grayscale token system.
+ */
+
+.kdb-public {
+  --kdb-primary: #123b6d;
+  --kdb-primary-dark: #092b52;
+  --kdb-secondary: #c88718;
+  --kdb-saffron: #d8891d;
+  --kdb-light-bg: #f5f7fa;
+  --kdb-border: #dfe4ea;
+  --kdb-text: #263238;
+  --kdb-muted: #667085;
+  --kdb-white: #ffffff;
+
+  font-family:
+    'Inter',
+    'Noto Sans Devanagari',
+    sans-serif;
+  color: var(--kdb-text);
+  background: #ffffff;
+  line-height: 1.7;
+}
+
+.kdb-hero-glow {
+  background: radial-gradient(circle at 15% 30%, rgba(18, 59, 109, 0.05) 0%, transparent 60%),
+              radial-gradient(circle at 85% 70%, rgba(200, 135, 24, 0.06) 0%, transparent 50%);
+}
+
+.kdb-badge-pill {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(223, 228, 234, 0.85);
+}
+
+/* Continuous Marquee Ticker */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: inline-flex;
+  width: max-content;
+  animation: marquee-scroll 38s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
