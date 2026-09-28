@@ -2,19 +2,8 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import {
-  AlertCircleIcon,
-  CheckCircle2Icon,
-  ClockIcon,
-  DownloadIcon,
-  EyeIcon,
-  FileTextIcon,
-  FilterIcon,
-  SearchIcon,
-  XCircleIcon
-} from 'lucide-react'
+import { FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { query } from '@/lib/db/client'
@@ -447,7 +436,9 @@ const ApplicationsAdminPage = async ({
                     return (
                       <tr key={app.id} className='hover:bg-muted/30 transition'>
                         <td className='py-3.5 px-4 font-mono font-bold text-[#0c2847]'>
-                          {app.application_number}
+                          <Link href={`/admin/applications/${app.id}`} className='hover:underline'>
+                            {app.application_number}
+                          </Link>
                         </td>
                         <td className='py-3.5 px-4'>
                           <p className='font-bold text-[#0c2847]'>{app.representative_name}</p>
