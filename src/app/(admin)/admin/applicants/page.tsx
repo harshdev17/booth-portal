@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { SearchIcon, UsersIcon } from 'lucide-react'
 
+import TablePagination from '@/components/shared/TablePagination'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
@@ -12,6 +13,15 @@ import { requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
   title: 'Applicant / User Details — KDB Admin Portal'
+}
+
+const PAGE_SIZE = 25
+
+const VALID_SORT_FIELDS: Record<string, string> = {
+  name: 'representative_name',
+  mobile: 'mobile_number',
+  applications: 'application_count',
+  activity: 'last_activity'
 }
 
 type ApplicantRow = {
@@ -33,10 +43,16 @@ type ApplicantRow = {
  * Each row links into the existing Application detail page's tabs, which
  * already cover Personal / Application / Documents / Selection / Audit.
  */
-const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q?: string }> }) => {
+const ApplicantsAdminPage = async ({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; sort?: string; dir?: 'asc' | 'desc'; page?: string }>
+}) => {
   await requirePermission('application:view')
 
-  const { q } = await searchParams
+  const { q, sort = 'activity', dir = 'desc', page: pageParam } = await searchParams
+  const page = Math.max(1, Number(pageParam) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const conditions = [`a.status != 'draft'`]
   const params: unknown[] = []
@@ -48,22 +64,70 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
     params.push(pattern, pattern, pattern, pattern)
   }
 
-  const applicants = await query<ApplicantRow[]>(
-    `SELECT a.mobile_number,
-            MAX(a.representative_name) AS representative_name,
-            MAX(a.email) AS email,
-            MAX(a.organisation_name) AS organisation_name,
-            COUNT(*) AS application_count,
-            GROUP_CONCAT(a.id ORDER BY a.created_at DESC) AS application_ids,
-            GROUP_CONCAT(a.status ORDER BY a.created_at DESC) AS statuses,
-            MAX(a.created_at) AS last_activity
-     FROM applications a
-     WHERE ${conditions.join(' AND ')}
-     GROUP BY a.mobile_number
-     ORDER BY last_activity DESC
-     LIMIT 150`,
-    params
-  )
+  const whereClause = `WHERE ${conditions.join(' AND ')}`
+  const sortCol = VALID_SORT_FIELDS[sort] ?? 'last_activity'
+  const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+
+  const [applicants, countRows] = await Promise.all([
+    query<ApplicantRow[]>(
+      `SELECT mobile_number, representative_name, email, organisation_name, application_count,
+              application_ids, statuses, last_activity
+       FROM (
+         SELECT a.mobile_number,
+                MAX(a.representative_name) AS representative_name,
+                MAX(a.email) AS email,
+                MAX(a.organisation_name) AS organisation_name,
+                COUNT(*) AS application_count,
+                GROUP_CONCAT(a.id ORDER BY a.created_at DESC) AS application_ids,
+                GROUP_CONCAT(a.status ORDER BY a.created_at DESC) AS statuses,
+                MAX(a.created_at) AS last_activity
+         FROM applications a
+         ${whereClause}
+         GROUP BY a.mobile_number
+       ) grouped
+       ORDER BY ${sortCol} ${sortDir}
+       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
+      params
+    ),
+    query<Array<{ total: number }>>(
+      `SELECT COUNT(DISTINCT a.mobile_number) AS total FROM applications a ${whereClause}`,
+      params
+    )
+  ])
+
+  const total = countRows[0]?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const buildUrl = (overrides: { sort?: string; dir?: string; page?: number }) => {
+    const sp = new URLSearchParams()
+    const merged = { sort, dir, page, ...overrides }
+
+    if (q) sp.set('q', q)
+    if (merged.sort) sp.set('sort', merged.sort)
+    if (merged.dir) sp.set('dir', merged.dir)
+    if (merged.page && merged.page > 1) sp.set('page', String(merged.page))
+
+    const qs = sp.toString()
+
+    return qs ? `/admin/applicants?${qs}` : '/admin/applicants'
+  }
+
+  const getSortUrl = (columnKey: string) => {
+    const isCurrent = sort === columnKey
+    const nextDir = isCurrent && dir === 'asc' ? 'desc' : 'asc'
+
+    return buildUrl({ sort: columnKey, dir: nextDir, page: 1 })
+  }
+
+  const getSortIcon = (columnKey: string) => {
+    if (sort !== columnKey) return <span className='ml-1 opacity-30 select-none text-[11px]'>↕</span>
+
+    return dir === 'asc' ? (
+      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↑</span>
+    ) : (
+      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↓</span>
+    )
+  }
 
   return (
     <div className='flex flex-col gap-6'>
@@ -77,6 +141,8 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
       <Card className='shadow-xs'>
         <CardContent className='pt-6'>
           <form method='GET' className='relative'>
+            <input type='hidden' name='sort' value={sort} />
+            <input type='hidden' name='dir' value={dir} />
             <SearchIcon className='absolute left-3 top-3 size-4 text-muted-foreground' />
             <Input name='q' defaultValue={q} placeholder='Search by name, mobile, email or firm...' className='pl-9' />
           </form>
@@ -86,7 +152,7 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
       <Card className='shadow-xs'>
         <CardHeader className='border-b bg-muted/40 py-4'>
           <CardTitle className='text-base font-bold text-[#0c2847]'>Applicants</CardTitle>
-          <CardDescription className='text-xs'>Showing {applicants.length} applicant(s)</CardDescription>
+          <CardDescription className='text-xs'>{total} applicant(s)</CardDescription>
         </CardHeader>
         <CardContent className='p-0'>
           {applicants.length === 0 ? (
@@ -99,10 +165,34 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
               <table className='w-full text-left text-sm'>
                 <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
                   <tr>
-                    <th className='py-3 px-4'>Applicant</th>
-                    <th className='py-3 px-4'>Contact</th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('name')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Applicant
+                        {getSortIcon('name')}
+                      </Link>
+                    </th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('mobile')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Contact
+                        {getSortIcon('mobile')}
+                      </Link>
+                    </th>
                     <th className='py-3 px-4'>Firm / Organisation</th>
-                    <th className='py-3 px-4'>Application(s)</th>
+                    <th className='py-3 px-4'>
+                      <Link
+                        href={getSortUrl('applications')}
+                        className='inline-flex items-center hover:text-[#0c2847] transition'
+                      >
+                        Application(s)
+                        {getSortIcon('applications')}
+                      </Link>
+                    </th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('activity')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Last Activity
+                        {getSortIcon('activity')}
+                      </Link>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className='divide-y'>
@@ -135,6 +225,9 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
                             })}
                           </div>
                         </td>
+                        <td className='py-3.5 px-4 text-xs text-muted-foreground'>
+                          {new Date(applicant.last_activity).toLocaleDateString('en-IN')}
+                        </td>
                       </tr>
                     )
                   })}
@@ -143,6 +236,13 @@ const ApplicantsAdminPage = async ({ searchParams }: { searchParams: Promise<{ q
             </div>
           )}
         </CardContent>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={total}
+          pageSize={PAGE_SIZE}
+          buildUrl={targetPage => buildUrl({ page: targetPage })}
+        />
       </Card>
     </div>
   )

@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { ShieldAlertIcon } from 'lucide-react'
 
+import TablePagination from '@/components/shared/TablePagination'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { query } from '@/lib/db/client'
@@ -11,6 +12,13 @@ import { requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
   title: 'Audit Logs — KDB Admin Portal'
+}
+
+const VALID_SORT_FIELDS: Record<string, string> = {
+  when: 'al.created_at',
+  actor: 'actor_name',
+  module: 'al.module',
+  action: 'al.action'
 }
 
 type AuditRow = {
@@ -37,13 +45,15 @@ const PAGE_SIZE = 40
 const AuditLogsPage = async ({
   searchParams
 }: {
-  searchParams: Promise<{ module?: string; q?: string; page?: string }>
+  searchParams: Promise<{ module?: string; q?: string; page?: string; sort?: string; dir?: 'asc' | 'desc' }>
 }) => {
   await requirePermission('audit:view')
 
-  const { module, q, page: pageParam } = await searchParams
+  const { module, q, page: pageParam, sort = 'when', dir = 'desc' } = await searchParams
   const page = Math.max(1, Number(pageParam) || 1)
   const offset = (page - 1) * PAGE_SIZE
+  const sortCol = VALID_SORT_FIELDS[sort] ?? 'al.created_at'
+  const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -69,7 +79,7 @@ const AuditLogsPage = async ({
        FROM audit_logs al
        LEFT JOIN users u ON u.id = al.actor_user_id
        ${whereClause}
-       ORDER BY al.created_at DESC
+       ORDER BY ${sortCol} ${sortDir}
        LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
       params
     ),
@@ -82,15 +92,34 @@ const AuditLogsPage = async ({
 
   const buildUrl = (overrides: Record<string, string | undefined>) => {
     const sp = new URLSearchParams()
-    const merged = { module, q, page: String(page), ...overrides }
+    const merged = { module, q, page: String(page), sort, dir, ...overrides }
 
     if (merged.module && merged.module !== 'all') sp.set('module', merged.module)
     if (merged.q) sp.set('q', merged.q)
+    if (merged.sort && merged.sort !== 'when') sp.set('sort', merged.sort)
+    if (merged.dir && merged.dir !== 'desc') sp.set('dir', merged.dir)
     if (merged.page && merged.page !== '1') sp.set('page', merged.page)
 
     const qs = sp.toString()
 
     return qs ? `/admin/audit-logs?${qs}` : '/admin/audit-logs'
+  }
+
+  const getSortUrl = (columnKey: string) => {
+    const isCurrent = sort === columnKey
+    const nextDir = isCurrent && dir === 'asc' ? 'desc' : 'asc'
+
+    return buildUrl({ sort: columnKey, dir: nextDir, page: '1' })
+  }
+
+  const getSortIcon = (columnKey: string) => {
+    if (sort !== columnKey) return <span className='ml-1 opacity-30 select-none text-[11px]'>↕</span>
+
+    return dir === 'asc' ? (
+      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↑</span>
+    ) : (
+      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↓</span>
+    )
   }
 
   return (
@@ -118,6 +147,8 @@ const AuditLogsPage = async ({
                 </option>
               ))}
             </select>
+            <input type='hidden' name='sort' value={sort} />
+            <input type='hidden' name='dir' value={dir} />
             <button
               type='submit'
               className='inline-flex items-center justify-center rounded-md bg-[#0c2847] px-4 py-2 text-sm font-semibold text-white hover:bg-[#071f3a] transition'
@@ -146,10 +177,30 @@ const AuditLogsPage = async ({
               <table className='w-full text-left text-sm'>
                 <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
                   <tr>
-                    <th className='py-3 px-4'>When</th>
-                    <th className='py-3 px-4'>Actor</th>
-                    <th className='py-3 px-4'>Module</th>
-                    <th className='py-3 px-4'>Action</th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('when')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        When
+                        {getSortIcon('when')}
+                      </Link>
+                    </th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('actor')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Actor
+                        {getSortIcon('actor')}
+                      </Link>
+                    </th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('module')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Module
+                        {getSortIcon('module')}
+                      </Link>
+                    </th>
+                    <th className='py-3 px-4'>
+                      <Link href={getSortUrl('action')} className='inline-flex items-center hover:text-[#0c2847] transition'>
+                        Action
+                        {getSortIcon('action')}
+                      </Link>
+                    </th>
                     <th className='py-3 px-4'>Entity</th>
                   </tr>
                 </thead>
@@ -179,29 +230,14 @@ const AuditLogsPage = async ({
             </div>
           )}
         </CardContent>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={total}
+          pageSize={PAGE_SIZE}
+          buildUrl={targetPage => buildUrl({ page: String(targetPage) })}
+        />
       </Card>
-
-      {totalPages > 1 && (
-        <div className='flex items-center justify-between text-sm'>
-          <Link
-            href={buildUrl({ page: String(Math.max(1, page - 1)) })}
-            aria-disabled={page <= 1}
-            className={`rounded-md border px-3 py-1.5 ${page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-muted'}`}
-          >
-            Previous
-          </Link>
-          <span className='text-muted-foreground'>
-            Page {page} of {totalPages}
-          </span>
-          <Link
-            href={buildUrl({ page: String(Math.min(totalPages, page + 1)) })}
-            aria-disabled={page >= totalPages}
-            className={`rounded-md border px-3 py-1.5 ${page >= totalPages ? 'pointer-events-none opacity-40' : 'hover:bg-muted'}`}
-          >
-            Next
-          </Link>
-        </div>
-      )}
     </div>
   )
 }

@@ -6,8 +6,11 @@ import { FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { requirePermission } from '@/lib/rbac/authorize'
+
+const PAGE_SIZE = 25
 
 export const metadata: Metadata = {
   title: 'Applications Management — KDB Admin Portal'
@@ -58,12 +61,15 @@ const ApplicationsAdminPage = async ({
     category?: string
     sort?: string
     dir?: 'asc' | 'desc'
+    page?: string
   }>
 }) => {
   // Authorize server-side
   await requirePermission('application:view')
 
-  const { q, status, category, sort = 'date', dir = 'desc' } = await searchParams
+  const { q, status, category, sort = 'date', dir = 'desc', page: pageParam } = await searchParams
+  const page = Math.max(1, Number(pageParam) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -96,7 +102,7 @@ const ApplicationsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'a.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [applications, categories, statsRows] = await Promise.all([
+  const [applications, categories, statsRows, countRows] = await Promise.all([
     query<ApplicationItem[]>(
       `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
               a.organisation_name, a.representative_name, a.mobile_number, a.email,
@@ -105,7 +111,7 @@ const ApplicationsAdminPage = async ({
        JOIN categories c ON c.id = a.category_id
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
-       LIMIT 150`,
+       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
       params
     ),
     query<Array<{ id: number; name: string; slug: string }>>(
@@ -113,12 +119,18 @@ const ApplicationsAdminPage = async ({
     ),
     query<Array<{ status: string; count: number }>>(
       `SELECT status, COUNT(*) AS count FROM applications WHERE status != 'draft' GROUP BY status`
+    ),
+    query<Array<{ total: number }>>(
+      `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
+      params
     )
   ])
 
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
   const pendingCount = statsRows.find(r => r.status === 'payment_pending' || r.status === 'under_review')?.count ?? 0
   const selectedCount = statsRows.find(r => r.status === 'selected' || r.status === 'allotted')?.count ?? 0
+  const totalFiltered = countRows[0]?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE))
 
   // Helper to construct sorting links with current search/filter state preserved
   const getSortUrl = (columnKey: string) => {
@@ -158,6 +170,21 @@ const ApplicationsAdminPage = async ({
     if (targetStatus) sp.set('status', targetStatus)
 
     return `/admin/applications?${sp.toString()}`
+  }
+
+  const buildPageUrl = (targetPage: number) => {
+    const sp = new URLSearchParams()
+
+    if (q) sp.set('q', q)
+    if (status) sp.set('status', status)
+    if (category) sp.set('category', category)
+    if (sort) sp.set('sort', sort)
+    if (dir) sp.set('dir', dir)
+    if (targetPage > 1) sp.set('page', String(targetPage))
+
+    const qs = sp.toString()
+
+    return qs ? `/admin/applications?${qs}` : '/admin/applications'
   }
 
   return (
@@ -341,7 +368,7 @@ const ApplicationsAdminPage = async ({
             <div>
               <CardTitle className='text-base font-bold text-[#0c2847]'>Applications List</CardTitle>
               <CardDescription className='text-xs'>
-                Showing {applications.length} result{applications.length === 1 ? '' : 's'} • Sorted by{' '}
+                {totalFiltered} result{totalFiltered === 1 ? '' : 's'} • Sorted by{' '}
                 <span className='font-semibold text-[#0c2847]'>
                   {sort === 'date'
                     ? 'Submission Date'
@@ -479,6 +506,7 @@ const ApplicationsAdminPage = async ({
             </div>
           )}
         </CardContent>
+        <TablePagination page={page} totalPages={totalPages} totalItems={totalFiltered} pageSize={PAGE_SIZE} buildUrl={buildPageUrl} />
       </Card>
     </div>
   )
