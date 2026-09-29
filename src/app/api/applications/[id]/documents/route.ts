@@ -84,7 +84,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 
-    if (application.status !== 'draft' && application.status !== 'payment_pending') {
+    const isPreSubmission = application.status === 'draft' || application.status === 'payment_pending'
+    const isUnderReview = application.status === 'under_review'
+
+    if (!isPreSubmission && !isUnderReview) {
       return NextResponse.json({ error: 'This application can no longer accept document uploads.' }, { status: 409 })
     }
 
@@ -101,6 +104,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     if (!definition) {
       return NextResponse.json({ error: 'Unknown document type for this category.' }, { status: 400 })
+    }
+
+    // Once submitted, a document can only be replaced in direct response to a
+    // reviewer's query — never to silently overwrite one still pending review
+    // or already verified. See .ai/DOCUMENT_VERIFICATION.md Section 5.
+    let isQueryResponse = false
+
+    if (isUnderReview) {
+      const existingRows = await query<Array<{ verification_status: string }>>(
+        'SELECT verification_status FROM application_documents WHERE application_id = ? AND document_definition_id = ?',
+        [applicationId, definition.id]
+      )
+
+      const existingStatus = existingRows[0]?.verification_status
+
+      if (existingStatus !== 'query') {
+        return NextResponse.json(
+          { error: 'This document is not awaiting your response and cannot be replaced.' },
+          { status: 409 }
+        )
+      }
+
+      isQueryResponse = true
     }
 
     if (file.size > definition.max_size_bytes) {
@@ -160,7 +186,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await logAudit({
       actorUserId: null,
       actorRoleKey: null,
-      action: 'document.uploaded',
+      action: isQueryResponse ? 'document.reuploaded' : 'document.uploaded',
       module: 'applications',
       entityType: 'application',
       entityId: String(applicationId),

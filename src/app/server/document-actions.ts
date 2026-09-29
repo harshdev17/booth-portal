@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
+import { notifyDocumentQuery } from '@/lib/notifications/document-query'
 import { requirePermission } from '@/lib/rbac/authorize'
 
 export type DocumentActionState = {
@@ -45,8 +46,23 @@ async function decideDocument(
 
   const session = await requirePermission('document:verify')
 
-  const rows = await query<Array<{ verification_status: string; application_id: number; original_filename: string }>>(
-    'SELECT verification_status, application_id, original_filename FROM application_documents WHERE id = ?',
+  const rows = await query<
+    Array<{
+      verification_status: string
+      application_id: number
+      original_filename: string
+      document_label: string
+      application_number: string
+      mobile_number: string
+      representative_name: string
+    }>
+  >(
+    `SELECT ad.verification_status, ad.application_id, ad.original_filename, cdd.label AS document_label,
+            a.application_number, a.mobile_number, a.representative_name
+     FROM application_documents ad
+     JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
+     JOIN applications a ON a.id = ad.application_id
+     WHERE ad.id = ?`,
     [parsed.data.documentId]
   )
 
@@ -76,6 +92,19 @@ async function decideDocument(
 
   revalidatePath('/admin/documents')
   revalidatePath(`/admin/applications/${current.application_id}`)
+
+  if (toStatus === 'query') {
+    // Never let a notification failure block the query action itself —
+    // notifyDocumentQuery already swallows send errors (see its own doc comment).
+    await notifyDocumentQuery({
+      applicationId: current.application_id,
+      applicationNumber: current.application_number,
+      mobileNumber: current.mobile_number,
+      representativeName: current.representative_name,
+      documentLabel: current.document_label,
+      remarks: parsed.data.remarks ?? ''
+    })
+  }
 
   const labels: Record<typeof toStatus, string> = {
     verified: 'Document verified.',
