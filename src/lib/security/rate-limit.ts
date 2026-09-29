@@ -25,7 +25,9 @@ export const RATE_LIMITS = {
   statusLookup: { windowMs: 60 * 1000, maxAttempts: 15 } as RateLimitConfig,
   categoryRead: { windowMs: 60 * 1000, maxAttempts: 60 } as RateLimitConfig,
   otpRequest: { windowMs: 60 * 60 * 1000, maxAttempts: 5 } as RateLimitConfig,
-  otpVerify: { windowMs: 15 * 60 * 1000, maxAttempts: 10 } as RateLimitConfig
+  otpVerify: { windowMs: 15 * 60 * 1000, maxAttempts: 10 } as RateLimitConfig,
+  paymentOrder: { windowMs: 15 * 60 * 1000, maxAttempts: 10 } as RateLimitConfig,
+  paymentVerify: { windowMs: 15 * 60 * 1000, maxAttempts: 20 } as RateLimitConfig
 } as const
 
 export function isRateLimited(bucketName: string, identity: string, config: RateLimitConfig): boolean {

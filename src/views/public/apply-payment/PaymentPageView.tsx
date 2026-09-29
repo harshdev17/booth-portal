@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/context/LanguageContext'
 
 type StatusResponse = {
+  applicationId: number
   applicationNumber: string
   categoryName: string
   categorySlug: string
@@ -28,6 +29,59 @@ type StatusResponse = {
   feeBasePaise?: number | null
   gstPercent?: number | null
   submittedAt: string | null
+}
+
+type RazorpayCheckoutResponse = {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
+type RazorpayCheckoutOptions = {
+  key: string
+  amount: number
+  currency: string
+  order_id: string
+  name: string
+  description: string
+  theme: { color: string }
+  prefill?: { method?: 'card' | 'netbanking' | 'upi' }
+  handler: (response: RazorpayCheckoutResponse) => void
+  modal?: { ondismiss?: () => void }
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayCheckoutOptions) => { open: () => void }
+  }
+}
+
+const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
+
+function loadRazorpayCheckoutScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (window.Razorpay) {
+      resolve(true)
+
+      return
+    }
+
+    const existing = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_SCRIPT_SRC}"]`)
+
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true))
+      existing.addEventListener('error', () => resolve(false))
+
+      return
+    }
+
+    const script = document.createElement('script')
+
+    script.src = RAZORPAY_CHECKOUT_SCRIPT_SRC
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
 }
 
 function findAccessTokenForApplicationNumber(applicationNumber: string): string | null {
@@ -85,6 +139,10 @@ const PaymentPageView = ({
 
         if (response.ok) {
           setDetails(body)
+
+          if (body.status === 'payment_success' || body.status === 'under_review') {
+            router.replace(`/apply/${categorySlug}/success/${applicationNumber}`)
+          }
         } else {
           setLoadError(
             body.error ??
@@ -105,19 +163,110 @@ const PaymentPageView = ({
     }
 
     void loadDetails()
-  }, [accessToken, applicationNumber, lang])
+  }, [accessToken, applicationNumber, categorySlug, lang, router])
 
-  const handleSimulatePayment = async () => {
+  const failMessage = lang === 'hi' ? 'भुगतान शुरू नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not start the payment. Please try again.'
+
+  const handlePayment = async () => {
+    if (!accessToken || !details?.applicationId) {
+      setLoadError(failMessage)
+
+      return
+    }
+
+    setLoadError(null)
     setIsProcessing(true)
 
-    // Simulate payment transaction
-    setTimeout(() => {
+    try {
+      const scriptLoaded = await loadRazorpayCheckoutScript()
+
+      if (!scriptLoaded) {
+        setLoadError(
+          lang === 'hi'
+            ? 'पेमेंट गेटवे लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।'
+            : 'Could not load the payment gateway. Please check your internet connection and try again.'
+        )
+        setIsProcessing(false)
+
+        return
+      }
+
+      const orderResponse = await fetch(`/api/applications/${details.applicationId}/payment/order`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+
+      const orderBody = await orderResponse.json()
+
+      if (!orderResponse.ok) {
+        setLoadError(orderBody.error ?? failMessage)
+        setIsProcessing(false)
+
+        return
+      }
+
+      const razorpay = new window.Razorpay({
+        key: orderBody.keyId,
+        amount: orderBody.amountPaise,
+        currency: orderBody.currency,
+        order_id: orderBody.orderId,
+        name: 'Kurukshetra Development Board',
+        description:
+          lang === 'hi'
+            ? `आवेदन शुल्क — ${orderBody.applicationNumber}`
+            : `Application Fee — ${orderBody.applicationNumber}`,
+        theme: { color: '#0c2847' },
+        prefill: { method: paymentMethod },
+        handler: async response => {
+          try {
+            const verifyResponse = await fetch(`/api/applications/${details.applicationId}/payment/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            })
+
+            const verifyBody = await verifyResponse.json()
+
+            if (!verifyResponse.ok) {
+              setLoadError(
+                verifyBody.error ??
+                  (lang === 'hi'
+                    ? 'भुगतान सत्यापित नहीं हो सका। यदि राशि कट गई है तो सहायता से संपर्क करें।'
+                    : 'Could not verify the payment. If you were charged, please contact support.')
+              )
+              setIsProcessing(false)
+
+              return
+            }
+
+            setIsProcessing(false)
+            setPaymentSuccess(true)
+            setTimeout(() => {
+              router.push(`/apply/${categorySlug}/success/${applicationNumber}`)
+            }, 1500)
+          } catch {
+            setLoadError(
+              lang === 'hi'
+                ? 'भुगतान सत्यापन के दौरान सर्वर से संपर्क नहीं हो सका।'
+                : 'Could not reach the server while verifying the payment.'
+            )
+            setIsProcessing(false)
+          }
+        },
+        modal: {
+          ondismiss: () => setIsProcessing(false)
+        }
+      })
+
+      razorpay.open()
+    } catch {
+      setLoadError(failMessage)
       setIsProcessing(false)
-      setPaymentSuccess(true)
-      setTimeout(() => {
-        router.push(`/apply/${categorySlug}/success/${applicationNumber}`)
-      }, 1500)
-    }, 1800)
+    }
   }
 
   const feePaise = details?.feePaise ?? 11800
@@ -257,8 +406,8 @@ const PaymentPageView = ({
           <Button
             type='button'
             size='lg'
-            disabled={isProcessing || paymentSuccess}
-            onClick={handleSimulatePayment}
+            disabled={isProcessing || paymentSuccess || !details?.applicationId}
+            onClick={handlePayment}
             className='w-full rounded-xl bg-[#0c2847] py-4 text-base font-bold text-white shadow-md hover:bg-[#06192e] transition active:scale-[0.98]'
           >
             {isProcessing ? (
