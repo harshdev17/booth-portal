@@ -112,3 +112,27 @@ export async function verifyOtp(params: {
 
   return { ok: true }
 }
+
+/**
+ * Whether the given mobile number has a verified OTP challenge for this
+ * purpose within the last `maxAgeMinutes` — used as a short-lived proof of
+ * ownership for actions that happen just after OTP verification (document
+ * re-upload from the status page, application finalize), without requiring
+ * the client to resend the code on every follow-up request. Always the
+ * server-side gate; never trust a client-reported "I verified" flag alone.
+ */
+export async function hasRecentVerifiedOtp(mobileNumber: string, purpose: OtpPurpose, maxAgeMinutes: number): Promise<boolean> {
+  const rows = await query<Array<{ verified_at: string | null }>>(
+    `SELECT verified_at FROM otp_challenges
+     WHERE mobile_number = ? AND purpose = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [mobileNumber, purpose]
+  )
+
+  const verifiedAt = rows[0]?.verified_at
+
+  if (!verifiedAt) return false
+
+  return Date.now() - new Date(verifiedAt).getTime() < maxAgeMinutes * 60 * 1000
+}

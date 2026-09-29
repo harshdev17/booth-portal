@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { verifyAccessToken } from '@/lib/applications/access-token'
 import { query } from '@/lib/db/client'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
@@ -15,7 +14,6 @@ const statusLookupSchema = z.object({
     .min(1)
     .max(32)
     .regex(/^KDB-\d{4}-\d{6}$/, 'Enter a valid application number'),
-  accessToken: z.string().trim().min(1).max(128),
 
   // Present only on the second call, once the applicant has the WhatsApp code.
   otpCode: z
@@ -28,7 +26,6 @@ const statusLookupSchema = z.object({
 type StatusRow = {
   id: number
   status: string
-  access_token_hash: string
   mobile_number: string
   representative_name: string
   category_name: string
@@ -44,17 +41,16 @@ function maskMobile(mobile: string): string {
 }
 
 /**
- * Public status lookup by application number, requiring the applicant's own
- * access token — deliberately NOT lookup-by-mobile-number-alone, which
- * would let anyone probe for a mobile number's associated applications.
- *
- * Two-phase, per explicit instruction to add OTP verification on status
- * fetching: (1) app number + access token alone only triggers a WhatsApp OTP
- * to the mobile number already on file for that application — it never
- * returns status data by itself; (2) app number + access token + the 6-digit
- * code returns the actual status (and document list). Knowing the access
- * token is no longer sufficient on its own to read status — this closes the
- * gap where a lost/leaked access token alone would expose it.
+ * Public status lookup by application number + WhatsApp OTP only — no
+ * separate access code, per explicit instruction to move status lookup to
+ * OTP verification. Two-phase: (1) application number alone triggers a
+ * WhatsApp OTP to the mobile number already on file for that application —
+ * it never returns status data by itself; (2) application number + the
+ * 6-digit code returns the actual status (and document list). The OTP going
+ * only to the number actually on file is the real security boundary here —
+ * knowing an application number alone lets someone trigger a code send but
+ * never lets them read status without the code landing on the real
+ * applicant's phone.
  */
 export async function POST(request: Request) {
   const { ipAddress } = getRequestMeta(request)
@@ -75,25 +71,27 @@ export async function POST(request: Request) {
   const parsed = statusLookupSchema.safeParse(rawBody)
 
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Enter a valid application number and access code.' }, { status: 400 })
+    return NextResponse.json({ error: 'Enter a valid application number.' }, { status: 400 })
   }
 
   try {
     const rows = await query<StatusRow[]>(
-      `SELECT a.id, a.status, a.access_token_hash, a.mobile_number, a.representative_name,
+      `SELECT a.id, a.status, a.mobile_number, a.representative_name,
               c.name AS category_name, c.slug AS category_slug,
               c.fee_paise, c.fee_base_paise, c.gst_percent, a.submitted_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
-       WHERE a.application_number = ?
+       WHERE a.application_number = ? AND a.status != 'draft'
        LIMIT 1`,
       [parsed.data.applicationNumber]
     )
 
     const application = rows[0]
 
-    if (!application || !verifyAccessToken(parsed.data.accessToken, application.access_token_hash)) {
-      return NextResponse.json({ error: 'Application not found or access code incorrect.' }, { status: 404 })
+    // Same generic message whether the application doesn't exist or is still
+    // a draft (never submitted) — no enumeration oracle either way.
+    if (!application) {
+      return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
 
     const mobileWithCountryCode = `+91${application.mobile_number}`

@@ -6,11 +6,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckIcon, CreditCardIcon, Loader2Icon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CreditCardIcon, Loader2Icon, ShieldCheckIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
 import type { ReviewData } from '@/views/public/apply-review/types'
@@ -77,6 +78,12 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Mobile OTP verification — required before submission (server-side
+  // enforced independently in finalizeApplication; this is the UX gate).
+  const [otpPhase, setOtpPhase] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+
   useEffect(() => {
     if (access === null) {
       router.replace(`/apply/${categorySlug}`)
@@ -116,8 +123,75 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
     void loadReview()
   }, [access, applicationId, categorySlug, lang, router])
 
+  const sendMobileOtp = async () => {
+    if (!data?.common.mobileNumber) return
+
+    setOtpError(null)
+    setOtpPhase('sending')
+
+    try {
+      const response = await fetch('/api/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobileNumber: data.common.mobileNumber, applicationId })
+      })
+
+      const body = await response.json()
+
+      if (!response.ok) {
+        setOtpError(body.error ?? (lang === 'hi' ? 'कोड नहीं भेजा जा सका। पुनः प्रयास करें।' : 'Could not send the code. Please try again.'))
+        setOtpPhase('idle')
+
+        return
+      }
+
+      setOtpCode('')
+      setOtpPhase('sent')
+    } catch {
+      setOtpError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
+      setOtpPhase('idle')
+    }
+  }
+
+  const verifyMobileOtp = async () => {
+    if (!data?.common.mobileNumber || otpCode.length !== 6) return
+
+    setOtpError(null)
+    setOtpPhase('verifying')
+
+    try {
+      const response = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobileNumber: data.common.mobileNumber, code: otpCode })
+      })
+
+      const body = await response.json()
+
+      if (!response.ok) {
+        setOtpError(body.error ?? (lang === 'hi' ? 'गलत कोड। पुनः प्रयास करें।' : 'Incorrect code. Please try again.'))
+        setOtpPhase('sent')
+
+        return
+      }
+
+      setOtpPhase('verified')
+    } catch {
+      setOtpError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
+      setOtpPhase('sent')
+    }
+  }
+
   const handleSubmit = async () => {
-    if (!access || !informationCorrect || !agreedToTerms) return
+    if (!access || !informationCorrect || !agreedToTerms || otpPhase !== 'verified') return
 
     setIsSubmitting(true)
     setSubmitError(null)
@@ -191,7 +265,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   if (!data) return null
 
-  const canSubmit = informationCorrect && agreedToTerms
+  const canSubmit = informationCorrect && agreedToTerms && otpPhase === 'verified'
 
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -326,6 +400,81 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Mobile OTP Verification — required before submission */}
+          <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
+            <div className='mb-4 flex items-center gap-2 border-b border-[#f1f5f9] pb-3'>
+              <ShieldCheckIcon className='size-5 text-[#0c2847]' />
+              <h2 className='text-xl font-black text-[#0c2847]'>
+                {lang === 'hi' ? 'मोबाइल नंबर सत्यापन' : 'Mobile Number Verification'}
+              </h2>
+            </div>
+
+            {otpPhase === 'verified' ? (
+              <div className='flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800'>
+                <CheckCircle2Icon className='size-4.5 shrink-0' />
+                {lang === 'hi'
+                  ? `मोबाइल नंबर ${data.common.mobileNumber} सत्यापित हो गया है।`
+                  : `Mobile number ${data.common.mobileNumber} has been verified.`}
+              </div>
+            ) : (
+              <div className='flex flex-col gap-3'>
+                <p className='text-xs sm:text-sm text-[#64748b]'>
+                  {lang === 'hi'
+                    ? `आवेदन सबमिट करने से पहले आपको अपने मोबाइल नंबर (${data.common.mobileNumber}) को OTP द्वारा सत्यापित करना होगा।`
+                    : `You must verify your mobile number (${data.common.mobileNumber}) with an OTP before you can submit.`}
+                </p>
+
+                {otpError && (
+                  <Alert variant='destructive'>
+                    <AlertCircleIcon className='size-4' />
+                    <AlertDescription>{otpError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {otpPhase === 'idle' || otpPhase === 'sending' ? (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={otpPhase === 'sending'}
+                    onClick={sendMobileOtp}
+                    className='w-fit rounded-xl border-[#0c2847]/30 text-[#0c2847] font-bold'
+                  >
+                    {otpPhase === 'sending' && <Loader2Icon className='mr-2 size-4 animate-spin' />}
+                    {lang === 'hi' ? 'OTP भेजें' : 'Send OTP'}
+                  </Button>
+                ) : (
+                  <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+                    <Input
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      inputMode='numeric'
+                      placeholder='••••••'
+                      maxLength={6}
+                      className='sm:w-40'
+                    />
+                    <Button
+                      type='button'
+                      disabled={otpPhase === 'verifying' || otpCode.length !== 6}
+                      onClick={verifyMobileOtp}
+                      className='rounded-xl bg-[#0c2847] font-bold text-white hover:bg-[#06192e]'
+                    >
+                      {otpPhase === 'verifying' && <Loader2Icon className='mr-2 size-4 animate-spin' />}
+                      {lang === 'hi' ? 'सत्यापित करें' : 'Verify'}
+                    </Button>
+                    <button
+                      type='button'
+                      onClick={sendMobileOtp}
+                      disabled={otpPhase === 'verifying'}
+                      className='text-xs font-semibold text-[#64748b] underline underline-offset-2 hover:text-[#0c2847]'
+                    >
+                      {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>

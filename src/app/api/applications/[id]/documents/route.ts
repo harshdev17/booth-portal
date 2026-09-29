@@ -6,6 +6,7 @@ import { verifyAccessToken } from '@/lib/applications/access-token'
 import { getDocumentDefinitionsForCategory } from '@/lib/applications/categories'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
+import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
 import { detectFileType, isAllowedDetectedType } from '@/lib/uploads/file-signature'
 import { generateStoragePath, storeFile } from '@/lib/uploads/storage'
 import { logServerError } from '@/lib/security/error-log'
@@ -27,14 +28,19 @@ type ApplicationRow = {
   category_id: number
   access_token_hash: string
   status: string
+  mobile_number: string
 }
 
 /**
- * Uploads one document for an in-progress application. Ownership is proven
- * by the same access token issued at application creation (interim
- * mechanism, pre-OTP — see .ai/DECISIONS.md), passed as a bearer token, not
- * a query string (avoids landing in server/proxy access logs — see
- * .ai/SECURITY.md "no sensitive information in logs").
+ * Uploads one document for an in-progress application. Two ownership proofs
+ * are accepted: (1) the access token issued at application creation
+ * (bearer token, not a query string — avoids landing in server/proxy access
+ * logs, see .ai/SECURITY.md), used by the original apply flow before
+ * submission; (2) for the post-submission query-response case reached from
+ * the public status page (which no longer collects an access token — see
+ * .ai/DECISIONS.md and the OTP-only status lookup), a recently-verified
+ * WhatsApp OTP for that application's own mobile number is sufficient —
+ * the OTP itself is the real ownership proof there.
  *
  * File content is validated by magic bytes, never by the client-supplied
  * filename or Content-Type header (see src/lib/uploads/file-signature.ts).
@@ -60,10 +66,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const authHeader = request.headers.get('authorization')
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
 
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
-  }
-
   const contentLength = Number(request.headers.get('content-length') ?? '0')
 
   if (contentLength > MAX_UPLOAD_BYTES) {
@@ -72,20 +74,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const rows = await query<ApplicationRow[]>(
-      `SELECT id, category_id, access_token_hash, status FROM applications WHERE id = ? LIMIT 1`,
+      `SELECT id, category_id, access_token_hash, status, mobile_number FROM applications WHERE id = ? LIMIT 1`,
       [applicationId]
     )
 
     const application = rows[0]
 
-    // Identical response whether the application doesn't exist or the token
-    // is wrong — avoids confirming application-id existence to a guesser.
-    if (!application || !verifyAccessToken(accessToken, application.access_token_hash)) {
+    if (!application) {
+      return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
+    }
+
+    const isUnderReviewNow = application.status === 'under_review'
+
+    const tokenValid = accessToken ? verifyAccessToken(accessToken, application.access_token_hash) : false
+    const otpValid = !tokenValid && isUnderReviewNow && (await hasRecentVerifiedOtp(`+91${application.mobile_number}`, 'status_lookup', 20))
+
+    // Identical response whether the application doesn't exist or neither
+    // proof holds — avoids confirming application-id existence to a guesser.
+    if (!tokenValid && !otpValid) {
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 
     const isPreSubmission = application.status === 'draft' || application.status === 'payment_pending'
-    const isUnderReview = application.status === 'under_review'
+    const isUnderReview = isUnderReviewNow
 
     if (!isPreSubmission && !isUnderReview) {
       return NextResponse.json({ error: 'This application can no longer accept document uploads.' }, { status: 409 })

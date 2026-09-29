@@ -1,14 +1,30 @@
 'use client'
 
+import { useState } from 'react'
+
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { MenuIcon } from 'lucide-react'
 
 import HeaderMarquee from '@/components/public/HeaderMarquee'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useLanguage } from '@/context/LanguageContext'
 
 const PublicHeader = () => {
   const { lang, setLang, t } = useLanguage()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const navItems = [
+    { label: t('nav.home'), href: '/', active: true },
+    { label: t('nav.about'), href: '/#how-it-works' },
+    { label: t('nav.stalls'), href: '/#categories' },
+    { label: lang === 'hi' ? 'आवेदन स्थिति' : 'Application Status', href: '/#status-check' },
+    { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
+    { label: lang === 'hi' ? 'सामान्य प्रश्न (FAQ)' : 'FAQ', href: '/#faq' },
+    { label: t('nav.contact'), href: '/#contact' }
+  ]
 
   return (
     <div className='sticky top-0 z-50 w-full'>
@@ -32,16 +48,9 @@ const PublicHeader = () => {
           </div>
         </Link>
 
-        {/* Center: Navigation Links */}
+        {/* Center: Navigation Links (desktop) */}
         <ul className='hidden items-center gap-7 md:flex'>
-          {[
-            { label: t('nav.home'), href: '/', active: true },
-            { label: t('nav.about'), href: '/#how-it-works' },
-            { label: t('nav.stalls'), href: '/#categories' },
-            { label: lang === 'hi' ? 'आवेदन स्थिति' : 'Application Status', href: '/#status-check' },
-            { label: lang === 'hi' ? 'सामान्य प्रश्न (FAQ)' : 'FAQ', href: '/#faq' },
-            { label: t('nav.contact'), href: '/#contact' }
-          ].map(item => (
+          {navItems.map(item => (
             <li key={item.label}>
               <Link
                 href={item.href}
@@ -58,7 +67,7 @@ const PublicHeader = () => {
         </ul>
 
         {/* Right: Premium Govt Style Bilingual Switcher + Status / Login */}
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center gap-2 sm:gap-3'>
           {/* Government Portal Standard Dual Segmented Language Pill */}
           <div className='inline-flex items-center rounded-full border border-[#cbd5e1] bg-[#f8fafc] p-0.5 shadow-2xs' role='group' aria-label='Language switcher'>
             <button
@@ -90,14 +99,65 @@ const PublicHeader = () => {
 
           <Link
             href='/#categories'
-            className='inline-flex items-center gap-1 rounded-full bg-[#0c2847] px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#06192e] active:scale-95'
+            className='hidden items-center gap-1 rounded-full bg-[#0c2847] px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#06192e] active:scale-95 sm:inline-flex'
           >
             <span>{t('nav.apply_now')}</span>
             <span className='text-[11px] font-bold'>→</span>
           </Link>
+
+          {/* Mobile menu trigger */}
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            className='md:hidden'
+            aria-label={lang === 'hi' ? 'मेनू खोलें' : 'Open menu'}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <MenuIcon className='size-5 text-[#0c2847]' />
+          </Button>
         </div>
       </nav>
     </header>
+
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side='right' className='w-4/5 sm:max-w-xs'>
+          <SheetHeader>
+            <SheetTitle className='text-[#0c2847]'>
+              {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026' : 'International Gita Mahotsav 2026'}
+            </SheetTitle>
+          </SheetHeader>
+
+          <ul className='flex flex-col gap-1 px-4'>
+            {navItems.map(item => (
+              <li key={item.label}>
+                <Link
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={
+                    item.active
+                      ? 'block rounded-md px-3 py-2.5 text-sm font-bold text-[#0c2847]'
+                      : 'block rounded-md px-3 py-2.5 text-sm font-medium text-[#4b5563] transition hover:bg-[#f1f5f9] hover:text-[var(--kdb-primary)]'
+                  }
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <div className='mt-auto px-4 pb-4'>
+            <Link
+              href='/#categories'
+              onClick={() => setMobileMenuOpen(false)}
+              className='flex items-center justify-center gap-1 rounded-full bg-[#0c2847] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#06192e] active:scale-95'
+            >
+              <span>{t('nav.apply_now')}</span>
+              <span className='text-xs font-bold'>→</span>
+            </Link>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

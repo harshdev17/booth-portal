@@ -8,6 +8,7 @@ import type { ApplicationSubmissionInput } from '@/lib/applications/schema'
 import { hasActiveDuplicateApplication, type ValidatedSubmission } from '@/lib/applications/validate-submission'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction, type TransactionQuery } from '@/lib/db/client'
+import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
 
 export type CreateDraftResult = {
   applicationId: number
@@ -289,6 +290,18 @@ export async function finalizeApplication(
 
   if (application.status !== 'draft') {
     throw new ApplicationStateError('This application has already been submitted.')
+  }
+
+  // Explicit requirement: mobile number must be OTP-verified before an
+  // application can be finalized, not just at status-lookup time. The
+  // client is expected to have already run /api/otp/request + /api/otp/verify
+  // for this number on the Review page — this is the server-side gate that
+  // actually enforces it, since client state alone is never trusted for
+  // authorization (see .ai/SECURITY.md).
+  const mobileVerified = await hasRecentVerifiedOtp(`+91${application.mobile_number}`, 'applicant_mobile_verification', 30)
+
+  if (!mobileVerified) {
+    throw new ApplicationStateError('Please verify your mobile number with the OTP sent to it before submitting.')
   }
 
   const category = await getCategoryById(application.category_id)

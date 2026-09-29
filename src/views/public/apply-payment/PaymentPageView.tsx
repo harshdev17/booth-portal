@@ -75,7 +75,7 @@ const PaymentPageView = ({
   useEffect(() => {
     const loadDetails = async () => {
       try {
-        const response = await fetch('/api/applications/status', {
+        const response = await fetch('/api/applications/summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ applicationNumber, accessToken: accessToken ?? '' })

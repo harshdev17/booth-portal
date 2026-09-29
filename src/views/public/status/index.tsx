@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { useLanguage } from '@/context/LanguageContext'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 
 const lookupSchema = z.object({
@@ -18,8 +19,7 @@ const lookupSchema = z.object({
     .string()
     .trim()
     .min(1, 'Application number is required')
-    .regex(/^KDB-\d{4}-\d{6}$/, 'Enter a valid application number, e.g. KDB-2026-123456'),
-  accessToken: z.string().trim().min(1, 'Access code is required')
+    .regex(/^KDB-\d{4}-\d{6}$/, 'Enter a valid application number, e.g. KDB-2026-123456')
 })
 
 type LookupValues = z.infer<typeof lookupSchema>
@@ -40,26 +40,27 @@ type StatusResult = {
   documents: DocumentRow[]
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Draft',
-  payment_pending: 'Payment Pending',
-  payment_failed: 'Payment Failed',
-  payment_success: 'Payment Received',
-  under_review: 'Under Review',
-  rejected: 'Rejected',
-  selected: 'Selected',
-  not_selected: 'Not Selected',
-  payment_required: 'Payment Required',
-  allotted: 'Allotted',
-  cancelled: 'Cancelled',
-  re_allotted: 'Re-Allotted'
+const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
+  draft: { en: 'Draft', hi: 'ड्राफ्ट' },
+  payment_pending: { en: 'Payment Pending', hi: 'भुगतान लंबित' },
+  payment_failed: { en: 'Payment Failed', hi: 'भुगतान विफल' },
+  payment_success: { en: 'Payment Received', hi: 'भुगतान प्राप्त' },
+  under_review: { en: 'Under Review', hi: 'समीक्षाधीन' },
+  rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
+  selected: { en: 'Selected', hi: 'चयनित' },
+  not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
+  payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
+  allotted: { en: 'Allotted', hi: 'आवंटित' },
+  cancelled: { en: 'Cancelled', hi: 'रद्द' },
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आवंटित' }
 }
 
 type Phase = 'lookup' | 'otp' | 'result'
 
 const StatusLookup = () => {
+  const { lang } = useLanguage()
   const [phase, setPhase] = useState<Phase>('lookup')
-  const [credentials, setCredentials] = useState<LookupValues | null>(null)
+  const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [result, setResult] = useState<StatusResult | null>(null)
@@ -70,11 +71,11 @@ const StatusLookup = () => {
 
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
-    defaultValues: { applicationNumber: '', accessToken: '' }
+    defaultValues: { applicationNumber: '' }
   })
 
-  // Phase 1: app number + access code alone only requests a WhatsApp OTP to
-  // the mobile number on file — it never returns status by itself.
+  // Phase 1: application number alone only requests a WhatsApp OTP to the
+  // mobile number on file — it never returns status by itself.
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
     setIsLoading(true)
@@ -89,25 +90,29 @@ const StatusLookup = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? 'Something went wrong. Please try again.')
+        setError(body.error ?? (lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'))
 
         return
       }
 
-      setCredentials(values)
+      setApplicationNumber(values.applicationNumber)
       setMaskedMobile(body.maskedMobile)
       setOtpCode('')
       setPhase('otp')
     } catch {
-      setError('Could not reach the server. Please check your connection and try again.')
+      setError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Phase 2: app number + access code + the 6-digit code returns status/documents.
+  // Phase 2: application number + the 6-digit code returns status/documents.
   const verifyOtpAndFetchStatus = async () => {
-    if (!credentials) return
+    if (!applicationNumber) return
 
     setError(null)
     setIsLoading(true)
@@ -116,13 +121,13 @@ const StatusLookup = () => {
       const response = await fetch('/api/applications/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...credentials, otpCode })
+        body: JSON.stringify({ applicationNumber, otpCode })
       })
 
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? 'Something went wrong. Please try again.')
+        setError(body.error ?? (lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'))
 
         return
       }
@@ -130,14 +135,18 @@ const StatusLookup = () => {
       setResult(body)
       setPhase('result')
     } catch {
-      setError('Could not reach the server. Please check your connection and try again.')
+      setError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
     } finally {
       setIsLoading(false)
     }
   }
 
   const respondToQuery = async (documentKey: string, file: File) => {
-    if (!credentials || !result) return
+    if (!result) return
 
     setUploadMessage(null)
     setUploadingKey(documentKey)
@@ -148,16 +157,18 @@ const StatusLookup = () => {
       formData.append('documentKey', documentKey)
       formData.append('file', file)
 
+      // No access token to send — ownership here is proven by the OTP just
+      // verified for this application's mobile number (server re-checks it
+      // independently; see hasRecentVerifiedOtp in the documents route).
       const response = await fetch(`/api/applications/${result.applicationId}/documents`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${credentials.accessToken}` },
         body: formData
       })
 
       const body = await response.json()
 
       if (!response.ok) {
-        setUploadMessage(body.error ?? 'Could not upload the file. Please try again.')
+        setUploadMessage(body.error ?? (lang === 'hi' ? 'फ़ाइल अपलोड नहीं हो सकी। पुनः प्रयास करें।' : 'Could not upload the file. Please try again.'))
 
         return
       }
@@ -177,9 +188,13 @@ const StatusLookup = () => {
             }
           : prev
       )
-      setUploadMessage('Uploaded. It will be reviewed again shortly.')
+      setUploadMessage(lang === 'hi' ? 'अपलोड हो गया। शीघ्र ही पुनः समीक्षा की जाएगी।' : 'Uploaded. It will be reviewed again shortly.')
     } catch {
-      setUploadMessage('Could not reach the server. Please check your connection and try again.')
+      setUploadMessage(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
     } finally {
       setUploadingKey(null)
     }
@@ -189,11 +204,17 @@ const StatusLookup = () => {
 
   return (
     <div className='mx-auto max-w-lg px-4 py-16 sm:px-6'>
-      <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>Check Application Status</h1>
+      <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>
+        {lang === 'hi' ? 'आवेदन की स्थिति जांचें' : 'Check Application Status'}
+      </h1>
       <p className='mb-8 text-[var(--kdb-muted)]'>
         {phase === 'otp'
-          ? `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
-          : 'Enter your application number and the access code you received on submission.'}
+          ? lang === 'hi'
+            ? `आपके व्हाट्सएप नंबर पर भेजा गया 6-अंकों का कोड दर्ज करें (...${maskedMobile.slice(-4)})।`
+            : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
+          : lang === 'hi'
+            ? 'अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
+            : "Enter your application number. We'll send a verification code to your registered mobile number."}
       </p>
 
       {phase === 'lookup' && (
@@ -203,20 +224,8 @@ const StatusLookup = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor={field.name}>Application Number</FieldLabel>
+                <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आवेदन क्रमांक' : 'Application Number'}</FieldLabel>
                 <Input {...field} id={field.name} placeholder='KDB-2026-123456' aria-invalid={fieldState.invalid} />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
-
-          <Controller
-            name='accessToken'
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor={field.name}>Access Code</FieldLabel>
-                <Input {...field} id={field.name} aria-invalid={fieldState.invalid} />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
@@ -231,7 +240,7 @@ const StatusLookup = () => {
 
           <Button type='submit' disabled={isLoading}>
             {isLoading ? <Loader2Icon className='animate-spin' /> : <SearchIcon />}
-            Send Verification Code
+            {lang === 'hi' ? 'सत्यापन कोड भेजें' : 'Send Verification Code'}
           </Button>
         </form>
       )}
@@ -239,7 +248,7 @@ const StatusLookup = () => {
       {phase === 'otp' && (
         <div className='flex flex-col gap-4'>
           <Field>
-            <FieldLabel htmlFor='otpCode'>6-Digit Code</FieldLabel>
+            <FieldLabel htmlFor='otpCode'>{lang === 'hi' ? '6-अंकों का कोड' : '6-Digit Code'}</FieldLabel>
             <Input
               id='otpCode'
               value={otpCode}
@@ -259,16 +268,16 @@ const StatusLookup = () => {
 
           <Button type='button' disabled={isLoading || otpCode.length !== 6} onClick={verifyOtpAndFetchStatus}>
             {isLoading && <Loader2Icon className='animate-spin' />}
-            Verify & Check Status
+            {lang === 'hi' ? 'सत्यापित करें और स्थिति देखें' : 'Verify & Check Status'}
           </Button>
 
           <button
             type='button'
             className='text-sm text-[var(--kdb-muted)] underline underline-offset-2 hover:text-[var(--kdb-primary)]'
             disabled={isLoading}
-            onClick={() => credentials && requestOtpForLookup(credentials)}
+            onClick={() => requestOtpForLookup({ applicationNumber })}
           >
-            Resend code
+            {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
           </button>
 
           <button
@@ -279,7 +288,7 @@ const StatusLookup = () => {
               setError(null)
             }}
           >
-            Use a different application number
+            {lang === 'hi' ? 'एक भिन्न आवेदन क्रमांक का उपयोग करें' : 'Use a different application number'}
           </button>
         </div>
       )}
@@ -287,18 +296,28 @@ const StatusLookup = () => {
       {phase === 'result' && result && (
         <div className='flex flex-col gap-4'>
           <div className='rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6'>
-            <p className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>Category</p>
+            <p className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+              {lang === 'hi' ? 'श्रेणी' : 'Category'}
+            </p>
             <p className='mb-4 font-semibold text-[var(--kdb-primary)]'>{result.categoryName}</p>
 
-            <p className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>Status</p>
-            <p className='font-semibold text-[var(--kdb-primary)]'>{STATUS_LABEL[result.status] ?? result.status}</p>
+            <p className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+              {lang === 'hi' ? 'स्थिति' : 'Status'}
+            </p>
+            <p className='font-semibold text-[var(--kdb-primary)]'>
+              {lang === 'hi' ? (STATUS_LABEL[result.status]?.hi ?? result.status) : (STATUS_LABEL[result.status]?.en ?? result.status)}
+            </p>
           </div>
 
           {documentsNeedingResponse.length > 0 && (
             <div className='rounded-xl border border-amber-200 bg-amber-50 p-6'>
-              <p className='mb-1 text-sm font-bold text-amber-900'>Documents Needing Your Response</p>
+              <p className='mb-1 text-sm font-bold text-amber-900'>
+                {lang === 'hi' ? 'आपकी प्रतिक्रिया आवश्यक दस्तावेज़' : 'Documents Needing Your Response'}
+              </p>
               <p className='mb-4 text-xs text-amber-800'>
-                The verification team has asked for a corrected or additional document below.
+                {lang === 'hi'
+                  ? 'सत्यापन टीम ने नीचे दिए गए दस्तावेज़ के लिए सुधार/स्पष्टीकरण मांगा है।'
+                  : 'The verification team has asked for a corrected or additional document below.'}
               </p>
 
               <div className='flex flex-col gap-3'>
@@ -315,7 +334,7 @@ const StatusLookup = () => {
                       ) : (
                         <UploadIcon className='size-3.5' />
                       )}
-                      Upload Corrected File
+                      {lang === 'hi' ? 'सही फ़ाइल अपलोड करें' : 'Upload Corrected File'}
                       <input
                         type='file'
                         className='hidden'
@@ -343,12 +362,14 @@ const StatusLookup = () => {
 
           {result.documents.length > 0 && (
             <div className='rounded-xl border border-[var(--kdb-border)] p-6'>
-              <p className='mb-3 text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>Documents</p>
+              <p className='mb-3 text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+                {lang === 'hi' ? 'दस्तावेज़' : 'Documents'}
+              </p>
               <div className='flex flex-col gap-2'>
                 {result.documents.map(doc => {
                   const cfg = doc.verificationStatus
                     ? getDocumentStatusConfig(doc.verificationStatus)
-                    : { label: 'Not Uploaded', color: 'bg-gray-100 text-gray-700' }
+                    : { label: lang === 'hi' ? 'अपलोड नहीं हुआ' : 'Not Uploaded', color: 'bg-gray-100 text-gray-700' }
 
                   return (
                     <div key={doc.documentKey} className='flex items-center justify-between text-sm'>
