@@ -23,6 +23,17 @@ export type SendTemplateMessageInput = {
   /** Positional values matching the approved WhatsApp template's variables, in order. */
   templateParams: string[]
   applicationId?: number
+
+  /**
+   * Value for a template's interactive button, when it has one (e.g. an
+   * Authentication template's "Copy Code" button). WhatsApp/Meta requires
+   * authentication-template buttons to carry their own parameter separately
+   * from the body's templateParams, even when the value is identical (the
+   * OTP code) — omitting it causes the send to be rejected with "Button at
+   * index 0 ... requires a parameter." Utility/Marketing templates without
+   * an interactive button should leave this undefined.
+   */
+  buttonParam?: string
 }
 
 export type SendTemplateMessageResult =

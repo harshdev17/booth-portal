@@ -58,7 +58,19 @@ export class AiSensyNotificationService implements NotificationService {
           campaignName,
           destination: input.destination,
           userName: input.userName,
-          templateParams: input.templateParams
+          templateParams: input.templateParams,
+          ...(input.buttonParam
+            ? {
+                buttons: [
+                  {
+                    type: 'button',
+                    sub_type: 'url',
+                    index: '0',
+                    parameters: [{ type: 'text', text: input.buttonParam }]
+                  }
+                ]
+              }
+            : {})
         })
       })
 

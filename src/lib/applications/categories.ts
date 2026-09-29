@@ -16,6 +16,9 @@ export type CategoryRow = {
   gst_percent: number | string | null // MySQL DECIMAL columns arrive as strings via mysql2
   application_opens_at: string | null
   application_closes_at: string | null
+  auction_date: string | null
+  auction_venue: string | null
+  auction_venue_hi: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
   display_order: number
 }

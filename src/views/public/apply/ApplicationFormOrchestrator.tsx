@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircleIcon, Loader2Icon } from 'lucide-react'
+import { AlertCircleIcon, BookOpenIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -241,7 +241,7 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
   })
 
   return (
-    <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
+    <div className='kdb-apply-form min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
       <div className='mx-auto max-w-[1200px]'>
         {/* Header with Home Theme Ornamental Divider */}
         <div className='mb-8 text-left'>
@@ -273,6 +273,30 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
         </div>
 
         <ApplicationSummaryPanel config={config} />
+
+        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4 sm:flex-row sm:items-center'>
+          <div className='flex items-start gap-2.5'>
+            <TriangleAlertIcon className='mt-0.5 size-5 shrink-0 text-[#dc2626]' />
+            <div>
+              <p className='text-sm sm:text-base font-extrabold text-[#991b1b]'>
+                {lang === 'hi' ? 'आवेदन से पूर्व अवश्य पढ़ें!' : 'Read Before You Apply!'}
+              </p>
+              <p className='text-xs sm:text-sm text-[#7f1d1d]'>
+                {lang === 'hi'
+                  ? 'कृपया आवेदन करने से पहले सभी दिशा-निर्देश और शर्तें ध्यानपूर्वक पढ़ें।'
+                  : 'Please read all guidelines and terms carefully before submitting your application.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href='/guidelines'
+            target='_blank'
+            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#dc2626] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#b91c1c]'
+          >
+            <BookOpenIcon className='size-4' />
+            {lang === 'hi' ? 'दिशा-निर्देश देखें' : 'View Guidelines'}
+          </Link>
+        </div>
 
         {draftError ? (
           <div className='rounded-2xl border border-[#e2e8f0] bg-white p-10 text-center shadow-sm'>
@@ -313,12 +337,12 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
                   1
                 </div>
 
-                <div className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-                  <div className='mb-5 border-b border-[#f1f5f9] pb-4'>
+                <div className='rounded-2xl border border-[#eeddb8] bg-[#fcf6e8] p-7 sm:p-9 shadow-xs'>
+                  <div className='mb-5 border-b border-[#f0e4c4] pb-4'>
                     <h2 className='text-xl sm:text-2xl font-black text-[#0c2847]'>
                       {lang === 'hi' ? 'आवेदन से पूर्व निर्देश' : 'Before You Start'}
                     </h2>
-                    <p className='text-xs sm:text-sm text-[#64748b] mt-1'>
+                    <p className='text-sm sm:text-base text-[#64748b] mt-1'>
                       {lang === 'hi'
                         ? 'आवेदन पत्र भरने हेतु अनिवार्य दिशा-निर्देश एवं आवश्यक दस्तावेज।'
                         : 'Mandatory prerequisites and guidelines for your application.'}

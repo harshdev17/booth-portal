@@ -48,6 +48,11 @@ export async function requestOtp(params: {
     destination: params.mobileNumber,
     userName: params.mobileNumber,
     templateParams: [code],
+
+    // The template's "Copy Code" button requires the same code as its own
+    // button parameter, separate from templateParams — see buttonParam's
+    // doc comment in notifications/types.ts.
+    buttonParam: code,
     applicationId: params.applicationId
   })
 

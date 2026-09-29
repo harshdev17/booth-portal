@@ -289,3 +289,24 @@ input[type='number']::-webkit-outer-spin-button {
   animation-play-state: paused;
 }
 
+/* Larger form fields on the public application form only — scoped to
+   .kdb-apply-form so the shared Input/Textarea/InputGroup/Select components
+   are not resized anywhere else (e.g. the admin panel, which uses the same
+   primitives at their default size). */
+.kdb-apply-form [data-slot='input'],
+.kdb-apply-form [data-slot='input-group'],
+.kdb-apply-form [data-slot='select-trigger'] {
+  height: 3rem;
+  font-size: 1rem;
+}
+
+.kdb-apply-form [data-slot='textarea'] {
+  font-size: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.kdb-apply-form [data-slot='input-group-control'] {
+  font-size: 1rem;
+}
+

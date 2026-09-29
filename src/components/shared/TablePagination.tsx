@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
 import PageSizeSelect from '@/components/shared/PageSizeSelect'
+import { PAGE_SIZE_OPTIONS } from '@/lib/pagination'
 
 type Props = {
   page: number
@@ -18,14 +19,21 @@ type Props = {
  * Applicants, Documents, Audit Logs). Deliberately plain <Link>s, not a
  * client component — every list page here is already a Server Component
  * reading pagination state from the URL's searchParams, so no client JS is
- * needed to change page. Only the rows-per-page <select> (buildPageSizeUrl)
- * needs a small client island, isolated in PageSizeSelect.
+ * needed to change page. Only the rows-per-page <select> needs a small
+ * client island, isolated in PageSizeSelect — which is handed a plain array
+ * of pre-built hrefs (computed here, server-side, via buildPageSizeUrl)
+ * rather than the buildPageSizeUrl function itself, since a Server
+ * Component's function props cannot cross into a Client Component.
  */
 const TablePagination = ({ page, totalPages, totalItems, pageSize, buildUrl, buildPageSizeUrl }: Props) => {
   if (totalItems === 0) return null
 
   const rangeStart = pageSize === 'all' ? 1 : (page - 1) * pageSize + 1
   const rangeEnd = pageSize === 'all' ? totalItems : Math.min(page * pageSize, totalItems)
+
+  const pageSizeOptions = buildPageSizeUrl
+    ? [...PAGE_SIZE_OPTIONS.map(size => ({ value: size as number | 'all', href: buildPageSizeUrl(size) })), { value: 'all' as const, href: buildPageSizeUrl('all') }]
+    : null
 
   return (
     <div className='flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row'>
@@ -35,7 +43,7 @@ const TablePagination = ({ page, totalPages, totalItems, pageSize, buildUrl, bui
           <span className='font-semibold text-slate-700'>{rangeEnd}</span> of{' '}
           <span className='font-semibold text-slate-700'>{totalItems}</span>
         </p>
-        {buildPageSizeUrl && <PageSizeSelect value={pageSize} buildUrl={buildPageSizeUrl} />}
+        {pageSizeOptions && <PageSizeSelect value={pageSize} options={pageSizeOptions} />}
       </div>
 
       {totalPages > 1 && (

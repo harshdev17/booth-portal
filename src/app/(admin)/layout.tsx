@@ -38,6 +38,7 @@ const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
         `SELECT c.name, c.slug, COUNT(a.id) AS count
          FROM categories c
          LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
+         WHERE c.status != 'archived'
          GROUP BY c.id, c.name, c.slug, c.display_order
          ORDER BY c.display_order ASC`
       )

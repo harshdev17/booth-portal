@@ -4,6 +4,7 @@ import { CheckCircle2Icon, MessageSquareIcon, XCircleIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requirePermission } from '@/lib/rbac/authorize'
+import SendTestNotification from '@/views/admin/settings/SendTestNotification'
 
 export const metadata: Metadata = {
   title: 'WhatsApp / SMS Settings — KDB Admin Portal'
@@ -101,6 +102,8 @@ const NotificationSettingsPage = async () => {
         <code className='rounded bg-muted px-1 py-0.5'>.ai/DECISIONS.md #11a</code> and{' '}
         <code className='rounded bg-muted px-1 py-0.5'>.ai/NOTIFICATIONS.md</code>.
       </p>
+
+      <SendTestNotification />
     </div>
   )
 }

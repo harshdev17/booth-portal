@@ -2,11 +2,18 @@
 
 import { useRouter } from 'next/navigation'
 
-import { PAGE_SIZE_OPTIONS } from '@/lib/pagination'
-
 type Props = {
   value: number | 'all'
-  buildUrl: (size: number | 'all') => string
+
+  /**
+   * Pre-built href for each selectable page size, computed server-side by
+   * TablePagination (which already has the current search params) — plain
+   * data, not a function, since a Server Component's closures cannot be
+   * passed as props into a Client Component (React throws "Functions cannot
+   * be passed directly to Client Components" if attempted; see
+   * .ai/CHANGELOG.md for the incident this fixes).
+   */
+  options: Array<{ value: number | 'all'; href: string }>
 }
 
 /**
@@ -14,7 +21,7 @@ type Props = {
  * server-rendered TablePagination — navigation on change needs JS, nothing
  * else on these list pages does.
  */
-const PageSizeSelect = ({ value, buildUrl }: Props) => {
+const PageSizeSelect = ({ value, options }: Props) => {
   const router = useRouter()
 
   return (
@@ -24,17 +31,18 @@ const PageSizeSelect = ({ value, buildUrl }: Props) => {
         value={String(value)}
         onChange={event => {
           const raw = event.target.value
+          const targetValue = raw === 'all' ? 'all' : Number(raw)
+          const match = options.find(option => option.value === targetValue)
 
-          router.push(buildUrl(raw === 'all' ? 'all' : Number(raw)))
+          if (match) router.push(match.href)
         }}
         className='h-8 rounded-md border border-input bg-background px-2 text-xs font-medium text-slate-700'
       >
-        {PAGE_SIZE_OPTIONS.map(option => (
-          <option key={option} value={option}>
-            {option}
+        {options.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.value === 'all' ? 'All' : option.value}
           </option>
         ))}
-        <option value='all'>All</option>
       </select>
     </label>
   )

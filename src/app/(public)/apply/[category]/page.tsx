@@ -63,6 +63,9 @@ const ApplyPage = async ({ params }: { params: Promise<{ category: string }> }) 
       gstPercent: fee?.gstPercent ?? null,
       applicationOpensAt: category.application_opens_at,
       applicationClosesAt: category.application_closes_at,
+      auctionDate: category.auction_date,
+      auctionVenue: category.auction_venue,
+      auctionVenueHi: category.auction_venue_hi,
       isAcceptingApplications: true
     },
     shopOptions: shopOptions.map(o => ({ id: o.id, label: o.label, feePaise: o.fee_paise })),

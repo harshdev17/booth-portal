@@ -121,7 +121,7 @@ const ApplicationsAdminPage = async ({
       params
     ),
     query<Array<{ id: number; name: string; slug: string }>>(
-      `SELECT id, name, slug FROM categories ORDER BY display_order ASC`
+      `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
     ),
     query<Array<{ status: string; count: number }>>(
       `SELECT status, COUNT(*) AS count FROM applications WHERE status != 'draft' GROUP BY status`

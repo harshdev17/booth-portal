@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { query } from '@/lib/db/client'
+import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApplicationStatusConfig, getDocumentStatusConfig } from '@/lib/applications/status-config'
+import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
@@ -27,6 +29,7 @@ type ApplicationRow = {
   representative_name: string
   father_name: string
   aadhaar_last4: string
+  aadhaar_ciphertext: Buffer
   address: string
   state: string
   district: string
@@ -46,7 +49,7 @@ type ApplicationRow = {
 }
 
 const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string }> }) => {
-  await requirePermission('application:view')
+  const session = await requirePermission('application:view')
 
   const { id } = await params
   const applicationId = Number(id)
@@ -56,7 +59,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const [rows, fieldValues, documents, auditEntries, permissions] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
-              a.father_name, a.aadhaar_last4, a.address, a.state, a.district, a.pin_code, a.mobile_number,
+              a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
               a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
               c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
               so.label AS shop_option_label
@@ -108,6 +111,23 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   if (!app) notFound()
 
+  // Full Aadhaar number is shown (not masked) to any admin with
+  // application:view, per explicit instruction — every view is audit-logged
+  // separately from the general page-view, since Aadhaar is sensitive PII
+  // and .ai/SECURITY.md requires exposure of unmasked identifiers to be
+  // traceable. Decryption happens only here, server-side, and the plaintext
+  // is never sent to a Client Component beyond this rendered page.
+  const aadhaarNumber = decryptAadhaar(Buffer.from(app.aadhaar_ciphertext))
+
+  await logAudit({
+    actorUserId: session.userId,
+    actorRoleKey: session.role.key,
+    action: 'application.aadhaar_viewed',
+    module: 'applications',
+    entityType: 'application',
+    entityId: String(app.id)
+  })
+
   const statusCfg = getApplicationStatusConfig(app.status)
   const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
   const canReject = app.status === 'under_review' && !!permissions?.has('application:reject')
@@ -155,7 +175,11 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               <InfoField label='Representative Name' value={app.representative_name} />
               <InfoField label="Father's Name" value={app.father_name} />
               <InfoField label='Organisation / Firm Name' value={app.organisation_name} />
-              <InfoField label='Aadhaar Number' value={`XXXX-XXXX-${app.aadhaar_last4}`} mono />
+              <InfoField
+                label='Aadhaar Number'
+                value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
+                mono
+              />
               <InfoField label='Email' value={app.email} />
               <InfoField label='Mobile Number' value={app.mobile_number} mono />
               <InfoField label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />

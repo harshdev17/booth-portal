@@ -18,6 +18,11 @@ type CategoryRow = {
   fee_base_paise: number | null
   gst_percent: number | string | null
   status: string
+  application_opens_at: string | null
+  application_closes_at: string | null
+  auction_date: string | null
+  auction_venue: string | null
+  auction_venue_hi: string | null
 }
 
 const GeneralSettingsPage = async () => {
@@ -25,7 +30,8 @@ const GeneralSettingsPage = async () => {
   await requirePermission('config:manage')
 
   const categories = await query<CategoryRow[]>(
-    `SELECT id, name, name_hi, slug, selection_method, fee_paise, fee_base_paise, gst_percent, status
+    `SELECT id, name, name_hi, slug, selection_method, fee_paise, fee_base_paise, gst_percent, status,
+            application_opens_at, application_closes_at, auction_date, auction_venue, auction_venue_hi
      FROM categories
      ORDER BY display_order ASC`
   )

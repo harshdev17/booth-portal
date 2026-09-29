@@ -175,6 +175,12 @@ export const navItems: NavItem[] = [
         label: 'Fees / Categories / Event Settings',
         href: '/admin/settings/general',
         permission: 'config:manage'
+      },
+      {
+        icon: 'Megaphone',
+        label: 'Homepage Notices',
+        href: '/admin/settings/notices',
+        permission: 'config:manage'
       }
     ]
   }

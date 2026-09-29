@@ -1,28 +1,46 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import { BellIcon, SparklesIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
+type NoticeDto = { id: number; text: string; textHi: string | null }
+
+/**
+ * Notices are admin-configurable (src/app/(admin)/admin/settings/notices),
+ * fetched from /api/notices rather than hardcoded — see migration
+ * 0010_notices.sql. Fetched client-side (not server-rendered) since
+ * PublicHeader/HeaderMarquee are client components used on every public
+ * page; the notices themselves are non-sensitive and safe to fetch after
+ * first paint.
+ */
 export default function HeaderMarquee() {
   const { lang } = useLanguage()
+  const [noticeRows, setNoticeRows] = useState<NoticeDto[]>([])
 
-  const notices =
-    lang === 'hi'
-      ? [
-          'अंतर्राष्ट्रीय गीता महोत्सव 2026: व्यावसायिक स्टॉल एवं दुकानों हेतु ऑनलाइन आवेदन प्रक्रिया प्रारंभ हो चुकी है।',
-          'आवेदन करने की अंतिम तिथि से पूर्व अपने आवश्यक दस्तावेज पोर्टल पर अपलोड करें।',
-          'एन.जी.ओ. स्टॉल पूर्णतः निःशुल्क हैं एवं कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा निर्णय लिया जाएगा।',
-          'रिफ्रेशमेंट/खान-पान स्टॉल की नीलामी KDB द्वारा प्रत्यक्ष (मैनुअल) रूप से की जाएगी।',
-          'आवंटन एवं लकी ड्रॉ संबंधी आधिकारिक सूचना हेतु केवल इसी पोर्टल का संदर्भ लें।'
-        ]
-      : [
-          'International Gita Mahotsav 2026: Online application process for commercial stalls and booths is now live.',
-          'Please ensure all mandatory documents are uploaded before the closing deadline.',
-          'NGO stalls are free of cost and will be decided manually by Kurukshetra Development Board (KDB).',
-          'Refreshment & Food stalls will be auctioned manually by KDB.',
-          'Refer exclusively to this official portal for genuine draw results and stall allotment notifications.'
-        ]
+  useEffect(() => {
+    let cancelled = false
+
+    fetch('/api/notices')
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled && Array.isArray(data.notices)) setNoticeRows(data.notices)
+      })
+      .catch(() => {
+        // Silent — an empty marquee is an acceptable degraded state, not
+        // worth surfacing an error banner on the homepage for.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (noticeRows.length === 0) return null
+
+  const notices = noticeRows.map(n => (lang === 'hi' && n.textHi ? n.textHi : n.text))
 
   return (
     <div className='relative z-50 bg-[#092b52] text-white'>

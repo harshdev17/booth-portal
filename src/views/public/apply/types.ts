@@ -9,6 +9,9 @@ export type CategoryDetail = {
   gstPercent: number | null
   applicationOpensAt: string | null
   applicationClosesAt: string | null
+  auctionDate: string | null
+  auctionVenue: string | null
+  auctionVenueHi: string | null
   isAcceptingApplications: boolean
 }
 
