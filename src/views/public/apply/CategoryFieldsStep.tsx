@@ -107,7 +107,7 @@ const CategoryFieldsStep = ({
                   onValueChange={rhfField.onChange}
                 >
                   <SelectTrigger id={rhfField.name} className='w-full' aria-invalid={fieldState.invalid}>
-                    <SelectValue placeholder='Select an option' />
+                    <SelectValue placeholder={lang === 'hi' ? 'विकल्प चुनें' : 'Select an option'} />
                   </SelectTrigger>
                   <SelectContent>
                     {(field.options ?? []).map(option => (

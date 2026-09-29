@@ -35,17 +35,21 @@ const SectionCard = ({
   title: string
   editHref: string
   children: React.ReactNode
-}) => (
-  <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-    <div className='mb-4 flex items-center justify-between border-b border-[#f1f5f9] pb-3'>
-      <h2 className='text-xl font-black text-[#0c2847]'>{title}</h2>
-      <Link href={editHref} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
-        Edit Details ✎
-      </Link>
-    </div>
-    <div className='rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-5 py-2'>{children}</div>
-  </section>
-)
+}) => {
+  const { lang } = useLanguage()
+
+  return (
+    <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
+      <div className='mb-4 flex items-center justify-between border-b border-[#f1f5f9] pb-3'>
+        <h2 className='text-xl font-black text-[#0c2847]'>{title}</h2>
+        <Link href={editHref} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
+          {lang === 'hi' ? 'विवरण संपादित करें ✎' : 'Edit Details ✎'}
+        </Link>
+      </div>
+      <div className='rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-5 py-2'>{children}</div>
+    </section>
+  )
+}
 
 /**
  * Review page — a real route, not an embedded section (per explicit
@@ -257,7 +261,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           href={`/apply/${categorySlug}`}
           className='mt-4 inline-block text-sm font-semibold text-[var(--kdb-primary)] hover:underline'
         >
-          Back to Application
+          {lang === 'hi' ? 'आवेदन पर वापस जाएं' : 'Back to Application'}
         </Link>
       </div>
     )
@@ -350,28 +354,32 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           {data.feePaise !== undefined && data.feePaise !== null && data.feePaise > 0 && (
             <section className='rounded-2xl border-2 border-[#e6cca4] bg-[#fdfbf7] p-7 sm:p-9 shadow-xs'>
               <div className='mb-4 flex items-center justify-between border-b border-[#e6cca4]/60 pb-3'>
-                <h2 className='text-xl font-black text-[#0c2847]'>Application Fee Details</h2>
+                <h2 className='text-xl font-black text-[#0c2847]'>
+                  {lang === 'hi' ? 'आवेदन शुल्क विवरण' : 'Application Fee Details'}
+                </h2>
                 <span className='rounded-full bg-[#d8891d]/15 px-3 py-1 text-xs font-bold text-[#8c5711]'>
-                  Payment Required on Submit
+                  {lang === 'hi' ? 'सबमिट करते समय भुगतान आवश्यक' : 'Payment Required on Submit'}
                 </span>
               </div>
               <div className='space-y-2.5 text-sm'>
                 {data.feeBasePaise !== null && data.feeBasePaise !== undefined && (
                   <div className='flex justify-between border-b border-[#e2e8f0]/60 py-2'>
-                    <span className='text-[#64748b]'>Base Application Fee:</span>
+                    <span className='text-[#64748b]'>{lang === 'hi' ? 'मूल आवेदन शुल्क:' : 'Base Application Fee:'}</span>
                     <span className='font-bold text-[#0c2847]'>₹{(data.feeBasePaise / 100).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {data.gstPercent !== null && data.gstPercent !== undefined && data.gstPercent > 0 && (
                   <div className='flex justify-between border-b border-[#e2e8f0]/60 py-2'>
-                    <span className='text-[#64748b]'>Applicable GST ({data.gstPercent}%):</span>
+                    <span className='text-[#64748b]'>
+                      {lang === 'hi' ? `लागू जीएसटी (${data.gstPercent}%):` : `Applicable GST (${data.gstPercent}%):`}
+                    </span>
                     <span className='font-bold text-[#0c2847]'>
                       ₹{(((data.feePaise - (data.feeBasePaise ?? data.feePaise))) / 100).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
                 <div className='flex justify-between pt-2 text-base font-extrabold text-[#0c2847]'>
-                  <span>Total Payable Amount:</span>
+                  <span>{lang === 'hi' ? 'कुल देय राशि:' : 'Total Payable Amount:'}</span>
                   <span className='text-lg font-black text-[#d8891d]'>₹{(data.feePaise / 100).toLocaleString('en-IN')}</span>
                 </div>
               </div>
@@ -380,9 +388,11 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
           <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
             <div className='mb-4 flex items-center justify-between border-b border-[#f1f5f9] pb-3'>
-              <h2 className='text-xl font-black text-[#0c2847]'>Uploaded Documents</h2>
+              <h2 className='text-xl font-black text-[#0c2847]'>
+                {lang === 'hi' ? 'अपलोड किए गए दस्तावेज' : 'Uploaded Documents'}
+              </h2>
               <Link href={`/apply/${categorySlug}`} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
-                Edit Documents ✎
+                {lang === 'hi' ? 'दस्तावेज संपादित करें ✎' : 'Edit Documents ✎'}
               </Link>
             </div>
             <div className='rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-5 py-3 divide-y divide-[#f1f5f9]'>

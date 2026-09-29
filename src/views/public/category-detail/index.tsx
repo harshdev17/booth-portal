@@ -1,13 +1,16 @@
+'use client'
+
 import Link from 'next/link'
 
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
+import { useLanguage } from '@/context/LanguageContext'
 
-const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], string> = {
-  draw: 'Draw',
-  manual: 'Decided by Kurukshetra Development Board',
-  auction: 'Auction',
-  tender: 'Tender',
-  application_fee: 'Application Fee'
+const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], { en: string; hi: string }> = {
+  draw: { en: 'Draw', hi: 'लकी ड्रॉ' },
+  manual: { en: 'Decided by Kurukshetra Development Board', hi: 'कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित' },
+  auction: { en: 'Auction', hi: 'नीलामी' },
+  tender: { en: 'Tender', hi: 'निविदा (टेंडर)' },
+  application_fee: { en: 'Application Fee', hi: 'आवेदन शुल्क' }
 }
 
 /**
@@ -25,38 +28,51 @@ const CategoryDetail = ({
   documents: DocumentDefinitionRow[]
   isAcceptingApplications: boolean
 }) => {
+  const { lang } = useLanguage()
+  const displayName = lang === 'hi' && category.name_hi ? category.name_hi : category.name
+  const displayDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
+  const methodLabel = SELECTION_METHOD_LABEL[category.selection_method][lang]
+
   return (
     <div className='mx-auto max-w-3xl px-4 py-14 sm:px-6'>
       <p className='mb-2 text-xs font-bold tracking-wide text-[var(--kdb-saffron)] uppercase'>
-        Category {category.display_order}
+        {lang === 'hi' ? `श्रेणी ${category.display_order}` : `Category ${category.display_order}`}
       </p>
-      <h1 className='mb-4 text-3xl font-extrabold text-[var(--kdb-primary)]'>{category.name}</h1>
+      <h1 className='mb-4 text-3xl font-extrabold text-[var(--kdb-primary)]'>{displayName}</h1>
 
-      {category.description && <p className='mb-6 text-[var(--kdb-text)]'>{category.description}</p>}
+      {displayDescription && <p className='mb-6 text-[var(--kdb-text)]'>{displayDescription}</p>}
 
       <dl className='mb-8 grid grid-cols-1 gap-4 rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6 sm:grid-cols-2'>
         <div>
-          <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>Selection Method</dt>
-          <dd className='font-semibold text-[var(--kdb-primary)]'>
-            {SELECTION_METHOD_LABEL[category.selection_method]}
-          </dd>
+          <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+            {lang === 'hi' ? 'चयन विधि' : 'Selection Method'}
+          </dt>
+          <dd className='font-semibold text-[var(--kdb-primary)]'>{methodLabel}</dd>
         </div>
         <div>
-          <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>Application Fee</dt>
+          <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+            {lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'}
+          </dt>
           <dd className='font-semibold text-[var(--kdb-primary)]'>
-            {category.fee_paise !== null ? `₹${(category.fee_paise / 100).toLocaleString('en-IN')}` : 'To be confirmed'}
+            {category.fee_paise !== null
+              ? `₹${(category.fee_paise / 100).toLocaleString('en-IN')}`
+              : lang === 'hi'
+                ? 'जल्द घोषित'
+                : 'To be confirmed'}
           </dd>
         </div>
       </dl>
 
       {documents.length > 0 && (
         <div className='mb-8'>
-          <h2 className='mb-2 font-bold text-[var(--kdb-primary)]'>Required Documents</h2>
+          <h2 className='mb-2 font-bold text-[var(--kdb-primary)]'>
+            {lang === 'hi' ? 'अनिवार्य दस्तावेज' : 'Required Documents'}
+          </h2>
           <ul className='list-disc space-y-1 pl-5 text-sm text-[var(--kdb-text)]'>
             {documents.map(doc => (
               <li key={doc.document_key}>
-                {doc.label}
-                {doc.is_required ? '' : ' (optional)'}
+                {lang === 'hi' && doc.label_hi ? doc.label_hi : doc.label}
+                {doc.is_required ? '' : lang === 'hi' ? ' (वैकल्पिक)' : ' (optional)'}
               </li>
             ))}
           </ul>
@@ -68,10 +84,12 @@ const CategoryDetail = ({
           href={`/apply/${category.slug}`}
           className='inline-block rounded-lg border border-[var(--kdb-secondary)] bg-[var(--kdb-secondary)] px-6 py-3 text-sm font-bold text-white hover:bg-[#a96d0e]'
         >
-          Apply Now
+          {lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}
         </Link>
       ) : (
-        <p className='text-[var(--kdb-muted)]'>This category is not currently accepting applications.</p>
+        <p className='text-[var(--kdb-muted)]'>
+          {lang === 'hi' ? 'यह श्रेणी वर्तमान में आवेदन के लिए स्वीकार नहीं कर रही है।' : 'This category is not currently accepting applications.'}
+        </p>
       )}
     </div>
   )

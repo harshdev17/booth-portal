@@ -8,6 +8,7 @@ export type CategoryCardData = {
   name: string
   nameHi: string | null
   description: string | null
+  descriptionHi: string | null
   selectionMethod: 'draw' | 'manual' | 'auction' | 'tender' | 'application_fee'
   displayIndex: number
 }
@@ -26,7 +27,7 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
 }
 
 const CategoryCard = ({ category }: { category: CategoryCardData }) => {
-  const { lang, t } = useLanguage()
+  const { lang } = useLanguage()
 
   const iconSrc =
     CATEGORY_ICON_MAP[category.slug] ||
@@ -57,9 +58,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       {/* Description */}
       {category.description && (
         <p className='mb-5 line-clamp-3 text-xs leading-relaxed text-[#556980]'>
-          {lang === 'hi' && category.nameHi
-            ? category.description
-            : category.description}
+          {lang === 'hi' && category.descriptionHi ? category.descriptionHi : category.description}
         </p>
       )}
 

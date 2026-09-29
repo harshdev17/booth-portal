@@ -13,6 +13,7 @@ const PublicHome = async () => {
     name: category.name,
     nameHi: category.name_hi,
     description: category.description,
+    descriptionHi: category.description_hi,
     selectionMethod: category.selection_method,
     displayIndex: index + 1
   }))

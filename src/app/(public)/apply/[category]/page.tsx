@@ -13,6 +13,7 @@ import {
   isCategoryAcceptingApplications
 } from '@/lib/applications/categories'
 import ApplicationFormOrchestrator from '@/views/public/apply/ApplicationFormOrchestrator'
+import ApplicationsClosedNotice from '@/views/public/apply/ApplicationsClosedNotice'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 
 export const metadata: Metadata = {
@@ -31,13 +32,7 @@ const ApplyPage = async ({ params }: { params: Promise<{ category: string }> }) 
     return (
       <>
         <PublicHeader />
-        <div className='mx-auto max-w-xl px-4 py-20 text-center sm:px-6'>
-          <h1 className='mb-3 text-2xl font-extrabold text-[var(--kdb-primary)]'>Applications Closed</h1>
-          <p className='text-[var(--kdb-muted)]'>
-            {category.name} is not currently accepting applications. Please check the homepage for other open
-            categories.
-          </p>
-        </div>
+        <ApplicationsClosedNotice categoryName={category.name} categoryNameHi={category.name_hi} />
         <PublicFooter />
       </>
     )

@@ -97,7 +97,12 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
       const body = await response.json()
 
       if (!response.ok) {
-        setDraftError(body.error ?? 'Could not start the application. Please refresh and try again.')
+        setDraftError(
+          body.error ??
+            (lang === 'hi'
+              ? 'आवेदन प्रारंभ नहीं किया जा सका। कृपया पुनः लोड करें और फिर प्रयास करें।'
+              : 'Could not start the application. Please refresh and try again.')
+        )
         setIsCreatingDraft(false)
 
         return
@@ -105,7 +110,11 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
 
       setDraft({ applicationId: body.applicationId, applicationNumber: body.applicationNumber, accessToken: body.accessToken })
     } catch {
-      setDraftError('Could not reach the server. Please refresh and try again.')
+      setDraftError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः लोड करें और फिर प्रयास करें।'
+          : 'Could not reach the server. Please refresh and try again.'
+      )
     } finally {
       setIsCreatingDraft(false)
     }
@@ -167,7 +176,10 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
     } catch {
       setUploadState(prev => ({
         ...prev,
-        [documentKey]: { status: 'error', error: 'Upload failed. Please try again.' }
+        [documentKey]: {
+          status: 'error',
+          error: lang === 'hi' ? 'अपलोड विफल हुआ। कृपया पुनः प्रयास करें।' : 'Upload failed. Please try again.'
+        }
       }))
     }
   }
@@ -307,13 +319,13 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
                 href='/status'
                 className='inline-flex items-center justify-center rounded-xl bg-[#0c2847] px-7 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#06192e]'
               >
-                Check Application Status
+                {lang === 'hi' ? 'आवेदन की स्थिति जांचें' : 'Check Application Status'}
               </Link>
               <Link
                 href='/'
                 className='inline-flex items-center justify-center rounded-xl border border-[#cbd5e1] bg-white px-7 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc]'
               >
-                Return to Home
+                {lang === 'hi' ? 'मुख्य पृष्ठ पर जाएं' : 'Return to Home'}
               </Link>
             </div>
           </div>
