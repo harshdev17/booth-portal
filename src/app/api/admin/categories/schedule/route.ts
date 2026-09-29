@@ -58,6 +58,7 @@ const scheduleFieldsSchema = z.object({
 
 const updateScheduleSchema = scheduleFieldsSchema.extend({
   categoryId: z.number().int().positive().optional(),
+
   // When provided (and non-empty), the same schedule is applied to every
   // listed category in one request — for events where multiple/all
   // categories genuinely share one open/close date and auction slot,

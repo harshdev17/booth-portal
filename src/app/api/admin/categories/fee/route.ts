@@ -8,6 +8,7 @@ import { logServerError } from '@/lib/security/error-log'
 
 const updateCategoryFeeSchema = z.object({
   categoryId: z.number().int().positive().optional(),
+
   // When provided (and non-empty), the same fee/GST is applied to every
   // listed category in one request — for events where multiple/all
   // categories genuinely share one flat fee, so an admin doesn't have to

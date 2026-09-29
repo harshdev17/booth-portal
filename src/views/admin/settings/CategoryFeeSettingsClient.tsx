@@ -45,6 +45,7 @@ export default function CategoryFeeSettingsClient({
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [isBulkSaving, setIsBulkSaving] = useState(false)
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
+
   const [bulkSchedule, setBulkSchedule] = useState({
     applicationOpensAt: '',
     applicationClosesAt: '',
