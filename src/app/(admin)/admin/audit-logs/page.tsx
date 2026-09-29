@@ -8,6 +8,7 @@ import TablePagination from '@/components/shared/TablePagination'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { query } from '@/lib/db/client'
+import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ type AuditRow = {
   created_at: string
 }
 
-const PAGE_SIZE = 40
+const DEFAULT_PAGE_SIZE = 40
 
 /**
  * Read-only audit trail viewer per .ai/AUDIT_LOGS.md — this table is
@@ -45,13 +46,22 @@ const PAGE_SIZE = 40
 const AuditLogsPage = async ({
   searchParams
 }: {
-  searchParams: Promise<{ module?: string; q?: string; page?: string; sort?: string; dir?: 'asc' | 'desc' }>
+  searchParams: Promise<{
+    module?: string
+    q?: string
+    page?: string
+    sort?: string
+    dir?: 'asc' | 'desc'
+    pageSize?: string
+  }>
 }) => {
   await requirePermission('audit:view')
 
-  const { module, q, page: pageParam, sort = 'when', dir = 'desc' } = await searchParams
-  const page = Math.max(1, Number(pageParam) || 1)
-  const offset = (page - 1) * PAGE_SIZE
+  const { module, q, page: pageParam, sort = 'when', dir = 'desc', pageSize: pageSizeParam } = await searchParams
+  const pageSize = parsePageSize(pageSizeParam, DEFAULT_PAGE_SIZE)
+  const page = pageSize === 'all' ? 1 : Math.max(1, Number(pageParam) || 1)
+  const limit = resolveLimit(pageSize)
+  const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'al.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
@@ -80,7 +90,7 @@ const AuditLogsPage = async ({
        LEFT JOIN users u ON u.id = al.actor_user_id
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
-       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
+       LIMIT ${limit} OFFSET ${offset}`,
       params
     ),
     query<Array<{ module: string }>>(`SELECT DISTINCT module FROM audit_logs ORDER BY module ASC`),
@@ -88,16 +98,17 @@ const AuditLogsPage = async ({
   ])
 
   const total = countRows[0]?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize))
 
   const buildUrl = (overrides: Record<string, string | undefined>) => {
     const sp = new URLSearchParams()
-    const merged = { module, q, page: String(page), sort, dir, ...overrides }
+    const merged = { module, q, page: String(page), sort, dir, pageSize: String(pageSize), ...overrides }
 
     if (merged.module && merged.module !== 'all') sp.set('module', merged.module)
     if (merged.q) sp.set('q', merged.q)
     if (merged.sort && merged.sort !== 'when') sp.set('sort', merged.sort)
     if (merged.dir && merged.dir !== 'desc') sp.set('dir', merged.dir)
+    if (merged.pageSize && merged.pageSize !== String(DEFAULT_PAGE_SIZE)) sp.set('pageSize', merged.pageSize)
     if (merged.page && merged.page !== '1') sp.set('page', merged.page)
 
     const qs = sp.toString()
@@ -234,8 +245,9 @@ const AuditLogsPage = async ({
           page={page}
           totalPages={totalPages}
           totalItems={total}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           buildUrl={targetPage => buildUrl({ page: String(targetPage) })}
+          buildPageSizeUrl={targetSize => buildUrl({ pageSize: String(targetSize), page: '1' })}
         />
       </Card>
     </div>

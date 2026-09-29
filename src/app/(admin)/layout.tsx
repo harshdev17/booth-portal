@@ -13,6 +13,7 @@ import { Toaster } from '@/components/ui/sonner'
 
 // Auth Import
 import { getSession } from '@/lib/auth/session'
+import { query } from '@/lib/db/client'
 import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
 
 /**
@@ -28,10 +29,24 @@ const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
 
   const permissions = await getCurrentUserPermissions()
 
+  // Only fetched when the sidebar's "All Applications" item would actually
+  // render for this role — feeds the per-category submenu/counts (see
+  // Sidebar.tsx's injectCategoryDropdown). Read-only aggregate counts, no
+  // applicant data, so no extra permission check beyond application:view.
+  const categoryCounts = permissions?.has('application:view')
+    ? await query<Array<{ name: string; slug: string; count: number }>>(
+        `SELECT c.name, c.slug, COUNT(a.id) AS count
+         FROM categories c
+         LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
+         GROUP BY c.id, c.name, c.slug, c.display_order
+         ORDER BY c.display_order ASC`
+      )
+    : []
+
   return (
     <div className='flex h-full w-full min-w-0'>
       <Suspense>
-        <Sidebar permissions={permissions ? Array.from(permissions) : []} />
+        <Sidebar permissions={permissions ? Array.from(permissions) : []} categoryCounts={categoryCounts} />
       </Suspense>
       <SidebarInset className='flex flex-1 flex-col'>
         <Header user={{ fullName: session.fullName, email: session.email, roleName: session.role.name }} />

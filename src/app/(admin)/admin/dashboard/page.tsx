@@ -145,21 +145,16 @@ const DashboardPage = async () => {
       </div>
 
       {/* KPI strip */}
-      <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6'>
         {kpis.map(kpi => (
-          <Link key={kpi.label} href={kpi.href}>
-            <Card className={`h-full border-l-4 shadow-xs transition hover:shadow-sm ${kpi.color}`}>
-              <CardHeader className='pb-1'>
-                <div className='flex items-center justify-between'>
-                  <CardDescription className='text-[10px] font-bold uppercase leading-tight'>
-                    {kpi.label}
-                  </CardDescription>
-                  <kpi.icon className='size-4 opacity-70' />
+          <Link key={kpi.label} href={kpi.href} title={kpi.hint}>
+            <Card className={`h-full border-l-4 gap-0 py-3 shadow-xs transition hover:shadow-sm ${kpi.color}`}>
+              <CardContent className='flex items-center justify-between gap-2 px-3'>
+                <div className='min-w-0'>
+                  <p className='truncate text-[10px] font-bold uppercase leading-tight'>{kpi.label}</p>
+                  <p className='text-xl font-extrabold leading-tight'>{kpi.value}</p>
                 </div>
-                <CardTitle className='text-2xl font-extrabold'>{kpi.value}</CardTitle>
-              </CardHeader>
-              <CardContent className='pb-4'>
-                <p className='text-[11px] text-muted-foreground'>{kpi.hint}</p>
+                <kpi.icon className='size-4 shrink-0 opacity-60' />
               </CardContent>
             </Card>
           </Link>

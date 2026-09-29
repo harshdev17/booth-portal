@@ -12,6 +12,7 @@ import { query } from '@/lib/db/client'
 import { getApplicationStatusConfig, getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
 export const metadata: Metadata = {
   title: 'Application Detail — KDB Admin Portal'
@@ -110,6 +111,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const statusCfg = getApplicationStatusConfig(app.status)
   const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
   const canReject = app.status === 'under_review' && !!permissions?.has('application:reject')
+  const canVerifyDocuments = !!permissions?.has('document:verify')
 
   return (
     <div className='flex flex-col gap-6'>
@@ -200,29 +202,28 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                     const docCfg = getDocumentStatusConfig(doc.verification_status)
 
                     return (
-                      <div key={doc.id} className='flex items-center justify-between gap-4 py-3'>
+                      <div key={doc.id} className='flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
                         <div>
-                          <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
+                          <div className='flex items-center gap-2'>
+                            <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
+                              {docCfg.label}
+                            </span>
+                          </div>
                           <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
                           {doc.verification_remarks && (
                             <p className='mt-1 text-xs text-amber-700'>Remark: {doc.verification_remarks}</p>
                           )}
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${docCfg.color}`}>
-                          {docCfg.label}
-                        </span>
+
+                        {canVerifyDocuments && doc.verification_status !== 'verified' && (
+                          <DocumentDecisionActions documentId={doc.id} />
+                        )}
                       </div>
                     )
                   })}
                 </div>
               )}
-              <p className='mt-4 text-xs text-muted-foreground'>
-                Verify or reject documents from the{' '}
-                <Link href='/admin/documents' className='font-semibold text-[#0c2847] underline'>
-                  Document Verification queue
-                </Link>
-                .
-              </p>
             </CardContent>
           </Card>
         </TabsContent>

@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
+import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
   title: 'Applicant / User Details — KDB Admin Portal'
 }
 
-const PAGE_SIZE = 25
+const DEFAULT_PAGE_SIZE = 25
 
 const VALID_SORT_FIELDS: Record<string, string> = {
   name: 'representative_name',
@@ -46,13 +47,15 @@ type ApplicantRow = {
 const ApplicantsAdminPage = async ({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: 'asc' | 'desc'; page?: string }>
+  searchParams: Promise<{ q?: string; sort?: string; dir?: 'asc' | 'desc'; page?: string; pageSize?: string }>
 }) => {
   await requirePermission('application:view')
 
-  const { q, sort = 'activity', dir = 'desc', page: pageParam } = await searchParams
-  const page = Math.max(1, Number(pageParam) || 1)
-  const offset = (page - 1) * PAGE_SIZE
+  const { q, sort = 'activity', dir = 'desc', page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const pageSize = parsePageSize(pageSizeParam, DEFAULT_PAGE_SIZE)
+  const page = pageSize === 'all' ? 1 : Math.max(1, Number(pageParam) || 1)
+  const limit = resolveLimit(pageSize)
+  const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
 
   const conditions = [`a.status != 'draft'`]
   const params: unknown[] = []
@@ -86,7 +89,7 @@ const ApplicantsAdminPage = async ({
          GROUP BY a.mobile_number
        ) grouped
        ORDER BY ${sortCol} ${sortDir}
-       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
+       LIMIT ${limit} OFFSET ${offset}`,
       params
     ),
     query<Array<{ total: number }>>(
@@ -96,15 +99,16 @@ const ApplicantsAdminPage = async ({
   ])
 
   const total = countRows[0]?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize))
 
-  const buildUrl = (overrides: { sort?: string; dir?: string; page?: number }) => {
+  const buildUrl = (overrides: { sort?: string; dir?: string; page?: number; pageSize?: number | 'all' }) => {
     const sp = new URLSearchParams()
-    const merged = { sort, dir, page, ...overrides }
+    const merged = { sort, dir, page, pageSize, ...overrides }
 
     if (q) sp.set('q', q)
     if (merged.sort) sp.set('sort', merged.sort)
     if (merged.dir) sp.set('dir', merged.dir)
+    if (merged.pageSize !== DEFAULT_PAGE_SIZE) sp.set('pageSize', String(merged.pageSize))
     if (merged.page && merged.page > 1) sp.set('page', String(merged.page))
 
     const qs = sp.toString()
@@ -240,8 +244,9 @@ const ApplicantsAdminPage = async ({
           page={page}
           totalPages={totalPages}
           totalItems={total}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           buildUrl={targetPage => buildUrl({ page: targetPage })}
+          buildPageSizeUrl={targetSize => buildUrl({ pageSize: targetSize, page: 1 })}
         />
       </Card>
     </div>

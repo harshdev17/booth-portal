@@ -2,15 +2,16 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
+import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
 
-const PAGE_SIZE = 25
+const DEFAULT_PAGE_SIZE = 25
 
 export const metadata: Metadata = {
   title: 'Applications Management — KDB Admin Portal'
@@ -62,14 +63,19 @@ const ApplicationsAdminPage = async ({
     sort?: string
     dir?: 'asc' | 'desc'
     page?: string
+    pageSize?: string
   }>
 }) => {
   // Authorize server-side
   await requirePermission('application:view')
 
-  const { q, status, category, sort = 'date', dir = 'desc', page: pageParam } = await searchParams
-  const page = Math.max(1, Number(pageParam) || 1)
-  const offset = (page - 1) * PAGE_SIZE
+  const { q, status, category, sort = 'date', dir = 'desc', page: pageParam, pageSize: pageSizeParam } =
+    await searchParams
+
+  const pageSize = parsePageSize(pageSizeParam, DEFAULT_PAGE_SIZE)
+  const page = pageSize === 'all' ? 1 : Math.max(1, Number(pageParam) || 1)
+  const limit = resolveLimit(pageSize)
+  const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -111,7 +117,7 @@ const ApplicationsAdminPage = async ({
        JOIN categories c ON c.id = a.category_id
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
-       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
+       LIMIT ${limit} OFFSET ${offset}`,
       params
     ),
     query<Array<{ id: number; name: string; slug: string }>>(
@@ -130,7 +136,7 @@ const ApplicationsAdminPage = async ({
   const pendingCount = statsRows.find(r => r.status === 'payment_pending' || r.status === 'under_review')?.count ?? 0
   const selectedCount = statsRows.find(r => r.status === 'selected' || r.status === 'allotted')?.count ?? 0
   const totalFiltered = countRows[0]?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE))
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
 
   // Helper to construct sorting links with current search/filter state preserved
   const getSortUrl = (columnKey: string) => {
@@ -180,7 +186,23 @@ const ApplicationsAdminPage = async ({
     if (category) sp.set('category', category)
     if (sort) sp.set('sort', sort)
     if (dir) sp.set('dir', dir)
+    if (pageSize !== DEFAULT_PAGE_SIZE) sp.set('pageSize', String(pageSize))
     if (targetPage > 1) sp.set('page', String(targetPage))
+
+    const qs = sp.toString()
+
+    return qs ? `/admin/applications?${qs}` : '/admin/applications'
+  }
+
+  const buildPageSizeUrl = (targetSize: number | 'all') => {
+    const sp = new URLSearchParams()
+
+    if (q) sp.set('q', q)
+    if (status) sp.set('status', status)
+    if (category) sp.set('category', category)
+    if (sort) sp.set('sort', sort)
+    if (dir) sp.set('dir', dir)
+    if (targetSize !== DEFAULT_PAGE_SIZE) sp.set('pageSize', String(targetSize))
 
     const qs = sp.toString()
 
@@ -451,6 +473,7 @@ const ApplicationsAdminPage = async ({
                         {getSortIcon('date')}
                       </Link>
                     </th>
+                    <th className='py-3 px-4 text-right'>Actions</th>
                   </tr>
                 </thead>
                 <tbody className='divide-y'>
@@ -498,6 +521,14 @@ const ApplicationsAdminPage = async ({
                               })
                             : new Date(app.created_at).toLocaleDateString('en-IN')}
                         </td>
+                        <td className='py-3.5 px-4 text-right'>
+                          <Link
+                            href={`/admin/applications/${app.id}`}
+                            className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                          >
+                            <EyeIcon className='size-3.5' /> View
+                          </Link>
+                        </td>
                       </tr>
                     )
                   })}
@@ -506,7 +537,14 @@ const ApplicationsAdminPage = async ({
             </div>
           )}
         </CardContent>
-        <TablePagination page={page} totalPages={totalPages} totalItems={totalFiltered} pageSize={PAGE_SIZE} buildUrl={buildPageUrl} />
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalFiltered}
+          pageSize={pageSize}
+          buildUrl={buildPageUrl}
+          buildPageSizeUrl={buildPageSizeUrl}
+        />
       </Card>
     </div>
   )

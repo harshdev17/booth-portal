@@ -456,7 +456,52 @@ function filterNavByPermissions(groups: NavItem[], permissions: Set<string> | nu
     .filter(group => group.items.length > 0)
 }
 
-const SidebarLayout = ({ permissions }: { permissions: string[] }) => {
+export type CategoryCount = { name: string; slug: string; count: number }
+
+const APPLICATIONS_HREF = '/admin/applications'
+
+/**
+ * Turns the static "All Applications" leaf link into a collapsible group
+ * listing every category with its live application count as a badge —
+ * clicking a category applies `?category=<slug>` (already supported by the
+ * Applications list page's filter). "All Categories" is kept as the first
+ * child so the unfiltered view stays one click away, since a group header
+ * with childItems only toggles open/closed, it never navigates itself.
+ */
+function injectCategoryDropdown(groups: NavItem[], categoryCounts: CategoryCount[]): NavItem[] {
+  if (categoryCounts.length === 0) return groups
+
+  return groups.map(group => ({
+    ...group,
+    items: group.items.map(item => {
+      if (item.href !== APPLICATIONS_HREF) return item
+
+      const dropdownItem: MenuItem = {
+        icon: item.icon,
+        label: item.label,
+        permission: item.permission,
+        childItems: [
+          { label: 'All Categories', href: APPLICATIONS_HREF },
+          ...categoryCounts.map(c => ({
+            label: c.name,
+            href: `${APPLICATIONS_HREF}?category=${c.slug}`,
+            badge: String(c.count)
+          }))
+        ]
+      }
+
+      return dropdownItem
+    })
+  }))
+}
+
+const SidebarLayout = ({
+  permissions,
+  categoryCounts = []
+}: {
+  permissions: string[]
+  categoryCounts?: CategoryCount[]
+}) => {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { state, isMobile } = useSidebar()
@@ -469,8 +514,12 @@ const SidebarLayout = ({ permissions }: { permissions: string[] }) => {
 
   const permissionSet = useMemo(() => new Set(permissions), [permissions])
 
-  // Nav groups rendered in the sidebar, scoped to the current user's permissions.
-  const navGroups = useMemo(() => filterNavByPermissions(navItems, permissionSet), [permissionSet])
+  // Nav groups rendered in the sidebar, scoped to the current user's permissions,
+  // with the live per-category breakdown spliced into "All Applications".
+  const navGroups = useMemo(
+    () => injectCategoryDropdown(filterNavByPermissions(navItems, permissionSet), categoryCounts),
+    [permissionSet, categoryCounts]
+  )
 
   const activeBranchKeys = useMemo(
     () => getActiveBranchKeys(navGroups, pathname, searchParams),

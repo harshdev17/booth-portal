@@ -1,11 +1,11 @@
 'use client'
 
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 
 const chartConfig = {
-  count: { label: 'Applications submitted', color: '#d8891d' }
+  count: { label: 'Applications submitted', color: '#0c2847' }
 } satisfies ChartConfig
 
 type Props = {
@@ -14,13 +14,7 @@ type Props = {
 
 const SubmissionsTrendChart = ({ data }: Props) => (
   <ChartContainer config={chartConfig} className='aspect-auto h-48 w-full'>
-    <AreaChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
-      <defs>
-        <linearGradient id='fillSubmissions' x1='0' y1='0' x2='0' y2='1'>
-          <stop offset='5%' stopColor='var(--color-count)' stopOpacity={0.35} />
-          <stop offset='95%' stopColor='var(--color-count)' stopOpacity={0.03} />
-        </linearGradient>
-      </defs>
+    <LineChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
       <CartesianGrid vertical={false} strokeDasharray='3 3' />
       <XAxis
         dataKey='date'
@@ -37,8 +31,8 @@ const SubmissionsTrendChart = ({ data }: Props) => (
           />
         }
       />
-      <Area dataKey='count' type='monotone' fill='url(#fillSubmissions)' stroke='var(--color-count)' strokeWidth={2} />
-    </AreaChart>
+      <Line dataKey='count' type='monotone' stroke='var(--color-count)' strokeWidth={2} dot={{ r: 3 }} />
+    </LineChart>
   </ChartContainer>
 )
 

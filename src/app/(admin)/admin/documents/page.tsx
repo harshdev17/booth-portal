@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import TablePagination from '@/components/shared/TablePagination'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
+import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   title: 'Document Verification — KDB Admin Portal'
 }
 
-const PAGE_SIZE = 20
+const DEFAULT_PAGE_SIZE = 20
 
 const VALID_SORT_FIELDS: Record<string, string> = {
   uploaded: 'ad.created_at',
@@ -40,13 +41,24 @@ type DocumentQueueRow = {
 const DocumentsAdminPage = async ({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string; q?: string; sort?: string; dir?: 'asc' | 'desc'; page?: string }>
+  searchParams: Promise<{
+    status?: string
+    q?: string
+    sort?: string
+    dir?: 'asc' | 'desc'
+    page?: string
+    pageSize?: string
+  }>
 }) => {
   await requirePermission('document:view')
 
-  const { status = 'pending', q, sort = 'uploaded', dir = 'asc', page: pageParam } = await searchParams
-  const page = Math.max(1, Number(pageParam) || 1)
-  const offset = (page - 1) * PAGE_SIZE
+  const { status = 'pending', q, sort = 'uploaded', dir = 'asc', page: pageParam, pageSize: pageSizeParam } =
+    await searchParams
+
+  const pageSize = parsePageSize(pageSizeParam, DEFAULT_PAGE_SIZE)
+  const page = pageSize === 'all' ? 1 : Math.max(1, Number(pageParam) || 1)
+  const limit = resolveLimit(pageSize)
+  const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
   const permissions = await getCurrentUserPermissions()
   const canVerify = !!permissions?.has('document:verify')
 
@@ -79,7 +91,7 @@ const DocumentsAdminPage = async ({
        JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
-       LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
+       LIMIT ${limit} OFFSET ${offset}`,
       params
     ),
     query<Array<{ total: number }>>(
@@ -93,7 +105,7 @@ const DocumentsAdminPage = async ({
   ])
 
   const total = countRows[0]?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize))
 
   const statusTabs: Array<{ key: string; label: string }> = [
     { key: 'pending', label: 'Pending' },
@@ -103,14 +115,21 @@ const DocumentsAdminPage = async ({
     { key: 'all', label: 'All' }
   ]
 
-  const buildUrl = (overrides: { sort?: string; dir?: string; page?: number; status?: string }) => {
+  const buildUrl = (overrides: {
+    sort?: string
+    dir?: string
+    page?: number
+    status?: string
+    pageSize?: number | 'all'
+  }) => {
     const sp = new URLSearchParams()
-    const merged = { sort, dir, page, status, ...overrides }
+    const merged = { sort, dir, page, status, pageSize, ...overrides }
 
     if (merged.status && merged.status !== 'pending') sp.set('status', merged.status)
     if (q) sp.set('q', q)
     if (merged.sort) sp.set('sort', merged.sort)
     if (merged.dir) sp.set('dir', merged.dir)
+    if (merged.pageSize !== DEFAULT_PAGE_SIZE) sp.set('pageSize', String(merged.pageSize))
     if (merged.page && merged.page > 1) sp.set('page', String(merged.page))
 
     const qs = sp.toString()
@@ -237,8 +256,9 @@ const DocumentsAdminPage = async ({
           page={page}
           totalPages={totalPages}
           totalItems={total}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           buildUrl={targetPage => buildUrl({ page: targetPage })}
+          buildPageSizeUrl={targetSize => buildUrl({ pageSize: targetSize, page: 1 })}
         />
       </Card>
     </div>
