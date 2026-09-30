@@ -54,11 +54,30 @@ const CategoryDetail = ({
             {lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'}
           </dt>
           <dd className='font-semibold text-[var(--kdb-primary)]'>
-            {category.fee_paise !== null
-              ? `₹${(category.fee_paise / 100).toLocaleString('en-IN')}`
-              : lang === 'hi'
+            {category.fee_paise === null
+              ? lang === 'hi'
                 ? 'जल्द घोषित'
-                : 'To be confirmed'}
+                : 'To be confirmed'
+              : category.fee_paise === 0
+                ? lang === 'hi'
+                  ? 'लागू नहीं'
+                  : 'Not Applicable'
+                : `₹${(category.fee_paise / 100).toLocaleString('en-IN')}`}
+          </dd>
+        </div>
+        <div className='sm:col-span-2'>
+          <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
+            {lang === 'hi' ? 'दुकान आवंटन राशि' : 'Shop Allotment Amount'}
+          </dt>
+          <dd className='font-semibold text-[var(--kdb-primary)]'>
+            {category.allotment_amount_paise !== null
+              ? category.allotment_amount_paise === 0
+                ? lang === 'hi'
+                  ? 'निःशुल्क स्टॉल'
+                  : 'Free Stall'
+                : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')}`
+              : (lang === 'hi' ? category.allotment_amount_note_hi : category.allotment_amount_note) ??
+                (lang === 'hi' ? 'जल्द घोषित' : 'To be confirmed')}
           </dd>
         </div>
       </dl>

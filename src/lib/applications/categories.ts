@@ -14,6 +14,9 @@ export type CategoryRow = {
   fee_paise: number | null
   fee_base_paise: number | null
   gst_percent: number | string | null // MySQL DECIMAL columns arrive as strings via mysql2
+  allotment_amount_paise: number | null
+  allotment_amount_note: string | null
+  allotment_amount_note_hi: string | null
   application_opens_at: string | null
   application_closes_at: string | null
   auction_date: string | null
