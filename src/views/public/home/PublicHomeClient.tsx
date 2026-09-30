@@ -7,6 +7,7 @@ import CategoryCard, { type CategoryCardData } from '@/components/public/Categor
 import ContactBannerSection from '@/components/public/ContactBannerSection'
 import FaqSection from '@/components/public/FaqSection'
 import HowItWorks from '@/components/public/HowItWorks'
+import ImportantNoticeSection from '@/components/public/ImportantNoticeSection'
 import ReservedCategoriesSection from '@/components/public/ReservedCategoriesSection'
 import StatusCheckSection from '@/components/public/StatusCheckSection'
 import WhyParticipateSection from '@/components/public/WhyParticipateSection'
@@ -78,6 +79,9 @@ export default function PublicHomeClient({ categories }: PublicHomeClientProps) 
           </div>
         </div>
       </section>
+
+      {/* Important Note (Application Fee / Non-Refundable / Allotment Process) */}
+      <ImportantNoticeSection />
 
       {/* Categories Section with Background Image */}
       <section id='categories' className='relative px-4 py-20 sm:px-6 overflow-hidden bg-[#faf8f5]'>
