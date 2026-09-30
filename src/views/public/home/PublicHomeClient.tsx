@@ -3,11 +3,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import CategoryCard, { CategoryCardData } from '@/components/public/CategoryCard'
+import CategoryCard, { type CategoryCardData } from '@/components/public/CategoryCard'
 import ContactBannerSection from '@/components/public/ContactBannerSection'
 import FaqSection from '@/components/public/FaqSection'
 import HowItWorks from '@/components/public/HowItWorks'
+import ReservedCategoriesSection from '@/components/public/ReservedCategoriesSection'
 import StatusCheckSection from '@/components/public/StatusCheckSection'
+import WhyParticipateSection from '@/components/public/WhyParticipateSection'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface PublicHomeClientProps {
@@ -15,7 +17,7 @@ interface PublicHomeClientProps {
 }
 
 export default function PublicHomeClient({ categories }: PublicHomeClientProps) {
-  const { lang, t } = useLanguage()
+  const { t } = useLanguage()
 
   return (
     <>
@@ -133,6 +135,12 @@ export default function PublicHomeClient({ categories }: PublicHomeClientProps) 
 
       {/* Dedicated Application Status Check Section (Matching Reference Design) */}
       <StatusCheckSection />
+
+      {/* Why Participate? */}
+      <WhyParticipateSection />
+
+      {/* Reserved Categories */}
+      <ReservedCategoriesSection />
 
       {/* How It Works Section */}
       <section id='how-it-works' className='px-4 py-20 sm:px-6 border-t border-[#ede5db]/60 bg-[#faf8f5]'>
