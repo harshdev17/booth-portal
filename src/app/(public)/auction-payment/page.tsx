@@ -1,0 +1,21 @@
+import type { Metadata } from 'next'
+
+import ComingSoonSection from '@/components/public/ComingSoonSection'
+import PublicFooter from '@/components/public/PublicFooter'
+import PublicHeader from '@/components/public/PublicHeader'
+
+export const metadata: Metadata = {
+  title: 'Auction Payment | International Gita Mahotsav 2026'
+}
+
+const AuctionPaymentPage = () => {
+  return (
+    <>
+      <PublicHeader />
+      <ComingSoonSection titleEn='Auction Payment' titleHi='नीलामी भुगतान' />
+      <PublicFooter />
+    </>
+  )
+}
+
+export default AuctionPaymentPage

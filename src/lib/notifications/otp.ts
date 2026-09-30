@@ -15,7 +15,7 @@ const OTP_LENGTH = 6
 const OTP_TTL_MINUTES = 10
 const MAX_VERIFY_ATTEMPTS = 5
 
-export type OtpPurpose = 'applicant_mobile_verification' | 'status_lookup'
+export type OtpPurpose = 'applicant_mobile_verification' | 'status_lookup' | 'print_application'
 
 function generateCode(): string {
   return String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, '0')

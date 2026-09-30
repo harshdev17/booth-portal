@@ -66,7 +66,13 @@ function buildContentSecurityPolicy(nonce: string): string {
     // violates ... connect-src 'self'"). See
     // https://razorpay.com/docs/payments/payment-gateway/web-integration/hosted/build-integration/#3-content-security-policy-csp
     `${scriptSrc} https://checkout.razorpay.com`,
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+
+    // github.io: the floating chatbot widget (FloatingChatbot.tsx) embeds a
+    // third-party-hosted chat page in an iframe — without this, the iframe
+    // is silently blocked exactly like the earlier Razorpay CSP bug (see the
+    // frame-src comment above this one), with no visible error beyond the
+    // iframe staying blank.
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https://cdn.razorpay.com",

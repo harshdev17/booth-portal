@@ -37,10 +37,16 @@ const ScrollToTop = () => {
     }
   }, [])
 
+  // bottom-24: clears the public site's floating Call/WhatsApp
+  // (FloatingContactButtons.tsx) and chatbot (FloatingChatbot.tsx) buttons,
+  // which otherwise sit directly under this button at the same
+  // bottom-8/right-4 position (reported live with a screenshot). Shared by
+  // both admin and public layouts; the admin side has no floating buttons,
+  // so the extra clearance there is harmless.
   return (
     <Button
       size='icon'
-      className={cn('fixed right-4 bottom-8 z-50 cursor-pointer rounded-full transition-all duration-200', {
+      className={cn('fixed right-4 bottom-24 z-50 cursor-pointer rounded-full transition-all duration-200', {
         'scale-0': !showScrollButton
       })}
       onClick={scrollToTop}

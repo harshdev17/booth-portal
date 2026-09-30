@@ -18,12 +18,11 @@ const PublicHeader = () => {
 
   const navItems = [
     { label: t('nav.home'), href: '/', active: true },
-    { label: t('nav.about'), href: '/#how-it-works' },
-    { label: t('nav.stalls'), href: '/#categories' },
-    { label: lang === 'hi' ? 'आवेदन स्थिति' : 'Application Status', href: '/#status-check' },
-    { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
-    { label: lang === 'hi' ? 'सामान्य प्रश्न (FAQ)' : 'FAQ', href: '/#faq' },
-    { label: t('nav.contact'), href: '/#contact' }
+    { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
+    { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
+    { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
+    { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Instructions / Guidelines', href: '/guidelines' },
+    { label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' }
   ]
 
   return (
