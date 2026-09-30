@@ -77,7 +77,7 @@ export default function StatusCheckSection() {
                 type='text'
                 value={appNumber}
                 onChange={e => setAppNumber(e.target.value)}
-                placeholder={lang === 'hi' ? 'आवेदन क्रमांक दर्ज करें (उदा. KDB-2026-XXXXXX)' : 'Enter Application Number (e.g. KDB-2026-XXXXXX)'}
+                placeholder={lang === 'hi' ? 'आवेदन क्रमांक दर्ज करें (उदा. IGM-2026-XXXXXX)' : 'Enter Application Number (e.g. IGM-2026-XXXXXX)'}
                 className='w-full rounded-xl border border-[#cbd5e1] bg-white py-3.5 pl-12 pr-4 text-sm font-semibold text-[#0c2847] placeholder:text-[#94a3b8] transition focus:border-[#0c2847] focus:outline-hidden focus:ring-1 focus:ring-[#0c2847]'
               />
             </div>

@@ -132,3 +132,38 @@ export function verifyWebhookSignature(rawBody: string, signature: string): bool
 
   return timingSafeHexEqual(expected, signature)
 }
+
+export type RazorpayPayment = {
+  id: string
+  order_id: string
+  status: string
+  amount: number
+  captured: boolean
+}
+
+/**
+ * Fetches every payment attempt recorded against a Razorpay order, directly
+ * from Razorpay's own API — the ground truth for the admin "Reconcile with
+ * Razorpay" action (see payment-records.ts recordAdminReconciled), used
+ * when a payment genuinely succeeded on Razorpay's side but neither the
+ * client-side checkout handler nor the webhook ever reported it back to
+ * this app (e.g. the checkout popup closed before the callback could fire —
+ * see .ai/CHANGELOG.md for the live incident this fixes). Never trust a
+ * `status` value the caller supplies — this call is the only source of
+ * truth for what actually happened.
+ */
+export async function fetchRazorpayOrderPayments(orderId: string): Promise<RazorpayPayment[]> {
+  const response = await fetch(`${RAZORPAY_API_BASE}/orders/${orderId}/payments`, {
+    headers: { Authorization: getAuthHeader() }
+  })
+
+  const body = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const reason = body?.error?.description ?? `HTTP ${response.status}`
+
+    throw new RazorpayApiError(`Could not fetch Razorpay order payments: ${reason}`)
+  }
+
+  return (body?.items ?? []) as RazorpayPayment[]
+}

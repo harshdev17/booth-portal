@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { aadhaarLast4, encryptAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { aadhaarLast4, encryptAadhaar, hashAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { generateAccessToken, hashAccessToken, verifyAccessToken } from '@/lib/applications/access-token'
 import { generateApplicationNumber } from '@/lib/applications/application-number'
 import { getCategoryById, getDocumentDefinitionsForCategory, isCategoryAcceptingApplications } from '@/lib/applications/categories'
@@ -18,7 +18,7 @@ export type CreateDraftResult = {
 
 export class DuplicateApplicationError extends Error {
   constructor() {
-    super('You have already submitted an application for this category using this mobile number. Please check your application status, or use a different mobile number if this is a new application.')
+    super('An application already exists using this mobile number or Aadhaar number. Only one application is allowed per mobile number and per Aadhaar number. Please check your application status, or contact support if you believe this is an error.')
     this.name = 'DuplicateApplicationError'
   }
 }
@@ -78,7 +78,8 @@ export async function createDraftApplication(
   validated: ValidatedSubmission,
   meta: { ipAddress?: string }
 ): Promise<CreateDraftResult> {
-  const isDuplicate = await hasActiveDuplicateApplication(validated.category.id, input.common.mobileNumber)
+  const aadhaarHash = hashAadhaar(input.common.aadhaarNumber)
+  const isDuplicate = await hasActiveDuplicateApplication(input.common.mobileNumber, aadhaarHash)
 
   if (isDuplicate) {
     throw new DuplicateApplicationError()
@@ -95,11 +96,11 @@ export async function createDraftApplication(
         `INSERT INTO applications (
            application_number, category_id, shop_option_id,
            email, organisation_name, representative_name, father_name,
-           aadhaar_ciphertext, aadhaar_last4,
+           aadhaar_ciphertext, aadhaar_last4, aadhaar_hash,
            address, state, district, pin_code, mobile_number, alternate_mobile,
            work_purpose, achievement_experience, remarks,
            status, access_token_hash, ip_address
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`,
         [
           candidateNumber,
           validated.category.id,
@@ -110,6 +111,7 @@ export async function createDraftApplication(
           input.common.fatherName,
           aadhaarCiphertext,
           last4,
+          aadhaarHash,
           input.common.address,
           input.common.state,
           input.common.district,
@@ -200,13 +202,14 @@ export async function updateDraftApplication(
 ): Promise<void> {
   const aadhaarCiphertext = encryptAadhaar(input.common.aadhaarNumber)
   const last4 = aadhaarLast4(input.common.aadhaarNumber)
+  const aadhaarHash = hashAadhaar(input.common.aadhaarNumber)
 
   await withTransaction(async txQuery => {
     await txQuery(
       `UPDATE applications SET
          category_id = ?, shop_option_id = ?,
          email = ?, organisation_name = ?, representative_name = ?, father_name = ?,
-         aadhaar_ciphertext = ?, aadhaar_last4 = ?,
+         aadhaar_ciphertext = ?, aadhaar_last4 = ?, aadhaar_hash = ?,
          address = ?, state = ?, district = ?, pin_code = ?, mobile_number = ?, alternate_mobile = ?,
          work_purpose = ?, achievement_experience = ?, remarks = ?
        WHERE id = ? AND status = 'draft'`,
@@ -219,6 +222,7 @@ export async function updateDraftApplication(
         input.common.fatherName,
         aadhaarCiphertext,
         last4,
+        aadhaarHash,
         input.common.address,
         input.common.state,
         input.common.district,
@@ -249,6 +253,7 @@ type FinalizeRow = {
   status: string
   access_token_hash: string
   mobile_number: string
+  aadhaar_hash: string | null
 }
 
 /**
@@ -258,9 +263,10 @@ type FinalizeRow = {
  * 'draft' status (never re-finalize an already-submitted application), (3)
  * the category is still accepting applications (it may have closed while
  * the applicant was filling the form), (4) no OTHER application has since
- * become an active duplicate for this category+mobile. All of this plus the
- * status update and audit log happen in one transaction — this IS the "DB
- * transaction for final application creation" boundary (.ai/SECURITY.md).
+ * become an active duplicate for this mobile number or Aadhaar number
+ * (portal-wide, not per-category). All of this plus the status update and
+ * audit log happen in one transaction — this IS the "DB transaction for
+ * final application creation" boundary.
  */
 export async function finalizeApplication(
   applicationId: number,
@@ -273,7 +279,7 @@ export async function finalizeApplication(
   gstPercent: number | null
 }> {
   const rows = await query<Array<FinalizeRow & { application_number: string }>>(
-    `SELECT id, category_id, status, access_token_hash, mobile_number, application_number
+    `SELECT id, category_id, status, access_token_hash, mobile_number, aadhaar_hash, application_number
      FROM applications WHERE id = ? LIMIT 1`,
     [applicationId]
   )
@@ -311,8 +317,8 @@ export async function finalizeApplication(
   }
 
   const isDuplicateNow = await hasActiveDuplicateApplicationExcluding(
-    application.category_id,
     application.mobile_number,
+    application.aadhaar_hash,
     applicationId
   )
 
@@ -349,16 +355,16 @@ export async function finalizeApplication(
 }
 
 async function hasActiveDuplicateApplicationExcluding(
-  categoryId: number,
   mobileNumber: string,
+  aadhaarHash: string | null,
   excludeApplicationId: number
 ): Promise<boolean> {
   const rows = await query<Array<{ id: number }>>(
     `SELECT id FROM applications
-     WHERE category_id = ? AND mobile_number = ? AND id != ?
+     WHERE (mobile_number = ? OR (aadhaar_hash IS NOT NULL AND aadhaar_hash = ?)) AND id != ?
        AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected')
      LIMIT 1`,
-    [categoryId, mobileNumber, excludeApplicationId]
+    [mobileNumber, aadhaarHash, excludeApplicationId]
   )
 
   return rows.length > 0

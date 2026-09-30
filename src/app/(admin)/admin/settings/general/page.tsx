@@ -5,7 +5,7 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import CategoryFeeSettingsClient from '@/views/admin/settings/CategoryFeeSettingsClient'
 
 export const metadata: Metadata = {
-  title: 'Fee & Category Settings — KDB Admin Portal'
+  title: 'Fee & Category Settings — IGM Admin Portal'
 }
 
 type CategoryRow = {

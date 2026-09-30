@@ -213,12 +213,31 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
       const body = await response.json()
 
       if (!response.ok) {
-        setSubmitError(
-          body.error ??
-            (lang === 'hi'
-              ? 'वर्तमान में आवेदन सबमिट नहीं किया जा सका। कृपया पुनः प्रयास करें।'
-              : "We couldn't submit your application right now. Please try again.")
-        )
+        // The client's "verified" state is set once and never re-checked —
+        // if enough time passes on this page (the server-side OTP window
+        // is short-lived by design), finalize correctly rejects the stale
+        // verification even though the UI still shows the old green
+        // "verified" state. Detect that specific rejection and reset the
+        // OTP UI back to re-verifiable, rather than leaving a confusing
+        // "still shows verified but submit keeps failing" dead end.
+        const isStaleOtp = typeof body.error === 'string' && body.error.toLowerCase().includes('verify your mobile number')
+
+        if (isStaleOtp) {
+          setOtpPhase('idle')
+          setSubmitError(
+            lang === 'hi'
+              ? 'सत्यापन का समय समाप्त हो गया है। कृपया अपने मोबाइल नंबर को दोबारा सत्यापित करें और फिर सबमिट करें।'
+              : 'Your verification has expired. Please verify your mobile number again, then submit.'
+          )
+        } else {
+          setSubmitError(
+            body.error ??
+              (lang === 'hi'
+                ? 'वर्तमान में आवेदन सबमिट नहीं किया जा सका। कृपया पुनः प्रयास करें।'
+                : "We couldn't submit your application right now. Please try again.")
+          )
+        }
+
         setIsSubmitting(false)
 
         return

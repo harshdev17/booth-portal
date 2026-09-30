@@ -13,7 +13,9 @@ const summarySchema = z.object({
     .trim()
     .min(1)
     .max(32)
-    .regex(/^KDB-\d{4}-\d{6}$/, 'Enter a valid application number'),
+    // Accepts both the current "IGM-" prefix and the earlier "KDB-" prefix,
+    // so applications created before that naming change remain lookupable.
+    .regex(/^(?:IGM|KDB)-\d{4}-\d{6}$/, 'Enter a valid application number'),
   accessToken: z.string().trim().min(1).max(128)
 })
 

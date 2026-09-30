@@ -8,7 +8,7 @@ import { query } from '@/lib/db/client'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
-  title: 'Reports & Exports — KDB Admin Portal'
+  title: 'Reports & Exports — IGM Admin Portal'
 }
 
 /**

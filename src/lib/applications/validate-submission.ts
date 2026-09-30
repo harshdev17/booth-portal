@@ -134,11 +134,14 @@ export async function validateSubmissionAgainstCategory(
 }
 
 /**
- * Duplicate-application guard. Exact business rule for "how many active
- * applications may one applicant hold" is [TBC — see .ai/OPEN_QUESTIONS.md];
- * as a conservative, unambiguous interim rule, this blocks a second
- * SUBMITTED (non-draft) application for the SAME category from the SAME
- * mobile number.
+ * Duplicate-application guard, portal-wide (not per-category): one mobile
+ * number and one Aadhaar number may each back at most one active
+ * application, in ANY category — an applicant cannot hold a second active
+ * application under the same mobile number or the same Aadhaar number even
+ * if it's for a different category. `aadhaarHash` is the deterministic
+ * HMAC(Aadhaar) from aadhaar-crypto.ts, since the stored
+ * `aadhaar_ciphertext` is non-deterministic and cannot be used for equality
+ * lookups.
  *
  * 'draft' is deliberately excluded from this check, not just 'rejected' /
  * 'cancelled' / 'not_selected'. Every visitor's draft is created on page
@@ -146,17 +149,17 @@ export async function validateSubmissionAgainstCategory(
  * ApplicationFormOrchestrator.tsx) before they've entered anything real.
  * Treating unfinished drafts as duplicates meant the very first visitor to
  * open a category would permanently block every subsequent visitor from
- * ever creating a draft on that category again — a real bug found in
- * testing, not a hypothetical. Only a genuinely SUBMITTED application
- * (status has left 'draft') represents a real duplicate attempt.
+ * ever creating a draft again — a real bug found in testing, not a
+ * hypothetical. Only a genuinely SUBMITTED application (status has left
+ * 'draft') represents a real duplicate attempt.
  */
-export async function hasActiveDuplicateApplication(categoryId: number, mobileNumber: string): Promise<boolean> {
+export async function hasActiveDuplicateApplication(mobileNumber: string, aadhaarHash: string): Promise<boolean> {
   const rows = await query<Array<{ id: number }>>(
     `SELECT id FROM applications
-     WHERE category_id = ? AND mobile_number = ?
+     WHERE (mobile_number = ? OR aadhaar_hash = ?)
        AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected')
      LIMIT 1`,
-    [categoryId, mobileNumber]
+    [mobileNumber, aadhaarHash]
   )
 
   return rows.length > 0

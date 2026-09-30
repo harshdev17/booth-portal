@@ -56,11 +56,21 @@ function buildContentSecurityPolicy(nonce: string): string {
 
   return [
     "default-src 'self'",
-    scriptSrc,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+
+    // Razorpay Checkout.js (loaded on the payment page, see
+    // PaymentPageView.tsx) needs its own script origin, opens its payment
+    // form in an iframe from the same origin, calls its API to create/
+    // complete a payment, and sends an analytics beacon to lumberjack —
+    // all blocked by a bare 'self' CSP, which is exactly what happened live
+    // (reported: "Connecting to 'https://lumberjack.razorpay.com/...'
+    // violates ... connect-src 'self'"). See
+    // https://razorpay.com/docs/payments/payment-gateway/web-integration/hosted/build-integration/#3-content-security-policy-csp
+    `${scriptSrc} https://checkout.razorpay.com`,
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data:",
-    "connect-src 'self'",
+    "img-src 'self' data: https://cdn.razorpay.com",
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"

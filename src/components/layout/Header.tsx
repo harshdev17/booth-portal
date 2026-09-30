@@ -5,12 +5,7 @@ import { Fragment } from 'react'
 
 import { usePathname } from 'next/navigation'
 
-// Third-party Imports
-import { LanguagesIcon } from 'lucide-react'
-
 // Component Imports
-import LanguageDropdown from '@/components/shared/LanguageDropdown'
-import ModeToggle from '@/components/layout/ModeToggle'
 import ProfileDropdown from '@/components/shared/ProfileDropdown'
 import {
   Breadcrumb,
@@ -20,7 +15,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
@@ -57,14 +51,6 @@ const Header = ({ user }: { user: HeaderUser }) => {
           </Breadcrumb>
         </div>
         <div className='flex items-center gap-1.5'>
-          <ModeToggle />
-          <LanguageDropdown
-            trigger={
-              <Button variant='ghost' size='icon-lg'>
-                <LanguagesIcon />
-              </Button>
-            }
-          />
           <ProfileDropdown user={user} />
         </div>
       </div>

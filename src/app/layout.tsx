@@ -30,7 +30,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'KDB Admin Portal',
+  title: 'IGM Admin Portal',
   description: 'Kurukshetra Development Board — Booth / Shop Allotment administrative portal.',
   metadataBase: new URL(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}`),
   robots: {

@@ -13,9 +13,10 @@ import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { maskIdentifier } from '@/lib/security/mask'
+import { encodeId } from '@/lib/security/opaque-id'
 
 export const metadata: Metadata = {
-  title: 'Payments — KDB Admin Portal'
+  title: 'Payments — IGM Admin Portal'
 }
 
 const DEFAULT_PAGE_SIZE = 25
@@ -308,7 +309,7 @@ const PaymentsAdminPage = async ({
                     <div>
                       <div className='flex items-center gap-2'>
                         <Link
-                          href={`/admin/applications/${payment.application_id}`}
+                          href={`/admin/applications/${encodeId(payment.application_id)}`}
                           className='font-mono text-sm font-bold text-[#0c2847] hover:underline'
                         >
                           {payment.application_number}
@@ -338,7 +339,7 @@ const PaymentsAdminPage = async ({
                         </p>
                       </div>
                       <Link
-                        href={`/admin/payments/${payment.id}`}
+                        href={`/admin/payments/${encodeId(payment.id)}`}
                         className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold hover:bg-muted transition'
                       >
                         <EyeIcon className='size-3.5' /> View

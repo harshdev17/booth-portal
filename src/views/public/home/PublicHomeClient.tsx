@@ -1,11 +1,11 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 
 import CategoryCard, { type CategoryCardData } from '@/components/public/CategoryCard'
 import ContactBannerSection from '@/components/public/ContactBannerSection'
 import FaqSection from '@/components/public/FaqSection'
+import HeroSlider from '@/components/public/HeroSlider'
 import HowItWorks from '@/components/public/HowItWorks'
 import ImportantNoticeSection from '@/components/public/ImportantNoticeSection'
 import ReservedCategoriesSection from '@/components/public/ReservedCategoriesSection'
@@ -15,70 +15,16 @@ import { useLanguage } from '@/context/LanguageContext'
 
 interface PublicHomeClientProps {
   categories: CategoryCardData[]
+  eventStartsOn: string | null
+  eventEndsOn: string | null
 }
 
-export default function PublicHomeClient({ categories }: PublicHomeClientProps) {
+export default function PublicHomeClient({ categories, eventStartsOn, eventEndsOn }: PublicHomeClientProps) {
   const { t } = useLanguage()
 
   return (
     <>
-      {/* Design 3 - Premium Minimal Hero Section */}
-      <section className='relative w-full overflow-hidden bg-[#faf8f5]'>
-        {/* Full-width composite background image */}
-        <div className='absolute inset-0'>
-          <Image
-            src='/images/public/gita-mahotsav-bg.png?v=20260927-2'
-            alt='International Gita Mahotsav 2026 Kurukshetra'
-            fill
-            className='object-cover object-right sm:object-[80%_center] lg:object-right'
-            priority
-            unoptimized
-          />
-          {/* Subtle responsive fade on small mobile screens */}
-          <div className='absolute inset-y-0 left-0 w-full sm:w-[65%] lg:w-[50%] bg-gradient-to-r from-[#faf8f5]/95 via-[#faf8f5]/80 to-transparent lg:hidden' />
-        </div>
-
-        <div className='relative mx-auto flex min-h-[460px] sm:min-h-[500px] lg:min-h-[520px] max-w-7xl items-center px-6 py-12 sm:px-10 lg:px-12'>
-          {/* Left Text Column */}
-          <div className='z-10 w-full max-w-xl'>
-            {/* Top small label - tracking normal for Devanagari to avoid broken matras */}
-            <div className='mb-3 inline-flex items-center gap-2'>
-              <span className='h-2 w-2 rounded-full bg-[#d8891d] shrink-0' />
-              <span className='text-xs font-bold text-[#b8761b] tracking-normal'>
-                {t('hero.badge')}
-              </span>
-            </div>
-
-            {/* Main Headline */}
-            <h1 className='mb-4 text-3xl leading-[1.15] font-black text-[#0f243e] sm:text-4xl lg:text-[46px]'>
-              {t('hero.title_part1')} <br />
-              <span className='text-[#df8d1e]'>{t('hero.title_part2')}</span>
-            </h1>
-
-            {/* Description */}
-            <p className='mb-8 max-w-md text-[15px] leading-relaxed text-[#4b5563]'>
-              {t('hero.desc')}
-            </p>
-
-            {/* Buttons */}
-            <div className='flex flex-wrap items-center gap-3.5'>
-              <Link
-                href='#categories'
-                className='inline-flex items-center gap-2 rounded-xl bg-[#f0af3d] px-6 py-3.5 text-sm font-bold text-[#1f2937] shadow-sm transition hover:bg-[#e49f2b] active:scale-[0.98]'
-              >
-                <span>{t('hero.btn_apply')}</span>
-                <span className='text-xs font-black'>→</span>
-              </Link>
-              <Link
-                href='/status'
-                className='inline-flex items-center gap-2 rounded-xl border border-[#d1d5db] bg-white px-6 py-3.5 text-sm font-bold text-[#1f2937] shadow-2xs transition hover:bg-[#f9fafb] active:scale-[0.98]'
-              >
-                <span>{t('hero.btn_status')}</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSlider eventStartsOn={eventStartsOn} eventEndsOn={eventEndsOn} />
 
       {/* Important Note (Application Fee / Non-Refundable / Allotment Process) */}
       <ImportantNoticeSection />
@@ -128,7 +74,7 @@ export default function PublicHomeClient({ categories }: PublicHomeClientProps) 
               {t('categories.empty')}
             </p>
           ) : (
-            <div className='grid gap-4.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'>
+            <div className='grid gap-4.5 sm:grid-cols-2 lg:grid-cols-3'>
               {categories.map(category => (
                 <CategoryCard key={category.slug} category={category} />
               ))}

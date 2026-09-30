@@ -11,10 +11,11 @@ import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
+import { encodeId } from '@/lib/security/opaque-id'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
 export const metadata: Metadata = {
-  title: 'Document Verification — KDB Admin Portal'
+  title: 'Document Verification — IGM Admin Portal'
 }
 
 const DEFAULT_PAGE_SIZE = 20
@@ -225,7 +226,7 @@ const DocumentsAdminPage = async ({
                     <div>
                       <div className='flex items-center gap-2'>
                         <Link
-                          href={`/admin/applications/${doc.application_id}`}
+                          href={`/admin/applications/${encodeId(doc.application_id)}`}
                           className='font-mono text-sm font-bold text-[#0c2847] hover:underline'
                         >
                           {doc.application_number}

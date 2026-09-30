@@ -11,11 +11,12 @@ import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
+import { encodeId } from '@/lib/security/opaque-id'
 
 const DEFAULT_PAGE_SIZE = 25
 
 export const metadata: Metadata = {
-  title: 'Applications Management — KDB Admin Portal'
+  title: 'Applications Management — IGM Admin Portal'
 }
 
 type ApplicationItem = {
@@ -479,7 +480,7 @@ const ApplicationsAdminPage = async ({
                     return (
                       <tr key={app.id} className='hover:bg-muted/30 transition'>
                         <td className='py-3.5 px-4 font-mono font-bold text-[#0c2847]'>
-                          <Link href={`/admin/applications/${app.id}`} className='hover:underline'>
+                          <Link href={`/admin/applications/${encodeId(app.id)}`} className='hover:underline'>
                             {app.application_number}
                           </Link>
                         </td>
@@ -516,7 +517,7 @@ const ApplicationsAdminPage = async ({
                         </td>
                         <td className='py-3.5 px-4 text-right'>
                           <Link
-                            href={`/admin/applications/${app.id}`}
+                            href={`/admin/applications/${encodeId(app.id)}`}
                             className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
                           >
                             <EyeIcon className='size-3.5' /> View

@@ -10,9 +10,11 @@ import { getPaymentStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { maskIdentifier } from '@/lib/security/mask'
+import { decodeId, encodeId } from '@/lib/security/opaque-id'
+import ReconcilePaymentButton from '@/views/admin/payments/ReconcilePaymentButton'
 
 export const metadata: Metadata = {
-  title: 'Payment Details — KDB Admin Portal'
+  title: 'Payment Details — IGM Admin Portal'
 }
 
 type PaymentDetailRow = {
@@ -58,9 +60,9 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
   const canReconcile = !!permissions?.has('payment:reconcile')
 
   const { id } = await params
-  const paymentId = Number(id)
+  const paymentId = decodeId(id)
 
-  if (!Number.isInteger(paymentId) || paymentId <= 0) {
+  if (paymentId === null) {
     notFound()
   }
 
@@ -108,7 +110,7 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
               <CardTitle className='text-base font-bold text-[#0c2847]'>
                 <span className='capitalize'>{payment.purpose.replace('_', ' ')}</span> Payment
               </CardTitle>
-              <CardDescription className='text-xs'>Payment #{payment.id}</CardDescription>
+              <CardDescription className='text-xs'>Payment Details</CardDescription>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
           </div>
@@ -117,7 +119,7 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
           <div>
             <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>Application</p>
             <Link
-              href={`/admin/applications/${payment.application_id}`}
+              href={`/admin/applications/${encodeId(payment.application_id)}`}
               className='font-mono text-sm font-bold text-[#0c2847] hover:underline'
             >
               {payment.application_number}
@@ -146,6 +148,11 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
             <p className='text-sm text-slate-800'>{new Date(payment.created_at).toLocaleString('en-IN')}</p>
           </div>
         </CardContent>
+        {canReconcile && payment.status !== 'success' && payment.razorpay_order_id && (
+          <CardContent className='border-t pt-4'>
+            <ReconcilePaymentButton paymentId={payment.id} />
+          </CardContent>
+        )}
       </Card>
 
       <Card className='shadow-xs'>

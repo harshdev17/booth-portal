@@ -32,6 +32,26 @@ export function getPool(): mysql.Pool {
     dateStrings: true
   })
 
+  // This project always targets IST (India-only portal). The Hostinger
+  // MySQL server's own system clock runs in UTC (confirmed live: `SELECT
+  // NOW()` returned real UTC time, not IST) while application code writes
+  // DATETIME values from JS `Date` objects, which mysql2 correctly converts
+  // to IST wall-clock strings before storing (its `timezone` pool option
+  // controls only that client-side conversion — it does NOT change what
+  // the MySQL session's own NOW()/CURRENT_TIMESTAMP computes, confirmed by
+  // testing it directly). That mismatch meant every raw SQL `NOW()`/
+  // `CURRENT_TIMESTAMP` call (used in WHERE clauses and column defaults
+  // alike) compared/stored UTC wall-clock time against columns that were
+  // otherwise consistently IST — causing real bugs (a freshly-verified OTP
+  // appearing expired; a category's own opens_at, set to "right now",
+  // failing its own `<= NOW()` check). Explicitly running `SET time_zone`
+  // on every new pooled connection is the only thing that actually changes
+  // the session's own NOW()/CURRENT_TIMESTAMP — verified live. See
+  // .ai/CHANGELOG.md 2026-09-30 entries.
+  pool.on('connection', connection => {
+    connection.query("SET time_zone = '+05:30'")
+  })
+
   return pool
 }
 

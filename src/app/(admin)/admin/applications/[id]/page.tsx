@@ -13,11 +13,12 @@ import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApplicationStatusConfig, getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
+import { decodeId } from '@/lib/security/opaque-id'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
 export const metadata: Metadata = {
-  title: 'Application Detail — KDB Admin Portal'
+  title: 'Application Detail — IGM Admin Portal'
 }
 
 type ApplicationRow = {
@@ -52,9 +53,9 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const session = await requirePermission('application:view')
 
   const { id } = await params
-  const applicationId = Number(id)
+  const applicationId = decodeId(id)
 
-  if (!Number.isInteger(applicationId) || applicationId <= 0) notFound()
+  if (applicationId === null) notFound()
 
   const [rows, fieldValues, documents, auditEntries, permissions] = await Promise.all([
     query<ApplicationRow[]>(

@@ -12,7 +12,7 @@ import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
 
 export const metadata: Metadata = {
-  title: 'Audit Logs — KDB Admin Portal'
+  title: 'Audit Logs — IGM Admin Portal'
 }
 
 const VALID_SORT_FIELDS: Record<string, string> = {

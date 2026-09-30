@@ -21,7 +21,7 @@ import CategoryBreakdownChart from '@/views/admin/dashboard/CategoryBreakdownCha
 import SubmissionsTrendChart from '@/views/admin/dashboard/SubmissionsTrendChart'
 
 export const metadata: Metadata = {
-  title: 'Dashboard — KDB Admin Portal'
+  title: 'Dashboard — IGM Admin Portal'
 }
 
 const TREND_DAYS = 14

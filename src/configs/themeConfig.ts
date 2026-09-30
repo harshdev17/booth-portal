@@ -1,5 +1,5 @@
 const themeConfig = {
-  templateName: 'KDB Admin Portal',
+  templateName: 'IGM Admin Portal',
   homePageUrl: '/admin/dashboard'
 } as const
 

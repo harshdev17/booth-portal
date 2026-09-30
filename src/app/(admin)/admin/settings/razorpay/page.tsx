@@ -3,11 +3,13 @@ import type { Metadata } from 'next'
 import { CheckCircle2Icon, XCircleIcon } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { query } from '@/lib/db/client'
 import { requirePermission } from '@/lib/rbac/authorize'
+import CreateRealPaymentTest from '@/views/admin/settings/CreateRealPaymentTest'
 import TestRazorpayConnection from '@/views/admin/settings/TestRazorpayConnection'
 
 export const metadata: Metadata = {
-  title: 'Razorpay Settings — KDB Admin Portal'
+  title: 'Razorpay Settings — IGM Admin Portal'
 }
 
 const ENV_ROWS: Array<{ label: string; envVar: string }> = [
@@ -27,6 +29,16 @@ const RazorpaySettingsPage = async () => {
 
   const rows = ENV_ROWS.map(row => ({ ...row, configured: !!process.env[row.envVar] }))
   const keyId = process.env.RAZORPAY_KEY_ID
+
+  // Deliberately not listOpenCategories() here: that filters by the public
+  // application window (open/closes dates), which would hide every
+  // category whenever testing happens outside that window — exactly the
+  // opposite of what an admin payment-test tool needs. Any non-archived
+  // category with a fee is fair game to test against, regardless of
+  // whether the public site is currently accepting applications for it.
+  const testableCategories = await query<Array<{ slug: string; name: string; fee_paise: number | null }>>(
+    `SELECT slug, name, fee_paise FROM categories WHERE status != 'archived' AND fee_paise IS NOT NULL ORDER BY display_order ASC`
+  )
 
   return (
     <div className='flex flex-col gap-6'>
@@ -72,6 +84,10 @@ const RazorpaySettingsPage = async () => {
       </Card>
 
       <TestRazorpayConnection />
+
+      <CreateRealPaymentTest
+        categories={testableCategories.map(c => ({ slug: c.slug, name: c.name, feePaise: c.fee_paise! }))}
+      />
 
       <p className='text-xs text-muted-foreground'>
         The webhook endpoint is <code className='rounded bg-muted px-1 py-0.5'>/api/webhooks/razorpay</code> —

@@ -11,9 +11,10 @@ import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
+import { encodeId } from '@/lib/security/opaque-id'
 
 export const metadata: Metadata = {
-  title: 'Applicant / User Details — KDB Admin Portal'
+  title: 'Applicant / User Details — IGM Admin Portal'
 }
 
 const DEFAULT_PAGE_SIZE = 25
@@ -220,7 +221,7 @@ const ApplicantsAdminPage = async ({
                               return (
                                 <Link
                                   key={appId}
-                                  href={`/admin/applications/${appId}`}
+                                  href={`/admin/applications/${encodeId(Number(appId))}`}
                                   className={`rounded-full px-2.5 py-0.5 text-xs font-bold hover:opacity-80 transition ${statusCfg.color}`}
                                 >
                                   {statusCfg.label}

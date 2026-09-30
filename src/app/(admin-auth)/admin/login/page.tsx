@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth/session'
 import AdminLogin from '@/views/admin/auth/login'
 
 export const metadata: Metadata = {
-  title: 'Admin Sign In — KDB Admin Portal'
+  title: 'Admin Sign In — IGM Admin Portal'
 }
 
 const LoginPage = async () => {

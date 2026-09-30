@@ -38,17 +38,17 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
     }
 
     case 'application_confirmation':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
     case 'payment_confirmation':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000', '118'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', '118'] }
     case 'status_update':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000', 'Under Review'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Under Review'] }
     case 'document_query':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000', 'Aadhaar Card', 'Please upload a clearer copy.'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar Card', 'Please upload a clearer copy.'] }
     case 'pay_now_activation':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
     case 'reminder':
-      return { templateParams: ['Test Applicant', 'KDB-2026-000000'] }
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
   }
 }
 

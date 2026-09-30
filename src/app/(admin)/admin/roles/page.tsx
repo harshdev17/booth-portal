@@ -8,7 +8,7 @@ import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authori
 import PermissionToggle from '@/views/admin/roles/PermissionToggle'
 
 export const metadata: Metadata = {
-  title: 'User Roles & Permissions — KDB Admin Portal'
+  title: 'User Roles & Permissions — IGM Admin Portal'
 }
 
 type RoleRow = { id: number; key: string; name: string; description: string | null; is_system: number }

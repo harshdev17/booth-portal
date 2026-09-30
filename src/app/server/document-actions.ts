@@ -90,8 +90,13 @@ async function decideDocument(
     newValue: { verification_status: toStatus, remarks: parsed.data.remarks ?? null, filename: current.original_filename }
   })
 
+  // Application ids in the URL are now opaque, randomly-reencrypted tokens
+  // (see src/lib/security/opaque-id.ts) — encodeId() never reproduces the
+  // exact token currently in the admin's address bar, so a path-specific
+  // revalidatePath() can't target it. Not needed anyway: the application
+  // detail page is an uncached server component that queries the DB fresh
+  // on every request.
   revalidatePath('/admin/documents')
-  revalidatePath(`/admin/applications/${current.application_id}`)
 
   if (toStatus === 'query') {
     // Never let a notification failure block the query action itself —

@@ -108,7 +108,16 @@ export async function verifyOtp(params: {
     return { ok: false, error: 'Incorrect code. Please try again.' }
   }
 
-  await query('UPDATE otp_challenges SET verified_at = NOW() WHERE id = ?', [challenge.id])
+  // Deliberately a JS Date, not SQL's NOW() — the Hostinger MySQL server's
+  // own clock runs in UTC (confirmed live: `SELECT NOW()` matches real UTC
+  // time, not IST), and mysql2 stores/returns DATETIME columns without any
+  // timezone marker. new Date(challenge.expires_at) above already only
+  // works correctly because expires_at was written the same way, from a JS
+  // Date, in requestOtp() below — using NOW() here for verified_at made
+  // this one column silently drift ~5.5 hours from every other timestamp
+  // in this flow, causing hasRecentVerifiedOtp() to treat a just-verified
+  // OTP as already-expired. See .ai/CHANGELOG.md for the live repro.
+  await query('UPDATE otp_challenges SET verified_at = ? WHERE id = ?', [new Date(), challenge.id])
 
   return { ok: true }
 }

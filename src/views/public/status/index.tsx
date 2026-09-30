@@ -19,7 +19,9 @@ const lookupSchema = z.object({
     .string()
     .trim()
     .min(1, 'Application number is required')
-    .regex(/^KDB-\d{4}-\d{6}$/, 'Enter a valid application number, e.g. KDB-2026-123456')
+    // Accepts both the current "IGM-" prefix and the earlier "KDB-" prefix,
+    // so applications created before that naming change remain lookupable.
+    .regex(/^(?:IGM|KDB)-\d{4}-\d{6}$/, 'Enter a valid application number, e.g. IGM-2026-123456')
 })
 
 type LookupValues = z.infer<typeof lookupSchema>
@@ -225,7 +227,7 @@ const StatusLookup = () => {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आवेदन क्रमांक' : 'Application Number'}</FieldLabel>
-                <Input {...field} id={field.name} placeholder='KDB-2026-123456' aria-invalid={fieldState.invalid} />
+                <Input {...field} id={field.name} placeholder='IGM-2026-123456' aria-invalid={fieldState.invalid} />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

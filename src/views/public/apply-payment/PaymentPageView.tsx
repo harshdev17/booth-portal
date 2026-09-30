@@ -45,7 +45,6 @@ type RazorpayCheckoutOptions = {
   name: string
   description: string
   theme: { color: string }
-  prefill?: { method?: 'card' | 'netbanking' | 'upi' }
   handler: (response: RazorpayCheckoutResponse) => void
   modal?: { ondismiss?: () => void }
 }
@@ -124,7 +123,6 @@ const PaymentPageView = ({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking'>('upi')
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -216,7 +214,6 @@ const PaymentPageView = ({
             ? `आवेदन शुल्क — ${orderBody.applicationNumber}`
             : `Application Fee — ${orderBody.applicationNumber}`,
         theme: { color: '#0c2847' },
-        prefill: { method: paymentMethod },
         handler: async response => {
           try {
             const verifyResponse = await fetch(`/api/applications/${details.applicationId}/payment/verify`, {
@@ -363,32 +360,6 @@ const PaymentPageView = ({
             </div>
           </div>
 
-          {/* Payment Method Selector */}
-          <div className='border-t border-[#f1f5f9] pt-4'>
-            <p className='mb-2.5 text-xs font-bold uppercase tracking-wider text-[#64748b]'>
-              {lang === 'hi' ? 'भुगतान का माध्यम चुनें' : 'Select Payment Mode'}
-            </p>
-            <div className='grid grid-cols-3 gap-2'>
-              {[
-                { id: 'upi', label: 'UPI / QR' },
-                { id: 'card', label: lang === 'hi' ? 'डेबिट/क्रेडिट कार्ड' : 'Card' },
-                { id: 'netbanking', label: lang === 'hi' ? 'नेट बैंकिंग' : 'NetBanking' }
-              ].map(method => (
-                <button
-                  key={method.id}
-                  type='button'
-                  onClick={() => setPaymentMethod(method.id as 'upi' | 'card' | 'netbanking')}
-                  className={`rounded-xl border p-2.5 text-xs font-bold transition text-center ${
-                    paymentMethod === method.id
-                      ? 'border-[#0c2847] bg-[#0c2847] text-white shadow-xs'
-                      : 'border-[#e2e8f0] bg-[#fafbfc] text-[#334155] hover:bg-[#f1f5f9]'
-                  }`}
-                >
-                  {method.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Security Badge */}

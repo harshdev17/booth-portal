@@ -7,7 +7,7 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import SendTestNotification from '@/views/admin/settings/SendTestNotification'
 
 export const metadata: Metadata = {
-  title: 'WhatsApp / SMS Settings — KDB Admin Portal'
+  title: 'WhatsApp / SMS Settings — IGM Admin Portal'
 }
 
 const CATEGORY_ENV_MAP: Array<{ category: string; label: string; envVar: string }> = [
@@ -98,9 +98,7 @@ const NotificationSettingsPage = async () => {
       </Card>
 
       <p className='text-xs text-muted-foreground'>
-        Template wording and Meta approval happen in the AiSensy dashboard, not in this codebase — see{' '}
-        <code className='rounded bg-muted px-1 py-0.5'>.ai/DECISIONS.md #11a</code> and{' '}
-        <code className='rounded bg-muted px-1 py-0.5'>.ai/NOTIFICATIONS.md</code>.
+        Template wording and Meta approval happen in the AiSensy dashboard, not in this application.
       </p>
 
       <SendTestNotification />

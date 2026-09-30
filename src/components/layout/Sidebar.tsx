@@ -552,7 +552,7 @@ const SidebarLayout = ({
             >
               <LogoSvg className='[&_rect]:fill-sidebar [&_rect:first-child]:fill-primary' />
               <div className='flex flex-col items-start'>
-                <span className='text-lg font-semibold text-nowrap'>KDB</span>
+                <span className='text-lg font-semibold text-nowrap'>IGM</span>
                 <span className='text-xs font-light text-nowrap'>Admin Portal</span>
               </div>
             </SidebarMenuButton>

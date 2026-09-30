@@ -76,7 +76,13 @@ async function decideApplication(
     newValue: { status: toStatus, reason: parsed.data.reason ?? null, application_number: current.application_number }
   })
 
-  revalidatePath(`/admin/applications/${parsed.data.applicationId}`)
+  // Application ids in the URL are now opaque, randomly-reencrypted tokens
+  // (see src/lib/security/opaque-id.ts) — encodeId() never reproduces the
+  // exact token currently in the admin's address bar, so a path-specific
+  // revalidatePath() can't target it. Not needed anyway: this detail page is
+  // an uncached server component that queries the DB fresh on every
+  // request, so revalidating the list page (which the decision buttons
+  // navigate back to) is sufficient for the Router Cache.
   revalidatePath('/admin/applications')
 
   return { success: toStatus === 'selected' ? 'Application marked as Selected.' : 'Application rejected.' }

@@ -208,6 +208,45 @@ export async function recordWebhookConfirmed(input: {
   })
 }
 
+/**
+ * Records a payment as successful based on an admin manually confirming it
+ * directly against Razorpay's own records (the "Reconcile with Razorpay"
+ * admin action — see /admin/payments/[id]). This is the fallback for the
+ * case both the client-side handler() callback and the webhook (still
+ * unconfigured as of this writing — see .ai/CHANGELOG.md) can miss: a
+ * payment that genuinely succeeded on Razorpay's side but was never
+ * reported back to this app by either automated path. Tagged
+ * source: 'admin' and audit-logged separately from an automated
+ * confirmation, since a human asserted this rather than a cryptographic
+ * signature check — callers must have already fetched the real payment
+ * from Razorpay's API and confirmed `status === 'captured'` before calling
+ * this; it does not re-verify anything itself.
+ */
+export async function recordAdminReconciled(input: {
+  paymentId: number
+  applicationId: number
+  amountPaise: number
+  razorpayOrderId: string
+  razorpayPaymentId: string
+}): Promise<void> {
+  await withTransaction(async (txQuery: TransactionQuery) => {
+    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
+    await txQuery(
+      `UPDATE applications SET status = 'payment_success' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+      [input.applicationId]
+    )
+    await insertTransaction(txQuery, {
+      paymentId: input.paymentId,
+      type: 'checkout_success',
+      amountPaise: input.amountPaise,
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId,
+      signatureValid: true,
+      source: 'admin'
+    })
+  })
+}
+
 export async function recordWebhookFailure(input: {
   paymentId: number
   applicationId: number

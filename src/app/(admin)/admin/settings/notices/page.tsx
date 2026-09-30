@@ -5,7 +5,7 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import NoticesSettingsClient from '@/views/admin/settings/NoticesSettingsClient'
 
 export const metadata: Metadata = {
-  title: 'Homepage Notices — KDB Admin Portal'
+  title: 'Homepage Notices — IGM Admin Portal'
 }
 
 type NoticeRow = {

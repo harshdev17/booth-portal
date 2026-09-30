@@ -128,17 +128,6 @@ export const navItems: NavItem[] = [
     ]
   },
   {
-    groupLabel: 'Verification',
-    items: [
-      {
-        icon: 'QrCode',
-        label: 'QR Verification',
-        href: '/admin/qr-verification',
-        permission: 'qr:decode'
-      }
-    ]
-  },
-  {
     groupLabel: 'Reports & Security',
     items: [
       {

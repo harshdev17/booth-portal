@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
 // AES-256-GCM: authenticated encryption, no extra dependency (Node built-in).
 // Layout of the stored ciphertext blob: [12-byte IV][16-byte auth tag][ciphertext].
@@ -64,6 +64,19 @@ export function decryptAadhaar(blob: Buffer): string {
 /** Last 4 digits only — safe to store/display unencrypted for masking/lookup purposes. */
 export function aadhaarLast4(plainTextAadhaar: string): string {
   return plainTextAadhaar.slice(-4)
+}
+
+/**
+ * Deterministic, one-way HMAC-SHA256 of an Aadhaar number, keyed by
+ * AADHAAR_ENCRYPTION_KEY. Used ONLY for the "one application per Aadhaar"
+ * uniqueness check (see hasActiveDuplicateApplication in
+ * validate-submission.ts) — `aadhaar_ciphertext` cannot be used for this
+ * since AES-256-GCM here is non-deterministic (a fresh random IV per call),
+ * so equal plaintexts never produce equal ciphertexts. This hash cannot be
+ * reversed to recover the Aadhaar number.
+ */
+export function hashAadhaar(plainTextAadhaar: string): string {
+  return createHmac('sha256', getEncryptionKey()).update(plainTextAadhaar).digest('hex')
 }
 
 /** Formats for display: "XXXX-XXXX-1234". Never pass a full Aadhaar to a client component. */
