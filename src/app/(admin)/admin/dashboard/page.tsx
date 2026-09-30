@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import KpiCard from '@/components/shared/KpiCard'
 import { getSession } from '@/lib/auth/session'
 import { query } from '@/lib/db/client'
 import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
@@ -89,7 +90,7 @@ const DashboardPage = async () => {
       label: 'Total Applications',
       value: totalSubmitted,
       icon: FileTextIcon,
-      color: 'border-l-[#0c2847] text-[#0c2847]',
+      color: 'text-[#0c2847]',
       href: '/admin/applications',
       hint: 'All submitted stall applications'
     },
@@ -97,7 +98,7 @@ const DashboardPage = async () => {
       label: 'Under Review',
       value: underReview,
       icon: ClockIcon,
-      color: 'border-l-blue-500 text-blue-600',
+      color: 'text-blue-600',
       href: '/admin/applications?status=under_review',
       hint: 'Awaiting document verification / decision'
     },
@@ -105,7 +106,7 @@ const DashboardPage = async () => {
       label: 'Selected / Allotted',
       value: selected,
       icon: CheckCircle2Icon,
-      color: 'border-l-purple-500 text-purple-600',
+      color: 'text-purple-600',
       href: '/admin/applications?status=selected',
       hint: 'Approved for allotment'
     },
@@ -113,7 +114,7 @@ const DashboardPage = async () => {
       label: 'Rejected',
       value: rejected,
       icon: XCircleIcon,
-      color: 'border-l-red-500 text-red-600',
+      color: 'text-red-600',
       href: '/admin/applications?status=rejected',
       hint: 'Not eligible / failed verification'
     },
@@ -121,7 +122,7 @@ const DashboardPage = async () => {
       label: 'Payment Pending',
       value: paymentPending,
       icon: ClockIcon,
-      color: 'border-l-amber-500 text-amber-600',
+      color: 'text-amber-600',
       href: '/admin/applications?status=payment_pending',
       hint: 'Registration fee not yet confirmed'
     },
@@ -129,7 +130,7 @@ const DashboardPage = async () => {
       label: 'Documents Pending',
       value: docsPending,
       icon: FileCheck2Icon,
-      color: 'border-l-amber-500 text-amber-600',
+      color: 'text-amber-600',
       href: '/admin/documents',
       hint: 'Uploaded documents awaiting review'
     }
@@ -147,17 +148,16 @@ const DashboardPage = async () => {
       {/* KPI strip */}
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6'>
         {kpis.map(kpi => (
-          <Link key={kpi.label} href={kpi.href} title={kpi.hint}>
-            <Card className={`h-full border-l-4 gap-0 py-3 shadow-xs transition hover:shadow-sm ${kpi.color}`}>
-              <CardContent className='flex items-center justify-between gap-2 px-3'>
-                <div className='min-w-0'>
-                  <p className='truncate text-[10px] font-bold uppercase leading-tight'>{kpi.label}</p>
-                  <p className='text-xl font-extrabold leading-tight'>{kpi.value}</p>
-                </div>
-                <kpi.icon className='size-4 shrink-0 opacity-60' />
-              </CardContent>
-            </Card>
-          </Link>
+          <KpiCard
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            icon={kpi.icon}
+            accentColor={kpi.color}
+            hint={kpi.hint}
+            href={kpi.href}
+            compact
+          />
         ))}
       </div>
 

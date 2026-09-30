@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { EyeIcon, FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, EyeIcon, FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
@@ -223,35 +224,27 @@ const ApplicationsAdminPage = async ({
 
       {/* KPI Cards */}
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-        <Card className='border-l-4 border-l-[#0c2847] shadow-xs'>
-          <CardHeader className='pb-2'>
-            <CardDescription className='text-xs font-bold uppercase'>Total Applications</CardDescription>
-            <CardTitle className='text-3xl font-extrabold text-[#0c2847]'>{totalSubmitted}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-xs text-muted-foreground'>Submitted across all commercial stall categories</p>
-          </CardContent>
-        </Card>
-
-        <Card className='border-l-4 border-l-amber-500 shadow-xs'>
-          <CardHeader className='pb-2'>
-            <CardDescription className='text-xs font-bold uppercase'>Pending Verification / Payment</CardDescription>
-            <CardTitle className='text-3xl font-extrabold text-amber-600'>{pendingCount}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-xs text-muted-foreground'>Applications awaiting fee payment or review</p>
-          </CardContent>
-        </Card>
-
-        <Card className='border-l-4 border-l-purple-600 shadow-xs'>
-          <CardHeader className='pb-2'>
-            <CardDescription className='text-xs font-bold uppercase'>Allotted / Selected</CardDescription>
-            <CardTitle className='text-3xl font-extrabold text-purple-700'>{selectedCount}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-xs text-muted-foreground'>Stalls successfully allotted or drawn</p>
-          </CardContent>
-        </Card>
+        <KpiCard
+          label='Total Applications'
+          value={totalSubmitted}
+          icon={FileTextIcon}
+          accentColor='text-[#0c2847]'
+          hint='Submitted across all commercial stall categories'
+        />
+        <KpiCard
+          label='Pending Verification / Payment'
+          value={pendingCount}
+          icon={ClockIcon}
+          accentColor='text-amber-600'
+          hint='Applications awaiting fee payment or review'
+        />
+        <KpiCard
+          label='Allotted / Selected'
+          value={selectedCount}
+          icon={CheckCircle2Icon}
+          accentColor='text-purple-600'
+          hint='Stalls successfully allotted or drawn'
+        />
       </div>
 
       {/* Quick Status Filter Tabs */}

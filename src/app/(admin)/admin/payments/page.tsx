@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { CreditCardIcon, EyeIcon, SearchIcon } from 'lucide-react'
+import { ClockIcon, CreditCardIcon, EyeIcon, SearchIcon, XCircleIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { getPaymentStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
@@ -183,29 +184,27 @@ const PaymentsAdminPage = async ({
       </div>
 
       <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
-        <Card className='shadow-xs'>
-          <CardContent className='pt-5'>
-            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>Total Collected</p>
-            <p className='mt-1 text-xl font-black text-emerald-700'>
-              ₹{(totalCollectedPaise / 100).toLocaleString('en-IN')}
-            </p>
-            <p className='text-xs text-muted-foreground'>{successRow?.count ?? 0} successful payment(s)</p>
-          </CardContent>
-        </Card>
-        <Card className='shadow-xs'>
-          <CardContent className='pt-5'>
-            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>Pending</p>
-            <p className='mt-1 text-xl font-black text-amber-700'>{pendingRow?.count ?? 0}</p>
-            <p className='text-xs text-muted-foreground'>Order created, awaiting checkout</p>
-          </CardContent>
-        </Card>
-        <Card className='shadow-xs'>
-          <CardContent className='pt-5'>
-            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>Failed</p>
-            <p className='mt-1 text-xl font-black text-red-700'>{failedRow?.count ?? 0}</p>
-            <p className='text-xs text-muted-foreground'>Signature mismatch or gateway failure</p>
-          </CardContent>
-        </Card>
+        <KpiCard
+          label='Total Collected'
+          value={`₹${(totalCollectedPaise / 100).toLocaleString('en-IN')}`}
+          icon={CreditCardIcon}
+          accentColor='text-emerald-700'
+          hint={`${successRow?.count ?? 0} successful payment(s)`}
+        />
+        <KpiCard
+          label='Pending'
+          value={pendingRow?.count ?? 0}
+          icon={ClockIcon}
+          accentColor='text-amber-700'
+          hint='Order created, awaiting checkout'
+        />
+        <KpiCard
+          label='Failed'
+          value={failedRow?.count ?? 0}
+          icon={XCircleIcon}
+          accentColor='text-red-700'
+          hint='Signature mismatch or gateway failure'
+        />
       </div>
 
       <div className='flex flex-wrap gap-2'>
