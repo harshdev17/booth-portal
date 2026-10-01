@@ -5,8 +5,8 @@ import PublicHeader from '@/components/public/PublicHeader'
 import PublicHome from '@/views/public/home'
 
 export const metadata: Metadata = {
-  title: 'Stall Allotment | International Gita Mahotsav 2026',
-  description: 'Official information regarding stall categories, allotment and application for International Gita Mahotsav 2026, Kurukshetra Development Board.'
+  title: 'Stall Allotment | International Geeta Jayanti Mahotsav 2026',
+  description: 'Official information regarding stall categories, allotment and application for International Geeta Jayanti Mahotsav 2026, Kurukshetra Development Board.'
 }
 
 // Categories are admin-configurable data (.ai/HOMEPAGE.md), so this page

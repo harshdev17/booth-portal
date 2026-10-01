@@ -97,8 +97,8 @@ const WhyParticipateSection = () => {
           </h2>
           <p className='max-w-2xl text-base sm:text-lg text-[#4b5d73]'>
             {lang === 'hi'
-              ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 में स्टॉल लेने से आपके व्यवसाय को मिलने वाले लाभ।'
-              : 'The advantages your business gains by taking a stall at International Gita Mahotsav 2026.'}
+              ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल लेने से आपके व्यवसाय को मिलने वाले लाभ।'
+              : 'The advantages your business gains by taking a stall at International Geeta Jayanti Mahotsav 2026.'}
           </p>
         </div>
 

@@ -47,8 +47,8 @@ const ApplicationSummaryPanel = ({ config }: { config: CategoryConfigResponse })
           <span className='h-2 w-2 rounded-full bg-[#fbd38d]' />
           <p className='text-sm font-bold tracking-wide'>
             {lang === 'hi'
-              ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 — आधिकारिक स्टॉल आवेदन सारांश'
-              : 'International Gita Mahotsav 2026 — Official Stall Application Summary'}
+              ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — आधिकारिक स्टॉल आवेदन सारांश'
+              : 'International Geeta Jayanti Mahotsav 2026 — Official Stall Application Summary'}
           </p>
         </div>
       </div>

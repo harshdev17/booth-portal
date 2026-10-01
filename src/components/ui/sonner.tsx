@@ -1,15 +1,20 @@
 'use client'
 
-import { useTheme } from 'next-themes'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from 'lucide-react'
 
+// Hardcoded 'light' rather than reading next-themes' useTheme() — this
+// portal has no dark theme anywhere (admin and public both ship light-mode
+// CSS only), and next-themes unconditionally renders a raw <script> tag on
+// every render with no prop to disable it (confirmed by reading its
+// source), which is what was tripping React 19/Next 16's "script tag in a
+// React component" console error (reported live, twice). Removing the
+// next-themes dependency entirely removes the script, not just works
+// around it.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme='light'
       className='toaster group'
       icons={{
         success: <CircleCheckIcon className='size-4' />,

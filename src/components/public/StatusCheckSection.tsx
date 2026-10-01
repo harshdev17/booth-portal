@@ -57,8 +57,8 @@ export default function StatusCheckSection() {
           {/* Description */}
           <p className='max-w-2xl text-sm sm:text-base text-[#526478] leading-relaxed'>
             {lang === 'hi'
-              ? 'गीता महोत्सव 2026 के लिए अपने स्टॉल आवेदन की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें।'
-              : 'Enter your application number to view the latest status of your stall application for Gita Mahotsav 2026.'}
+              ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल आवेदन की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें।'
+              : 'Enter your application number to view the latest status of your stall application for Geeta Jayanti Mahotsav 2026.'}
           </p>
         </div>
 

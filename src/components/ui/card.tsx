@@ -16,12 +16,21 @@ function Card({ className, size = 'default', ...props }: React.ComponentProps<'d
   )
 }
 
+// [.border-b]:-mt-(--card-spacing) cancels the Card's own top padding
+// whenever a header opts into a full-bleed bordered/tinted strip (border-b,
+// usually paired with a bg-muted background) — the existing
+// [.border-b]:pb-(--card-spacing) rule already did the equivalent for the
+// bottom. Without this, the header's background/border starts only after
+// the Card's blank top padding, leaving a visible gap above the heading
+// before its own strip begins (reported live on the Inventory page, but
+// present wherever this border-b pattern is used — e.g. Payments,
+// Applications).
 function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='card-header'
       className={cn(
-        'group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)',
+        'group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:-mt-(--card-spacing) [.border-b]:pb-(--card-spacing)',
         className
       )}
       {...props}
