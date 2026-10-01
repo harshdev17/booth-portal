@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import { notFound } from 'next/navigation'
 
-import { ArrowLeftIcon } from 'lucide-react'
+import { ArrowLeftIcon, EyeIcon } from 'lucide-react'
 import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
@@ -241,9 +241,19 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                           )}
                         </div>
 
-                        {canVerifyDocuments && doc.verification_status !== 'verified' && (
-                          <DocumentDecisionActions documentId={doc.id} />
-                        )}
+                        <div className='flex shrink-0 items-center gap-2'>
+                          <a
+                            href={`/api/documents/${doc.id}/preview`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                          >
+                            <EyeIcon className='size-3.5' /> Preview
+                          </a>
+                          {canVerifyDocuments && doc.verification_status !== 'verified' && (
+                            <DocumentDecisionActions documentId={doc.id} />
+                          )}
+                        </div>
                       </div>
                     )
                   })}

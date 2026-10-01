@@ -2,26 +2,57 @@
 
 import { useState } from 'react'
 
-import { CheckCircle2Icon, FileTextIcon, Loader2Icon, UploadIcon } from 'lucide-react'
+import { CheckCircle2Icon, EyeIcon, FileTextIcon, Loader2Icon, UploadIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 import type { CategoryDocumentDto } from '@/views/public/apply/types'
+
+/**
+ * /api/documents/[id]/preview only reads the access token from an
+ * Authorization header, never a query string (consistent with every other
+ * application endpoint — see access-session.ts's reasoning on why the token
+ * never goes in a URL). A plain <a href> can't set that header, so preview
+ * fetches the file as a blob client-side and opens it from an object URL
+ * instead of linking directly to the API route.
+ */
+export async function openDocumentPreview(documentId: number, accessToken: string) {
+  try {
+    const response = await fetch(`/api/documents/${documentId}/preview`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok) return
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+
+    window.open(url, '_blank', 'noopener,noreferrer')
+
+    // Revoked after a delay rather than immediately — the new tab needs a
+    // moment to actually load the object URL before it's freed.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch {
+    // Non-fatal — the applicant can still proceed without a preview.
+  }
+}
 
 export type DocumentUploadStatus = 'idle' | 'uploading' | 'uploaded' | 'error'
 
 export type DocumentUploadState = Record<
   string,
-  { status: DocumentUploadStatus; error?: string; fileName?: string }
+  { status: DocumentUploadStatus; error?: string; fileName?: string; documentId?: number }
 >
 
 const DocumentsStep = ({
   documents,
   uploadState,
-  onUpload
+  onUpload,
+  accessToken
 }: {
   documents: CategoryDocumentDto[]
   uploadState: DocumentUploadState
   onUpload: (documentKey: string, file: File) => Promise<void>
+  accessToken: string | null
 }) => {
   const { lang } = useLanguage()
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
@@ -62,6 +93,7 @@ const DocumentsStep = ({
         const state = itemState?.status ?? 'idle'
         const error = itemState?.error
         const fileName = itemState?.fileName
+        const documentId = itemState?.documentId
         const isDragOver = dragOverKey === doc.key
         const maxMb = Math.round(doc.maxSizeBytes / (1024 * 1024))
         const displayName = lang === 'hi' && doc.labelHi ? doc.labelHi : doc.label
@@ -109,6 +141,16 @@ const DocumentsStep = ({
                     <span className='rounded bg-emerald-200/70 px-1.5 py-0.5 text-[10px] font-bold text-emerald-900 shrink-0'>
                       {lang === 'hi' ? 'अपलोड हो गया' : 'Uploaded'}
                     </span>
+                    {documentId && accessToken && (
+                      <button
+                        type='button'
+                        onClick={() => void openDocumentPreview(documentId, accessToken)}
+                        className='flex shrink-0 items-center gap-1 rounded bg-emerald-200/70 px-1.5 py-0.5 text-[10px] font-bold text-emerald-900 hover:bg-emerald-300'
+                      >
+                        <EyeIcon className='size-3' />
+                        {lang === 'hi' ? 'देखें' : 'Preview'}
+                      </button>
+                    )}
                   </div>
                 )}
 

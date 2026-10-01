@@ -1,10 +1,11 @@
-import { Controller, type Control, type FieldErrors } from 'react-hook-form'
+import { Controller, type Control, type FieldErrors, type UseFormSetError, type UseFormClearErrors } from 'react-hook-form'
 
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { useLanguage } from '@/context/LanguageContext'
 import type { ApplicationFormValues } from '@/views/public/apply/form-values'
+import { useAvailabilityCheck } from '@/views/public/apply/useAvailabilityCheck'
 
 /**
  * India-only mobile number input: a fixed "+91" prefix, not a full country
@@ -42,12 +43,19 @@ const MobileNumberInput = ({
 )
 
 const ApplicantInfoStep = ({
-  control
+  control,
+  setError,
+  clearErrors,
+  applicationId
 }: {
   control: Control<ApplicationFormValues>
   errors: FieldErrors<ApplicationFormValues>
+  setError: UseFormSetError<ApplicationFormValues>
+  clearErrors: UseFormClearErrors<ApplicationFormValues>
+  applicationId?: number
 }) => {
   const { lang } = useLanguage()
+  const checkAvailability = useAvailabilityCheck(setError, clearErrors, lang, applicationId)
 
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
@@ -66,6 +74,10 @@ const ApplicantInfoStep = ({
               autoComplete='email'
               placeholder='example@domain.com'
               aria-invalid={fieldState.invalid}
+              onBlur={e => {
+                field.onBlur()
+                void checkAvailability('email', e.target.value.trim(), 'common.email')
+              }}
             />
             <FieldDescription>
               {lang === 'hi'
@@ -89,7 +101,10 @@ const ApplicantInfoStep = ({
               id={field.name}
               value={field.value}
               onChange={field.onChange}
-              onBlur={field.onBlur}
+              onBlur={() => {
+                field.onBlur()
+                void checkAvailability('mobileNumber', field.value, 'common.mobileNumber')
+              }}
               invalid={fieldState.invalid}
             />
             <FieldDescription>
@@ -209,11 +224,15 @@ const ApplicantInfoStep = ({
               autoComplete='off'
               placeholder='123456789012'
               aria-invalid={fieldState.invalid}
+              onBlur={e => {
+                field.onBlur()
+                void checkAvailability('aadhaarNumber', e.target.value.trim(), 'common.aadhaarNumber')
+              }}
             />
             <FieldDescription>
               {lang === 'hi'
-                ? '12 अंकों का आधार नंबर। यह सुरक्षित एन्क्रिप्टेड रहता है एवं XXXX-XXXX-1234 रूप में ही दिखाया जाता है।'
-                : '12-digit number, for example 123456789012. Encrypted and only shown masked.'}
+                ? '12 अंकों का आधार नंबर। यह सुरक्षित एन्क्रिप्टेड रहता है।'
+                : '12-digit number, for example 123456789012. Stored securely, encrypted.'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
