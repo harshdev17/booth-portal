@@ -218,7 +218,7 @@ const ApplicationsAdminPage = async ({
         <div>
           <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Applications Management</h1>
           <p className='text-sm text-muted-foreground'>
-            Review, verify documents, and manage submitted stall applications for International Gita Mahotsav 2026.
+            Review, verify documents, and manage submitted stall applications for International Geeta Jayanti Mahotsav 2026.
           </p>
         </div>
       </div>

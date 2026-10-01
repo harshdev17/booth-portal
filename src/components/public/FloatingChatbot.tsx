@@ -36,7 +36,7 @@ const FloatingChatbot = () => {
   }
 
   return (
-    <div className='fixed right-4 bottom-5 z-40 flex flex-col items-end gap-3 sm:right-6 sm:bottom-6'>
+    <div className='fixed right-4 bottom-5 z-40 flex flex-col items-end gap-3 sm:right-6 sm:bottom-6 print:hidden'>
       {isOpen && (
         <iframe
           src={CHATBOT_SRC}

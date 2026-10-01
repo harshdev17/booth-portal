@@ -93,7 +93,9 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
                 : 'Online applications are invited for stalls, shops, and booths.'}
             </p>
 
-            <p className='mb-8 text-sm font-semibold text-[#f0af3d] sm:text-base'>{dateRangeText}</p>
+            <p className='mb-8 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
+              {dateRangeText}
+            </p>
 
             <div className='flex flex-wrap items-center gap-3.5'>
               <Link

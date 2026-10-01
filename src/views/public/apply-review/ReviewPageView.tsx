@@ -297,7 +297,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
         <div className='mb-8 text-left'>
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              अंतर्राष्ट्रीय गीता महोत्सव 2026 — आवेदन समीक्षा
+              अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — आवेदन समीक्षा
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image

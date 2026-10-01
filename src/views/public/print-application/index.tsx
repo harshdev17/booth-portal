@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+import Image from 'next/image'
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircleIcon, Loader2Icon, PrinterIcon, SearchIcon } from 'lucide-react'
@@ -36,7 +38,7 @@ type PrintResult = {
   organisationName: string
   representativeName: string
   fatherName: string
-  aadhaarMasked: string
+  aadhaarNumber: string
   email: string
   mobileNumber: string
   alternateMobile: string | null
@@ -54,6 +56,25 @@ type Phase = 'lookup' | 'otp' | 'result'
 
 const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
+// Same bilingual status vocabulary as the Check Application Status page
+// (views/public/status/index.tsx) — kept as a local copy rather than a
+// shared import since each page's status list isn't guaranteed to diverge
+// together, and this one only needs it for the printed summary's header line.
+const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
+  draft: { en: 'Draft', hi: 'ड्राफ्ट' },
+  payment_pending: { en: 'Payment Pending', hi: 'भुगतान लंबित' },
+  payment_failed: { en: 'Payment Failed', hi: 'भुगतान विफल' },
+  payment_success: { en: 'Payment Received', hi: 'भुगतान प्राप्त' },
+  under_review: { en: 'Under Review', hi: 'समीक्षाधीन' },
+  rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
+  selected: { en: 'Selected', hi: 'चयनित' },
+  not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
+  payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
+  allotted: { en: 'Allotted', hi: 'आवंटित' },
+  cancelled: { en: 'Cancelled', hi: 'रद्द' },
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आवंटित' }
+}
+
 const PrintApplication = () => {
   const { lang } = useLanguage()
   const [phase, setPhase] = useState<Phase>('lookup')
@@ -68,6 +89,22 @@ const PrintApplication = () => {
     resolver: zodResolver(lookupSchema),
     defaultValues: { applicationNumber: '' }
   })
+
+  // Browsers use the page's <title> as the suggested filename for "Save as
+  // PDF" from the print dialog — this is the only way to influence that
+  // filename from JS (there is no API to set it directly). Restored on
+  // unmount so navigating elsewhere doesn't leave the tab title changed.
+  useEffect(() => {
+    if (!result) return
+
+    const previousTitle = document.title
+
+    document.title = `Application-${result.applicationNumber}`
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [result])
 
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
@@ -138,7 +175,7 @@ const PrintApplication = () => {
   }
 
   return (
-    <div className='mx-auto max-w-2xl px-4 py-16 sm:px-6'>
+    <div className='kdb-print-sheet-page mx-auto max-w-2xl px-4 py-16 sm:px-6 print:max-w-none print:p-0'>
       <div className='print:hidden'>
         <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>
           {lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application'}
@@ -231,23 +268,52 @@ const PrintApplication = () => {
       )}
 
       {phase === 'result' && result && (
-        <div className='flex flex-col gap-6'>
+        <div className='flex flex-col gap-6 print:block print:gap-0'>
           <Button type='button' onClick={() => window.print()} className='w-fit print:hidden'>
             <PrinterIcon />
             {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
           </Button>
 
-          <div className='rounded-xl border border-[var(--kdb-border)] p-6 print:rounded-none print:border-black print:p-0'>
-            <div className='mb-6 border-b border-[var(--kdb-border)] pb-4 text-center print:border-black'>
-              <h2 className='text-lg font-extrabold text-[var(--kdb-primary)] print:text-black'>
-                {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026' : 'International Gita Mahotsav 2026'}
-              </h2>
-              <p className='text-sm text-[var(--kdb-muted)] print:text-black'>
-                {lang === 'hi' ? 'आवेदन सारांश' : 'Application Summary'}
-              </p>
+          {/*
+            kdb-print-sheet: the ONLY thing visible when printed (see the
+            @media print rule in (public)/public.css) — everything else on
+            the page (site header, footer, this screen's own heading/intro,
+            the Print button) is hidden so the output is a clean standalone
+            document, not a screenshot of the website. Fixed black-on-white
+            colors here are deliberate, not the site's --kdb-* theme
+            variables — many browsers' print/PDF engines don't reliably
+            apply custom-property-based or light/tinted colors unless the
+            user explicitly enables "background graphics", which most people
+            leave off, so a real printout came out with invisible/near-white
+            text before this fix.
+          */}
+          <div className='kdb-print-sheet mx-auto w-full max-w-3xl border border-[var(--kdb-border)] bg-white p-8 shadow-sm print:border-0 print:p-0 print:shadow-none'>
+            <div className='mb-6 flex items-center gap-4 border-b-2 border-black pb-4 print:border-b-2 print:border-black'>
+              <div className='relative size-14 shrink-0'>
+                <Image src='/images/public/logo.webp' alt='' fill className='object-contain' />
+              </div>
+              <div>
+                <h2 className='text-lg font-extrabold text-black'>
+                  {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}
+                </h2>
+                <p className='text-xs text-black'>
+                  {lang === 'hi'
+                    ? 'कुरुक्षेत्र विकास बोर्ड — बूथ / दुकान आवंटन पोर्टल'
+                    : 'Kurukshetra Development Board — Booth / Shop Allotment Portal'}
+                </p>
+              </div>
             </div>
 
-            <dl className='grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2'>
+            <div className='mb-6 flex items-center justify-between'>
+              <h3 className='text-base font-extrabold tracking-wide text-black uppercase'>
+                {lang === 'hi' ? 'आवेदन सारांश' : 'Application Summary'}
+              </h3>
+              <span className='rounded-full border border-black px-3 py-1 text-xs font-bold text-black'>
+                {lang === 'hi' ? (STATUS_LABEL[result.status]?.hi ?? result.status) : (STATUS_LABEL[result.status]?.en ?? result.status)}
+              </span>
+            </div>
+
+            <dl className='grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2'>
               <SummaryRow label={lang === 'hi' ? 'आवेदन क्रमांक' : 'Application Number'} value={result.applicationNumber} />
               <SummaryRow
                 label={lang === 'hi' ? 'श्रेणी' : 'Category'}
@@ -256,7 +322,7 @@ const PrintApplication = () => {
               <SummaryRow label={lang === 'hi' ? 'संगठन/व्यक्ति का नाम' : 'Organisation / Applicant Name'} value={result.organisationName} />
               <SummaryRow label={lang === 'hi' ? 'प्रतिनिधि का नाम' : 'Representative Name'} value={result.representativeName} />
               <SummaryRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={result.fatherName} />
-              <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarMasked} />
+              <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarNumber} />
               <SummaryRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={result.mobileNumber} />
               {result.alternateMobile && (
                 <SummaryRow label={lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile'} value={result.alternateMobile} />
@@ -289,6 +355,15 @@ const PrintApplication = () => {
                 />
               )}
             </dl>
+
+            <div className='mt-10 flex items-end justify-between border-t border-black pt-4 text-xs text-black'>
+              <p>
+                {lang === 'hi'
+                  ? 'यह एक कंप्यूटर-जनित दस्तावेज़ है और इसके लिए हस्ताक्षर की आवश्यकता नहीं है।'
+                  : 'This is a computer-generated document and does not require a signature.'}
+              </p>
+              <p>{new Date().toLocaleDateString('en-IN')}</p>
+            </div>
           </div>
         </div>
       )}
@@ -299,7 +374,7 @@ const PrintApplication = () => {
 const SummaryRow = ({ label, value, span }: { label: string; value: string; span?: boolean }) => (
   <div className={span ? 'sm:col-span-2' : undefined}>
     <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase print:text-black'>{label}</dt>
-    <dd className='font-semibold text-[var(--kdb-primary)] print:text-black'>{value}</dd>
+    <dd className='font-semibold text-[var(--kdb-primary)] break-words print:text-black'>{value}</dd>
   </div>
 )
 

@@ -7,7 +7,7 @@ import PublicHeader from '@/components/public/PublicHeader'
 import ReviewPageView from '@/views/public/apply-review/ReviewPageView'
 
 export const metadata: Metadata = {
-  title: 'Review Application | International Gita Mahotsav 2026'
+  title: 'Review Application | International Geeta Jayanti Mahotsav 2026'
 }
 
 const ReviewPage = async ({ params }: { params: Promise<{ category: string; applicationId: string }> }) => {

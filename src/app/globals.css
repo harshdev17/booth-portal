@@ -289,6 +289,42 @@ input[type='number']::-webkit-outer-spin-button {
   animation-play-state: paused;
 }
 
+/*
+ * Print Application (views/public/print-application) renders its printable
+ * summary inside .kdb-print-sheet. Every OTHER element on that page/layout
+ * that must disappear on print — site header, page intro text, the Print
+ * button, floating Call/WhatsApp/chatbot buttons, footer — carries Tailwind's
+ * `print:hidden` directly at its own root, which is what actually removes
+ * each one from layout (not just hides it visually) so the printed page is
+ * sized to the sheet's content alone.
+ *
+ * This rule only needs to flatten `.kdb-print-sheet-page`'s own flex/gap
+ * layout (the page wrapper around the sheet uses `flex flex-col gap-6` on
+ * screen) — without this, the collapsed-but-still-gapped flex siblings left
+ * leftover blank vertical space, which is exactly what produced a correct
+ * first page followed by a blank second page (reported live: "css sahi
+ * aa rahi hai, but 2 pages aa rahe hai"). A prior attempt at this fix used
+ * `visibility: hidden` on every element, which doesn't remove an element's
+ * box from layout — it stays invisible but still occupies its full height —
+ * so the page's original multi-section height still determined the total
+ * page count regardless.
+ */
+@media print {
+  .kdb-print-sheet-page {
+    display: block !important;
+  }
+
+  .kdb-print-sheet {
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
+
 /* Larger form fields on the public application form only — scoped to
    .kdb-apply-form so the shared Input/Textarea/InputGroup/Select components
    are not resized anywhere else (e.g. the admin panel, which uses the same

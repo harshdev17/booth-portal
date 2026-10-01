@@ -5,7 +5,7 @@ import PublicHeader from '@/components/public/PublicHeader'
 import SuccessPageView from '@/views/public/apply-success/SuccessPageView'
 
 export const metadata: Metadata = {
-  title: 'Application Submitted | International Gita Mahotsav 2026'
+  title: 'Application Submitted | International Geeta Jayanti Mahotsav 2026'
 }
 
 const SuccessPage = async ({ params }: { params: Promise<{ applicationNumber: string }> }) => {

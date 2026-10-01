@@ -5,7 +5,7 @@ import PublicHeader from '@/components/public/PublicHeader'
 import PaymentPageView from '@/views/public/apply-payment/PaymentPageView'
 
 export const metadata: Metadata = {
-  title: 'Pay Application Fee | International Gita Mahotsav 2026'
+  title: 'Pay Application Fee | International Geeta Jayanti Mahotsav 2026'
 }
 
 const PaymentPage = async ({

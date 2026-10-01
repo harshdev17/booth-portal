@@ -4,7 +4,17 @@ import { ClockIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
-const ComingSoonSection = ({ titleEn, titleHi }: { titleEn: string; titleHi: string }) => {
+const ComingSoonSection = ({
+  titleEn,
+  titleHi,
+  messageEn,
+  messageHi
+}: {
+  titleEn: string
+  titleHi: string
+  messageEn?: string
+  messageHi?: string
+}) => {
   const { lang } = useLanguage()
 
   return (
@@ -14,7 +24,9 @@ const ComingSoonSection = ({ titleEn, titleHi }: { titleEn: string; titleHi: str
       </div>
       <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>{lang === 'hi' ? titleHi : titleEn}</h1>
       <p className='text-[var(--kdb-muted)]'>
-        {lang === 'hi' ? 'यह सुविधा जल्द ही उपलब्ध होगी।' : 'This feature will be available soon.'}
+        {lang === 'hi'
+          ? (messageHi ?? 'यह सुविधा जल्द ही उपलब्ध होगी।')
+          : (messageEn ?? 'This feature will be available soon.')}
       </p>
     </div>
   )

@@ -35,7 +35,7 @@ export default function PublicHomeClient({ categories, eventStartsOn, eventEndsO
         <div className='absolute inset-0 pointer-events-none'>
           <Image
             src='/images/public/ChatGPT Image Sep 27, 2026, 01_52_37 PM.png'
-            alt='Gita Mahotsav Brahma Sarovar Background'
+            alt='Geeta Jayanti Mahotsav Brahma Sarovar Background'
             fill
             className='object-cover object-top opacity-35'
             priority

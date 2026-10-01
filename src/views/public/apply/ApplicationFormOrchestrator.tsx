@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircleIcon, BookOpenIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
+import { AlertCircleIcon, Loader2Icon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -259,7 +259,7 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
         <div className='mb-8 text-left'>
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              अंतर्राष्ट्रीय गीता महोत्सव 2026 — स्टॉल आवेदन
+              अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — स्टॉल आवेदन
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -286,29 +286,10 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
 
         <ApplicationSummaryPanel config={config} />
 
-        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4 sm:flex-row sm:items-center'>
-          <div className='flex items-start gap-2.5'>
-            <TriangleAlertIcon className='mt-0.5 size-5 shrink-0 text-[#dc2626]' />
-            <div>
-              <p className='text-sm sm:text-base font-extrabold text-[#991b1b]'>
-                {lang === 'hi' ? 'आवेदन से पूर्व अवश्य पढ़ें!' : 'Read Before You Apply!'}
-              </p>
-              <p className='text-xs sm:text-sm text-[#7f1d1d]'>
-                {lang === 'hi'
-                  ? 'कृपया आवेदन करने से पहले सभी दिशा-निर्देश और शर्तें ध्यानपूर्वक पढ़ें।'
-                  : 'Please read all guidelines and terms carefully before submitting your application.'}
-              </p>
-            </div>
-          </div>
-          <Link
-            href='/guidelines'
-            target='_blank'
-            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#dc2626] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#b91c1c]'
-          >
-            <BookOpenIcon className='size-4' />
-            {lang === 'hi' ? 'दिशा-निर्देश देखें' : 'View Guidelines'}
-          </Link>
-        </div>
+        {/* "Read Before You Apply!" banner (linked to /guidelines) hidden
+            for now — its content is not yet updated for this event
+            (explicit instruction, see .ai/CHANGELOG.md). The /guidelines
+            page itself still exists and is reachable directly. */}
 
         {draftError ? (
           <div className='rounded-2xl border border-[#e2e8f0] bg-white p-10 text-center shadow-sm'>

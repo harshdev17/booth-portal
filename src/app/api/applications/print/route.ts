@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { query } from '@/lib/db/client'
-import { maskAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
@@ -37,7 +37,7 @@ type PrintRow = {
   organisation_name: string
   representative_name: string
   father_name: string
-  aadhaar_last4: string
+  aadhaar_ciphertext: Buffer
   address: string
   state: string
   district: string
@@ -61,10 +61,16 @@ function maskMobile(mobile: string): string {
  * pattern as /api/applications/status (application number alone only
  * triggers a WhatsApp OTP; the code releases the data), but returns the
  * fuller set of fields needed to render a printable application summary
- * instead of just a status label. Aadhaar is never returned beyond its
- * already-masked last4 form (see aadhaar-crypto.ts) — this is a public,
- * unauthenticated-by-login endpoint, so it must never expose more than the
- * applicant already knows about their own submission.
+ * instead of just a status label.
+ *
+ * Returns the FULL decrypted Aadhaar number and full mobile number (not
+ * masked) — an explicit product decision made after flagging the risk: this
+ * is a public, unauthenticated-by-login endpoint, and OTP-gated access only
+ * proves the caller can receive a code on the registered phone, not that
+ * they're authorized to see the applicant's full Aadhaar (a lost/shared
+ * phone or a SIM swap defeats that). If this needs to be masked again later,
+ * see the git history for this file around 2026-10-01 for the previous
+ * (masked) version.
  */
 export async function POST(request: Request) {
   const { ipAddress } = getRequestMeta(request)
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
   try {
     const rows = await query<PrintRow[]>(
       `SELECT a.id, a.application_number, a.status, a.mobile_number, a.alternate_mobile, a.email,
-              a.organisation_name, a.representative_name, a.father_name, a.aadhaar_last4,
+              a.organisation_name, a.representative_name, a.father_name, a.aadhaar_ciphertext,
               a.address, a.state, a.district, a.pin_code, a.work_purpose, a.achievement_experience,
               a.remarks, a.submitted_at,
               c.name AS category_name, c.name_hi AS category_name_hi, c.fee_paise,
@@ -172,10 +178,10 @@ export async function POST(request: Request) {
       organisationName: application.organisation_name,
       representativeName: application.representative_name,
       fatherName: application.father_name,
-      aadhaarMasked: maskAadhaar(application.aadhaar_last4),
+      aadhaarNumber: decryptAadhaar(application.aadhaar_ciphertext),
       email: application.email,
-      mobileNumber: maskMobile(application.mobile_number),
-      alternateMobile: application.alternate_mobile ? maskMobile(application.alternate_mobile) : null,
+      mobileNumber: `+91${application.mobile_number}`,
+      alternateMobile: application.alternate_mobile ? `+91${application.alternate_mobile}` : null,
       address: application.address,
       state: application.state,
       district: application.district,

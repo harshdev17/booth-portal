@@ -17,7 +17,7 @@ import ApplicationsClosedNotice from '@/views/public/apply/ApplicationsClosedNot
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 
 export const metadata: Metadata = {
-  title: 'Apply | International Gita Mahotsav 2026'
+  title: 'Apply | International Geeta Jayanti Mahotsav 2026'
 }
 
 const ApplyPage = async ({ params }: { params: Promise<{ category: string }> }) => {
