@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { FileCheck2Icon, SearchIcon } from 'lucide-react'
+import { EyeIcon, FileCheck2Icon, SearchIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -244,9 +244,19 @@ const DocumentsAdminPage = async ({
                       )}
                     </div>
 
-                    {canVerify && doc.verification_status !== 'verified' && (
-                      <DocumentDecisionActions documentId={doc.id} />
-                    )}
+                    <div className='flex shrink-0 items-center gap-2'>
+                      <a
+                        href={`/api/documents/${doc.id}/preview`}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                      >
+                        <EyeIcon className='size-3.5' /> Preview
+                      </a>
+                      {canVerify && doc.verification_status !== 'verified' && (
+                        <DocumentDecisionActions documentId={doc.id} />
+                      )}
+                    </div>
                   </div>
                 )
               })}

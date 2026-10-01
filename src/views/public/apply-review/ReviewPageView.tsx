@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CreditCardIcon, Loader2Icon, ShieldCheckIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CreditCardIcon, EyeIcon, Loader2Icon, ShieldCheckIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
+import { openDocumentPreview } from '@/views/public/apply/DocumentsStep'
 import type { ReviewData } from '@/views/public/apply-review/types'
 
 const ReviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => {
@@ -277,7 +278,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
         <Link
-          href={`/apply/${categorySlug}`}
+          href={`/apply/${categorySlug}?edit=${applicationId}`}
           className='mt-4 inline-block text-sm font-semibold text-[var(--kdb-primary)] hover:underline'
         >
           {lang === 'hi' ? 'आवेदन पर वापस जाएं' : 'Back to Application'}
@@ -339,7 +340,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             <ReviewRow label={lang === 'hi' ? 'फर्म / एनजीओ / संस्था' : 'Firm / NGO / Organisation'} value={data.common.organisationName} />
             <ReviewRow label={lang === 'hi' ? 'मालिक / प्रतिनिधि' : 'Representative Name'} value={data.common.representativeName} />
             <ReviewRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={data.common.fatherName} />
-            <ReviewRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={data.common.aadhaarMasked} />
+            <ReviewRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={data.common.aadhaarNumber} />
             <ReviewRow label={lang === 'hi' ? 'कार्य का प्रकार' : 'Type of Work'} value={data.common.workPurpose} />
             <ReviewRow label={lang === 'hi' ? 'अनुभव / उपलब्धि' : 'Experience / Award'} value={data.common.achievementExperience} />
             {data.common.remarks && (
@@ -410,7 +411,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
               <h2 className='text-xl font-black text-[#0c2847]'>
                 {lang === 'hi' ? 'अपलोड किए गए दस्तावेज' : 'Uploaded Documents'}
               </h2>
-              <Link href={`/apply/${categorySlug}`} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
+              <Link href={`/apply/${categorySlug}?edit=${applicationId}`} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
                 {lang === 'hi' ? 'दस्तावेज संपादित करें ✎' : 'Edit Documents ✎'}
               </Link>
             </div>
@@ -421,11 +422,23 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                     <CheckIcon className='size-4 text-emerald-600 shrink-0 stroke-[2.5]' />
                     <span className='font-bold text-[#0c2847]'>{doc.label}</span>
                   </div>
-                  {doc.originalFilename && (
-                    <span className='font-mono text-xs text-[#64748b] bg-white border border-[#e2e8f0] rounded-md px-2 py-0.5 truncate max-w-xs'>
-                      {doc.originalFilename}
-                    </span>
-                  )}
+                  <div className='flex items-center gap-2'>
+                    {doc.originalFilename && (
+                      <span className='font-mono text-xs text-[#64748b] bg-white border border-[#e2e8f0] rounded-md px-2 py-0.5 truncate max-w-xs'>
+                        {doc.originalFilename}
+                      </span>
+                    )}
+                    {access && (
+                      <button
+                        type='button'
+                        onClick={() => void openDocumentPreview(doc.documentId, access.accessToken)}
+                        className='flex shrink-0 items-center gap-1 rounded-md border border-[#e2e8f0] bg-white px-2 py-0.5 text-xs font-bold text-[#0c2847] hover:bg-[#f5f8fb]'
+                      >
+                        <EyeIcon className='size-3' />
+                        {lang === 'hi' ? 'देखें' : 'Preview'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -538,7 +551,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           {/* Bottom Action Buttons */}
           <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>
             <Link
-              href={`/apply/${categorySlug}`}
+              href={`/apply/${categorySlug}?edit=${applicationId}`}
               className='w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-xl border border-[#cbd5e1] bg-white px-7 text-sm font-bold text-[#0c2847] shadow-xs hover:bg-[#f8fafc] hover:border-[#94a3b8] transition active:scale-[0.98]'
             >
               {lang === 'hi' ? '← वापस संपादन पर जाएं' : '← Back to Edit'}
