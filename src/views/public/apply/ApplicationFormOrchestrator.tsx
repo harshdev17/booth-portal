@@ -7,14 +7,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircleIcon, BookOpenIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
+import { AlertCircleIcon, Loader2Icon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import AddressStep from '@/views/public/apply/AddressStep'
 import ApplicantInfoStep from '@/views/public/apply/ApplicantInfoStep'
-import { storeApplicationAccess } from '@/views/public/apply/access-session'
+import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
 import ApplicationSummaryPanel from '@/views/public/apply/ApplicationSummaryPanel'
 import CategoryFieldsStep from '@/views/public/apply/CategoryFieldsStep'
 import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
@@ -40,7 +40,16 @@ type DraftState = { applicationId: number; applicationNumber: string; accessToke
  * The actual "Submit Application" button lives only on that Review page —
  * see ReviewPageView.tsx.
  */
-const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigResponse }) => {
+// editApplicationId is set when arriving via Review's "Edit" link — see
+// /apply/[category]/page.tsx reading ?edit= and access-session.ts for why
+// the access token itself is never put in the URL, only this id.
+const ApplicationFormOrchestrator = ({
+  config,
+  editApplicationId
+}: {
+  config: CategoryConfigResponse
+  editApplicationId?: number
+}) => {
   const { lang } = useLanguage()
   const router = useRouter()
   const [draft, setDraft] = useState<DraftState>(null)
@@ -120,11 +129,105 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
     }
   }
 
+  /**
+   * Resumes an existing draft instead of creating a new one — this is what
+   * "Edit" from the Review page now does. Previously every "Edit" link sent
+   * the applicant back to this page with no application id at all, which
+   * always ran createDraft() and silently abandoned the real draft (and its
+   * uploaded documents) in favor of a brand-new placeholder one, resetting
+   * every field the applicant had already entered (reported live). Reuses
+   * the already-built review API (GET /api/applications/[id]/review), which
+   * already returns every value needed to repopulate the form, rather than
+   * inventing a second endpoint.
+   */
+  const resumeDraft = async (applicationId: number) => {
+    setIsCreatingDraft(true)
+    setDraftError(null)
+
+    const access = readApplicationAccess(applicationId)
+
+    if (!access) {
+      // sessionStorage was empty (new tab, cleared storage) — there is no
+      // token to resume with here, since the Review page never puts it in
+      // the URL (see access-session.ts). Falling back to a fresh draft is
+      // the only option in that case; this should be rare in practice,
+      // since "Edit" is only ever clicked from a Review page that itself
+      // required this same sessionStorage entry to load.
+      await createDraft()
+
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/applications/${applicationId}/review`, {
+        headers: { Authorization: `Bearer ${access.accessToken}` }
+      })
+
+      const body = await response.json()
+
+      if (!response.ok) {
+        // The draft may have been finalized/expired since the applicant
+        // left the Review page — fall back to starting fresh rather than
+        // getting stuck on an error with no way forward.
+        await createDraft()
+
+        return
+      }
+
+      form.reset({
+        shopOptionId: body.shopOptionId ?? undefined,
+        common: {
+          email: body.common.email,
+          organisationName: body.common.organisationName,
+          representativeName: body.common.representativeName,
+          fatherName: body.common.fatherName,
+          aadhaarNumber: body.common.aadhaarNumber,
+          address: body.common.address,
+          state: body.common.state,
+          district: body.common.district,
+          pinCode: body.common.pinCode,
+          mobileNumber: body.common.mobileNumber,
+          alternateMobile: body.common.alternateMobile ?? '',
+          workPurpose: body.common.workPurpose,
+          achievementExperience: body.common.achievementExperience,
+          remarks: body.common.remarks ?? ''
+        },
+        categoryFields: Object.fromEntries(
+          (body.categoryFields as Array<{ field_key: string; value: string }>).map(f => [f.field_key, f.value])
+        )
+      })
+
+      setUploadState(
+        Object.fromEntries(
+          (body.documents as Array<{ documentId: number; documentKey: string; originalFilename?: string }>).map(d => [
+            d.documentKey,
+            { status: 'uploaded' as const, fileName: d.originalFilename, documentId: d.documentId }
+          ])
+        )
+      )
+
+      setDraft({ applicationId, applicationNumber: body.applicationNumber, accessToken: access.accessToken })
+    } catch {
+      setDraftError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः लोड करें और फिर प्रयास करें।'
+          : 'Could not reach the server. Please refresh and try again.'
+      )
+    } finally {
+      setIsCreatingDraft(false)
+    }
+  }
+
   useEffect(() => {
     if (draftRequested.current) return
     draftRequested.current = true
 
-    void createDraft()
+    if (editApplicationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- firing an async function from an effect (not calling setState directly in the effect body) is the standard pattern for an on-mount data fetch; the rule's static analysis flags this call because resumeDraft eventually calls setState internally, same as the pre-existing createDraft() call below.
+      void resumeDraft(editApplicationId)
+    } else {
+      void createDraft()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -170,7 +273,8 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
         ...prev,
         [documentKey]: {
           status: 'uploaded',
-          fileName: body.originalFilename ?? file.name
+          fileName: body.originalFilename ?? file.name,
+          documentId: body.documentId
         }
       }))
     } catch {
@@ -259,7 +363,7 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
         <div className='mb-8 text-left'>
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              अंतर्राष्ट्रीय गीता महोत्सव 2026 — स्टॉल आवेदन
+              अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — स्टॉल आवेदन
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -286,29 +390,10 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
 
         <ApplicationSummaryPanel config={config} />
 
-        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4 sm:flex-row sm:items-center'>
-          <div className='flex items-start gap-2.5'>
-            <TriangleAlertIcon className='mt-0.5 size-5 shrink-0 text-[#dc2626]' />
-            <div>
-              <p className='text-sm sm:text-base font-extrabold text-[#991b1b]'>
-                {lang === 'hi' ? 'आवेदन से पूर्व अवश्य पढ़ें!' : 'Read Before You Apply!'}
-              </p>
-              <p className='text-xs sm:text-sm text-[#7f1d1d]'>
-                {lang === 'hi'
-                  ? 'कृपया आवेदन करने से पहले सभी दिशा-निर्देश और शर्तें ध्यानपूर्वक पढ़ें।'
-                  : 'Please read all guidelines and terms carefully before submitting your application.'}
-              </p>
-            </div>
-          </div>
-          <Link
-            href='/guidelines'
-            target='_blank'
-            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#dc2626] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#b91c1c]'
-          >
-            <BookOpenIcon className='size-4' />
-            {lang === 'hi' ? 'दिशा-निर्देश देखें' : 'View Guidelines'}
-          </Link>
-        </div>
+        {/* "Read Before You Apply!" banner (linked to /guidelines) hidden
+            for now — its content is not yet updated for this event
+            (explicit instruction, see .ai/CHANGELOG.md). The /guidelines
+            page itself still exists and is reachable directly. */}
 
         {draftError ? (
           <div className='rounded-2xl border border-[#e2e8f0] bg-white p-10 text-center shadow-sm'>
@@ -385,7 +470,13 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
                         : 'Please enter the details of the person or organisation applying for the booth or shop.'}
                     </p>
                   </div>
-                  <ApplicantInfoStep control={form.control} errors={form.formState.errors} />
+                  <ApplicantInfoStep
+                    control={form.control}
+                    errors={form.formState.errors}
+                    setError={form.setError}
+                    clearErrors={form.clearErrors}
+                    applicationId={draft?.applicationId}
+                  />
                 </div>
               </section>
 
@@ -472,7 +563,12 @@ const ApplicationFormOrchestrator = ({ config }: { config: CategoryConfigRespons
                       </span>
                     </div>
                   ) : draft ? (
-                    <DocumentsStep documents={config.documents} uploadState={uploadState} onUpload={handleUpload} />
+                    <DocumentsStep
+                      documents={config.documents}
+                      uploadState={uploadState}
+                      onUpload={handleUpload}
+                      accessToken={draft?.accessToken ?? null}
+                    />
                   ) : (
                     <div className='flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/70 p-4 text-sm text-red-700'>
                       <p>

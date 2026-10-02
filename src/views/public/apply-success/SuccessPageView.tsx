@@ -95,7 +95,7 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
         <div className='mb-6 flex flex-col items-center'>
           <div className='mb-2 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              अंतर्राष्ट्रीय गीता महोत्सव 2026
+              अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026
             </span>
             <div className='relative h-3.5 w-28 sm:w-36 shrink-0'>
               <Image

@@ -10,7 +10,7 @@ export type ReviewData = {
     organisationName: string
     representativeName: string
     fatherName: string
-    aadhaarMasked: string
+    aadhaarNumber: string
     address: string
     state: string
     district: string
@@ -21,8 +21,16 @@ export type ReviewData = {
     achievementExperience: string
     remarks: string | null
   }
+  shopOptionId: number | null
   shopOptionLabel: string | null
-  categoryFields: Array<{ label: string; value: string }>
-  documents: Array<{ label: string; uploaded: boolean; verificationStatus: string; originalFilename?: string }>
+  categoryFields: Array<{ field_key: string; label: string; value: string }>
+  documents: Array<{
+    documentId: number
+    documentKey: string
+    label: string
+    uploaded: boolean
+    verificationStatus: string
+    originalFilename?: string
+  }>
 }
 

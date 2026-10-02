@@ -205,7 +205,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ipAddress
     })
 
-    return NextResponse.json({ documentKey, status: 'uploaded', originalFilename: file.name }, { status: 201 })
+    // INSERT ... ON DUPLICATE KEY UPDATE doesn't reliably hand back the row
+    // id via insertId on the update path across drivers — a follow-up
+    // lookup by the unique (application_id, document_definition_id) key is
+    // the simple, reliable way to get it. Needed so the frontend can link
+    // straight to /api/documents/[id]/preview right after upload.
+    const [insertedDoc] = await query<Array<{ id: number }>>(
+      `SELECT id FROM application_documents WHERE application_id = ? AND document_definition_id = ? LIMIT 1`,
+      [applicationId, definition.id]
+    )
+
+    return NextResponse.json(
+      { documentKey, documentId: insertedDoc.id, status: 'uploaded', originalFilename: file.name },
+      { status: 201 }
+    )
   } catch (error) {
     logServerError('api.applications.documents.upload', error, { applicationId })
 

@@ -17,6 +17,7 @@ export type CategoryCardData = {
   allotmentAmountPaise: number | null
   allotmentAmountNote: string | null
   allotmentAmountNoteHi: string | null
+  availableShopsCount: number
 }
 
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -89,9 +90,17 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       </div>
 
       {/* Title */}
-      <h3 className='mb-4 text-xl font-black leading-snug text-[#072448] transition-colors group-hover:text-[var(--kdb-primary)]'>
+      <h3 className='mb-2 text-xl font-black leading-snug text-[#072448] transition-colors group-hover:text-[var(--kdb-primary)]'>
         {title}
       </h3>
+
+      {/* Available shops count */}
+      <div className='mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#eef6f0] px-3 py-1'>
+        <span className='text-sm font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
+        <span className='text-xs font-bold text-[#1a7d42]'>
+          {lang === 'hi' ? 'उपलब्ध दुकानें' : 'Available Shops'}
+        </span>
+      </div>
 
       {/* Key facts */}
       <dl className='mb-4 flex flex-col gap-3 border-y border-[#f0eae1] py-4 text-sm'>

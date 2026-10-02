@@ -13,7 +13,7 @@ type LanguageContextType = {
 export const translations: Record<Language, Record<string, string>> = {
   hi: {
     // Header
-    'header.title': 'अंतर्राष्ट्रीय गीता महोत्सव 2026',
+    'header.title': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
     'header.board': 'कुरुक्षेत्र विकास बोर्ड',
     'nav.home': 'मुख्य पृष्ठ',
     'nav.about': 'परिचय',
@@ -26,7 +26,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // Hero
     'hero.badge': 'आधिकारिक स्टॉल आवंटन पोर्टल',
     'hero.title_part1': 'हिस्सा बनें',
-    'hero.title_part2': 'अंतर्राष्ट्रीय गीता महोत्सव 2026',
+    'hero.title_part2': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
     'hero.desc': 'ब्रह्मसरोवर, कुरुक्षेत्र पर व्यावसायिक बूथों, स्टॉलों एवं दुकानों के लिए आवेदन करें। कुरुक्षेत्र विकास बोर्ड द्वारा संचालित आधिकारिक पोर्टल।',
     'hero.btn_apply': 'स्टॉल देखें और आवेदन करें',
     'hero.btn_status': 'आवेदन की स्थिति जांचें',
@@ -42,7 +42,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'feature.support.sub': 'हेल्पलाइन एवं मार्गदर्शन',
 
     // Categories
-    'categories.badge': 'गीता महोत्सव 2026 व्यावसायिक स्थान',
+    'categories.badge': 'गीता जयंती महोत्सव 2026 व्यावसायिक स्थान',
     'categories.heading': 'स्टॉल श्रेणियां एवं आवंटन',
     'categories.desc': 'ब्रह्मसरोवर मेला क्षेत्र में अपनी पसंदीदा स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
     'categories.empty': 'वर्तमान में कोई स्टॉल श्रेणी आवेदन के लिए खुली नहीं है। कृपया शीघ्र जांचें।',
@@ -60,7 +60,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // How it works
     'how.badge': 'आवंटन प्रक्रिया',
     'how.heading': 'स्टॉल आवंटन कैसे कार्य करता है?',
-    'how.desc': 'अंतर्राष्ट्रीय गीता महोत्सव 2026 हेतु स्टॉल आवेदन, सत्यापन एवं आवंटन की पारदर्शी डिजिटल प्रक्रिया।',
+    'how.desc': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु स्टॉल आवेदन, सत्यापन एवं आवंटन की पारदर्शी डिजिटल प्रक्रिया।',
     'how.step1.title': 'ऑनलाइन आवेदन',
     'how.step1.desc': 'स्टॉल श्रेणी चुनें और आवेदन पत्र भरें',
     'how.step2.title': 'आवेदन शुल्क',
@@ -74,7 +74,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Banner & Trust
     'banner.badge': 'कुरुक्षेत्र विकास बोर्ड',
-    'banner.title': 'अंतर्राष्ट्रीय गीता महोत्सव 2026',
+    'banner.title': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
     'banner.desc': 'हस्तशिल्पियों, खान-पान विक्रेताओं, सांस्कृतिक प्रदर्शकों एवं व्यापारियों हेतु ब्रह्मसरोवर पर प्रमुख व्यावसायिक स्थल।',
     'quicklinks.title': 'त्वरित लिंक',
     'trust.category': 'श्रेणियां',
@@ -90,7 +90,7 @@ export const translations: Record<Language, Record<string, string>> = {
   },
   en: {
     // Header
-    'header.title': 'International Gita Mahotsav 2026',
+    'header.title': 'International Geeta Jayanti Mahotsav 2026',
     'header.board': 'Kurukshetra Development Board',
     'nav.home': 'Home',
     'nav.about': 'About',
@@ -103,7 +103,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // Hero
     'hero.badge': 'Official Allotment Portal',
     'hero.title_part1': 'Be a Part of',
-    'hero.title_part2': 'Gita Mahotsav 2026',
+    'hero.title_part2': 'Geeta Jayanti Mahotsav 2026',
     'hero.desc': 'Apply for commercial booths, stalls, and retail spaces at prime mela locations. Managed by Kurukshetra Development Board.',
     'hero.btn_apply': 'Explore Stalls & Apply',
     'hero.btn_status': 'Track Application',
@@ -119,7 +119,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'feature.support.sub': '& Helpline',
 
     // Categories
-    'categories.badge': 'Gita Mahotsav 2026 Commercial Spaces',
+    'categories.badge': 'Geeta Jayanti Mahotsav 2026 Commercial Spaces',
     'categories.heading': 'Stall Categories & Allotment',
     'categories.desc': 'Select your preferred commercial stall or booth category at Brahma Sarovar, Kurukshetra and submit your official application.',
     'categories.empty': 'No stall categories are currently open for application. Official notification will be released soon.',
@@ -132,12 +132,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'status.desc': 'Enter your Application Number and Access Code to check document verification, draw eligibility, and allotment results for your mela booth.',
     'status.btn': 'Track Stall Status →',
     'notices.title': 'Official Stall Notices',
-    'notices.desc': 'Official schedule for application deadlines, document scrutiny dates, lucky draw sessions, and allotment notifications for Gita Mahotsav 2026 stalls will be published here.',
+    'notices.desc': 'Official schedule for application deadlines, document scrutiny dates, lucky draw sessions, and allotment notifications for Geeta Jayanti Mahotsav 2026 stalls will be published here.',
 
     // How it works
     'how.badge': 'Allotment Procedure',
     'how.heading': 'How Stall Allotment Works',
-    'how.desc': 'Transparent, digital procedure for booth application, document verification, and stall allotment for International Gita Mahotsav 2026.',
+    'how.desc': 'Transparent, digital procedure for booth application, document verification, and stall allotment for International Geeta Jayanti Mahotsav 2026.',
     'how.step1.title': 'Apply Online',
     'how.step1.desc': 'Choose your stall category & fill booth application form',
     'how.step2.title': 'Application Fee',
@@ -151,7 +151,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Banner & Trust
     'banner.badge': 'Kurukshetra Development Board',
-    'banner.title': 'International Gita Mahotsav 2026',
+    'banner.title': 'International Geeta Jayanti Mahotsav 2026',
     'banner.desc': 'Prime commercial spaces at Brahma Sarovar for artisans, food vendors, cultural exhibitors, and trade stalls.',
     'quicklinks.title': 'Quick Links',
     'trust.category': 'Categories',

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { verifyAccessToken } from '@/lib/applications/access-token'
+import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { query } from '@/lib/db/client'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
@@ -18,7 +19,7 @@ type ApplicationRow = {
   organisation_name: string
   representative_name: string
   father_name: string
-  aadhaar_last4: string
+  aadhaar_ciphertext: Buffer
   address: string
   state: string
   district: string
@@ -31,14 +32,18 @@ type ApplicationRow = {
 }
 
 /**
- * Full (but still sensitive-value-masked) application data for the Review
- * page — a superset of what GET /api/applications/[id] returns (that
- * endpoint serves the public Status page and intentionally omits most
- * fields). Ownership is proven the same way as every other application
- * endpoint: bearer access token, verified server-side, never by the numeric
- * id alone. Aadhaar is still returned masked only — the Review page never
- * needs, and must never receive, the full number (see .ai/SECURITY.md
- * Section 11).
+ * Full application data for the Review page — a superset of what GET
+ * /api/applications/[id] returns (that endpoint serves the public Status
+ * page and intentionally omits most fields). Ownership is proven the same
+ * way as every other application endpoint: bearer access token, verified
+ * server-side, never by the numeric id alone.
+ *
+ * Returns the FULL decrypted Aadhaar and full mobile number (not masked) —
+ * an explicit product decision, matching the same choice already made for
+ * /api/applications/print: an applicant reviewing their own in-progress
+ * draft, authenticated by the access token handed to them at draft
+ * creation, needs to see exactly what they're about to submit. Masking here
+ * would only have hidden their own data from themselves.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ipAddress } = getRequestMeta(request)
@@ -66,7 +71,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       `SELECT a.id, a.application_number, a.access_token_hash, a.status, a.category_id, c.name AS category_name,
               c.selection_method, c.fee_paise, c.fee_base_paise, c.gst_percent,
               a.shop_option_id, a.email, a.organisation_name, a.representative_name, a.father_name,
-              a.aadhaar_last4, a.address, a.state, a.district, a.pin_code, a.mobile_number, a.alternate_mobile,
+              a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number, a.alternate_mobile,
               a.work_purpose, a.achievement_experience, a.remarks
        FROM applications a
        JOIN categories c ON c.id = a.category_id
@@ -103,8 +108,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       shopOptionLabel = shopRows[0]?.label ?? null
     }
 
-    const fieldValueRows = await query<Array<{ label: string; value: string }>>(
-      `SELECT d.label, v.value
+    const fieldValueRows = await query<Array<{ field_key: string; label: string; value: string }>>(
+      `SELECT d.field_key, d.label, v.value
        FROM application_field_values v
        JOIN category_field_definitions d ON d.id = v.field_definition_id
        WHERE v.application_id = ?
@@ -112,8 +117,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       [applicationId]
     )
 
-    const documentRows = await query<Array<{ label: string; verification_status: string; original_filename: string }>>(
-      `SELECT dd.label, doc.verification_status, doc.original_filename
+    const documentRows = await query<
+      Array<{ id: number; document_key: string; label: string; verification_status: string; original_filename: string }>
+    >(
+      `SELECT doc.id, dd.document_key, dd.label, doc.verification_status, doc.original_filename
        FROM application_documents doc
        JOIN category_document_definitions dd ON dd.id = doc.document_definition_id
        WHERE doc.application_id = ?
@@ -133,7 +140,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         organisationName: application.organisation_name,
         representativeName: application.representative_name,
         fatherName: application.father_name,
-        aadhaarMasked: `XXXX-XXXX-${application.aadhaar_last4}`,
+        aadhaarNumber: decryptAadhaar(application.aadhaar_ciphertext),
         address: application.address,
         state: application.state,
         district: application.district,
@@ -144,9 +151,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         achievementExperience: application.achievement_experience,
         remarks: application.remarks
       },
+      shopOptionId: application.shop_option_id,
       shopOptionLabel,
       categoryFields: fieldValueRows,
       documents: documentRows.map(d => ({
+        documentId: d.id,
+        documentKey: d.document_key,
         label: d.label,
         uploaded: true,
         verificationStatus: d.verification_status,

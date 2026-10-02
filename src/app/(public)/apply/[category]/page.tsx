@@ -17,11 +17,20 @@ import ApplicationsClosedNotice from '@/views/public/apply/ApplicationsClosedNot
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 
 export const metadata: Metadata = {
-  title: 'Apply | International Gita Mahotsav 2026'
+  title: 'Apply | International Geeta Jayanti Mahotsav 2026'
 }
 
-const ApplyPage = async ({ params }: { params: Promise<{ category: string }> }) => {
+const ApplyPage = async ({
+  params,
+  searchParams
+}: {
+  params: Promise<{ category: string }>
+  searchParams: Promise<{ edit?: string }>
+}) => {
   const { category: slug } = await params
+  const { edit } = await searchParams
+  const parsedEditId = edit ? Number(edit) : NaN
+  const editApplicationId = Number.isInteger(parsedEditId) && parsedEditId > 0 ? parsedEditId : undefined
   const category = await getCategoryBySlug(slug)
 
   if (!category || category.status === 'draft' || category.status === 'archived') {
@@ -88,7 +97,7 @@ const ApplyPage = async ({ params }: { params: Promise<{ category: string }> }) 
   return (
     <>
       <PublicHeader />
-      <ApplicationFormOrchestrator config={config} />
+      <ApplicationFormOrchestrator config={config} editApplicationId={editApplicationId} />
       <PublicFooter />
     </>
   )

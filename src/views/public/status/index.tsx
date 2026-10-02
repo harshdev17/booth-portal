@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+import { useSearchParams } from 'next/navigation'
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircleIcon, CheckCircle2Icon, Loader2Icon, SearchIcon, UploadIcon } from 'lucide-react'
@@ -61,6 +63,7 @@ type Phase = 'lookup' | 'otp' | 'result'
 
 const StatusLookup = () => {
   const { lang } = useLanguage()
+  const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('lookup')
   const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
@@ -75,6 +78,21 @@ const StatusLookup = () => {
     resolver: zodResolver(lookupSchema),
     defaultValues: { applicationNumber: '' }
   })
+
+  // Prefills from ?appNo=... when arriving via the homepage's status-check
+  // search bar (StatusCheckSection.tsx), so the applicant isn't asked to
+  // retype the number they already entered — reported live as a real
+  // annoyance ("sahi bhi daalo to next page fir se daalne ka kehta hai").
+  // Deliberately only prefills, doesn't auto-submit: the applicant should
+  // still see and confirm the number before an OTP is sent.
+  useEffect(() => {
+    const appNo = searchParams.get('appNo')
+
+    if (appNo) {
+      form.setValue('applicationNumber', appNo)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount against the initial query param only
+  }, [])
 
   // Phase 1: application number alone only requests a WhatsApp OTP to the
   // mobile number on file — it never returns status by itself.

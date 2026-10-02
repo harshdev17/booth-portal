@@ -4,7 +4,7 @@ import { randomInt } from 'node:crypto'
 
 /**
  * Generates a human-facing application number, e.g. "IGM-2026-483920"
- * (International Gita Mahotsav — changed from the earlier "KDB-" prefix per
+ * (International Geeta Jayanti Mahotsav — changed from the earlier "KDB-" prefix per
  * explicit instruction; existing "KDB-2026-XXXXXX" applications created
  * before this change remain valid and lookupable — see the
  * /^(?:IGM|KDB)-\d{4}-\d{6}$/ validation pattern used everywhere an

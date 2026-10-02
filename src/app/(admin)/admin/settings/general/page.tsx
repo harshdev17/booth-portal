@@ -41,7 +41,7 @@ const GeneralSettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Fees, GST & Categories Configuration</h1>
         <p className='text-sm text-muted-foreground'>
-          Configure application fees, GST tax rates, and parameters for all International Gita Mahotsav stall categories.
+          Configure application fees, GST tax rates, and parameters for all International Geeta Jayanti Mahotsav stall categories.
         </p>
       </div>
 
