@@ -4,17 +4,20 @@ import Image from 'next/image'
 
 import { useLanguage } from '@/context/LanguageContext'
 
-// Only categories with a confirmed shop count are shown here — per explicit
-// request, drop the "To Be Announced" placeholder cards (NGOs/SHG/Government
-// Departments) rather than displaying an unconfirmed count (CLAUDE.md
-// Section 21, No-Assumptions Rule). This is informational display content,
-// not the actual inventory ledger (.ai/INVENTORY.md) — once real shop-count
-// configuration exists there, this section should read from it instead of
-// this static list.
-const RESERVED_CATEGORIES: Array<{ name: string; nameHi: string; totalShops: number }> = [
+// NZCC/SARAS/Khadi have confirmed shop counts; NGOs/SHG/Government
+// Departments were explicitly asked to be added too but no count was
+// supplied for them — shown as "To Be Announced" rather than an invented
+// number (CLAUDE.md Section 21, No-Assumptions Rule). This is informational
+// display content, not the actual inventory ledger (.ai/INVENTORY.md) —
+// once real shop-count configuration exists there, this section should read
+// from it instead of this static list.
+const RESERVED_CATEGORIES: Array<{ name: string; nameHi: string; totalShops: number | null }> = [
   { name: 'NZCC', nameHi: 'एनजेडसीसी', totalShops: 200 },
   { name: 'SARAS', nameHi: 'सरस', totalShops: 60 },
-  { name: 'Khadi', nameHi: 'खादी', totalShops: 21 }
+  { name: 'Khadi', nameHi: 'खादी', totalShops: 21 },
+  { name: "NGO's", nameHi: 'एनजीओ', totalShops: null },
+  { name: 'SHG', nameHi: 'स्वयं सहायता समूह (SHG)', totalShops: null },
+  { name: 'Government Departments', nameHi: 'सरकारी विभाग', totalShops: null }
 ]
 
 /**
@@ -62,7 +65,11 @@ const ReservedCategoriesSection = () => {
             >
               <h3 className='mb-3 text-lg font-bold text-[#0c2847]'>{lang === 'hi' ? category.nameHi : category.name}</h3>
               <p className='text-sm font-semibold text-[#d8891d]'>
-                {lang === 'hi' ? 'कुल दुकानें' : 'Total Shops'}: {category.totalShops}
+                {category.totalShops !== null
+                  ? `${lang === 'hi' ? 'कुल दुकानें' : 'Total Shops'}: ${category.totalShops}`
+                  : lang === 'hi'
+                    ? 'जल्द घोषित'
+                    : 'To Be Announced'}
               </p>
             </div>
           ))}
