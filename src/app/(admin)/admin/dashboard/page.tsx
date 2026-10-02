@@ -233,12 +233,7 @@ const DashboardPage = async () => {
           <Card className='border-dashed shadow-none'>
             <CardHeader>
               <CardTitle className='text-sm font-bold text-muted-foreground'>Not shown yet</CardTitle>
-              <CardDescription className='text-xs'>
-                Payment collection, inventory, draw, and allotment KPIs will appear once those modules are built —
-                see <code className='rounded bg-muted px-1 py-0.5'>/admin/payments</code>,{' '}
-                <code className='rounded bg-muted px-1 py-0.5'>/admin/inventory</code>, and{' '}
-                <code className='rounded bg-muted px-1 py-0.5'>/admin/draw</code>.
-              </CardDescription>
+              <CardDescription className='text-xs'>Draw and allotment KPIs will appear here once those features are live.</CardDescription>
             </CardHeader>
           </Card>
         </div>

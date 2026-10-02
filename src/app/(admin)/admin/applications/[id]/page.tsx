@@ -273,9 +273,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                 Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
               </p>
               <p className='mt-3 text-sm text-muted-foreground'>
-                Draw participation, shop allotment, and the allotment letter/QR are not available yet — the Draw and
-                Shop Allotment modules are pending (see <code className='text-xs'>/admin/draw</code> and{' '}
-                <code className='text-xs'>/admin/allotment</code>).
+                Draw participation, shop allotment, and the allotment letter/QR will appear here once this
+                application reaches that stage.
               </p>
             </CardContent>
           </Card>

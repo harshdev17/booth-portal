@@ -147,10 +147,8 @@ const ReportsAdminPage = async () => {
 
         <Card className='border-dashed shadow-none'>
           <CardHeader>
-            <CardTitle className='text-base font-bold text-muted-foreground'>Payments, Inventory, Draw & Allotment Reports</CardTitle>
-            <CardDescription className='text-xs'>
-              Pending those modules being built (see /admin/payments, /admin/inventory, /admin/draw, /admin/allotment).
-            </CardDescription>
+            <CardTitle className='text-base font-bold text-muted-foreground'>Draw & Allotment Reports</CardTitle>
+            <CardDescription className='text-xs'>These reports will be available once the Draw and Allotment features are live.</CardDescription>
           </CardHeader>
         </Card>
       </div>

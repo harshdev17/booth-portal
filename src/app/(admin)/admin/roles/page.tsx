@@ -99,7 +99,7 @@ const RolesAdminPage = async () => {
         <CardHeader className='border-b bg-muted/40 py-4'>
           <CardTitle className='text-base font-bold text-[#0c2847]'>Admin Users</CardTitle>
           <CardDescription className='text-xs'>
-            {users.length} account(s). Creating/deactivating admin users is not built yet — see Notes below.
+            {users.length} account(s).
           </CardDescription>
         </CardHeader>
         <CardContent className='p-0'>
