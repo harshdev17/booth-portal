@@ -233,7 +233,7 @@ const InventoryTable = ({
       <CardHeader className='border-b bg-muted/40 py-4'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div>
-            <CardTitle className='text-base font-bold text-[#0c2847]'>Shop Units</CardTitle>
+            <CardTitle className='text-base font-bold text-[#0c2847]'>Booth/Stall Units</CardTitle>
             <CardDescription className='text-xs'>
               {filteredRows.length} of {rows.length} units{hasActiveFilters ? ' (filtered)' : ''}.
             </CardDescription>
@@ -356,13 +356,13 @@ const InventoryTable = ({
           <div className='py-16 text-center'>
             <StoreIcon className='mx-auto mb-2 size-8 text-muted-foreground/50' />
             <p className='text-sm font-semibold text-muted-foreground'>
-              No shop units yet.{canManage ? ' Import a CSV to get started.' : ''}
+              No booth/stall units yet.{canManage ? ' Import a CSV to get started.' : ''}
             </p>
           </div>
         ) : filteredRows.length === 0 ? (
           <div className='py-16 text-center'>
             <StoreIcon className='mx-auto mb-2 size-8 text-muted-foreground/50' />
-            <p className='text-sm font-semibold text-muted-foreground'>No shop units match these filters.</p>
+            <p className='text-sm font-semibold text-muted-foreground'>No booth/stall units match these filters.</p>
             <Button type='button' variant='link' size='sm' onClick={clearFilters}>
               Clear filters
             </Button>

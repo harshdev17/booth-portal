@@ -21,7 +21,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const shopUnitId = decodeId(id)
 
     if (shopUnitId === null) {
-      return NextResponse.json({ error: 'Invalid shop unit.' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid booth/stall unit.' }, { status: 400 })
     }
 
     const rows = await query<Array<{ id: number; stall_number: string; status: string }>>(
@@ -32,7 +32,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const shopUnit = rows[0]
 
     if (!shopUnit) {
-      return NextResponse.json({ error: 'Shop unit not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Booth/Stall unit not found.' }, { status: 404 })
     }
 
     if (shopUnit.status === 'allotted') {
@@ -58,6 +58,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   } catch (error) {
     logServerError('api.admin.inventory.delete', error)
 
-    return NextResponse.json({ error: 'Something went wrong while deleting the shop unit.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong while deleting the booth/stall unit.' }, { status: 500 })
   }
 }

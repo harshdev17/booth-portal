@@ -197,7 +197,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             <CardContent className='grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2'>
               <InfoField label='Category' value={app.category_name} />
               <InfoField label='Selection Method' value={app.selection_method} />
-              <InfoField label='Shop Option' value={app.shop_option_label ?? '—'} />
+              <InfoField label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
               <InfoField
                 label='Submitted At'
                 value={

@@ -298,8 +298,8 @@ const PrintApplication = () => {
                 </h2>
                 <p className='text-xs text-black'>
                   {lang === 'hi'
-                    ? 'कुरुक्षेत्र विकास बोर्ड — बूथ / दुकान आवंटन पोर्टल'
-                    : 'Kurukshetra Development Board — Booth / Shop Allotment Portal'}
+                    ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आवंटन पोर्टल'
+                    : 'Kurukshetra Development Board — Booth/Stall Allotment Portal'}
                 </p>
               </div>
             </div>
@@ -333,7 +333,7 @@ const PrintApplication = () => {
               <SummaryRow label={lang === 'hi' ? 'ज़िला' : 'District'} value={result.district} />
               <SummaryRow label={lang === 'hi' ? 'पिन कोड' : 'PIN Code'} value={result.pinCode} />
               {result.shopOptionLabel && (
-                <SummaryRow label={lang === 'hi' ? 'दुकान विकल्प' : 'Shop Option'} value={result.shopOptionLabel} />
+                <SummaryRow label={lang === 'hi' ? 'बूथ/स्टॉल विकल्प' : 'Booth/Stall Option'} value={result.shopOptionLabel} />
               )}
               {result.feePaise !== null && (
                 <SummaryRow label={lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'} value={formatRupees(result.feePaise)} />

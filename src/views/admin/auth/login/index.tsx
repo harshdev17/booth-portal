@@ -41,7 +41,7 @@ const AdminLogin = () => {
           <div>
             <CardTitle className='mb-1.5 text-2xl font-bold text-[#0c2847]'>Admin Sign In</CardTitle>
             <CardDescription className='text-sm'>
-              Kurukshetra Development Board — Booth / Shop Allotment Portal
+              Kurukshetra Development Board — Booth/Stall Allotment Portal
             </CardDescription>
           </div>
         </CardHeader>

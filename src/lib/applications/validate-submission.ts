@@ -62,19 +62,19 @@ export async function validateSubmissionAgainstCategory(
 
   if (shopOptionField) {
     if (input.shopOptionId === undefined) {
-      throw new SubmissionValidationError('A shop selection is required for this category.', 'shop_option_required')
+      throw new SubmissionValidationError('A booth/stall selection is required for this category.', 'shop_option_required')
     }
 
     shopOption = shopOptions.find(o => o.id === input.shopOptionId) ?? null
 
     if (!shopOption) {
-      throw new SubmissionValidationError('The selected shop option is invalid.', 'shop_option_invalid')
+      throw new SubmissionValidationError('The selected booth/stall option is invalid.', 'shop_option_invalid')
     }
   } else if (input.shopOptionId !== undefined) {
     // Client sent a shop option for a category that doesn't have one — reject
     // rather than silently ignore, since this indicates either a bug or an
     // attempt to manipulate the submission.
-    throw new SubmissionValidationError('This category does not support shop selection.', 'shop_option_unexpected')
+    throw new SubmissionValidationError('This category does not support booth/stall selection.', 'shop_option_unexpected')
   }
 
   const fieldDefinitions = (await getFieldDefinitionsForCategory(category.id)).filter(

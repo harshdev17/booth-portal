@@ -35,7 +35,7 @@ export async function GET() {
     return new Response(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="shop-inventory-${new Date().toISOString().slice(0, 10)}.csv"`
+        'Content-Disposition': `attachment; filename="booth-stall-inventory-${new Date().toISOString().slice(0, 10)}.csv"`
       }
     })
   } catch (error) {

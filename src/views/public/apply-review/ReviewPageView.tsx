@@ -363,7 +363,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
               title={lang === 'hi' ? 'श्रेणी विशिष्ट विवरण' : 'Category Details'}
               editHref={`/apply/${categorySlug}`}
             >
-              <ReviewRow label={lang === 'hi' ? 'दुकान चयन' : 'Shop Selection'} value={data.shopOptionLabel} />
+              <ReviewRow label={lang === 'hi' ? 'बूथ/स्टॉल चयन' : 'Booth/Stall Selection'} value={data.shopOptionLabel} />
               {data.categoryFields.map(field => (
                 <ReviewRow key={field.label} label={field.label} value={field.value} />
               ))}

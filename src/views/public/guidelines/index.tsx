@@ -21,8 +21,8 @@ const CATEGORIES: Category[] = [
     titleHi: 'सामाजिक संस्था (NGO)',
     body: [
       {
-        en: 'Any social organisation (NGO) wishing to take a shop/stall at the International Gita Jayanti Mahotsav 2026 must be a duly registered organisation.',
-        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में किसी भी सामाजिक संस्था (NGO) द्वारा दुकान / स्टॉल लेने के लिए संस्था का विधिवत पंजीकृत होना अनिवार्य है।'
+        en: 'Any social organisation (NGO) wishing to take a booth/stall at the International Gita Jayanti Mahotsav 2026 must be a duly registered organisation.',
+        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में किसी भी सामाजिक संस्था (NGO) द्वारा बूथ/स्टॉल लेने के लिए संस्था का विधिवत पंजीकृत होना अनिवार्य है।'
       },
       {
         en: "To apply in this category, the organisation representative's Aadhaar card and the organisation's Registration Certificate must be attached.",
@@ -43,8 +43,8 @@ const CATEGORIES: Category[] = [
         hi: 'नीलामी (Auction) में भाग लेने के इच्छुक प्रतिभागी को 6 नवम्बर, शाम 23:59 बजे तक आवेदन करना होगा।'
       },
       {
-        en: 'The starting bid amount for a refreshment stall is ₹30,000 for a small shop and ₹50,000 for a large shop. The auction dates are 7 and 8 November.',
-        hi: 'रिफ्रेशमेंट स्टॉल हेतु बोली की प्रारंभिक राशि छोटी दुकान के लिए ₹30,000/- एवं बड़ी दुकान के लिए ₹50,000/- निर्धारित की गई है। नीलामी की तिथि 7 एवं 8 नवंबर है।'
+        en: 'The starting bid amount for a refreshment stall is ₹30,000 for a small booth/stall and ₹50,000 for a large booth/stall. The auction dates are 7 and 8 November.',
+        hi: 'रिफ्रेशमेंट स्टॉल हेतु बोली की प्रारंभिक राशि छोटे बूथ/स्टॉल के लिए ₹30,000/- एवं बड़े बूथ/स्टॉल के लिए ₹50,000/- निर्धारित की गई है। नीलामी की तिथि 7 एवं 8 नवंबर है।'
       }
     ]
   },
@@ -95,8 +95,8 @@ const CATEGORIES: Category[] = [
         hi: 'कोई भी प्रतिष्ठित एजेंसी / कंपनी अपने उत्पाद या ब्रांड के प्रमोशन हेतु स्टॉल के लिए आवेदन कर सकती है।'
       },
       {
-        en: 'Small shop/stall: ₹1,00,000. Large shop/stall: ₹1,50,000.',
-        hi: 'छोटी दुकान / स्टॉल: ₹1,00,000/-। बड़ी दुकान / स्टॉल: ₹1,50,000/-।'
+        en: 'Small booth/stall: ₹1,00,000. Large booth/stall: ₹1,50,000.',
+        hi: 'छोटा बूथ/स्टॉल: ₹1,00,000/-। बड़ा बूथ/स्टॉल: ₹1,50,000/-।'
       },
       {
         en: "The agency/company must attach the Aadhaar and ID card of the owner/manager/representative, along with any business registration certificate.",
@@ -118,24 +118,24 @@ const CATEGORIES: Category[] = [
 
 const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   {
-    en: 'Before participating in the bidding/auction process for a shop/stall under Refreshment Stall Through Auction or Commercial Shop Through Auction, participants must deposit the prescribed Earnest Money Deposit (EMD) for their respective category. Failure to deposit the EMD will result in disqualification, and the participant will not be permitted to take part in the bidding/auction process.',
-    hi: 'Refreshment Stall Through Auction और Shop Through Auction "Commercial" श्रेणी की दुकान / स्टॉल की बोली / नीलामी प्रक्रिया में भाग लेने से पूर्व, प्रतिभागी को संबंधित श्रेणी के अनुसार निर्धारित बयाना राशि (Earnest Money Deposit - EMD) जमा करवाना अनिवार्य है। बयाना राशि जमा न करने की स्थिति में प्रतिभागी को अयोग्य (Disqualified) माना जाएगा तथा उसे बोली / नीलामी प्रक्रिया में भाग लेने की अनुमति नहीं दी जाएगी।'
+    en: 'Before participating in the bidding/auction process for a booth/stall under Refreshment Stall Through Auction or Commercial Shop Through Auction, participants must deposit the prescribed Earnest Money Deposit (EMD) for their respective category. Failure to deposit the EMD will result in disqualification, and the participant will not be permitted to take part in the bidding/auction process.',
+    hi: 'Refreshment Stall Through Auction और Shop Through Auction "Commercial" श्रेणी की बूथ/स्टॉल की बोली / नीलामी प्रक्रिया में भाग लेने से पूर्व, प्रतिभागी को संबंधित श्रेणी के अनुसार निर्धारित बयाना राशि (Earnest Money Deposit - EMD) जमा करवाना अनिवार्य है। बयाना राशि जमा न करने की स्थिति में प्रतिभागी को अयोग्य (Disqualified) माना जाएगा तथा उसे बोली / नीलामी प्रक्रिया में भाग लेने की अनुमति नहीं दी जाएगी।'
   },
   {
-    en: 'All interested participants are advised to check the location of available stalls around Brahma Sarovar, along with their serial numbers, on the displayed map before applying for a shop/stall.',
-    hi: 'सभी इच्छुक प्रतिभागियों को सलाह दी जाती है कि दुकान / स्टॉल हेतु आवेदन करने से पूर्व ब्रह्मसरोवर के चारों ओर उपलब्ध स्टॉल की लोकेशन को उसके क्रमांक (Serial Number) सहित प्रदर्शित मानचित्र पर अवश्य देख लें।'
+    en: 'All interested participants are advised to check the location of available stalls around Brahma Sarovar, along with their serial numbers, on the displayed map before applying for a booth/stall.',
+    hi: 'सभी इच्छुक प्रतिभागियों को सलाह दी जाती है कि बूथ/स्टॉल हेतु आवेदन करने से पूर्व ब्रह्मसरोवर के चारों ओर उपलब्ध स्टॉल की लोकेशन को उसके क्रमांक (Serial Number) सहित प्रदर्शित मानचित्र पर अवश्य देख लें।'
   },
   {
-    en: 'Fees for shops/stalls already allotted under Lucky Draw, Brand Promotion, or any other category will not be refunded under any circumstances. Participants whose names do not come up in the draw will have their amount refunded within one month.',
-    hi: 'लकी ड्रॉ व ब्रांड प्रमोशन अथवा किसी भी श्रेणी में आवंटित हो चुकी दुकानों / स्टॉलों की फीस किसी भी परिस्थिति में वापस या रिफंड नहीं की जाएगी। जिन प्रतिभागियों का नाम ड्रॉ में नहीं आएगा, उनकी राशि एक माह के भीतर वापस कर दी जाएगी।'
+    en: 'Fees for booths/stalls already allotted under Lucky Draw, Brand Promotion, or any other category will not be refunded under any circumstances. Participants whose names do not come up in the draw will have their amount refunded within one month.',
+    hi: 'लकी ड्रॉ व ब्रांड प्रमोशन अथवा किसी भी श्रेणी में आवंटित हो चुके बूथ/स्टॉल की फीस किसी भी परिस्थिति में वापस या रिफंड नहीं की जाएगी। जिन प्रतिभागियों का नाम ड्रॉ में नहीं आएगा, उनकी राशि एक माह के भीतर वापस कर दी जाएगी।'
   },
   {
-    en: 'Shops/stalls under Social Organisation (NGO), Artisan (Card Holder), National Awardee, and Shop Through Lucky Draw will be selected through a lucky draw process.',
-    hi: 'Social Organisation (NGO), Artisan (Card Holder), National Awardee एवं Shop Through Lucky Draw श्रेणी की दुकानों / स्टॉलों का चयन लकी ड्रॉ प्रक्रिया के माध्यम से किया जाएगा।'
+    en: 'Booths/stalls under Social Organisation (NGO), Artisan (Card Holder), National Awardee, and Shop Through Lucky Draw will be selected through a lucky draw process.',
+    hi: 'Social Organisation (NGO), Artisan (Card Holder), National Awardee एवं Shop Through Lucky Draw श्रेणी की बूथ/स्टॉल का चयन लकी ड्रॉ प्रक्रिया के माध्यम से किया जाएगा।'
   },
   {
-    en: 'Shops/stalls under Refreshment Stall and Commercial Shop Through Auction will be selected through the auction process.',
-    hi: 'Refreshment Stall एवं Commercial Shop Through Auction श्रेणी की दुकानों / स्टॉलों का चयन नीलामी प्रक्रिया (Auction Process) द्वारा किया जाएगा।'
+    en: 'Booths/stalls under Refreshment Stall and Commercial Shop Through Auction will be selected through the auction process.',
+    hi: 'Refreshment Stall एवं Commercial Shop Through Auction श्रेणी की बूथ/स्टॉल का चयन नीलामी प्रक्रिया (Auction Process) द्वारा किया जाएगा।'
   },
   {
     en: 'The number of stalls available for Brand Promotion is limited. Allotment in this category will be on a First Come, First Serve basis.',
@@ -146,8 +146,8 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
     hi: 'सभी प्रतिभागियों को सलाह दी जाती है कि वे अंतिम तिथि से पूर्व अपना आवेदन ऑनलाइन सबमिट करें। अंतिम तिथि के बाद किसी भी प्रकार का ऑफलाइन या By Hand आवेदन स्वीकार नहीं किया जाएगा।'
   },
   {
-    en: 'Shops/stalls allotted through auction will be determined during the bidding process itself, while the list of shops/stalls selected through lucky draw will be published on this online platform.',
-    hi: 'नीलामी द्वारा की जाने वाली दुकानों / स्टॉलों का निर्धारण बोली प्रक्रिया के दौरान ही किया जाएगा। जबकि लकी ड्रॉ द्वारा चयनित दुकानों / स्टॉलों की सूची इसी ऑनलाइन प्लेटफ़ॉर्म पर प्रकाशित की जाएगी।'
+    en: 'Booths/stalls allotted through auction will be determined during the bidding process itself, while the list of booths/stalls selected through lucky draw will be published on this online platform.',
+    hi: 'नीलामी द्वारा की जाने वाली बूथ/स्टॉल का निर्धारण बोली प्रक्रिया के दौरान ही किया जाएगा। जबकि लकी ड्रॉ द्वारा चयनित बूथ/स्टॉल की सूची इसी ऑनलाइन प्लेटफ़ॉर्म पर प्रकाशित की जाएगी।'
   },
   {
     en: 'The Refreshment Stall Through Auction bidding will be held on 7 November at 1:00 PM, and the Shop Through Auction "Commercial" bidding will be held on 8 November at 1:00 PM, at Shri Krishna Museum, Thanesar, Kurukshetra.',

@@ -89,8 +89,8 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
 
             <p className='mb-6 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg'>
               {lang === 'hi'
-                ? 'स्टॉल / दुकान / बूथ हेतु ऑनलाइन आवेदन आमंत्रित हैं।'
-                : 'Online applications are invited for stalls, shops, and booths.'}
+                ? 'बूथ/स्टॉल हेतु ऑनलाइन आवेदन आमंत्रित हैं।'
+                : 'Online applications are invited for booths/stalls.'}
             </p>
 
             <p className='mb-8 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>

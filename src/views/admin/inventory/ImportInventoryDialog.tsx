@@ -140,7 +140,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
       </DialogTrigger>
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
-          <DialogTitle>Import Shop Inventory</DialogTitle>
+          <DialogTitle>Import Booth/Stall Inventory</DialogTitle>
           <DialogDescription>Bulk-add or update stall numbers from a CSV file.</DialogDescription>
         </DialogHeader>
 

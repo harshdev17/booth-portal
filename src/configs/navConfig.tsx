@@ -109,7 +109,7 @@ export const navItems: NavItem[] = [
     items: [
       {
         icon: 'Store',
-        label: 'Inventory / Shops',
+        label: 'Inventory / Booths & Stalls',
         href: '/admin/inventory',
         permission: 'inventory:view'
       },
@@ -121,7 +121,7 @@ export const navItems: NavItem[] = [
       },
       {
         icon: 'ClipboardCheck',
-        label: 'Shop Allotment',
+        label: 'Booth/Stall Allotment',
         href: '/admin/allotment',
         permission: 'allotment:perform'
       }

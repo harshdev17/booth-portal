@@ -66,7 +66,7 @@ const ReservedCategoriesSection = () => {
               <h3 className='mb-3 text-lg font-bold text-[#0c2847]'>{lang === 'hi' ? category.nameHi : category.name}</h3>
               <p className='text-sm font-semibold text-[#d8891d]'>
                 {category.totalShops !== null
-                  ? `${lang === 'hi' ? 'कुल दुकानें' : 'Total Shops'}: ${category.totalShops}`
+                  ? `${lang === 'hi' ? 'कुल बूथ/स्टॉल' : 'Total Booths/Stalls'}: ${category.totalShops}`
                   : lang === 'hi'
                     ? 'जल्द घोषित'
                     : 'To Be Announced'}

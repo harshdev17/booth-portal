@@ -147,9 +147,9 @@ const InventoryAdminPage = async () => {
     <div className='flex flex-col gap-6'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
-          <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Inventory / Shops</h1>
+          <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Inventory / Booths & Stalls</h1>
           <p className='text-sm text-muted-foreground'>
-            Physical shop/stall units per category and their current allotment state.
+            Physical booth/stall units per category and their current allotment state.
           </p>
         </div>
 
@@ -180,11 +180,11 @@ const InventoryAdminPage = async () => {
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
         <Card className='shadow-xs'>
           <CardHeader className='border-b bg-muted/40 py-3'>
-            <CardTitle className='text-sm font-bold text-[#0c2847]'>Shops by Category</CardTitle>
+            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Category</CardTitle>
           </CardHeader>
           <CardContent className='flex flex-col gap-2 pt-4'>
             {categoryBreakdown.length === 0 ? (
-              <p className='text-sm text-muted-foreground'>No shop units yet.</p>
+              <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
             ) : (
               categoryBreakdown.map(([name, count]) => (
                 <div key={name} className='flex items-center justify-between text-sm'>
@@ -198,11 +198,11 @@ const InventoryAdminPage = async () => {
 
         <Card className='shadow-xs'>
           <CardHeader className='border-b bg-muted/40 py-3'>
-            <CardTitle className='text-sm font-bold text-[#0c2847]'>Shops by Direction</CardTitle>
+            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Direction</CardTitle>
           </CardHeader>
           <CardContent className='flex flex-col gap-2 pt-4'>
             {directionBreakdown.length === 0 ? (
-              <p className='text-sm text-muted-foreground'>No shop units yet.</p>
+              <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
             ) : (
               directionBreakdown.map(([direction, count]) => (
                 <div key={direction} className='flex items-center justify-between text-sm'>
@@ -217,7 +217,7 @@ const InventoryAdminPage = async () => {
 
       <Tabs defaultValue='units'>
         <TabsList>
-          <TabsTrigger value='units'>Shop Units</TabsTrigger>
+          <TabsTrigger value='units'>Booth/Stall Units</TabsTrigger>
           {canViewLogs && <TabsTrigger value='logs'>Logs</TabsTrigger>}
         </TabsList>
 

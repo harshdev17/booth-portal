@@ -17,7 +17,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'header.board': 'कुरुक्षेत्र विकास बोर्ड',
     'nav.home': 'मुख्य पृष्ठ',
     'nav.about': 'परिचय',
-    'nav.stalls': 'दुकानें / स्टॉल',
+    'nav.stalls': 'बूथ/स्टॉल',
     'nav.guidelines': 'दिशानिर्देश',
     'nav.dates': 'महत्वपूर्ण तिथियां',
     'nav.contact': 'संपर्क',
@@ -27,7 +27,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'hero.badge': 'आधिकारिक स्टॉल आवंटन पोर्टल',
     'hero.title_part1': 'हिस्सा बनें',
     'hero.title_part2': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
-    'hero.desc': 'ब्रह्मसरोवर, कुरुक्षेत्र पर व्यावसायिक बूथों, स्टॉलों एवं दुकानों के लिए आवेदन करें। कुरुक्षेत्र विकास बोर्ड द्वारा संचालित आधिकारिक पोर्टल।',
+    'hero.desc': 'ब्रह्मसरोवर, कुरुक्षेत्र पर व्यावसायिक बूथों/स्टॉलों के लिए आवेदन करें। कुरुक्षेत्र विकास बोर्ड द्वारा संचालित आधिकारिक पोर्टल।',
     'hero.btn_apply': 'स्टॉल देखें और आवेदन करें',
     'hero.btn_status': 'आवेदन की स्थिति जांचें',
 

@@ -44,7 +44,7 @@ const CategoryFieldsStep = ({
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
               <FieldLabel htmlFor='shopOptionId'>
-                {lang === 'hi' ? 'दुकान / स्थान चयन (Shop Selection) *' : 'Shop Selection *'}
+                {lang === 'hi' ? 'बूथ/स्टॉल / स्थान चयन (Booth/Stall Selection) *' : 'Booth/Stall Selection *'}
               </FieldLabel>
               <Select
                 name='shopOptionId'
@@ -53,7 +53,7 @@ const CategoryFieldsStep = ({
               >
                 <SelectTrigger id='shopOptionId' className='w-full' aria-invalid={fieldState.invalid}>
                   <SelectValue
-                    placeholder={lang === 'hi' ? 'दुकान का विकल्प चुनें' : 'Select a shop option'}
+                    placeholder={lang === 'hi' ? 'बूथ/स्टॉल का विकल्प चुनें' : 'Select a booth/stall option'}
                   />
                 </SelectTrigger>
                 <SelectContent>

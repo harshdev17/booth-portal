@@ -80,7 +80,7 @@ const PublicFooter = () => {
 
             <p className='max-w-sm text-xs leading-relaxed text-white/70 sm:text-sm'>
               {lang === 'hi'
-                ? 'ब्रह्मसरोवर के पावन तट पर आयोजित होने वाले अंतर्राष्ट्रीय गीता जयंती महोत्सव में स्टॉल व दुकानों के पारदर्शी एवं निष्पक्ष आवंटन हेतु आधिकारिक डिजिटल पोर्टल।'
+                ? 'ब्रह्मसरोवर के पावन तट पर आयोजित होने वाले अंतर्राष्ट्रीय गीता जयंती महोत्सव में बूथ/स्टॉल के पारदर्शी एवं निष्पक्ष आवंटन हेतु आधिकारिक डिजिटल पोर्टल।'
                 : 'Official digital single-window portal for the transparent, fair, and computerized allotment of commercial stalls at Brahma Sarovar, Kurukshetra.'}
             </p>
           </div>

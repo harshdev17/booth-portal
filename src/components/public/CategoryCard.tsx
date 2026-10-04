@@ -98,7 +98,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       <div className='mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#eef6f0] px-3 py-1'>
         <span className='text-sm font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
         <span className='text-xs font-bold text-[#1a7d42]'>
-          {lang === 'hi' ? 'उपलब्ध दुकानें' : 'Available Shops'}
+          {lang === 'hi' ? 'उपलब्ध बूथ/स्टॉल' : 'Available Booths/Stalls'}
         </span>
       </div>
 
@@ -106,13 +106,13 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       <dl className='mb-4 flex flex-col gap-3 border-y border-[#f0eae1] py-4 text-sm'>
         <div>
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
-            {lang === 'hi' ? 'दुकान आवंटन का तरीका' : 'Allotment Method'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन का तरीका' : 'Allotment Method'}
           </dt>
           <dd className='text-base font-bold text-[#072448]'>{methodLabel}</dd>
         </div>
         <div>
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
-            {lang === 'hi' ? 'दुकान आवंटन राशि' : 'Allotment Amount'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन राशि' : 'Allotment Amount'}
           </dt>
           <dd className='text-base font-bold text-[#072448]'>{allotmentText}</dd>
         </div>

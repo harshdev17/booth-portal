@@ -466,8 +466,8 @@ const ApplicationFormOrchestrator = ({
                     </h2>
                     <p className='text-xs sm:text-sm text-[#64748b] mt-1'>
                       {lang === 'hi'
-                        ? 'स्टॉल या दुकान आवंटन हेतु आवेदक व्यक्ति अथवा संस्था का विवरण भरें।'
-                        : 'Please enter the details of the person or organisation applying for the booth or shop.'}
+                        ? 'बूथ/स्टॉल आवंटन हेतु आवेदक व्यक्ति अथवा संस्था का विवरण भरें।'
+                        : 'Please enter the details of the person or organisation applying for the booth/stall.'}
                     </p>
                   </div>
                   <ApplicantInfoStep

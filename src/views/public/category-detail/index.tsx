@@ -67,7 +67,7 @@ const CategoryDetail = ({
         </div>
         <div className='sm:col-span-2'>
           <dt className='text-xs font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
-            {lang === 'hi' ? 'दुकान आवंटन राशि' : 'Shop Allotment Amount'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन राशि' : 'Booth/Stall Allotment Amount'}
           </dt>
           <dd className='font-semibold text-[var(--kdb-primary)]'>
             {category.allotment_amount_paise !== null
