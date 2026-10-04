@@ -1,8 +1,21 @@
+import type { ComponentType, ReactNode, SVGProps } from 'react'
+
 import type { Metadata } from 'next'
 
 import { notFound } from 'next/navigation'
 
-import { ArrowLeftIcon, EyeIcon } from 'lucide-react'
+import {
+  ArrowLeftIcon,
+  Building2Icon,
+  CreditCardIcon,
+  EyeIcon,
+  HashIcon,
+  MailIcon,
+  MapPinIcon,
+  PhoneIcon,
+  UserIcon,
+  UsersIcon
+} from 'lucide-react'
 import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
@@ -172,33 +185,42 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
         <TabsContent value='personal'>
           <Card className='shadow-xs'>
-            <CardContent className='grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2'>
-              <InfoField label='Representative Name' value={app.representative_name} />
-              <InfoField label="Father's Name" value={app.father_name} />
-              <InfoField label='Organisation / Firm Name' value={app.organisation_name} />
-              <InfoField
-                label='Aadhaar Number'
-                value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
-                mono
-              />
-              <InfoField label='Email' value={app.email} />
-              <InfoField label='Mobile Number' value={app.mobile_number} mono />
-              <InfoField label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />
-              <InfoField label='Address' value={app.address} />
-              <InfoField label='District' value={app.district} />
-              <InfoField label='State' value={app.state} />
-              <InfoField label='PIN Code' value={app.pin_code} mono />
+            <CardContent className='pt-6'>
+              <SectionLabel>Identity</SectionLabel>
+              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+                <InfoField icon={UserIcon} label='Representative Name' value={app.representative_name} />
+                <InfoField icon={UsersIcon} label="Father's Name" value={app.father_name} />
+                <InfoField icon={Building2Icon} label='Organisation / Firm Name' value={app.organisation_name} />
+                <InfoField
+                  icon={CreditCardIcon}
+                  label='Aadhaar Number'
+                  value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
+                  mono
+                />
+              </div>
+
+              <SectionLabel className='mt-6'>Contact & Address</SectionLabel>
+              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+                <InfoField icon={MailIcon} label='Email' value={app.email} />
+                <InfoField icon={PhoneIcon} label='Mobile Number' value={app.mobile_number} mono />
+                <InfoField icon={PhoneIcon} label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />
+                <InfoField icon={HashIcon} label='PIN Code' value={app.pin_code} mono />
+                <InfoField icon={MapPinIcon} label='Address' value={app.address} full />
+                <InfoField icon={MapPinIcon} label='District' value={app.district} />
+                <InfoField icon={MapPinIcon} label='State' value={app.state} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value='application'>
           <Card className='shadow-xs'>
-            <CardContent className='grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2'>
-              <InfoField label='Category' value={app.category_name} />
-              <InfoField label='Selection Method' value={app.selection_method} />
-              <InfoField label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
+            <CardContent className='grid grid-cols-1 gap-5 pt-6 sm:grid-cols-2'>
+              <InfoField icon={Building2Icon} label='Category' value={app.category_name} />
+              <InfoField icon={HashIcon} label='Selection Method' value={app.selection_method} />
+              <InfoField icon={HashIcon} label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
               <InfoField
+                icon={HashIcon}
                 label='Submitted At'
                 value={
                   app.submitted_at
@@ -308,10 +330,33 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   )
 }
 
-const InfoField = ({ label, value, mono, full }: { label: string; value: string; mono?: boolean; full?: boolean }) => (
-  <div className={full ? 'sm:col-span-2' : undefined}>
-    <p className='text-xs font-bold uppercase text-muted-foreground'>{label}</p>
-    <p className={`mt-0.5 text-sm text-slate-800 ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
+const SectionLabel = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <p className={`mb-3 text-xs font-bold uppercase tracking-wider text-[#8c5711] ${className ?? ''}`}>{children}</p>
+)
+
+const InfoField = ({
+  icon: Icon,
+  label,
+  value,
+  mono,
+  full
+}: {
+  icon?: ComponentType<SVGProps<SVGSVGElement>>
+  label: string
+  value: string
+  mono?: boolean
+  full?: boolean
+}) => (
+  <div className={`flex items-start gap-3 ${full ? 'sm:col-span-2' : ''}`}>
+    {Icon && (
+      <div className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[#fffaf0] text-[#8c5711]'>
+        <Icon className='size-4' />
+      </div>
+    )}
+    <div className='min-w-0'>
+      <p className='text-xs font-bold uppercase tracking-wide text-muted-foreground'>{label}</p>
+      <p className={`mt-0.5 text-sm font-semibold text-slate-800 ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
+    </div>
   </div>
 )
 

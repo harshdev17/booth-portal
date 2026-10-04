@@ -45,7 +45,7 @@ const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
     : []
 
   return (
-    <div className='flex h-full w-full min-w-0'>
+    <div className='admin-shell flex h-full w-full min-w-0'>
       <Suspense>
         <Sidebar permissions={permissions ? Array.from(permissions) : []} categoryCounts={categoryCounts} />
       </Suspense>

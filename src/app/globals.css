@@ -346,3 +346,24 @@ input[type='number']::-webkit-outer-spin-button {
   font-size: 1rem;
 }
 
+/* Slightly larger body/label text across the whole admin panel — scoped to
+   .admin-shell (the root wrapper in (admin)/layout.tsx) so the public site,
+   which uses the same Tailwind text-* utilities, is unaffected. Most admin
+   copy (table cells, labels, descriptions) uses text-xs/text-sm, which read
+   cramped at default size in a data-dense panel. */
+.admin-shell .text-xs {
+  font-size: 0.8125rem;
+}
+
+.admin-shell .text-sm {
+  font-size: 0.9375rem;
+}
+
+.admin-shell .text-base {
+  font-size: 1.0625rem;
+}
+
+.admin-shell .text-lg {
+  font-size: 1.1875rem;
+}
+
