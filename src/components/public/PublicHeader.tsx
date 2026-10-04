@@ -5,12 +5,21 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { MailIcon, MenuIcon, PhoneIcon } from 'lucide-react'
+import { CameraIcon, MailIcon, MenuIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon, XIcon } from 'lucide-react'
 
 import HeaderMarquee from '@/components/public/HeaderMarquee'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useLanguage } from '@/context/LanguageContext'
+
+// Same placeholder social links as PublicFooter.tsx — [TBC – Business
+// Confirmation Required], see .ai/OPEN_QUESTIONS.md.
+const SOCIAL_LINKS = [
+  { icon: ThumbsUpIcon, label: 'Facebook' },
+  { icon: XIcon, label: 'X (Twitter)' },
+  { icon: CameraIcon, label: 'Instagram' },
+  { icon: PlaySquareIcon, label: 'YouTube' }
+]
 
 const PublicHeader = () => {
   const { lang, setLang, t } = useLanguage()
@@ -49,43 +58,51 @@ const PublicHeader = () => {
       </div>
 
       <div className='sticky top-0 z-50 w-full print:hidden'>
-        {/* Top Important Information Marquee Ticker */}
-        <HeaderMarquee />
-
-      {/* Main Navigation Header */}
-      <header className='border-b border-[var(--kdb-border)]/60 bg-white/95 backdrop-blur-md'>
-        <nav className='mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 sm:px-6'>
-          {/* Left: Emblem + Event Name */}
-          <Link href='/' className='group flex min-w-0 shrink-0 items-center gap-3'>
-            <div className='flex size-11 shrink-0 items-center justify-center'>
+        {/* Masthead — centered bilingual title between the emblem (left) and a
+            matching-width spacer (right), so the title block sits truly
+            centered rather than crowding the logo. */}
+        <div className='border-b border-[var(--kdb-border)]/60 bg-white'>
+          <div className='mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6'>
+            <Link href='/' className='flex size-12 shrink-0 items-center justify-center sm:size-14'>
               <Image
                 src='/images/public/logo.webp'
                 alt='International Geeta Jayanti Mahotsav 2026'
-                width={42}
-                height={42}
+                width={52}
+                height={52}
                 priority
               />
-            </div>
-            <div className='hidden sm:block'>
-              <div className='text-sm leading-tight font-extrabold tracking-tight text-[var(--kdb-primary)]'>
-                {lang === 'hi' ? 'अंतर्राष्ट्रीय' : 'International'}
-                <br />
-                {lang === 'hi' ? 'गीता जयंती महोत्सव 2026' : 'Geeta Jayanti Mahotsav 2026'}
-              </div>
-            </div>
-          </Link>
+            </Link>
 
-          {/* Right: Navigation Links + Language Switcher + Mobile Menu */}
-          <div className='flex min-w-0 items-center gap-6'>
-            <ul className='hidden items-center gap-6 lg:flex'>
+            <div className='min-w-0 flex-1 text-center'>
+              <p className='text-base font-black tracking-tight text-[var(--kdb-primary)] sm:text-xl'>
+                {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}
+              </p>
+              <p className='text-xs font-bold text-[#6b5a1f] sm:text-sm'>
+                {lang === 'hi' ? 'International Geeta Jayanti Mahotsav 2026' : 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026'}
+              </p>
+              <p className='mt-0.5 hidden text-xs font-bold text-[#0e7a4d] sm:block'>
+                {lang === 'hi'
+                  ? 'आयोजक संस्था: कुरुक्षेत्र विकास बोर्ड'
+                  : 'Organizing Institute: Kurukshetra Development Board'}
+              </p>
+            </div>
+
+            <div className='hidden size-12 shrink-0 sm:block sm:size-14' aria-hidden='true' />
+          </div>
+        </div>
+
+        {/* Navigation bar — nav links, language switcher, Apply CTA, social icons */}
+        <header className='bg-[var(--kdb-primary)]'>
+          <nav className='mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6'>
+            <ul className='hidden items-center gap-5 lg:flex'>
               {navItems.map(item => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
                     className={
                       item.active
-                        ? 'text-sm font-bold text-[#111827]'
-                        : 'text-sm font-medium text-[#4b5563] transition hover:text-[var(--kdb-primary)]'
+                        ? 'text-sm font-bold text-white'
+                        : 'text-sm font-semibold text-white/80 transition hover:text-[#f0b429]'
                     }
                   >
                     {item.label}
@@ -94,41 +111,70 @@ const PublicHeader = () => {
               ))}
             </ul>
 
-            {/* Simple text toggle, not a filled pill — lighter visual weight than the previous segmented control */}
-            <div className='flex items-center gap-1.5 text-xs font-bold' role='group' aria-label='Language switcher'>
-              <button
-                type='button'
-                onClick={() => setLang('hi')}
-                aria-pressed={lang === 'hi'}
-                className={lang === 'hi' ? 'text-[#0c2847] underline underline-offset-4' : 'text-[#94a3b8] hover:text-[#0c2847]'}
-              >
-                हिंदी
-              </button>
-              <span className='text-[#cbd5e1]'>|</span>
-              <button
-                type='button'
-                onClick={() => setLang('en')}
-                aria-pressed={lang === 'en'}
-                className={lang === 'en' ? 'text-[#0c2847] underline underline-offset-4' : 'text-[#94a3b8] hover:text-[#0c2847]'}
-              >
-                English
-              </button>
-            </div>
+            <div className='flex items-center gap-4 lg:ml-auto'>
+              {/* Simple text toggle, not a filled pill — lighter visual weight than the previous segmented control */}
+              <div className='flex items-center gap-1.5 text-xs font-bold' role='group' aria-label='Language switcher'>
+                <button
+                  type='button'
+                  onClick={() => setLang('hi')}
+                  aria-pressed={lang === 'hi'}
+                  className={lang === 'hi' ? 'text-white underline underline-offset-4' : 'text-white/60 hover:text-white'}
+                >
+                  हिंदी
+                </button>
+                <span className='text-white/30'>|</span>
+                <button
+                  type='button'
+                  onClick={() => setLang('en')}
+                  aria-pressed={lang === 'en'}
+                  className={lang === 'en' ? 'text-white underline underline-offset-4' : 'text-white/60 hover:text-white'}
+                >
+                  English
+                </button>
+              </div>
 
-            {/* Mobile menu trigger */}
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon'
-              className='lg:hidden'
-              aria-label={lang === 'hi' ? 'मेनू खोलें' : 'Open menu'}
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <MenuIcon className='size-5 text-[#0c2847]' />
-            </Button>
-          </div>
-        </nav>
-      </header>
+              <Link
+                href='/#categories'
+                className='hidden shrink-0 items-center gap-1 rounded-md bg-[#f0af3d] px-3.5 py-1.5 text-xs font-bold text-[#1f2937] shadow-2xs transition hover:bg-[#e49f2b] sm:inline-flex'
+              >
+                <span>{t('nav.apply_now')}</span>
+                <span className='text-[10px] font-black'>↗</span>
+              </Link>
+
+              <div className='hidden items-center gap-2 border-l border-white/20 pl-4 xl:flex'>
+                {SOCIAL_LINKS.map(item => {
+                  const Icon = item.icon
+
+                  return (
+                    <a
+                      key={item.label}
+                      href='#'
+                      aria-label={item.label}
+                      className='flex size-7 items-center justify-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-[#f0b429]'
+                    >
+                      <Icon className='size-3.5' />
+                    </a>
+                  )
+                })}
+              </div>
+
+              {/* Mobile menu trigger */}
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                className='text-white hover:bg-white/10 hover:text-white lg:hidden'
+                aria-label={lang === 'hi' ? 'मेनू खोलें' : 'Open menu'}
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <MenuIcon className='size-5' />
+              </Button>
+            </div>
+          </nav>
+        </header>
+
+        {/* Top Important Information Marquee Ticker */}
+        <HeaderMarquee />
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side='right' className='w-4/5 sm:max-w-xs'>
@@ -156,7 +202,7 @@ const PublicHeader = () => {
             ))}
           </ul>
 
-          {/* <div className='mt-auto px-4 pb-4'>
+          <div className='mt-auto px-4 pb-4'>
             <Link
               href='/#categories'
               onClick={() => setMobileMenuOpen(false)}
@@ -165,7 +211,7 @@ const PublicHeader = () => {
               <span>{t('nav.apply_now')}</span>
               <span className='text-xs font-bold'>→</span>
             </Link>
-          </div> */}
+          </div>
         </SheetContent>
       </Sheet>
       </div>
