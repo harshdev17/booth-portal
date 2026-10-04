@@ -1,26 +1,14 @@
 'use client'
 
-import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-  Building2Icon,
-  CameraIcon,
-  ExternalLinkIcon,
-  HelpCircleIcon,
-  MailIcon,
-  MapPinIcon,
-  PhoneIcon,
-  PlaySquareIcon,
-  ShieldCheckIcon,
-  ThumbsUpIcon,
-  XIcon
-} from 'lucide-react'
+
+import { CameraIcon, ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon, XIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
 const PublicFooter = () => {
-  const { lang, t } = useLanguage()
+  const { lang } = useLanguage()
 
   const quickLinks = [
     { label: lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home', href: '/' },
@@ -66,19 +54,19 @@ const PublicFooter = () => {
                 />
               </div>
               <div>
-                <h3 className='text-sm leading-snug font-black tracking-tight text-white uppercase sm:text-base'>
+                <h3 className='text-lg leading-snug font-black tracking-tight text-white uppercase sm:text-xl'>
                   {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}
                 </h3>
-                <p className='text-xs font-semibold tracking-wide text-[#fbd38d]'>
+                <p className='text-sm font-semibold tracking-wide text-[#fbd38d] sm:text-base'>
                   {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board'}
                 </p>
-                <p className='text-[11px] text-white/60'>
+                <p className='text-xs text-white/60 sm:text-sm'>
                   {lang === 'hi' ? 'हरियाणा सरकार का उपक्रम' : 'Govt. of Haryana Undertaking'}
                 </p>
               </div>
             </div>
 
-            <p className='max-w-sm text-xs leading-relaxed text-white/70 sm:text-sm'>
+            <p className='max-w-sm text-sm leading-relaxed text-white/70 sm:text-base'>
               {lang === 'hi'
                 ? 'ब्रह्मसरोवर के पावन तट पर आयोजित होने वाले अंतर्राष्ट्रीय गीता जयंती महोत्सव में बूथ/स्टॉल के पारदर्शी एवं निष्पक्ष आवंटन हेतु आधिकारिक डिजिटल पोर्टल।'
                 : 'Official digital single-window portal for the transparent, fair, and computerized allotment of commercial stalls at Brahma Sarovar, Kurukshetra.'}
@@ -87,11 +75,11 @@ const PublicFooter = () => {
 
           {/* Column 2: Quick Links (3 cols) */}
           <div className='space-y-3.5 lg:col-span-3'>
-            <h4 className='flex items-center gap-2 text-xs font-extrabold tracking-widest text-[#fbd38d] uppercase'>
+            <h4 className='flex items-center gap-2 text-sm font-extrabold tracking-widest text-[#fbd38d] uppercase sm:text-base'>
               <span className='inline-block h-1 w-3 bg-[#d8891d]' />
               <span>{lang === 'hi' ? 'त्वरित पोर्टल लिंक' : 'Quick Navigation'}</span>
             </h4>
-            <ul className='space-y-2.5 text-xs sm:text-sm'>
+            <ul className='space-y-2.5 text-sm sm:text-base'>
               {quickLinks.map(link => (
                 <li key={link.label}>
                   <Link
@@ -108,11 +96,11 @@ const PublicFooter = () => {
 
           {/* Column 3: Related Official Portals (3 cols) */}
           <div className='space-y-3.5 lg:col-span-3'>
-            <h4 className='flex items-center gap-2 text-xs font-extrabold tracking-widest text-[#fbd38d] uppercase'>
+            <h4 className='flex items-center gap-2 text-sm font-extrabold tracking-widest text-[#fbd38d] uppercase sm:text-base'>
               <span className='inline-block h-1 w-3 bg-[#d8891d]' />
               <span>{lang === 'hi' ? 'संबंधित आधिकारिक लिंक' : 'Related Portals'}</span>
             </h4>
-            <ul className='space-y-2.5 text-xs sm:text-sm'>
+            <ul className='space-y-2.5 text-sm sm:text-base'>
               {relatedPortals.map(link => (
                 <li key={link.label}>
                   <a
@@ -122,7 +110,7 @@ const PublicFooter = () => {
                     className='group inline-flex items-center gap-1.5 text-white/75 transition hover:text-[#ffd56b]'
                   >
                     <span>{link.label}</span>
-                    <ExternalLinkIcon className='size-3 text-white/40 group-hover:text-[#ffd56b]' />
+                    <ExternalLinkIcon className='size-3.5 text-white/40 group-hover:text-[#ffd56b]' />
                   </a>
                 </li>
               ))}
@@ -131,26 +119,26 @@ const PublicFooter = () => {
 
           {/* Column 4: Helpdesk & Social (2 cols) */}
           <div className='space-y-3.5 lg:col-span-2'>
-            <h4 className='flex items-center gap-2 text-xs font-extrabold tracking-widest text-[#fbd38d] uppercase'>
+            <h4 className='flex items-center gap-2 text-sm font-extrabold tracking-widest text-[#fbd38d] uppercase sm:text-base'>
               <span className='inline-block h-1 w-3 bg-[#d8891d]' />
               <span>{lang === 'hi' ? 'हेल्पडेस्क' : 'Helpdesk'}</span>
             </h4>
-            <div className='space-y-2 text-xs text-white/80'>
+            <div className='space-y-2.5 text-sm text-white/80'>
               <div className='flex items-start gap-2'>
-                <PhoneIcon className='mt-0.5 size-3.5 shrink-0 text-[#fbd38d]' />
-                <a href='tel:+919876543210' className='font-bold hover:text-white'>
+                <PhoneIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                <a href='tel:+919876543210' className='text-base font-bold hover:text-white'>
                   +91 98765 43210
                 </a>
               </div>
               <div className='flex items-start gap-2'>
-                <MailIcon className='mt-0.5 size-3.5 shrink-0 text-[#fbd38d]' />
-                <a href='mailto:helpdesk@stallportal.in' className='break-all hover:text-white'>
+                <MailIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                <a href='mailto:helpdesk@stallportal.in' className='break-all text-sm sm:text-base hover:text-white'>
                   helpdesk@stallportal.in
                 </a>
               </div>
               <div className='flex items-start gap-2 pt-1'>
-                <MapPinIcon className='mt-0.5 size-3.5 shrink-0 text-[#fbd38d]' />
-                <span className='text-[11px] leading-relaxed text-white/70'>
+                <MapPinIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                <span className='text-sm leading-relaxed text-white/70'>
                   {lang === 'hi' ? 'कुरुक्षेत्र, हरियाणा – 136118' : 'Kurukshetra, Haryana – 136118'}
                 </span>
               </div>
@@ -158,10 +146,10 @@ const PublicFooter = () => {
 
             {/* Social Icons */}
             <div className='pt-2'>
-              <p className='mb-2 text-[11px] font-bold tracking-wider text-white/60 uppercase'>
+              <p className='mb-2 text-xs font-bold tracking-wider text-white/60 uppercase sm:text-sm'>
                 {lang === 'hi' ? 'सोशल मीडिया' : 'Follow KDB'}
               </p>
-              <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-2.5'>
                 {[
                   { icon: ThumbsUpIcon, label: 'Facebook' },
                   { icon: XIcon, label: 'X (Twitter)' },
@@ -175,9 +163,9 @@ const PublicFooter = () => {
                       key={idx}
                       href='#'
                       aria-label={item.label}
-                      className='flex size-8 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-white/75 transition hover:border-[#d8891d] hover:bg-[#d8891d] hover:text-[#071f3a]'
+                      className='flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/75 transition hover:border-[#d8891d] hover:bg-[#d8891d] hover:text-[#071f3a]'
                     >
-                      <Icon className='size-3.5' />
+                      <Icon className='size-4' />
                     </a>
                   )
                 })}
@@ -187,7 +175,7 @@ const PublicFooter = () => {
         </div>
 
         {/* Bottom Strip */}
-        <div className='mt-6 flex flex-col items-center justify-center gap-3 text-xs text-white/55 sm:flex-row'>
+        <div className='mt-6 flex flex-col items-center justify-center gap-3 text-sm text-white/55 sm:flex-row'>
           <div>
             <span>© 2026 {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board'}. </span>
             <span>{lang === 'hi' ? 'सर्वाधिकार सुरक्षित।' : 'All Rights Reserved.'}</span>
@@ -195,7 +183,7 @@ const PublicFooter = () => {
         </div>
 
         {/* Developer Attribution */}
-        <div className='mt-3 border-t border-white/10 pt-3 text-center text-[11px] text-white/45'>
+        <div className='mt-3 border-t border-white/10 pt-3 text-center text-xs text-white/45'>
           <span>
             {lang === 'hi'
               ? 'वााह फाउंडेशन द्वारा विकसित एवं अनुरक्षित'
