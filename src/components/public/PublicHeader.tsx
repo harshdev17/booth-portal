@@ -5,7 +5,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { MenuIcon } from 'lucide-react'
+import { MailIcon, MenuIcon, PhoneIcon } from 'lucide-react'
 
 import HeaderMarquee from '@/components/public/HeaderMarquee'
 import { Button } from '@/components/ui/button'
@@ -28,9 +28,29 @@ const PublicHeader = () => {
   ]
 
   return (
-    <div className='sticky top-0 z-50 w-full print:hidden'>
-      {/* Top Important Information Marquee Ticker */}
-      <HeaderMarquee />
+    <>
+      {/* Top contact bar — scrolls away normally, not part of the sticky header below.
+          Same placeholder helpline/email used site-wide (ContactBannerSection.tsx,
+          PublicFooter.tsx) — [TBC – Business Confirmation Required], see .ai/OPEN_QUESTIONS.md. */}
+      <div className='hidden border-b border-[var(--kdb-border)]/40 bg-[#0c2847] text-white sm:block print:hidden'>
+        <div className='mx-auto flex max-w-7xl items-center justify-end gap-5 px-4 py-1.5 sm:px-6'>
+          <a href='tel:+919876543210' className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'>
+            <PhoneIcon className='size-3' />
+            <span>+91 98765 43210</span>
+          </a>
+          <a
+            href='mailto:helpdesk@stallportal.in'
+            className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'
+          >
+            <MailIcon className='size-3' />
+            <span>helpdesk@stallportal.in</span>
+          </a>
+        </div>
+      </div>
+
+      <div className='sticky top-0 z-50 w-full print:hidden'>
+        {/* Top Important Information Marquee Ticker */}
+        <HeaderMarquee />
 
       {/* Main Navigation Header */}
       <header className='border-b border-[var(--kdb-border)]/60 bg-white/95 backdrop-blur-md'>
@@ -148,7 +168,8 @@ const PublicHeader = () => {
           </div> */}
         </SheetContent>
       </Sheet>
-    </div>
+      </div>
+    </>
   )
 }
 
