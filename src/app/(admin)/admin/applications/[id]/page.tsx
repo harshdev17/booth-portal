@@ -8,7 +8,6 @@ import {
   ArrowLeftIcon,
   Building2Icon,
   CreditCardIcon,
-  EyeIcon,
   HashIcon,
   MailIcon,
   MapPinIcon,
@@ -20,15 +19,14 @@ import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { query } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
-import { getApplicationStatusConfig, getDocumentStatusConfig } from '@/lib/applications/status-config'
+import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
-import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
+import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 
 export const metadata: Metadata = {
   title: 'Application Detail — IGM Admin Portal'
@@ -174,158 +172,104 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         <ApplicationDecisionActions applicationId={app.id} canApprove={canApprove} canReject={canReject} />
       </div>
 
-      <Tabs defaultValue='personal'>
-        <TabsList>
-          <TabsTrigger value='personal'>Personal</TabsTrigger>
-          <TabsTrigger value='application'>Application</TabsTrigger>
-          <TabsTrigger value='documents'>Documents ({documents.length})</TabsTrigger>
-          <TabsTrigger value='selection'>Selection & Allotment</TabsTrigger>
-          <TabsTrigger value='audit'>Audit</TabsTrigger>
-        </TabsList>
+      <ApplicationDocumentsSection documents={documents} canVerifyDocuments={canVerifyDocuments} />
 
-        <TabsContent value='personal'>
-          <Card className='shadow-xs'>
-            <CardContent className='pt-6'>
-              <SectionLabel>Identity</SectionLabel>
-              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-                <InfoField icon={UserIcon} label='Representative Name' value={app.representative_name} />
-                <InfoField icon={UsersIcon} label="Father's Name" value={app.father_name} />
-                <InfoField icon={Building2Icon} label='Organisation / Firm Name' value={app.organisation_name} />
-                <InfoField
-                  icon={CreditCardIcon}
-                  label='Aadhaar Number'
-                  value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
-                  mono
-                />
-              </div>
+      <Card className='shadow-xs'>
+        <CardHeader>
+          <CardTitle className='text-base'>Personal Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SectionLabel>Identity</SectionLabel>
+          <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+            <InfoField icon={UserIcon} label='Representative Name' value={app.representative_name} />
+            <InfoField icon={UsersIcon} label="Father's Name" value={app.father_name} />
+            <InfoField icon={Building2Icon} label='Organisation / Firm Name' value={app.organisation_name} />
+            <InfoField
+              icon={CreditCardIcon}
+              label='Aadhaar Number'
+              value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
+              mono
+            />
+          </div>
 
-              <SectionLabel className='mt-6'>Contact & Address</SectionLabel>
-              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-                <InfoField icon={MailIcon} label='Email' value={app.email} />
-                <InfoField icon={PhoneIcon} label='Mobile Number' value={app.mobile_number} mono />
-                <InfoField icon={PhoneIcon} label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />
-                <InfoField icon={HashIcon} label='PIN Code' value={app.pin_code} mono />
-                <InfoField icon={MapPinIcon} label='Address' value={app.address} full />
-                <InfoField icon={MapPinIcon} label='District' value={app.district} />
-                <InfoField icon={MapPinIcon} label='State' value={app.state} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <SectionLabel className='mt-6'>Contact & Address</SectionLabel>
+          <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+            <InfoField icon={MailIcon} label='Email' value={app.email} />
+            <InfoField icon={PhoneIcon} label='Mobile Number' value={app.mobile_number} mono />
+            <InfoField icon={PhoneIcon} label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />
+            <InfoField icon={HashIcon} label='PIN Code' value={app.pin_code} mono />
+            <InfoField icon={MapPinIcon} label='Address' value={app.address} full />
+            <InfoField icon={MapPinIcon} label='District' value={app.district} />
+            <InfoField icon={MapPinIcon} label='State' value={app.state} />
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value='application'>
-          <Card className='shadow-xs'>
-            <CardContent className='grid grid-cols-1 gap-5 pt-6 sm:grid-cols-2'>
-              <InfoField icon={Building2Icon} label='Category' value={app.category_name} />
-              <InfoField icon={HashIcon} label='Selection Method' value={app.selection_method} />
-              <InfoField icon={HashIcon} label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
-              <InfoField
-                icon={HashIcon}
-                label='Submitted At'
-                value={
-                  app.submitted_at
-                    ? new Date(app.submitted_at).toLocaleString('en-IN')
-                    : `Draft (created ${new Date(app.created_at).toLocaleDateString('en-IN')})`
-                }
-              />
-              <InfoField label='Purpose of Work' value={app.work_purpose} full />
-              <InfoField label='Achievements / Experience' value={app.achievement_experience} full />
-              {app.remarks && <InfoField label='Applicant Remarks' value={app.remarks} full />}
-              {fieldValues.map(fv => (
-                <InfoField key={fv.label} label={fv.label} value={fv.value} />
+      <Card className='shadow-xs'>
+        <CardHeader>
+          <CardTitle className='text-base'>Application Details</CardTitle>
+        </CardHeader>
+        <CardContent className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+          <InfoField icon={Building2Icon} label='Category' value={app.category_name} />
+          <InfoField icon={HashIcon} label='Selection Method' value={app.selection_method} />
+          <InfoField icon={HashIcon} label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
+          <InfoField
+            icon={HashIcon}
+            label='Submitted At'
+            value={
+              app.submitted_at
+                ? new Date(app.submitted_at).toLocaleString('en-IN')
+                : `Draft (created ${new Date(app.created_at).toLocaleDateString('en-IN')})`
+            }
+          />
+          <InfoField label='Purpose of Work' value={app.work_purpose} full />
+          <InfoField label='Achievements / Experience' value={app.achievement_experience} full />
+          {app.remarks && <InfoField label='Applicant Remarks' value={app.remarks} full />}
+          {fieldValues.map(fv => (
+            <InfoField key={fv.label} label={fv.label} value={fv.value} />
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardHeader>
+          <CardTitle className='text-base'>Selection & Allotment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className='text-sm text-muted-foreground'>
+            Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
+          </p>
+          <p className='mt-3 text-sm text-muted-foreground'>
+            Draw participation, shop allotment, and the allotment letter/QR will appear here once this
+            application reaches that stage.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardHeader>
+          <CardTitle className='text-base'>Audit Trail</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {auditEntries.length === 0 ? (
+            <p className='py-8 text-center text-sm text-muted-foreground'>No audit entries for this application yet.</p>
+          ) : (
+            <div className='space-y-3'>
+              {auditEntries.map(entry => (
+                <div key={entry.id} className='rounded-md border border-border/60 px-3 py-2 text-sm'>
+                  <div className='flex items-center justify-between'>
+                    <span className='font-semibold text-[#0c2847]'>{entry.action}</span>
+                    <span className='text-xs text-muted-foreground'>
+                      {new Date(entry.created_at).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <p className='text-xs text-muted-foreground'>Role: {entry.actor_role_key ?? 'system'}</p>
+                </div>
               ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value='documents'>
-          <Card className='shadow-xs'>
-            <CardContent className='pt-6'>
-              {documents.length === 0 ? (
-                <p className='py-8 text-center text-sm text-muted-foreground'>No documents uploaded.</p>
-              ) : (
-                <div className='divide-y'>
-                  {documents.map(doc => {
-                    const docCfg = getDocumentStatusConfig(doc.verification_status)
-
-                    return (
-                      <div key={doc.id} className='flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
-                        <div>
-                          <div className='flex items-center gap-2'>
-                            <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
-                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
-                              {docCfg.label}
-                            </span>
-                          </div>
-                          <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
-                          {doc.verification_remarks && (
-                            <p className='mt-1 text-xs text-amber-700'>Remark: {doc.verification_remarks}</p>
-                          )}
-                        </div>
-
-                        <div className='flex shrink-0 items-center gap-2'>
-                          <a
-                            href={`/api/documents/${doc.id}/preview`}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                          >
-                            <EyeIcon className='size-3.5' /> Preview
-                          </a>
-                          {canVerifyDocuments && doc.verification_status !== 'verified' && (
-                            <DocumentDecisionActions documentId={doc.id} />
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value='selection'>
-          <Card className='shadow-xs'>
-            <CardHeader>
-              <CardTitle className='text-base'>Selection & Allotment</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>
-                Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
-              </p>
-              <p className='mt-3 text-sm text-muted-foreground'>
-                Draw participation, shop allotment, and the allotment letter/QR will appear here once this
-                application reaches that stage.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value='audit'>
-          <Card className='shadow-xs'>
-            <CardContent className='pt-6'>
-              {auditEntries.length === 0 ? (
-                <p className='py-8 text-center text-sm text-muted-foreground'>No audit entries for this application yet.</p>
-              ) : (
-                <div className='space-y-3'>
-                  {auditEntries.map(entry => (
-                    <div key={entry.id} className='rounded-md border border-border/60 px-3 py-2 text-sm'>
-                      <div className='flex items-center justify-between'>
-                        <span className='font-semibold text-[#0c2847]'>{entry.action}</span>
-                        <span className='text-xs text-muted-foreground'>
-                          {new Date(entry.created_at).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <p className='text-xs text-muted-foreground'>Role: {entry.actor_role_key ?? 'system'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
