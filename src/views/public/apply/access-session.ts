@@ -48,3 +48,35 @@ export function clearApplicationAccess(applicationId: number) {
     // Non-fatal — see above.
   }
 }
+
+/**
+ * Finds the access token by scanning this tab's sessionStorage for the entry
+ * matching an applicationNumber — for pages that only have the human-facing
+ * applicationNumber (e.g. from a URL param) and not the numeric applicationId
+ * the storage key above is actually keyed on.
+ */
+export function findAccessTokenForApplicationNumber(applicationNumber: string): { applicationId: number; accessToken: string } | null {
+  try {
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)
+
+      if (!key?.startsWith('kdb_application_access_')) continue
+
+      const raw = sessionStorage.getItem(key)
+
+      if (!raw) continue
+
+      const parsed = JSON.parse(raw) as { accessToken: string; applicationNumber: string }
+
+      if (parsed.applicationNumber === applicationNumber) {
+        const applicationId = Number(key.slice('kdb_application_access_'.length))
+
+        return { applicationId, accessToken: parsed.accessToken }
+      }
+    }
+  } catch {
+    // sessionStorage unavailable — caller treats a null return as "no token".
+  }
+
+  return null
+}

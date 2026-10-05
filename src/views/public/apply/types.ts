@@ -21,7 +21,8 @@ export type CategoryFieldDto = {
   key: string
   label: string
   labelHi: string | null
-  inputType: 'text' | 'textarea' | 'select' | 'radio'
+  inputType: 'text' | 'textarea' | 'select' | 'radio' | 'multiselect'
+  warnOnValue?: { value: string; messageEn: string; messageHi: string }
   required: boolean
   maxLength: number | null
   options?: Array<{ value: string; label: string }>

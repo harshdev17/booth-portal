@@ -12,14 +12,38 @@ import { useLanguage } from '@/context/LanguageContext'
 const SLIDE_IMAGES = ['/images/public/hero-slider/1.png', '/images/public/hero-slider/2.png', '/images/public/hero-slider/3.png']
 const AUTOPLAY_MS = 6000
 
+// Hindi month names spelled out explicitly rather than via
+// toLocaleDateString('hi-IN', ...) — that call produced a genuine
+// server/client hydration mismatch (confirmed live: Node's ICU data renders
+// October as "अक्तूबर", Chrome's renders it as "अक्टूबर" — different valid
+// transliterations of the same month, but React treats any text mismatch
+// between server and client render as an error and can abandon/reset state
+// in that subtree). A fixed lookup table renders identically everywhere.
+const HINDI_MONTHS = [
+  'जनवरी',
+  'फ़रवरी',
+  'मार्च',
+  'अप्रैल',
+  'मई',
+  'जून',
+  'जुलाई',
+  'अगस्त',
+  'सितंबर',
+  'अक्टूबर',
+  'नवंबर',
+  'दिसंबर'
+]
+
 function formatEventDate(value: string | null, lang: 'hi' | 'en'): string | null {
   if (!value) return null
 
-  return new Date(value).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
+  const date = new Date(value)
+
+  if (lang === 'hi') {
+    return `${date.getDate()} ${HINDI_MONTHS[date.getMonth()]} ${date.getFullYear()}`
+  }
+
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 /**

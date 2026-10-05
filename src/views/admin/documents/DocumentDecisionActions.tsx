@@ -93,9 +93,18 @@ const RemarkDialogButton = ({
   )
 }
 
-const DocumentDecisionActions = ({ documentId }: { documentId: number }) => (
+/**
+ * Previously hidden entirely once a document was 'verified', which meant an
+ * admin who verified a document by mistake (or needed to reject it after
+ * verifying) had no way back — reported live. Reject and Raise Query now
+ * always show regardless of current status (the server action has no
+ * status guard blocking a verified -> rejected transition either); only
+ * Verify itself is hidden once already verified, since re-verifying an
+ * already-verified document is a no-op.
+ */
+const DocumentDecisionActions = ({ documentId, currentStatus }: { documentId: number; currentStatus: string }) => (
   <div className='flex flex-wrap items-center gap-2'>
-    <VerifyButton documentId={documentId} />
+    {currentStatus !== 'verified' && <VerifyButton documentId={documentId} />}
     <RemarkDialogButton documentId={documentId} variant='query' label='Raise Query' icon={<HelpCircleIcon />} />
     <RemarkDialogButton documentId={documentId} variant='rejected' label='Reject' icon={<XIcon />} />
   </div>

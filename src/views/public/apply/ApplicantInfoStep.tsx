@@ -13,16 +13,20 @@ import { useAvailabilityCheck } from '@/views/public/apply/useAvailabilityCheck'
  */
 const MobileNumberInput = ({
   id,
+  name,
   value,
   onChange,
   onBlur,
-  invalid
+  invalid,
+  autoComplete
 }: {
   id: string
+  name: string
   value: string
   onChange: (value: string) => void
   onBlur: () => void
   invalid: boolean
+  autoComplete: string
 }) => (
   <InputGroup>
     <InputGroupAddon align='inline-start'>
@@ -30,9 +34,19 @@ const MobileNumberInput = ({
     </InputGroupAddon>
     <InputGroupInput
       id={id}
+      // Chrome autofills based on the `name`/`id` TEXT CONTENT (e.g.
+      // anything containing "mobile"/"phone"), not primarily on the
+      // `autocomplete` attribute — it has deliberately ignored
+      // autocomplete="off" on contact-like fields since ~2014. Giving the
+      // Alternate Mobile field a name/id that doesn't look like a phone
+      // field (see the 'contact-alt' call site below) is what actually
+      // stops Chrome from offering the same saved phone number for both
+      // fields (reported live: both fields filled with the identical
+      // autofilled value despite autoComplete='off').
+      name={name}
       type='tel'
       inputMode='numeric'
-      autoComplete='tel-national'
+      autoComplete={autoComplete}
       maxLength={10}
       value={value}
       onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -99,6 +113,7 @@ const ApplicantInfoStep = ({
             </FieldLabel>
             <MobileNumberInput
               id={field.name}
+              name={field.name}
               value={field.value}
               onChange={field.onChange}
               onBlur={() => {
@@ -106,6 +121,7 @@ const ApplicantInfoStep = ({
                 void checkAvailability('mobileNumber', field.value, 'common.mobileNumber')
               }}
               invalid={fieldState.invalid}
+              autoComplete='tel-national'
             />
             <FieldDescription>
               {lang === 'hi' ? '10 अंकों का मोबाइल नंबर (उदा. 9876543210)' : '10-digit number, for example 9876543210'}
@@ -125,10 +141,12 @@ const ApplicantInfoStep = ({
             </FieldLabel>
             <MobileNumberInput
               id={field.name}
+              name='contact-alt'
               value={field.value ?? ''}
               onChange={field.onChange}
               onBlur={field.onBlur}
               invalid={fieldState.invalid}
+              autoComplete='off'
             />
             <FieldDescription>
               {lang === 'hi'
@@ -151,6 +169,7 @@ const ApplicantInfoStep = ({
             <Input
               {...field}
               id={field.name}
+              autoComplete='off'
               placeholder={lang === 'hi' ? 'संस्था या व्यापारिक प्रतिष्ठान का नाम' : 'Enter registered name'}
               aria-invalid={fieldState.invalid}
             />
@@ -175,6 +194,7 @@ const ApplicantInfoStep = ({
             <Input
               {...field}
               id={field.name}
+              autoComplete='name'
               placeholder={lang === 'hi' ? 'पूर्ण नाम (पहचान पत्र अनुसार)' : 'Full name, as on ID'}
               aria-invalid={fieldState.invalid}
             />
@@ -197,6 +217,7 @@ const ApplicantInfoStep = ({
             <Input
               {...field}
               id={field.name}
+              autoComplete='off'
               placeholder={lang === 'hi' ? 'पिता का नाम' : "Father's name"}
               aria-invalid={fieldState.invalid}
             />

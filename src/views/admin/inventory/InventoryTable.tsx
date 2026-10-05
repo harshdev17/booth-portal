@@ -65,8 +65,11 @@ const EMPTY_FORM: StallFormState = {
 // Status is only ever shown/settable while editing an existing unit — a
 // brand-new stall always starts 'available' (see the create API route) and
 // 'allotted' is never admin-settable here, same reasoning as the DELETE
-// guard above: that transition belongs to the Allotment module.
-const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved', 'cancelled']
+// guard above: that transition belongs to the Allotment module. 'cancelled'
+// was dropped from this editable set per explicit request ("cancelled ki
+// need nahi hai, bas 2 hi rakho") — only Available/Reserved remain settable
+// from the UI; the enum value itself is untouched in the DB/schema.
+const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved']
 
 /**
  * Owns the shop-unit row list client-side so delete (single or bulk)
@@ -94,6 +97,10 @@ const InventoryTable = ({
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [bulkStatus, setBulkStatus] = useState<ShopUnitRowData['status']>('available')
+  const [isBulkUpdatingStatus, setIsBulkUpdatingStatus] = useState(false)
+  const [bulkStatusError, setBulkStatusError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState(ALL)
@@ -245,6 +252,36 @@ const InventoryTable = ({
       setError('Could not reach the server. Please try again.')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleBulkStatusUpdate = async () => {
+    setIsBulkUpdatingStatus(true)
+    setBulkStatusError(null)
+
+    try {
+      const response = await fetch('/api/admin/inventory/bulk-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: deletableSelectedIds, status: bulkStatus })
+      })
+
+      const body = await response.json()
+
+      if (!response.ok) {
+        setBulkStatusError(body.error ?? 'Could not update status for the selected stalls.')
+
+        return
+      }
+
+      const updatedSet = new Set<string>(body.updatedIds)
+
+      setRows(prev => prev.map(r => (updatedSet.has(r.id) ? { ...r, status: bulkStatus } : r)))
+      setSelectedIds(new Set())
+    } catch {
+      setBulkStatusError('Could not reach the server. Please try again.')
+    } finally {
+      setIsBulkUpdatingStatus(false)
     }
   }
 
@@ -401,6 +438,27 @@ const InventoryTable = ({
 
           <div className='flex items-center gap-2'>
             {canManage && deletableSelectedIds.length > 0 && (
+              <div className='flex items-center gap-1.5'>
+                <Select value={bulkStatus} onValueChange={value => setBulkStatus((value as ShopUnitRowData['status']) ?? bulkStatus)}>
+                  <SelectTrigger size='sm' className='w-32'>
+                    <SelectValue>{STATUS_CONFIG[bulkStatus].label}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITABLE_EDIT_STATUSES.map(status => (
+                      <SelectItem key={status} value={status}>
+                        {STATUS_CONFIG[status].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type='button' variant='outline' size='sm' onClick={handleBulkStatusUpdate} disabled={isBulkUpdatingStatus}>
+                  {isBulkUpdatingStatus && <Loader2Icon className='animate-spin' />}
+                  Set Status ({deletableSelectedIds.length})
+                </Button>
+              </div>
+            )}
+
+            {canManage && deletableSelectedIds.length > 0 && (
               <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
                 <DialogTrigger render={<Button variant='destructive' size='sm' />}>
                   <Trash2Icon />
@@ -542,6 +600,12 @@ const InventoryTable = ({
             )}
           </div>
         </div>
+
+        {bulkStatusError && (
+          <Alert variant='destructive' className='mt-3'>
+            <AlertDescription>{bulkStatusError}</AlertDescription>
+          </Alert>
+        )}
 
         {rows.length > 0 && (
           <div className='mt-3 flex flex-wrap items-center gap-2'>

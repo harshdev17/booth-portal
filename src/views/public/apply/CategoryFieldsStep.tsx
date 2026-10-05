@@ -1,5 +1,8 @@
 import { Controller, type Control } from 'react-hook-form'
 
+import { AlertTriangleIcon } from 'lucide-react'
+
+import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -7,6 +10,25 @@ import { Textarea } from '@/components/ui/textarea'
 import { useLanguage } from '@/context/LanguageContext'
 import type { ApplicationFormValues } from '@/views/public/apply/form-values'
 import type { CategoryFieldDto, ShopOptionDto } from '@/views/public/apply/types'
+
+/**
+ * Multiselect values are stored as a single comma-joined string (the EAV
+ * value column is a flat VARCHAR — see categoryFieldValueSchema), not an
+ * array, so the checkbox group reads/writes that string directly rather than
+ * needing a different field shape in the form state.
+ */
+function parseMultiselectValue(value: string | null | undefined): string[] {
+  return value ? value.split(',').filter(Boolean) : []
+}
+
+function toggleMultiselectValue(value: string | null | undefined, option: string, checked: boolean): string {
+  const current = new Set(parseMultiselectValue(value))
+
+  if (checked) current.add(option)
+  else current.delete(option)
+
+  return Array.from(current).join(',')
+}
 
 /**
  * Renders category-specific fields purely from the config fetched for the
@@ -82,12 +104,32 @@ const CategoryFieldsStep = ({
             render={({ field: rhfField, fieldState }) => (
               <Field
                 data-invalid={fieldState.invalid}
-                className={field.inputType === 'textarea' ? 'md:col-span-2' : undefined}
+                className={field.inputType === 'textarea' || field.inputType === 'multiselect' ? 'md:col-span-2' : undefined}
               >
                 <FieldLabel htmlFor={rhfField.name}>
                   {fieldDisplayName}
                   {field.required && ' *'}
                 </FieldLabel>
+
+              {field.inputType === 'multiselect' && (
+                <div className='flex flex-wrap gap-x-5 gap-y-2'>
+                  {(field.options ?? []).map(option => {
+                    const selected = parseMultiselectValue(rhfField.value).includes(option.value)
+
+                    return (
+                      <label key={option.value} className='flex items-center gap-2 text-sm text-[#334155]'>
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={checked =>
+                            rhfField.onChange(toggleMultiselectValue(rhfField.value, option.value, checked === true))
+                          }
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
 
               {field.inputType === 'textarea' && (
                 <Textarea
@@ -124,12 +166,27 @@ const CategoryFieldsStep = ({
                   {...rhfField}
                   value={rhfField.value ?? ''}
                   id={rhfField.name}
+                  // Date-like fields (registration_date, fssai_validity_date,
+                  // artisan_card_validity, etc.) were seeded as plain 'text'
+                  // since category_field_definitions has no dedicated 'date'
+                  // input_type — rendering them as a native date input gives
+                  // a real calendar picker (reported live: a free-text date
+                  // field is error-prone) without a DB migration, since every
+                  // modern browser renders type='date' with a built-in picker.
+                  type={/date|validity/i.test(field.key) ? 'date' : 'text'}
                   maxLength={field.maxLength ?? undefined}
                   aria-invalid={fieldState.invalid}
                 />
               )}
 
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+
+              {field.warnOnValue && rhfField.value === field.warnOnValue.value && (
+                <div className='flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800'>
+                  <AlertTriangleIcon className='mt-0.5 size-3.5 shrink-0' />
+                  <span>{lang === 'hi' ? field.warnOnValue.messageHi : field.warnOnValue.messageEn}</span>
+                </div>
+              )}
             </Field>
           )}
         />

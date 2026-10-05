@@ -8,6 +8,8 @@ type LanguageContextType = {
   lang: Language
   setLang: (lang: Language) => void
   t: (key: string) => string
+  showLanguagePrompt: boolean
+  choosePreferredLanguage: (lang: Language) => void
 }
 
 export const translations: Record<Language, Record<string, string>> = {
@@ -170,16 +172,27 @@ export const translations: Record<Language, Record<string, string>> = {
 const LanguageContext = createContext<LanguageContextType>({
   lang: 'hi',
   setLang: () => {},
-  t: (key: string) => key
+  t: (key: string) => key,
+  showLanguagePrompt: false,
+  choosePreferredLanguage: () => {}
 })
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
   const [lang, setLangState] = useState<Language>('hi')
 
+  // Shown only on a visitor's very first load, when no language has been
+  // picked yet (localStorage empty) — not on every visit, and never again
+  // once a choice is cached. Starts false so SSR/first client render match
+  // (no hydration mismatch) and flips true from the effect below if needed.
+  const [showLanguagePrompt, setShowLanguagePrompt] = useState(false)
+
   useEffect(() => {
     const saved = localStorage.getItem('kdb_lang') as Language
+
     if (saved === 'hi' || saved === 'en') {
       setLangState(saved)
+    } else {
+      setShowLanguagePrompt(true)
     }
   }, [])
 
@@ -188,12 +201,21 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem('kdb_lang', newLang)
   }
 
+  // Used by the first-visit prompt specifically — sets the language AND
+  // dismisses the prompt in one call, distinct from setLang (used by the
+  // header's always-available Hindi/English toggle, which never needs to
+  // touch the prompt).
+  const choosePreferredLanguage = (newLang: Language) => {
+    setLang(newLang)
+    setShowLanguagePrompt(false)
+  }
+
   const t = (key: string) => {
     return translations[lang]?.[key] || translations['en']?.[key] || key
   }
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, showLanguagePrompt, choosePreferredLanguage }}>
       {children}
     </LanguageContext.Provider>
   )

@@ -253,9 +253,7 @@ const DocumentsAdminPage = async ({
                       >
                         <EyeIcon className='size-3.5' /> Preview
                       </a>
-                      {canVerify && doc.verification_status !== 'verified' && (
-                        <DocumentDecisionActions documentId={doc.id} />
-                      )}
+                      {canVerify && <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status} />}
                     </div>
                   </div>
                 )

@@ -6,42 +6,13 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, CopyIcon, HomeIcon, SearchIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, CopyIcon, HomeIcon, PrinterIcon, ReceiptIcon, SearchIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useLanguage } from '@/context/LanguageContext'
+import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access-session'
 
 type StatusResponse = { categoryName: string; submittedAt: string | null }
-
-/**
- * Finds the access token by scanning this tab's sessionStorage for the
- * entry matching this application number — the storage key is keyed by
- * applicationId, which this page doesn't have directly, only the
- * human-facing applicationNumber from the URL.
- */
-function findAccessTokenForApplicationNumber(applicationNumber: string): string | null {
-  try {
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i)
-
-      if (!key?.startsWith('kdb_application_access_')) continue
-
-      const raw = sessionStorage.getItem(key)
-
-      if (!raw) continue
-
-      const parsed = JSON.parse(raw) as { accessToken: string; applicationNumber: string }
-
-      if (parsed.applicationNumber === applicationNumber) {
-        return parsed.accessToken
-      }
-    }
-  } catch {
-    // sessionStorage unavailable — caller treats a null return as "no token".
-  }
-
-  return null
-}
 
 const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) => {
   const router = useRouter()
@@ -49,8 +20,11 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
   const [copied, setCopied] = useState(false)
   const [details, setDetails] = useState<StatusResponse | null>(null)
 
-  const [accessToken] = useState<string | null>(() => findAccessTokenForApplicationNumber(applicationNumber))
+  const [access] = useState(() => findAccessTokenForApplicationNumber(applicationNumber))
+  const accessToken = access?.accessToken ?? null
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [receiptError, setReceiptError] = useState<string | null>(null)
+  const [isFetchingReceipt, setIsFetchingReceipt] = useState(false)
 
   useEffect(() => {
     if (!accessToken) return
@@ -85,6 +59,43 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // Non-fatal — the number remains visible on screen.
+    }
+  }
+
+  // Confirms a successful payment actually exists before navigating, so a
+  // draft/payment-pending applicant gets a clear inline message instead of
+  // landing on a receipt page that just says "not found".
+  const goToReceipt = async () => {
+    if (!access) return
+
+    setReceiptError(null)
+    setIsFetchingReceipt(true)
+
+    try {
+      const response = await fetch(`/api/applications/${access.applicationId}/receipt`, {
+        headers: { Authorization: `Bearer ${access.accessToken}` }
+      })
+
+      if (!response.ok) {
+        const body = await response.json()
+
+        setReceiptError(
+          body.error ??
+            (lang === 'hi'
+              ? 'भुगतान रसीद अभी उपलब्ध नहीं है।'
+              : 'Payment receipt is not available yet.')
+        )
+
+        return
+      }
+
+      router.push(`/apply/receipt/${applicationNumber}`)
+    } catch {
+      setReceiptError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsFetchingReceipt(false)
     }
   }
 
@@ -185,6 +196,35 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
               <span className='font-semibold text-[#334155]'>{new Date(details.submittedAt).toLocaleString('en-IN')}</span>
             </div>
           )}
+        </div>
+
+        {receiptError && (
+          <Alert variant='destructive' className='mb-6 text-left rounded-xl'>
+            <AlertCircleIcon className='size-4' />
+            <AlertDescription>{receiptError}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Post-submission document actions */}
+        <div className='mb-6 flex flex-col justify-center gap-3 sm:flex-row'>
+          {access && (
+            <button
+              type='button'
+              onClick={goToReceipt}
+              disabled={isFetchingReceipt}
+              className='inline-flex items-center justify-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition shadow-2xs disabled:opacity-60'
+            >
+              <ReceiptIcon className='size-4' />
+              <span>{lang === 'hi' ? 'भुगतान रसीद डाउनलोड करें' : 'Download Payment Receipt'}</span>
+            </button>
+          )}
+          <Link
+            href='/print-application'
+            className='inline-flex items-center justify-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition shadow-2xs'
+          >
+            <PrinterIcon className='size-4' />
+            <span>{lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application'}</span>
+          </Link>
         </div>
 
         {/* Action Buttons */}

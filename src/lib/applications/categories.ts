@@ -40,7 +40,7 @@ export type FieldDefinitionRow = {
   field_key: string
   label: string
   label_hi: string | null
-  input_type: 'text' | 'textarea' | 'select' | 'radio'
+  input_type: 'text' | 'textarea' | 'select' | 'radio' | 'multiselect'
   is_required: 0 | 1
   max_length: number | null
   options_json: string | null

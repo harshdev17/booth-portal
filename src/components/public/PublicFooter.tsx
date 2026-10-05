@@ -3,9 +3,32 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { CameraIcon, ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon } from 'lucide-react'
+import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
+
+// lucide-react dropped brand/logo icons (licensing) — Facebook/Instagram/
+// YouTube glyphs are rendered as inline SVGs (standard official mark paths)
+// instead of generic lookalike icons.
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg viewBox='0 0 24 24' fill='currentColor' className={className} aria-hidden='true'>
+    <path d='M22 12.06C22 6.505 17.523 2 12 2S2 6.505 2 12.06c0 5.02 3.657 9.184 8.438 9.94v-7.03H7.898v-2.91h2.54V9.845c0-2.522 1.492-3.915 3.777-3.915 1.094 0 2.238.197 2.238.197v2.476h-1.26c-1.242 0-1.63.775-1.63 1.57v1.887h2.773l-.443 2.91h-2.33V22c4.78-.756 8.437-4.92 8.437-9.94Z' />
+  </svg>
+)
+
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className={className} aria-hidden='true'>
+    <rect x='3' y='3' width='18' height='18' rx='5' />
+    <circle cx='12' cy='12' r='4' />
+    <circle cx='17.5' cy='6.5' r='1' fill='currentColor' stroke='none' />
+  </svg>
+)
+
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox='0 0 24 24' fill='currentColor' className={className} aria-hidden='true'>
+    <path d='M21.58 7.19a2.76 2.76 0 0 0-1.94-1.95C17.9 4.75 12 4.75 12 4.75s-5.9 0-7.64.49a2.76 2.76 0 0 0-1.94 1.95A28.9 28.9 0 0 0 2 12a28.9 28.9 0 0 0 .42 4.81 2.76 2.76 0 0 0 1.94 1.95c1.74.49 7.64.49 7.64.49s5.9 0 7.64-.49a2.76 2.76 0 0 0 1.94-1.95A28.9 28.9 0 0 0 22 12a28.9 28.9 0 0 0-.42-4.81ZM9.98 15.02V8.98L15.5 12l-5.52 3.02Z' />
+  </svg>
+)
 
 const PublicFooter = () => {
   const { lang } = useLanguage()
@@ -19,6 +42,14 @@ const PublicFooter = () => {
   ]
 
   const relatedPortals = [
+    {
+      label: lang === 'hi' ? 'अंतर्राष्ट्रीय गीता महोत्सव' : 'International Gita Mahotsav',
+      href: 'https://internationalgitamahotsav.in/'
+    },
+    {
+      label: lang === 'hi' ? '48 कोस कुरुक्षेत्र' : '48 Kos Kurukshetra',
+      href: 'https://48koskurukshetra.com/'
+    },
     {
       label: lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board',
       href: 'https://kdb.org.in'
@@ -98,7 +129,7 @@ const PublicFooter = () => {
           <div className='space-y-3.5 lg:col-span-3'>
             <h4 className='flex items-center gap-2 text-sm font-extrabold tracking-widest text-[#fbd38d] uppercase sm:text-base'>
               <span className='inline-block h-1 w-3 bg-[#d8891d]' />
-              <span>{lang === 'hi' ? 'संबंधित आधिकारिक लिंक' : 'Related Portals'}</span>
+              <span>{lang === 'hi' ? 'महत्वपूर्ण लिंक' : 'Important Links'}</span>
             </h4>
             <ul className='space-y-2.5 text-sm sm:text-base'>
               {relatedPortals.map(link => (
@@ -147,13 +178,13 @@ const PublicFooter = () => {
             {/* Social Icons */}
             <div className='pt-2'>
               <p className='mb-2 text-xs font-bold tracking-wider text-white/60 uppercase sm:text-sm'>
-                {lang === 'hi' ? 'सोशल मीडिया' : 'Follow KDB'}
+                {lang === 'hi' ? 'हमें फॉलो करें' : 'Follow Us'}
               </p>
               <div className='flex items-center gap-2.5'>
                 {[
-                  { icon: ThumbsUpIcon, label: 'Facebook' },
-                  { icon: CameraIcon, label: 'Instagram' },
-                  { icon: PlaySquareIcon, label: 'YouTube' }
+                  { icon: FacebookIcon, label: 'Facebook' },
+                  { icon: InstagramIcon, label: 'Instagram' },
+                  { icon: YoutubeIcon, label: 'YouTube' }
                 ].map((item, idx) => {
                   const Icon = item.icon
 
@@ -183,11 +214,16 @@ const PublicFooter = () => {
 
         {/* Developer Attribution */}
         <div className='mt-3 border-t border-white/10 pt-3 text-center text-xs text-white/45'>
-          <span>
+          <a
+            href='https://waahfoundation.org/'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='hover:text-white/70'
+          >
             {lang === 'hi'
-              ? 'वााह फाउंडेशन द्वारा विकसित एवं अनुरक्षित'
+              ? 'वाह फाउंडेशन द्वारा विकसित एवं अनुरक्षित'
               : 'Developed and Maintained by WAAH Foundation'}
-          </span>
+          </a>
         </div>
       </div>
     </footer>

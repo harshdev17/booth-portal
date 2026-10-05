@@ -46,7 +46,7 @@ export default function HeaderMarquee() {
     <div className='relative z-50 bg-[#092b52] text-white'>
       <div className='mx-auto flex max-w-7xl items-center px-3 py-1.5 sm:px-6'>
         {/* Left Badge */}
-        <div className='flex items-center gap-1.5 shrink-0 rounded-full bg-[#c88718] px-2.5 py-0.5 text-[11px] font-extrabold tracking-wider text-[#092b52] uppercase shadow-xs mr-3 select-none'>
+        <div className='flex items-center gap-1.5 shrink-0 rounded-full bg-[#c88718] px-2.5 py-0.5 text-xs font-extrabold tracking-wider text-[#092b52] uppercase shadow-xs mr-3 select-none'>
           <BellIcon className='size-3 stroke-[2.5] animate-pulse' />
           <span>{lang === 'hi' ? 'महत्वपूर्ण सूचना' : 'Important Info'}</span>
         </div>
@@ -54,20 +54,20 @@ export default function HeaderMarquee() {
         {/* Marquee Ticker Track */}
         <div className='relative overflow-hidden w-full flex-1'>
           <div className='marquee-track flex whitespace-nowrap gap-10 hover:[animation-play-state:paused] cursor-default'>
-            <div className='flex items-center gap-10 shrink-0 text-xs font-medium text-slate-100'>
+            <div className='flex items-center gap-10 shrink-0 text-sm font-medium text-slate-100'>
               {notices.map((text, idx) => (
                 <span key={`notice-1-${idx}`} className='inline-flex items-center gap-2.5'>
-                  <SparklesIcon className='size-3 text-[#f0b429] shrink-0' />
+                  <SparklesIcon className='size-3.5 text-[#f0b429] shrink-0' />
                   <span>{text}</span>
                 </span>
               ))}
             </div>
 
             {/* Duplicated for seamless continuous looping */}
-            <div className='flex items-center gap-10 shrink-0 text-xs font-medium text-slate-100' aria-hidden='true'>
+            <div className='flex items-center gap-10 shrink-0 text-sm font-medium text-slate-100' aria-hidden='true'>
               {notices.map((text, idx) => (
                 <span key={`notice-2-${idx}`} className='inline-flex items-center gap-2.5'>
-                  <SparklesIcon className='size-3 text-[#f0b429] shrink-0' />
+                  <SparklesIcon className='size-3.5 text-[#f0b429] shrink-0' />
                   <span>{text}</span>
                 </span>
               ))}

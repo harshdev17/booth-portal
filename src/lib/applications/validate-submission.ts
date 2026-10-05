@@ -38,7 +38,8 @@ export class SubmissionValidationError extends Error {
  * .ai/ADMIN_TRANSFORMATION_PLAN.md / .ai/SECURITY.md).
  */
 export async function validateSubmissionAgainstCategory(
-  input: ApplicationSubmissionInput
+  input: ApplicationSubmissionInput,
+  options: { skipCategoryFieldRequiredCheck?: boolean } = {}
 ): Promise<ValidatedSubmission> {
   const category = await getCategoryBySlug(input.categorySlug)
 
@@ -96,7 +97,7 @@ export async function validateSubmissionAgainstCategory(
 
     const rawValue = input.categoryFields[definition.field_key]
 
-    if (definition.is_required && (rawValue === undefined || rawValue.trim() === '')) {
+    if (!options.skipCategoryFieldRequiredCheck && definition.is_required && (rawValue === undefined || rawValue.trim() === '')) {
       throw new SubmissionValidationError(`"${definition.label}" is required.`, 'field_required')
     }
 
@@ -107,10 +108,24 @@ export async function validateSubmissionAgainstCategory(
         throw new SubmissionValidationError(`"${definition.label}" is too long.`, 'field_too_long')
       }
 
-      if (definition.input_type === 'select' || definition.input_type === 'radio') {
-        const options = definition.options_json ? (JSON.parse(definition.options_json) as Array<{ value: string }>) : []
+      if (definition.input_type === 'select' || definition.input_type === 'radio' || definition.input_type === 'multiselect') {
+        // mysql2 auto-parses a JSON column into a JS value already — never a
+        // raw string to re-JSON.parse() (same pitfall as the apply page's
+        // config builder; fixed there too, see page.tsx).
+        const options: Array<{ value: string }> = definition.options_json
+          ? typeof definition.options_json === 'string'
+            ? JSON.parse(definition.options_json)
+            : (definition.options_json as unknown as Array<{ value: string }>)
+          : []
 
-        if (!options.some(o => o.value === rawValue)) {
+        const validValues = new Set(options.map(o => o.value))
+
+        // A multiselect value is comma-joined (see categoryFieldValueSchema —
+        // the EAV value column is a flat string, not an array), so every
+        // selected option must individually be one of the configured choices.
+        const selectedValues = definition.input_type === 'multiselect' ? rawValue.split(',').filter(Boolean) : [rawValue]
+
+        if (selectedValues.length === 0 || !selectedValues.every(v => validValues.has(v))) {
           throw new SubmissionValidationError(`"${definition.label}" has an invalid value.`, 'field_invalid_option')
         }
       }

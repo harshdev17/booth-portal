@@ -57,7 +57,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const validated = await validateSubmissionAgainstCategory(parsed.data)
+    // This is the SILENT placeholder-data draft created the instant the
+    // apply page loads (see ApplicationFormOrchestrator.tsx createDraft()) —
+    // it only exists so document uploads have an application id to attach
+    // to, and it deliberately sends empty/placeholder categoryFields. Real
+    // category-specific required fields are enforced for real on the
+    // PATCH (pre-review save) and finalize steps, which run this same
+    // validator WITHOUT this flag.
+    const validated = await validateSubmissionAgainstCategory(parsed.data, { skipCategoryFieldRequiredCheck: true })
     const result = await createDraftApplication(parsed.data, validated, { ipAddress })
 
     return NextResponse.json(
