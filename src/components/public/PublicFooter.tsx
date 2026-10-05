@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { CameraIcon, ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon, XIcon } from 'lucide-react'
+import { CameraIcon, ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -152,7 +152,6 @@ const PublicFooter = () => {
               <div className='flex items-center gap-2.5'>
                 {[
                   { icon: ThumbsUpIcon, label: 'Facebook' },
-                  { icon: XIcon, label: 'X (Twitter)' },
                   { icon: CameraIcon, label: 'Instagram' },
                   { icon: PlaySquareIcon, label: 'YouTube' }
                 ].map((item, idx) => {

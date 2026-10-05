@@ -5,7 +5,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { CameraIcon, MailIcon, MenuIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon, XIcon } from 'lucide-react'
+import { CameraIcon, MailIcon, MenuIcon, PhoneIcon, PlaySquareIcon, ThumbsUpIcon } from 'lucide-react'
 
 import HeaderMarquee from '@/components/public/HeaderMarquee'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,6 @@ import { useLanguage } from '@/context/LanguageContext'
 // Confirmation Required], see .ai/OPEN_QUESTIONS.md.
 const SOCIAL_LINKS = [
   { icon: ThumbsUpIcon, label: 'Facebook' },
-  { icon: XIcon, label: 'X (Twitter)' },
   { icon: CameraIcon, label: 'Instagram' },
   { icon: PlaySquareIcon, label: 'YouTube' }
 ]
