@@ -24,11 +24,9 @@ const PublicHeader = () => {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Guidelines link hidden for now — its content is not yet updated for
-  // this event (explicit instruction, see .ai/CHANGELOG.md); the /guidelines
-  // page itself still exists and is reachable directly, just not linked.
   const navItems = [
     { label: t('nav.home'), href: '/', active: true },
+    { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
