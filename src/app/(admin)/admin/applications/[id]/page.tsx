@@ -17,6 +17,7 @@ import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 
@@ -60,7 +61,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   if (applicationId === null) notFound()
 
-  const [rows, fieldValues, documents, auditEntries, permissions] = await Promise.all([
+  const [rows, fieldValues, checkedFieldRows, documents, auditEntries, permissions] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
               a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
@@ -73,14 +74,17 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
        WHERE a.id = ?`,
       [applicationId]
     ),
-    query<Array<{ label: string; label_hi: string | null; value: string }>>(
-      `SELECT cfd.label, cfd.label_hi, afv.value
+    query<Array<{ field_definition_id: number; label: string; label_hi: string | null; value: string }>>(
+      `SELECT cfd.id AS field_definition_id, cfd.label, cfd.label_hi, afv.value
        FROM application_field_values afv
        JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
        WHERE afv.application_id = ?
        ORDER BY cfd.display_order ASC`,
       [applicationId]
     ),
+    query<Array<{ field_key: string }>>(`SELECT field_key FROM application_field_checks WHERE application_id = ?`, [
+      applicationId
+    ]),
     query<
       Array<{
         id: number
@@ -137,6 +141,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
   const canReject = app.status === 'under_review' && !!permissions?.has('application:reject')
   const canVerifyDocuments = !!permissions?.has('document:verify')
+  const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
 
   return (
     <div className='flex flex-col gap-6'>
@@ -184,25 +189,103 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             <CardContent>
               <SectionLabel>Identity</SectionLabel>
               <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-                <InfoField label='Representative Name' value={app.representative_name} />
-                <InfoField label="Father's Name" value={app.father_name} />
-                <InfoField label='Organisation / Firm Name' value={app.organisation_name} />
-                <InfoField
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='representative_name'
+                  label='Representative Name'
+                  value={app.representative_name}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('representative_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='father_name'
+                  label="Father's Name"
+                  value={app.father_name}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('father_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='organisation_name'
+                  label='Organisation / Firm Name'
+                  value={app.organisation_name}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('organisation_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='aadhaar_number'
                   label='Aadhaar Number'
                   value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
                   mono
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('aadhaar_number')}
                 />
               </div>
 
               <SectionLabel className='mt-6'>Contact & Address</SectionLabel>
               <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-                <InfoField label='Email' value={app.email} />
-                <InfoField label='Mobile Number' value={app.mobile_number} mono />
-                <InfoField label='Alternate Mobile' value={app.alternate_mobile ?? '—'} mono />
-                <InfoField label='PIN Code' value={app.pin_code} mono />
-                <InfoField label='Address' value={app.address} full />
-                <InfoField label='District' value={app.district} />
-                <InfoField label='State' value={app.state} />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='email'
+                  label='Email'
+                  value={app.email}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('email')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='mobile_number'
+                  label='Mobile Number'
+                  value={app.mobile_number}
+                  mono
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('mobile_number')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='alternate_mobile'
+                  label='Alternate Mobile'
+                  value={app.alternate_mobile ?? '—'}
+                  mono
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('alternate_mobile')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='pin_code'
+                  label='PIN Code'
+                  value={app.pin_code}
+                  mono
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('pin_code')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='address'
+                  label='Address'
+                  value={app.address}
+                  full
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('address')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='district'
+                  label='District'
+                  value={app.district}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('district')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='state'
+                  label='State'
+                  value={app.state}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('state')}
+                />
               </div>
             </CardContent>
           </Card>
@@ -214,23 +297,86 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               <CardTitle className='text-base'>Application Details</CardTitle>
             </CardHeader>
             <CardContent className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-              <InfoField label='Category' value={app.category_name} />
-              <InfoField label='Selection Method' value={app.selection_method} />
-              <InfoField label='Booth/Stall Option' value={app.shop_option_label ?? '—'} />
-              <InfoField
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='category'
+                label='Category'
+                value={app.category_name}
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('category')}
+              />
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='selection_method'
+                label='Selection Method'
+                value={app.selection_method}
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('selection_method')}
+              />
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='shop_option'
+                label='Booth/Stall Option'
+                value={app.shop_option_label ?? '—'}
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('shop_option')}
+              />
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='submitted_at'
                 label='Submitted At'
                 value={
                   app.submitted_at
                     ? new Date(app.submitted_at).toLocaleString('en-IN')
                     : `Draft (created ${new Date(app.created_at).toLocaleDateString('en-IN')})`
                 }
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('submitted_at')}
               />
-              <InfoField label='Purpose of Work' value={app.work_purpose} full />
-              <InfoField label='Achievements / Experience' value={app.achievement_experience} full />
-              {app.remarks && <InfoField label='Applicant Remarks' value={app.remarks} full />}
-              {fieldValues.map(fv => (
-                <InfoField key={fv.label} label={fv.label} value={fv.value} />
-              ))}
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='work_purpose'
+                label='Purpose of Work'
+                value={app.work_purpose}
+                full
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('work_purpose')}
+              />
+              <ApplicationFieldRow
+                applicationId={id}
+                fieldKey='achievement_experience'
+                label='Achievements / Experience'
+                value={app.achievement_experience}
+                full
+                canCheck={canVerifyDocuments}
+                initiallyChecked={checkedFieldKeys.has('achievement_experience')}
+              />
+              {app.remarks && (
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='remarks'
+                  label='Applicant Remarks'
+                  value={app.remarks}
+                  full
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('remarks')}
+                />
+              )}
+              {fieldValues.map(fv => {
+                const fieldKey = `dynamic:${fv.field_definition_id}`
+
+                return (
+                  <ApplicationFieldRow
+                    key={fieldKey}
+                    applicationId={id}
+                    fieldKey={fieldKey}
+                    label={fv.label}
+                    value={fv.value}
+                    canCheck={canVerifyDocuments}
+                    initiallyChecked={checkedFieldKeys.has(fieldKey)}
+                  />
+                )
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -289,23 +435,6 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
 const SectionLabel = ({ children, className }: { children: ReactNode; className?: string }) => (
   <p className={`mb-3 text-xs font-bold uppercase tracking-wider text-[#8c5711] ${className ?? ''}`}>{children}</p>
-)
-
-const InfoField = ({
-  label,
-  value,
-  mono,
-  full
-}: {
-  label: string
-  value: string
-  mono?: boolean
-  full?: boolean
-}) => (
-  <div className={full ? 'sm:col-span-2' : ''}>
-    <p className='text-xs font-bold uppercase tracking-wide text-muted-foreground'>{label}</p>
-    <p className={`mt-0.5 text-sm font-semibold text-slate-800 ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
-  </div>
 )
 
 export default ApplicationDetailPage
