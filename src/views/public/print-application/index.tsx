@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircleIcon, Loader2Icon, PrinterIcon, SearchIcon } from 'lucide-react'
+import { AlertCircleIcon, DownloadIcon, Loader2Icon, PrinterIcon, SearchIcon } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
+import { downloadBlob } from '@/lib/browser/download-blob'
 
 const lookupSchema = z.object({
   applicationNumber: z
@@ -84,6 +85,8 @@ const PrintApplication = () => {
   const [result, setResult] = useState<PrintResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
@@ -105,6 +108,37 @@ const PrintApplication = () => {
       document.title = previousTitle
     }
   }, [result])
+
+  const downloadPdf = async () => {
+    if (!result) return
+
+    setDownloadError(null)
+    setIsDownloading(true)
+
+    try {
+      const response = await fetch(
+        `/api/applications/print/pdf?applicationNumber=${encodeURIComponent(result.applicationNumber)}&lang=${lang}`
+      )
+
+      if (!response.ok) {
+        const body = await response.json()
+
+        setDownloadError(
+          body.error ?? (lang === 'hi' ? 'आवेदन डाउनलोड नहीं हो सका।' : 'Could not download the application.')
+        )
+
+        return
+      }
+
+      downloadBlob(await response.blob(), `Application-${result.applicationNumber}.pdf`)
+    } catch {
+      setDownloadError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
@@ -267,12 +301,25 @@ const PrintApplication = () => {
         </div>
       )}
 
+      {phase === 'result' && result && downloadError && (
+        <Alert variant='destructive' className='mb-4 print:hidden'>
+          <AlertCircleIcon className='size-4' />
+          <AlertDescription>{downloadError}</AlertDescription>
+        </Alert>
+      )}
+
       {phase === 'result' && result && (
         <div className='flex flex-col gap-6 print:block print:gap-0'>
-          <Button type='button' onClick={() => window.print()} className='w-fit print:hidden'>
-            <PrinterIcon />
-            {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
-          </Button>
+          <div className='flex flex-wrap gap-3 print:hidden'>
+            <Button type='button' onClick={() => window.print()} className='w-fit'>
+              <PrinterIcon />
+              {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
+            </Button>
+            <Button type='button' variant='outline' onClick={downloadPdf} disabled={isDownloading} className='w-fit'>
+              {isDownloading ? <Loader2Icon className='animate-spin' /> : <DownloadIcon />}
+              {lang === 'hi' ? 'पीडीएफ डाउनलोड करें' : 'Download PDF'}
+            </Button>
+          </div>
 
           {/*
             kdb-print-sheet: the ONLY thing visible when printed (see the

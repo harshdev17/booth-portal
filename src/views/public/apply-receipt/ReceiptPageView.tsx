@@ -5,11 +5,12 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
+import { AlertCircleIcon, DownloadIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/context/LanguageContext'
+import { downloadBlob } from '@/lib/browser/download-blob'
 import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access-session'
 
 type ReceiptData = {
@@ -43,6 +44,8 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   useEffect(() => {
     const access = findAccessTokenForApplicationNumber(applicationNumber)
@@ -88,6 +91,37 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
     void loadReceipt()
   }, [applicationNumber, lang])
 
+  const downloadPdf = async () => {
+    const access = findAccessTokenForApplicationNumber(applicationNumber)
+
+    if (!access) return
+
+    setDownloadError(null)
+    setIsDownloading(true)
+
+    try {
+      const response = await fetch(`/api/applications/${access.applicationId}/receipt/pdf?lang=${lang}`, {
+        headers: { Authorization: `Bearer ${access.accessToken}` }
+      })
+
+      if (!response.ok) {
+        const body = await response.json()
+
+        setDownloadError(body.error ?? (lang === 'hi' ? 'रसीद डाउनलोड नहीं हो सकी।' : 'Could not download the receipt.'))
+
+        return
+      }
+
+      downloadBlob(await response.blob(), `Receipt-${applicationNumber}.pdf`)
+    } catch {
+      setDownloadError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   useEffect(() => {
     if (!receipt) return
 
@@ -127,12 +161,25 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
         </Alert>
       )}
 
+      {!isLoading && downloadError && (
+        <Alert variant='destructive' className='mb-4'>
+          <AlertCircleIcon className='size-4' />
+          <AlertDescription>{downloadError}</AlertDescription>
+        </Alert>
+      )}
+
       {!isLoading && receipt && (
         <div className='flex flex-col gap-6 print:block print:gap-0'>
-          <Button type='button' onClick={() => window.print()} className='w-fit print:hidden'>
-            <PrinterIcon />
-            {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
-          </Button>
+          <div className='flex flex-wrap gap-3 print:hidden'>
+            <Button type='button' onClick={() => window.print()} className='w-fit'>
+              <PrinterIcon />
+              {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
+            </Button>
+            <Button type='button' variant='outline' onClick={downloadPdf} disabled={isDownloading} className='w-fit'>
+              {isDownloading ? <Loader2Icon className='animate-spin' /> : <DownloadIcon />}
+              {lang === 'hi' ? 'पीडीएफ डाउनलोड करें' : 'Download PDF'}
+            </Button>
+          </div>
 
           {/* kdb-print-sheet: see print-application's view for why colors
               here are fixed black-on-white rather than the site's themed
