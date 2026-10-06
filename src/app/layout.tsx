@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 // Next Imports
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import Script from 'next/script'
 
 // Third-party Imports
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -33,6 +34,9 @@ export const metadata: Metadata = {
   title: 'IGM Admin Portal',
   description: 'Kurukshetra Development Board — Booth/Stall Allotment administrative portal.',
   metadataBase: new URL(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}`),
+  verification: {
+    google: '7gXbNkqpcOKaTSy2tnEVqBEWGktthD94H6zBo7w_PKs'
+  },
   robots: {
     index: false,
     follow: false
@@ -55,6 +59,16 @@ const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
         </NuqsAdapter>
 
         <ScrollToTop />
+
+        <Script src='https://www.googletagmanager.com/gtag/js?id=G-XQSQDHY481' strategy='afterInteractive' />
+        <Script id='google-analytics' strategy='afterInteractive'>
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-XQSQDHY481');
+          `}
+        </Script>
       </body>
     </html>
   )

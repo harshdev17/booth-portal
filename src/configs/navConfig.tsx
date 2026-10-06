@@ -74,12 +74,6 @@ export const navItems: NavItem[] = [
         permission: 'application:view'
       },
       {
-        icon: 'Users',
-        label: 'Applicant / User Details',
-        href: '/admin/applicants',
-        permission: 'application:view'
-      },
-      {
         icon: 'FileCheck2',
         label: 'Document Verification',
         href: '/admin/documents',

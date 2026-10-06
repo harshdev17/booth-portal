@@ -1,6 +1,7 @@
 'use client'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { getApplyInstructions } from '@/lib/content/apply-instructions'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 
 const formatDateTime = (value: string, lang: 'hi' | 'en') => {
@@ -28,6 +29,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
   const { documents, category } = config
   const auctionVenue = lang === 'hi' && category.auctionVenueHi ? category.auctionVenueHi : category.auctionVenue
   const hasAuctionDetails = !!(category.applicationClosesAt || (category.auctionDate && auctionVenue))
+  const categoryInstructions = getApplyInstructions(category.slug)?.bullets
 
   return (
     <div className='flex flex-col gap-4'>
@@ -80,6 +82,27 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             </li>
           )}
         </ul>
+      )}
+
+      {/* Category-specific "Before You Start" bullets — supplied verbatim
+          per category (see apply-instructions.ts), shown ABOVE the generic
+          procedural list below rather than replacing it, since the generic
+          list's points (final-decision authority, jurisdiction) apply to
+          every category and aren't repeated in the category-specific text. */}
+      {categoryInstructions && categoryInstructions.length > 0 && (
+        <div className='pt-2'>
+          <p className='mb-2 text-base sm:text-lg font-extrabold text-[#0c2847]'>
+            {lang === 'hi' ? 'आवेदन से पूर्व निर्देश' : 'Before You Apply'}
+          </p>
+          <ol className='space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
+            {categoryInstructions.map((bullet, idx) => (
+              <li key={idx} className='flex items-baseline gap-2'>
+                <span className='font-bold text-[#b8761b]'>{idx + 1}.</span>
+                <span>{lang === 'hi' ? bullet.hi : bullet.en}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
 
       {/* Important Instructions Box (clean without background or border) */}

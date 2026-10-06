@@ -6,6 +6,7 @@ import { type ComponentType } from 'react'
 import { useCallback, useMemo, useState } from 'react'
 
 // Next Imports
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 
@@ -17,7 +18,6 @@ import { ChevronRightIcon, SquareArrowOutUpRightIcon } from 'lucide-react'
 import type { MenuGroupSubItem, MenuItem, MenuLeafSubItem, MenuSubItem, NavItem } from '@/configs/navConfig'
 
 // Component Imports
-import LogoSvg from '@/assets/svg/logo'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   DropdownMenu,
@@ -547,10 +547,19 @@ const SidebarLayout = ({
           <SidebarMenuItem>
             <SidebarMenuButton
               size='lg'
-              className='gap-2.5 bg-transparent! [&>svg]:size-8'
+              className='gap-2.5 bg-transparent!'
               render={<Link href={`${themeConfig.homePageUrl}`} />}
             >
-              <LogoSvg className='[&_rect]:fill-sidebar [&_rect:first-child]:fill-primary' />
+              {/* Real KDB emblem — replaces the generic template snowflake
+                  SVG the AdminCN starter shipped with (src/assets/svg/logo.tsx),
+                  which was never swapped for the actual client logo. */}
+              <Image
+                src='/images/public/logo.webp'
+                alt='Kurukshetra Development Board'
+                width={32}
+                height={32}
+                className='size-8 shrink-0 object-contain'
+              />
               <div className='flex flex-col items-start'>
                 <span className='text-lg font-semibold text-nowrap'>IGM</span>
                 <span className='text-xs font-light text-nowrap'>Admin Portal</span>
