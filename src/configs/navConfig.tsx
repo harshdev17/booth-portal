@@ -170,6 +170,12 @@ export const navItems: NavItem[] = [
         label: 'Homepage Notices',
         href: '/admin/settings/notices',
         permission: 'config:manage'
+      },
+      {
+        icon: 'Bot',
+        label: 'reCAPTCHA Settings',
+        href: '/admin/settings/recaptcha',
+        permission: 'config:manage'
       }
     ]
   }

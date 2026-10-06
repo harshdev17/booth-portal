@@ -65,18 +65,23 @@ function buildContentSecurityPolicy(nonce: string): string {
     // (reported: "Connecting to 'https://lumberjack.razorpay.com/...'
     // violates ... connect-src 'self'"). See
     // https://razorpay.com/docs/payments/payment-gateway/web-integration/hosted/build-integration/#3-content-security-policy-csp
-    `${scriptSrc} https://checkout.razorpay.com`,
+    // google.com/gstatic.com: the reCAPTCHA v2 checkbox widget on the
+    // application Review page (RecaptchaWidget.tsx) — same reasoning as the
+    // Razorpay origin above it, a bare 'self' CSP silently blocks the widget
+    // script and its frame with no visible error beyond the box never
+    // rendering.
+    `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/`,
 
     // github.io: the floating chatbot widget (FloatingChatbot.tsx) embeds a
     // third-party-hosted chat page in an iframe — without this, the iframe
     // is silently blocked exactly like the earlier Razorpay CSP bug (see the
     // frame-src comment above this one), with no visible error beyond the
     // iframe staying blank.
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io",
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io https://www.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https://cdn.razorpay.com",
-    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com",
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"

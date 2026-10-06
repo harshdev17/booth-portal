@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 
 import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CreditCardIcon, EyeIcon, Loader2Icon, ShieldCheckIcon } from 'lucide-react'
 
+import RecaptchaWidget from '@/components/public/RecaptchaWidget'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -88,6 +89,11 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   const [otpPhase, setOtpPhase] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle')
   const [otpCode, setOtpCode] = useState('')
   const [otpError, setOtpError] = useState<string | null>(null)
+
+  // Only required once NEXT_PUBLIC_RECAPTCHA_SITE_KEY is actually configured
+  // (RecaptchaWidget renders nothing until then) — see .ai/OPEN_QUESTIONS.md.
+  const recaptchaRequired = !!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
 
   useEffect(() => {
     if (access === null) {
@@ -197,6 +203,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   const handleSubmit = async () => {
     if (!access || !informationCorrect || !agreedToTerms || otpPhase !== 'verified') return
+    if (recaptchaRequired && !recaptchaToken) return
 
     setIsSubmitting(true)
     setSubmitError(null)
@@ -207,7 +214,8 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accessToken: access.accessToken,
-          declaration: { informationCorrect: true, agreedToTerms: true }
+          declaration: { informationCorrect: true, agreedToTerms: true },
+          recaptchaToken
         })
       })
 
@@ -289,7 +297,8 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   if (!data) return null
 
-  const canSubmit = informationCorrect && agreedToTerms && otpPhase === 'verified'
+  const canSubmit =
+    informationCorrect && agreedToTerms && otpPhase === 'verified' && (!recaptchaRequired || !!recaptchaToken)
 
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -546,6 +555,12 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                 </span>
               </label>
             </div>
+
+            {recaptchaRequired && (
+              <div className='mt-5 border-t border-[#f1f5f9] pt-5'>
+                <RecaptchaWidget onChange={setRecaptchaToken} />
+              </div>
+            )}
           </section>
 
           {/* Bottom Action Buttons */}

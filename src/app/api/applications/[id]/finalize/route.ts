@@ -5,13 +5,15 @@ import { ApplicationStateError, DuplicateApplicationError, finalizeApplication }
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
+import { verifyRecaptcha } from '@/lib/security/recaptcha'
 
 const finalizeSchema = z.object({
   accessToken: z.string().trim().min(1).max(128),
   declaration: z.object({
     informationCorrect: z.literal(true),
     agreedToTerms: z.literal(true)
-  })
+  }),
+  recaptchaToken: z.string().trim().min(1).max(4096).nullable().optional()
 })
 
 /**
@@ -46,6 +48,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!parsed.success) {
     return NextResponse.json({ error: 'You must confirm the declarations before submitting.' }, { status: 400 })
+  }
+
+  const recaptchaResult = await verifyRecaptcha(parsed.data.recaptchaToken ?? null, ipAddress)
+
+  if (!recaptchaResult.ok) {
+    return NextResponse.json({ error: recaptchaResult.error }, { status: 400 })
   }
 
   try {
