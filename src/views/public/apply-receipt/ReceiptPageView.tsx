@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation'
 import { AlertCircleIcon, DownloadIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/context/LanguageContext'
 import { downloadBlob } from '@/lib/browser/download-blob'
 import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access-session'
@@ -48,20 +47,20 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
   const [downloadError, setDownloadError] = useState<string | null>(null)
 
   useEffect(() => {
-    const access = findAccessTokenForApplicationNumber(applicationNumber)
-
-    if (!access) {
-      setError(
-        lang === 'hi'
-          ? 'यह रसीद केवल उसी ब्राउज़र टैब में उपलब्ध है जहां आवेदन जमा किया गया था।'
-          : 'This receipt is only available in the same browser tab where the application was submitted.'
-      )
-      setIsLoading(false)
-
-      return
-    }
-
     const loadReceipt = async () => {
+      const access = findAccessTokenForApplicationNumber(applicationNumber)
+
+      if (!access) {
+        setError(
+          lang === 'hi'
+            ? 'यह रसीद केवल उसी ब्राउज़र टैब में उपलब्ध है जहां आवेदन जमा किया गया था।'
+            : 'This receipt is only available in the same browser tab where the application was submitted.'
+        )
+        setIsLoading(false)
+
+        return
+      }
+
       try {
         const response = await fetch(`/api/applications/${access.applicationId}/receipt`, {
           headers: { Authorization: `Bearer ${access.accessToken}` }
@@ -105,9 +104,18 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
       })
 
       if (!response.ok) {
-        const body = await response.json()
-
-        setDownloadError(body.error ?? (lang === 'hi' ? 'रसीद डाउनलोड नहीं हो सकी।' : 'Could not download the receipt.'))
+        // PDF generation runs a real headless browser server-side (see
+        // lib/pdf/browser.ts) — the first request right after a server
+        // (re)start can fail while that browser process cold-starts, even
+        // though a retry moments later succeeds (confirmed live). Point the
+        // applicant at the Print button right next to this one, which
+        // doesn't depend on that server-side browser at all, rather than
+        // leaving them stuck on a bare "something went wrong".
+        setDownloadError(
+          lang === 'hi'
+            ? 'पीडीएफ डाउनलोड नहीं हो सकी। कृपया पुनः प्रयास करें, या इसके बजाय ऊपर दिए गए "प्रिंट करें" बटन का उपयोग करें।'
+            : 'Could not download the PDF. Please try again, or use the "Print" button above instead.'
+        )
 
         return
       }
@@ -115,7 +123,9 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
       downloadBlob(await response.blob(), `Receipt-${applicationNumber}.pdf`)
     } catch {
       setDownloadError(
-        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+        lang === 'hi'
+          ? 'पीडीएफ डाउनलोड नहीं हो सकी। कृपया पुनः प्रयास करें, या इसके बजाय "प्रिंट करें" बटन का उपयोग करें।'
+          : 'Could not download the PDF. Please try again, or use the "Print" button instead.'
       )
     } finally {
       setIsDownloading(false)
@@ -170,15 +180,24 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
 
       {!isLoading && receipt && (
         <div className='flex flex-col gap-6 print:block print:gap-0'>
-          <div className='flex flex-wrap gap-3 print:hidden'>
-            <Button type='button' onClick={() => window.print()} className='w-fit'>
-              <PrinterIcon />
+          <div className='flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center print:hidden'>
+            <button
+              type='button'
+              onClick={() => window.print()}
+              className='inline-flex items-center justify-center gap-2 rounded-lg bg-[#0c2847] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#06192e]'
+            >
+              <PrinterIcon className='size-4' />
               {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
-            </Button>
-            <Button type='button' variant='outline' onClick={downloadPdf} disabled={isDownloading} className='w-fit'>
-              {isDownloading ? <Loader2Icon className='animate-spin' /> : <DownloadIcon />}
+            </button>
+            <button
+              type='button'
+              onClick={downloadPdf}
+              disabled={isDownloading}
+              className='inline-flex items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-5 py-2.5 text-sm font-semibold text-[#0c2847] transition hover:border-[#0c2847] hover:bg-[#f8fafc] disabled:pointer-events-none disabled:opacity-60'
+            >
+              {isDownloading ? <Loader2Icon className='size-4 animate-spin' /> : <DownloadIcon className='size-4' />}
               {lang === 'hi' ? 'पीडीएफ डाउनलोड करें' : 'Download PDF'}
-            </Button>
+            </button>
           </div>
 
           {/* kdb-print-sheet: see print-application's view for why colors

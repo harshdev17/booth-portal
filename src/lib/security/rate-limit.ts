@@ -22,6 +22,7 @@ export type RateLimitConfig = {
 export const RATE_LIMITS = {
   applicationSubmit: { windowMs: 60 * 60 * 1000, maxAttempts: 10 } as RateLimitConfig,
   documentUpload: { windowMs: 60 * 1000, maxAttempts: 20 } as RateLimitConfig,
+  receiptLookup: { windowMs: 15 * 60 * 1000, maxAttempts: 10 } as RateLimitConfig,
   statusLookup: { windowMs: 60 * 1000, maxAttempts: 15 } as RateLimitConfig,
   categoryRead: { windowMs: 60 * 1000, maxAttempts: 60 } as RateLimitConfig,
   otpRequest: { windowMs: 60 * 60 * 1000, maxAttempts: 5 } as RateLimitConfig,

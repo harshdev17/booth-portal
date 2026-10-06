@@ -6,11 +6,12 @@ import type { NextConfig } from 'next'
 // nonce blocks React hydration entirely (every button/link becomes
 // non-interactive while the page still looks fine). See middleware.ts for
 // the full explanation and the nonce-based policy.
+// X-Frame-Options is set per-request in src/proxy.ts (DENY, except SAMEORIGIN
+// for the document-preview route that the preview dialog frames).
 const SECURITY_HEADERS = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'X-Frame-Options', value: 'DENY' },
   ...(process.env.NODE_ENV === 'production'
     ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
     : [])

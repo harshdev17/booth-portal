@@ -28,6 +28,7 @@ const PublicHeader = () => {
     { label: t('nav.home'), href: '/', active: true },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
+    { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' }

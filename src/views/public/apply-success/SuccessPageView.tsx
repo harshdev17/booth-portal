@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, CopyIcon, HomeIcon, PrinterIcon, ReceiptIcon, SearchIcon } from 'lucide-react'
+import { AlertCircleIcon, CopyIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useLanguage } from '@/context/LanguageContext'
@@ -14,7 +14,13 @@ import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access
 
 type StatusResponse = { categoryName: string; submittedAt: string | null }
 
-const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) => {
+const SuccessPageView = ({
+  applicationNumber,
+  encryptedToken
+}: {
+  applicationNumber: string
+  encryptedToken: string
+}) => {
   const router = useRouter()
   const { lang } = useLanguage()
   const [copied, setCopied] = useState(false)
@@ -25,6 +31,8 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
   const [loadError, setLoadError] = useState<string | null>(null)
   const [receiptError, setReceiptError] = useState<string | null>(null)
   const [isFetchingReceipt, setIsFetchingReceipt] = useState(false)
+  const [isFetchingPrint, setIsFetchingPrint] = useState(false)
+  const [printError, setPrintError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!accessToken) return
@@ -89,13 +97,48 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
         return
       }
 
-      router.push(`/apply/receipt/${applicationNumber}`)
+      router.push(`/apply/receipt/${encryptedToken}`)
     } catch {
       setReceiptError(
         lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
       )
     } finally {
       setIsFetchingReceipt(false)
+    }
+  }
+
+  // Mirrors goToReceipt() — confirms the submitted application is actually
+  // fetchable with the session's access token before navigating, so this
+  // never requires the OTP-gated /print-application lookup flow.
+  const goToPrint = async () => {
+    if (!access) return
+
+    setPrintError(null)
+    setIsFetchingPrint(true)
+
+    try {
+      const response = await fetch(`/api/applications/${access.applicationId}/print`, {
+        headers: { Authorization: `Bearer ${access.accessToken}` }
+      })
+
+      if (!response.ok) {
+        const body = await response.json()
+
+        setPrintError(
+          body.error ??
+            (lang === 'hi' ? 'आवेदन अभी उपलब्ध नहीं है।' : 'Application is not available yet.')
+        )
+
+        return
+      }
+
+      router.push(`/apply/print/${encryptedToken}`)
+    } catch {
+      setPrintError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsFetchingPrint(false)
     }
   }
 
@@ -117,9 +160,6 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
                 priority
               />
             </div>
-          </div>
-          <div className='mt-2 inline-flex size-16 items-center justify-center rounded-full bg-[#ecfdf5] border-2 border-[#10b981]/30 shadow-xs'>
-            <CheckCircle2Icon className='size-9 text-[#059669]' />
           </div>
         </div>
 
@@ -171,79 +211,63 @@ const SuccessPageView = ({ applicationNumber }: { applicationNumber: string }) =
             </div>
           </div>
 
-          {accessToken && (
-            <div className='border-t border-[#f1f5f9] pt-4'>
-              <span className='text-xs font-bold tracking-wider text-[#64748b] uppercase'>
-                {lang === 'hi' ? 'डिजिटल एक्सेस कोड' : 'Digital Access Code'}
-              </span>
-              <p className='mt-1 rounded-xl border border-[#fbd38d]/50 bg-[#fffaf0] p-3 font-mono text-xs sm:text-sm font-semibold text-[#8c5208] break-all'>
-                {accessToken}
-              </p>
-              <div className='mt-2 flex items-start gap-2 text-xs text-[#b45309]'>
-                <span className='font-bold shrink-0'>{lang === 'hi' ? '⚠️ नोट:' : '⚠️ Note:'}</span>
-                <span>
-                  {lang === 'hi'
-                    ? 'यह कोड इस सत्र में दस्तावेज़ अपलोड/भुगतान हेतु उपयोग होता है। बाद में स्थिति जांचने के लिए इसकी आवश्यकता नहीं है — उसके लिए केवल आपके मोबाइल नंबर पर भेजा गया OTP पर्याप्त है।'
-                    : "This code is used for document uploads/payment within this session. You won't need it to check your status later — that only requires an OTP sent to your mobile number."}
-                </span>
-              </div>
-            </div>
-          )}
-
           {details?.submittedAt && (
             <div className='border-t border-[#f1f5f9] pt-3 text-xs text-[#64748b]'>
               {lang === 'hi' ? 'सबमिट किया गया समय: ' : 'Submitted Timestamp: '}
               <span className='font-semibold text-[#334155]'>{new Date(details.submittedAt).toLocaleString('en-IN')}</span>
             </div>
           )}
-        </div>
 
-        {receiptError && (
-          <Alert variant='destructive' className='mb-6 text-left rounded-xl'>
-            <AlertCircleIcon className='size-4' />
-            <AlertDescription>{receiptError}</AlertDescription>
-          </Alert>
-        )}
+          {(receiptError || printError) && (
+            <div className='border-t border-[#f1f5f9] pt-4'>
+              <Alert variant='destructive' className='rounded-xl'>
+                <AlertCircleIcon className='size-4' />
+                <AlertDescription>{receiptError ?? printError}</AlertDescription>
+              </Alert>
+            </div>
+          )}
 
-        {/* Post-submission document actions */}
-        <div className='mb-6 flex flex-col justify-center gap-3 sm:flex-row'>
-          {access && (
+          {/* Actions live inside the card, not as separate floating rows. */}
+          <div className='border-t border-[#f1f5f9] pt-4 flex flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:items-center'>
+            {access && (
+              <button
+                type='button'
+                onClick={goToReceipt}
+                disabled={isFetchingReceipt}
+                className='inline-flex items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-5 py-2.5 text-sm font-semibold text-[#0c2847] transition hover:border-[#0c2847] hover:bg-[#f8fafc] disabled:pointer-events-none disabled:opacity-60'
+              >
+                {isFetchingReceipt && <Loader2Icon className='size-4 animate-spin' />}
+                <span>{lang === 'hi' ? 'भुगतान रसीद डाउनलोड करें' : 'Download Payment Receipt'}</span>
+              </button>
+            )}
+            {access && (
+              <button
+                type='button'
+                onClick={goToPrint}
+                disabled={isFetchingPrint}
+                className='inline-flex items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-5 py-2.5 text-sm font-semibold text-[#0c2847] transition hover:border-[#0c2847] hover:bg-[#f8fafc] disabled:pointer-events-none disabled:opacity-60'
+              >
+                {isFetchingPrint ? <Loader2Icon className='size-4 animate-spin' /> : <PrinterIcon className='size-4' />}
+                <span>{lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application'}</span>
+              </button>
+            )}
+          </div>
+
+          <div className='border-t border-[#f1f5f9] pt-4 flex flex-col-reverse justify-center gap-3 sm:flex-row'>
             <button
               type='button'
-              onClick={goToReceipt}
-              disabled={isFetchingReceipt}
-              className='inline-flex items-center justify-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition shadow-2xs disabled:opacity-60'
+              onClick={() => router.push('/')}
+              className='inline-flex items-center justify-center rounded-xl border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition'
             >
-              <ReceiptIcon className='size-4' />
-              <span>{lang === 'hi' ? 'भुगतान रसीद डाउनलोड करें' : 'Download Payment Receipt'}</span>
+              <span>{lang === 'hi' ? 'होम पर वापस जाएं' : 'Return to Home'}</span>
             </button>
-          )}
-          <Link
-            href='/print-application'
-            className='inline-flex items-center justify-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-6 py-3 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition shadow-2xs'
-          >
-            <PrinterIcon className='size-4' />
-            <span>{lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application'}</span>
-          </Link>
-        </div>
-
-        {/* Action Buttons */}
-        <div className='flex flex-col-reverse justify-center gap-3 sm:flex-row'>
-          <button
-            type='button'
-            onClick={() => router.push('/')}
-            className='inline-flex items-center justify-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-6 py-3.5 text-sm font-bold text-[#0c2847] hover:bg-[#f8fafc] transition shadow-2xs'
-          >
-            <HomeIcon className='size-4' />
-            <span>{lang === 'hi' ? 'होम पर वापस जाएं' : 'Return to Home'}</span>
-          </button>
-          <Link
-            href='/status'
-            className='inline-flex items-center justify-center gap-2 rounded-xl bg-[#0c2847] px-7 py-3.5 text-sm font-bold text-white shadow-xs hover:bg-[#06192e] transition active:scale-[0.98]'
-          >
-            <SearchIcon className='size-4' />
-            <span>{lang === 'hi' ? 'आवेदन स्थिति ट्रैक करें' : 'Track Application Status'}</span>
-          </Link>
+            <Link
+              href='/status'
+              className='inline-flex items-center justify-center rounded-xl bg-[#0c2847] px-7 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#06192e] transition active:scale-[0.98]'
+            >
+              <span>{lang === 'hi' ? 'आवेदन स्थिति ट्रैक करें' : 'Track Application Status'}</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -48,8 +48,9 @@ async function hasValidSessionToken(token: string | undefined): Promise<boolean>
  * https://nextjs.org/docs/app/guides/content-security-policy. No manual
  * wiring into layout.tsx is required.
  */
-function buildContentSecurityPolicy(nonce: string): string {
+function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): string {
   const isDev = process.env.NODE_ENV !== 'production'
+
   const scriptSrc = isDev
     ? `script-src 'self' 'unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'`
     : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
@@ -85,13 +86,19 @@ function buildContentSecurityPolicy(nonce: string): string {
     "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io https://www.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
     "font-src 'self' https://fonts.gstatic.com",
+
     // blob: on img-src: same preview dialog renders an uploaded IMAGE
     // document via <img src="blob:...">  — reported live as a broken-image
     // icon with no console error, since a CSP img-src block on a blob: URL
     // fails silently rather than throwing.
     "img-src 'self' data: blob: https://cdn.razorpay.com",
     "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com",
-    "frame-ancestors 'none'",
+
+    // 'self' only for the document-preview route (see isDocumentPreview in
+    // proxy()): the admin/applicant preview dialog frames
+    // /api/documents/:id/preview from the same origin, and 'none' made the
+    // browser refuse it — shown as a broken-page icon in the dialog.
+    allowSelfFraming ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
   ].join('; ')
@@ -139,7 +146,8 @@ export async function proxy(request: NextRequest) {
   }
 
   const nonce = crypto.randomUUID().replace(/-/g, '')
-  const csp = buildContentSecurityPolicy(nonce)
+  const isDocumentPreview = /^\/api\/documents\/\d+\/preview$/.test(pathname)
+  const csp = buildContentSecurityPolicy(nonce, isDocumentPreview)
 
   const requestHeaders = new Headers(request.headers)
 
@@ -149,6 +157,9 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: requestHeaders } })
 
   response.headers.set('Content-Security-Policy', csp)
+
+  // Legacy equivalent of frame-ancestors; set here (not next.config.ts) so it can differ per route.
+  response.headers.set('X-Frame-Options', isDocumentPreview ? 'SAMEORIGIN' : 'DENY')
 
   return response
 }

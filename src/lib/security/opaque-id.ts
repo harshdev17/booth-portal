@@ -47,23 +47,24 @@ function fromBase64Url(value: string): Buffer {
 
 /** Encodes a positive integer row id into an opaque, URL-safe token for use in admin route links. */
 export function encodeId(id: number): string {
+  return encodeToken(String(id))
+}
+
+// Shared encrypt/decrypt core — encodeId/decodeId (numeric) and
+// encodeApplicationNumber/decodeApplicationNumber (string) both wrap this,
+// rather than duplicating the AES-GCM framing logic.
+function encodeToken(plaintext: string): string {
   const key = getKey()
   const iv = randomBytes(IV_LENGTH)
   const cipher = createCipheriv(ALGORITHM, key, iv)
 
-  const ciphertext = Buffer.concat([cipher.update(String(id), 'utf8'), cipher.final()])
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
   const authTag = cipher.getAuthTag()
 
   return toBase64Url(Buffer.concat([iv, authTag, ciphertext]))
 }
 
-/**
- * Decodes a token produced by encodeId() back to the row id. Returns null on
- * any malformed/tampered/invalid input rather than throwing — callers should
- * treat null exactly like an invalid id (e.g. notFound()), never as a
- * different kind of error.
- */
-export function decodeId(token: string): number | null {
+function decodeToken(token: string): string | null {
   try {
     const blob = fromBase64Url(token)
 
@@ -78,13 +79,47 @@ export function decodeId(token: string): number | null {
 
     decipher.setAuthTag(authTag)
 
-    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
-    const id = Number(plaintext)
-
-    if (!Number.isInteger(id) || id <= 0) return null
-
-    return id
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
   } catch {
     return null
   }
+}
+
+// Application-number equivalent of encodeId/decodeId — used so
+// /apply/receipt/[token] and the Success page's own "Print Application"
+// link never expose the real IGM-2026-###### number in the URL (reported
+// live). Validates the decoded value still matches the application-number
+// shape before returning it, same defense-in-depth as decodeId's integer
+// check, so a tampered/garbage token can never silently pass through as a
+// plausible-looking application number.
+const APPLICATION_NUMBER_PATTERN = /^(?:IGM|KDB)-\d{4}-\d{6}$/
+
+export function encodeApplicationNumber(applicationNumber: string): string {
+  return encodeToken(applicationNumber)
+}
+
+export function decodeApplicationNumber(token: string): string | null {
+  const value = decodeToken(token)
+
+  if (!value || !APPLICATION_NUMBER_PATTERN.test(value)) return null
+
+  return value
+}
+
+/**
+ * Decodes a token produced by encodeId() back to the row id. Returns null on
+ * any malformed/tampered/invalid input rather than throwing — callers should
+ * treat null exactly like an invalid id (e.g. notFound()), never as a
+ * different kind of error.
+ */
+export function decodeId(token: string): number | null {
+  const plaintext = decodeToken(token)
+
+  if (plaintext === null) return null
+
+  const id = Number(plaintext)
+
+  if (!Number.isInteger(id) || id <= 0) return null
+
+  return id
 }
