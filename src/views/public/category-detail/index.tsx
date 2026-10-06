@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
 import { useLanguage } from '@/context/LanguageContext'
+import { getCategoryGuideline } from '@/lib/content/category-guidelines'
 
 const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], { en: string; hi: string }> = {
   draw: { en: 'Draw', hi: 'लकी ड्रॉ' },
@@ -32,6 +33,7 @@ const CategoryDetail = ({
   const displayName = lang === 'hi' && category.name_hi ? category.name_hi : category.name
   const displayDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
   const methodLabel = SELECTION_METHOD_LABEL[category.selection_method][lang]
+  const guideline = getCategoryGuideline(category.slug)
 
   return (
     <div className='mx-auto max-w-3xl px-4 py-14 sm:px-6'>
@@ -93,6 +95,19 @@ const CategoryDetail = ({
                 {lang === 'hi' && doc.label_hi ? doc.label_hi : doc.label}
                 {doc.is_required ? '' : lang === 'hi' ? ' (वैकल्पिक)' : ' (optional)'}
               </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {guideline && (
+        <div className='mb-8 rounded-xl border border-[#e2e8f0] bg-[var(--kdb-light-bg)] p-6'>
+          <h2 className='mb-3 font-bold text-[var(--kdb-primary)]'>
+            {lang === 'hi' ? 'इस श्रेणी हेतु दिशा-निर्देश' : 'Guidelines for this Category'}
+          </h2>
+          <ul className='list-disc space-y-2 pl-5 text-sm leading-relaxed text-[var(--kdb-text)]'>
+            {guideline.body.map((line, i) => (
+              <li key={i}>{lang === 'hi' ? line.hi : line.en}</li>
             ))}
           </ul>
         </div>
