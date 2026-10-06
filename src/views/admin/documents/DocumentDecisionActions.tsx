@@ -48,20 +48,30 @@ const RemarkDialogButton = ({
   const action = variant === 'rejected' ? rejectDocumentAction : queryDocumentAction
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [open, setOpen] = useState(false)
+  const [submittedAt, setSubmittedAt] = useState(0)
+
+  // Dialog closes once the action succeeds — previously stayed open with
+  // its remark text still filled in, which let an admin accidentally submit
+  // the same query/reject multiple times (reported live). useActionState's
+  // state persists across the dialog being closed/reopened (the component
+  // itself never unmounts), so submittedAt distinguishes a fresh success
+  // from the stale success left over from a previous open; derived here
+  // rather than via a setState-in-effect so this stays a single render.
+  const isDialogOpen = open && !(submittedAt && state.success)
+
+  const openDialog = () => {
+    setSubmittedAt(0)
+    setOpen(true)
+  }
 
   return (
     <>
-      <Button
-        type='button'
-        size='sm'
-        variant={variant === 'rejected' ? 'destructive' : 'outline'}
-        onClick={() => setOpen(true)}
-      >
+      <Button type='button' size='sm' variant={variant === 'rejected' ? 'destructive' : 'outline'} onClick={openDialog}>
         {icon}
         {label}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{label}</DialogTitle>
@@ -74,7 +84,7 @@ const RemarkDialogButton = ({
             </Alert>
           )}
 
-          <form action={formAction} className='flex flex-col gap-3'>
+          <form action={formAction} onSubmit={() => setSubmittedAt(Date.now())} className='flex flex-col gap-3'>
             <input type='hidden' name='documentId' value={documentId} />
             <Textarea name='remarks' placeholder='Remark (required)' required maxLength={512} rows={3} />
             <DialogFooter>

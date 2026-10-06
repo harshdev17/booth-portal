@@ -95,11 +95,12 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         verification_status: string
         verification_remarks: string | null
         verified_at: string | null
+        reuploaded_at: string | null
         created_at: string
       }>
     >(
       `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
-              ad.verified_at, ad.created_at
+              ad.verified_at, ad.reuploaded_at, ad.created_at
        FROM application_documents ad
        JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
        WHERE ad.application_id = ?
@@ -140,7 +141,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   const statusCfg = getApplicationStatusConfig(app.status)
   const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
-  const canReject = app.status === 'under_review' && !!permissions?.has('application:reject')
+  const canReject = (app.status === 'under_review' || app.status === 'query_raised') && !!permissions?.has('application:reject')
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
   const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
@@ -169,7 +170,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           </div>
         </div>
 
-        <ApplicationPdfDownloads applicationId={id} applicationNumber={app.application_number} />
+        <ApplicationPdfDownloads applicationId={id} />
 
         <ApplicationDecisionActions applicationId={app.id} canApprove={canApprove} canReject={canReject} />
       </div>

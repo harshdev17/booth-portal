@@ -90,6 +90,26 @@ async function decideDocument(
     newValue: { verification_status: toStatus, remarks: parsed.data.remarks ?? null, filename: current.original_filename }
   })
 
+  // Keep the application's own status in step with its documents: an open
+  // query puts it in 'query_raised'; once none remain it returns to
+  // 'under_review'. Only these two review-stage statuses are ever touched.
+  if (toStatus === 'query') {
+    await query(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status = 'under_review'`, [
+      current.application_id
+    ])
+  } else {
+    const [open] = await query<Array<{ n: number }>>(
+      `SELECT COUNT(*) AS n FROM application_documents WHERE application_id = ? AND verification_status = 'query'`,
+      [current.application_id]
+    )
+
+    if (Number(open.n) === 0) {
+      await query(`UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`, [
+        current.application_id
+      ])
+    }
+  }
+
   // Application ids in the URL are now opaque, randomly-reencrypted tokens
   // (see src/lib/security/opaque-id.ts) — encodeId() never reproduces the
   // exact token currently in the admin's address bar, so a path-specific

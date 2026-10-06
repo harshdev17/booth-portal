@@ -31,7 +31,7 @@ type ReceiptRow = {
  * an admin pull a copy of the receipt without needing the applicant's
  * token, e.g. while handling a support query.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requirePermission('application:view')
 
   const { id } = await params

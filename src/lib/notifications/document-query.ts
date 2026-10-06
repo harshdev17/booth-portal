@@ -22,7 +22,12 @@ export async function notifyDocumentQuery(params: {
     category: 'document_query',
     destination: params.mobileNumber.startsWith('+') ? params.mobileNumber : `+91${params.mobileNumber}`,
     userName: params.representativeName,
-    templateParams: [params.representativeName, params.applicationNumber, params.documentLabel, params.remarks],
+
+    // Approved AiSensy template (gita_mahotsav_document_query) has exactly 3
+    // placeholders: {{1}} name, {{2}} application number, {{3}} the query
+    // text — document label and remarks are combined into {{3}} since the
+    // template has no separate slot for the document name.
+    templateParams: [params.representativeName, params.applicationNumber, `${params.documentLabel}: ${params.remarks}`],
     applicationId: params.applicationId
   })
 }

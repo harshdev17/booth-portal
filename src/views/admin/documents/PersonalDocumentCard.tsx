@@ -14,6 +14,7 @@ export type PersonalDocumentRow = {
   original_filename: string
   verification_status: string
   verification_remarks: string | null
+  reuploaded_at: string | null
 }
 
 /**
@@ -44,6 +45,11 @@ const PersonalDocumentCard = ({
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
               {docCfg.label}
             </span>
+            {document.reuploaded_at && (
+              <span className='shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800'>
+                Re-uploaded {new Date(document.reuploaded_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
           <p className='text-xs text-muted-foreground'>{document.original_filename}</p>
           {document.verification_remarks && (

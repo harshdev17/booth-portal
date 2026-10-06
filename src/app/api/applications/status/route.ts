@@ -13,6 +13,7 @@ const statusLookupSchema = z.object({
     .trim()
     .min(1)
     .max(32)
+
     // Accepts both the current "IGM-" prefix and the earlier "KDB-" prefix,
     // so applications created before that naming change remain lookupable.
     .regex(/^(?:IGM|KDB)-\d{4}-\d{6}$/, 'Enter a valid application number'),
@@ -31,6 +32,7 @@ type StatusRow = {
   mobile_number: string
   representative_name: string
   category_name: string
+  category_name_hi: string | null
   category_slug: string
   fee_paise: number | null
   fee_base_paise: number | null
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
   try {
     const rows = await query<StatusRow[]>(
       `SELECT a.id, a.status, a.mobile_number, a.representative_name,
-              c.name AS category_name, c.slug AS category_slug,
+              c.name AS category_name, c.name_hi AS category_name_hi, c.slug AS category_slug,
               c.fee_paise, c.fee_base_paise, c.gst_percent, a.submitted_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
@@ -140,12 +142,13 @@ export async function POST(request: Request) {
       Array<{
         documentKey: string
         label: string
+        labelHi: string | null
         verificationStatus: string
         verificationRemarks: string | null
         originalFilename: string | null
       }>
     >(
-      `SELECT cdd.document_key AS documentKey, cdd.label, ad.verification_status AS verificationStatus,
+      `SELECT cdd.document_key AS documentKey, cdd.label, cdd.label_hi AS labelHi, ad.verification_status AS verificationStatus,
               ad.verification_remarks AS verificationRemarks, ad.original_filename AS originalFilename
        FROM category_document_definitions cdd
        LEFT JOIN application_documents ad
@@ -159,6 +162,7 @@ export async function POST(request: Request) {
       applicationId: application.id,
       status: application.status,
       categoryName: application.category_name,
+      categoryNameHi: application.category_name_hi,
       categorySlug: application.category_slug,
       feePaise: application.fee_paise,
       feeBasePaise: application.fee_base_paise,

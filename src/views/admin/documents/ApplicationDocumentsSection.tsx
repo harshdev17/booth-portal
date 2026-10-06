@@ -17,6 +17,7 @@ export type ApplicationDocumentRow = {
   original_filename: string
   verification_status: string
   verification_remarks: string | null
+  reuploaded_at: string | null
 }
 
 // Identity-proof document types go under the "Personal" sub-tab (mirrors the
@@ -62,6 +63,11 @@ const ApplicationDocumentsSection = ({
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
                     {docCfg.label}
                   </span>
+                  {doc.reuploaded_at && (
+                    <span className='shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800'>
+                      Re-uploaded {new Date(doc.reuploaded_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
                 </div>
                 <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
                 {doc.verification_remarks && (

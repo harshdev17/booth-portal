@@ -36,6 +36,7 @@ type DocumentQueueRow = {
   original_filename: string
   verification_status: string
   verification_remarks: string | null
+  reuploaded_at: string | null
   created_at: string
 }
 
@@ -85,7 +86,7 @@ const DocumentsAdminPage = async ({
   const [documents, countRows] = await Promise.all([
     query<DocumentQueueRow[]>(
       `SELECT ad.id, ad.application_id, a.application_number, a.representative_name, c.name AS category_name,
-              cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks, ad.created_at
+              cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks, ad.reuploaded_at, ad.created_at
        FROM application_documents ad
        JOIN applications a ON a.id = ad.application_id
        JOIN categories c ON c.id = a.category_id
@@ -234,6 +235,11 @@ const DocumentsAdminPage = async ({
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
                           {docCfg.label}
                         </span>
+                        {doc.reuploaded_at && (
+                          <span className='shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800'>
+                            Re-uploaded {new Date(doc.reuploaded_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
                       </div>
                       <p className='text-sm text-slate-700'>
                         {doc.label} · {doc.representative_name} · {doc.category_name}

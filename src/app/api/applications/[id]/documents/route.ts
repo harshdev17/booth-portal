@@ -84,7 +84,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 
-    const isUnderReviewNow = application.status === 'under_review'
+    // 'query_raised' is still the review stage — it is exactly the state in which
+    // the applicant is expected to respond to a reviewer's query.
+    const isUnderReviewNow = application.status === 'under_review' || application.status === 'query_raised'
 
     const tokenValid = accessToken ? verifyAccessToken(accessToken, application.access_token_hash) : false
     const otpValid = !tokenValid && isUnderReviewNow && (await hasRecentVerifiedOtp(`+91${application.mobile_number}`, 'status_lookup', 20))
@@ -179,7 +181,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
          verification_status = 'pending',
          verification_remarks = NULL,
          verified_by_user_id = NULL,
-         verified_at = NULL`,
+         verified_at = NULL,
+         reuploaded_at = ${isQueryResponse ? 'NOW()' : 'reuploaded_at'}`,
       [
         applicationId,
         definition.id,
@@ -193,6 +196,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         contentHash
       ]
     )
+
+    // Last open query answered -> the application goes back to plain
+    // "Under Review" so the reviewer sees it is ready for another look.
+    if (isQueryResponse) {
+      const [open] = await query<Array<{ n: number }>>(
+        `SELECT COUNT(*) AS n FROM application_documents WHERE application_id = ? AND verification_status = 'query'`,
+        [applicationId]
+      )
+
+      if (Number(open.n) === 0) {
+        await query(`UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`, [applicationId])
+      }
+    }
 
     await logAudit({
       actorUserId: null,

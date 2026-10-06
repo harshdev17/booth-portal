@@ -140,7 +140,7 @@ export async function recordCheckoutSuccess(input: {
   await withTransaction(async (txQuery: TransactionQuery) => {
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
     await txQuery(
-      `UPDATE applications SET status = 'payment_success' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
       [input.applicationId]
     )
     await insertTransaction(txQuery, {
@@ -192,7 +192,7 @@ export async function recordWebhookConfirmed(input: {
   await withTransaction(async (txQuery: TransactionQuery) => {
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
     await txQuery(
-      `UPDATE applications SET status = 'payment_success' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
       [input.applicationId]
     )
     await insertTransaction(txQuery, {
@@ -232,7 +232,7 @@ export async function recordAdminReconciled(input: {
   await withTransaction(async (txQuery: TransactionQuery) => {
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
     await txQuery(
-      `UPDATE applications SET status = 'payment_success' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
       [input.applicationId]
     )
     await insertTransaction(txQuery, {

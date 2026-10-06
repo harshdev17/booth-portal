@@ -42,6 +42,7 @@ const STATUS_CONFIG: Record<
   payment_pending: { label: 'Payment Pending', variant: 'secondary', color: 'bg-amber-100 text-amber-800' },
   payment_success: { label: 'Payment Success', variant: 'default', color: 'bg-emerald-100 text-emerald-800' },
   under_review: { label: 'Under Review', variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
+  query_raised: { label: 'Query Raised', variant: 'secondary', color: 'bg-orange-100 text-orange-800' },
   selected: { label: 'Selected / Allotted', variant: 'default', color: 'bg-purple-100 text-purple-800' },
   rejected: { label: 'Rejected', variant: 'destructive', color: 'bg-red-100 text-red-800' },
   allotted: { label: 'Allotted', variant: 'default', color: 'bg-emerald-100 text-emerald-800' }
@@ -353,6 +354,7 @@ const ApplicationsAdminPage = async ({
               <option value=''>Submitted (All Active)</option>
               <option value='payment_pending'>Payment Pending</option>
               <option value='under_review'>Under Review</option>
+              <option value='query_raised'>Query Raised</option>
               <option value='selected'>Selected / Allotted</option>
               <option value='rejected'>Rejected</option>
               <option value='all'>Include Incomplete Drafts</option>

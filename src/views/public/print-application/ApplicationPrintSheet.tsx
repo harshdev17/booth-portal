@@ -34,6 +34,7 @@ export const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   payment_failed: { en: 'Payment Failed', hi: 'भुगतान विफल' },
   payment_success: { en: 'Payment Received', hi: 'भुगतान प्राप्त' },
   under_review: { en: 'Under Review', hi: 'समीक्षाधीन' },
+  query_raised: { en: 'Query Raised', hi: 'स्पष्टीकरण आवश्यक' },
   rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
   selected: { en: 'Selected', hi: 'चयनित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },

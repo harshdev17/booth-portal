@@ -57,9 +57,16 @@ async function decideApplication(
     return { error: 'Application not found.' }
   }
 
-  if (current.status !== 'under_review') {
+  // Approve (select) only when nothing is awaiting the applicant; rejecting
+  // is allowed while a query is still open too.
+  const decidable = toStatus === 'rejected' ? ['under_review', 'query_raised'] : ['under_review']
+
+  if (!decidable.includes(current.status)) {
     return {
-      error: `This application is "${current.status}", not "Under Review" — it cannot be decided from here.`
+      error:
+        current.status === 'query_raised'
+          ? 'A document query is still open. Wait for the applicant’s response (or reject the application).'
+          : `This application is "${current.status}", not "Under Review" — it cannot be decided from here.`
     }
   }
 

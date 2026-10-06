@@ -44,7 +44,7 @@ type ApplicationRow = {
  * permission, so no extra OTP/ownership proof is needed here — just a
  * downloadable copy of what the admin can already see.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requirePermission('application:view')
 
   const { id } = await params
