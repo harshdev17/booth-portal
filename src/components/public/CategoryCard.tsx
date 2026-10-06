@@ -1,5 +1,19 @@
-import Image from 'next/image'
 import Link from 'next/link'
+
+import {
+  ArmchairIcon,
+  HeartHandshakeIcon,
+  LandmarkIcon,
+  MegaphoneIcon,
+  PaletteIcon,
+  ShoppingBagIcon,
+  SparklesIcon,
+  StoreIcon,
+  TrophyIcon,
+  UsersIcon,
+  UtensilsCrossedIcon,
+  type LucideIcon
+} from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -20,18 +34,22 @@ export type CategoryCardData = {
   availableShopsCount: number
 }
 
-const CATEGORY_ICON_MAP: Record<string, string> = {
-  'ngos-social-organizations': '/images/public/gita-mahotsav-category-icons/01-ngos-social-organizations.svg',
-  'refreshment-stalls': '/images/public/gita-mahotsav-category-icons/02-food-stalls.svg',
-  'self-help-groups': '/images/public/gita-mahotsav-category-icons/03-shg.svg',
-  'artisan-card-holders': '/images/public/gita-mahotsav-category-icons/04-artisan-card-holders.svg',
-  'national-awardees': '/images/public/gita-mahotsav-category-icons/05-national-awardees.svg',
-  'special-art-craft': '/images/public/gita-mahotsav-category-icons/06-special-art-craft.svg',
-  'wooden-craft-carpets': '/images/public/gita-mahotsav-category-icons/07-wood-craft-carpets.svg',
-  'govt-departments': '/images/public/gita-mahotsav-category-icons/08-government-departments.svg',
-  'khadi-other-reserved': '/images/public/gita-mahotsav-category-icons/09-reserved-categories.svg',
-  'brand-promotions': '/images/public/gita-mahotsav-category-icons/10-brand-promotions-corporate.svg'
+// Solid coloured circle + white glyph per category, matching the home-page
+// reference design. `color` also tints the index badge.
+const CATEGORY_ICON_MAP: Record<string, { Icon: LucideIcon; color: string }> = {
+  'ngos-social-organizations': { Icon: UsersIcon, color: 'bg-green-600' },
+  'refreshment-stalls': { Icon: UtensilsCrossedIcon, color: 'bg-blue-600' },
+  'self-help-groups': { Icon: HeartHandshakeIcon, color: 'bg-pink-600' },
+  'artisan-card-holders': { Icon: PaletteIcon, color: 'bg-orange-600' },
+  'national-awardees': { Icon: TrophyIcon, color: 'bg-purple-600' },
+  'special-art-craft': { Icon: SparklesIcon, color: 'bg-amber-600' },
+  'wooden-craft-carpets': { Icon: ArmchairIcon, color: 'bg-yellow-700' },
+  'govt-departments': { Icon: LandmarkIcon, color: 'bg-slate-700' },
+  'khadi-other-reserved': { Icon: ShoppingBagIcon, color: 'bg-red-600' },
+  'brand-promotions': { Icon: MegaphoneIcon, color: 'bg-teal-600' }
 }
+
+const DEFAULT_CATEGORY_ICON = { Icon: StoreIcon, color: 'bg-[#0d3b66]' }
 
 // Selection-method display text per language — matches the terminology used
 // in the authoritative per-category content the user supplied (e.g. "ड्रॉ के
@@ -52,7 +70,7 @@ function formatRupees(paise: number): string {
 const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const { lang } = useLanguage()
 
-  const iconSrc = CATEGORY_ICON_MAP[category.slug] ?? '/images/public/gita-mahotsav-category-icons/01-ngos-social-organizations.svg'
+  const { Icon, color } = CATEGORY_ICON_MAP[category.slug] ?? DEFAULT_CATEGORY_ICON
 
   const title = lang === 'hi' ? (category.nameHi || category.name) : category.name
   const methodLabel = SELECTION_METHOD_LABEL[category.selectionMethod][lang === 'hi' ? 'hi' : 'en']
@@ -81,12 +99,11 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
     <div className='group relative flex h-full flex-col rounded-2xl border border-[#ebe4db] bg-white/95 p-6 shadow-xs transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--kdb-primary)]/40 hover:shadow-xl backdrop-blur-xs'>
       {/* Top row: icon + index */}
       <div className='mb-4 flex items-center gap-3.5'>
-        <div className='flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-[#f5d9ad] bg-[#fffaf1] p-3 text-[#0d3b66] shadow-2xs transition duration-300 group-hover:scale-105 group-hover:border-[#e5a842]'>
-          <Image src={iconSrc} alt={title} width={32} height={32} className='size-8 object-contain' />
+        <div
+          className={`flex size-14 shrink-0 items-center justify-center rounded-full text-white shadow-xs ring-4 ring-white transition duration-300 group-hover:scale-105 ${color}`}
+        >
+          <Icon className='size-7' strokeWidth={2} aria-hidden='true' />
         </div>
-        <span className='flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0d3b66] text-sm font-black text-white'>
-          {category.displayIndex}
-        </span>
       </div>
 
       {/* Title */}
@@ -95,9 +112,9 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       </h3>
 
       {/* Available shops count */}
-      <div className='mb-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#eef6f0] px-3 py-1'>
-        <span className='text-sm font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
-        <span className='text-xs font-bold text-[#1a7d42]'>
+      <div className='mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#eef6f0] px-4 py-1.5'>
+        <span className='text-lg font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
+        <span className='text-sm font-bold text-[#1a7d42]'>
           {lang === 'hi' ? 'उपलब्ध बूथ/स्टॉल' : 'Available Booths/Stalls'}
         </span>
       </div>
