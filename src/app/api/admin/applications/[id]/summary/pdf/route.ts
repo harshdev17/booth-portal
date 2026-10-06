@@ -47,6 +47,9 @@ type ApplicationRow = {
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requirePermission('application:view')
 
+  const { searchParams } = new URL(request.url)
+  const wantsHtml = searchParams.get('format') === 'html'
+
   const { id } = await params
   const applicationId = decodeId(id)
 
@@ -113,8 +116,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       'en'
     )
 
-    const buffer = await renderHtmlToPdf(html)
-
     await logAudit({
       actorUserId: session.userId,
       actorRoleKey: session.role.key,
@@ -123,6 +124,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       entityType: 'application',
       entityId: String(applicationId)
     })
+
+    if (wantsHtml) {
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }
+      })
+    }
+
+    const buffer = await renderHtmlToPdf(html)
 
     return new Response(new Uint8Array(buffer), {
       headers: {

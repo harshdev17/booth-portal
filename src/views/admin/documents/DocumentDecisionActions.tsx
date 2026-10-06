@@ -1,21 +1,15 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { useActionState, useState } from 'react'
 
-import { CheckIcon, HelpCircleIcon, Loader2Icon, XIcon } from 'lucide-react'
+import { CheckIcon, HelpCircleIcon, Loader2Icon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 
-import {
-  queryDocumentAction,
-  rejectDocumentAction,
-  verifyDocumentAction,
-  type DocumentActionState
-} from '@/app/server/document-actions'
+import { queryDocumentAction, verifyDocumentAction, type DocumentActionState } from '@/app/server/document-actions'
 
 const initialState: DocumentActionState = {}
 
@@ -34,19 +28,8 @@ const VerifyButton = ({ documentId }: { documentId: number }) => {
   )
 }
 
-const RemarkDialogButton = ({
-  documentId,
-  variant,
-  label,
-  icon
-}: {
-  documentId: number
-  variant: 'rejected' | 'query'
-  label: string
-  icon: ReactNode
-}) => {
-  const action = variant === 'rejected' ? rejectDocumentAction : queryDocumentAction
-  const [state, formAction, isPending] = useActionState(action, initialState)
+const RaiseQueryButton = ({ documentId }: { documentId: number }) => {
+  const [state, formAction, isPending] = useActionState(queryDocumentAction, initialState)
   const [open, setOpen] = useState(false)
   const [submittedAt, setSubmittedAt] = useState(0)
 
@@ -66,15 +49,15 @@ const RemarkDialogButton = ({
 
   return (
     <>
-      <Button type='button' size='sm' variant={variant === 'rejected' ? 'destructive' : 'outline'} onClick={openDialog}>
-        {icon}
-        {label}
+      <Button type='button' size='sm' variant='outline' onClick={openDialog}>
+        <HelpCircleIcon />
+        Raise Query
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{label}</DialogTitle>
+            <DialogTitle>Raise Query</DialogTitle>
             <DialogDescription>This remark is shown in the audit trail and recorded against the document.</DialogDescription>
           </DialogHeader>
 
@@ -91,7 +74,7 @@ const RemarkDialogButton = ({
               <Button type='button' variant='outline' onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type='submit' variant={variant === 'rejected' ? 'destructive' : 'default'} disabled={isPending}>
+              <Button type='submit' disabled={isPending}>
                 {isPending && <Loader2Icon className='animate-spin' />}
                 Confirm
               </Button>
@@ -104,19 +87,19 @@ const RemarkDialogButton = ({
 }
 
 /**
- * Previously hidden entirely once a document was 'verified', which meant an
- * admin who verified a document by mistake (or needed to reject it after
- * verifying) had no way back — reported live. Reject and Raise Query now
- * always show regardless of current status (the server action has no
- * status guard blocking a verified -> rejected transition either); only
- * Verify itself is hidden once already verified, since re-verifying an
- * already-verified document is a no-op.
+ * Reject was removed from this UI (business decision: a document can only be
+ * Verified or sent back for a Raise Query response, never outright
+ * rejected) — see .ai/DECISIONS.md. Verify is hidden once the document is
+ * already verified, since re-verifying is a no-op; Raise Query always shows,
+ * so an admin can still flag a problem with an already-verified document.
+ * Re-uploading in response to a query resets the document to 'pending'
+ * server-side (see POST /api/applications/[id]/documents), which brings
+ * Verify back automatically.
  */
 const DocumentDecisionActions = ({ documentId, currentStatus }: { documentId: number; currentStatus: string }) => (
   <div className='flex flex-wrap items-center gap-2'>
     {currentStatus !== 'verified' && <VerifyButton documentId={documentId} />}
-    <RemarkDialogButton documentId={documentId} variant='query' label='Raise Query' icon={<HelpCircleIcon />} />
-    <RemarkDialogButton documentId={documentId} variant='rejected' label='Reject' icon={<XIcon />} />
+    <RaiseQueryButton documentId={documentId} />
   </div>
 )
 
