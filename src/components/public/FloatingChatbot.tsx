@@ -36,7 +36,10 @@ const FloatingChatbot = () => {
   }
 
   return (
-    <div className='fixed right-4 bottom-5 z-40 flex flex-col items-end gap-3 sm:right-6 sm:bottom-6 print:hidden'>
+    // bottom offset raised above the default ~56px height of Google's
+    // reCAPTCHA v3 badge (also bottom-right, shown on the apply Review page
+    // once grecaptcha.execute() runs) — reported live as overlapping it.
+    <div className='fixed right-4 bottom-24 z-40 flex flex-col items-end gap-3 sm:right-6 sm:bottom-24 print:hidden'>
       {isOpen && (
         <iframe
           src={CHATBOT_SRC}

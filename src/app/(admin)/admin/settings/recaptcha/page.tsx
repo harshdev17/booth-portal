@@ -29,11 +29,13 @@ export const metadata: Metadata = {
  * not editable from this UI, and the secret key is never rendered here even
  * partially (.ai/SECURITY.md).
  *
- * Google reCAPTCHA v2 ("I'm not a robot" checkbox) on the application Review
- * page's final Submit step (ReviewPageView.tsx → /api/applications/[id]/finalize).
- * Deliberately a no-op until RECAPTCHA_SECRET_KEY is set — the form keeps
- * accepting submissions without it, so this page is safe to leave
- * "Not configured" for as long as needed.
+ * Google reCAPTCHA v3 (invisible, score-based — no checkbox) on the
+ * application Review page's final Submit step
+ * (ReviewPageView.tsx → /api/applications/[id]/finalize). Deliberately a
+ * no-op until RECAPTCHA_SECRET_KEY is set — the form keeps accepting
+ * submissions without it, so this page is safe to leave "Not configured"
+ * for as long as needed. v3 keys are a different type from v2 — a v2 site
+ * registered at Google will NOT work here.
  */
 const RecaptchaSettingsPage = async () => {
   await requirePermission('config:manage')
@@ -46,7 +48,7 @@ const RecaptchaSettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>reCAPTCHA Settings</h1>
         <p className='text-sm text-muted-foreground'>
-          Configuration status for the Google reCAPTCHA (v2 checkbox) widget on the public application form&apos;s
+          Configuration status for the Google reCAPTCHA v3 (invisible) widget on the public application form&apos;s
           final submit step. Values are set via environment variables, not editable from this UI.
         </p>
       </div>
@@ -65,7 +67,8 @@ const RecaptchaSettingsPage = async () => {
             >
               google.com/recaptcha/admin
             </a>{' '}
-            (choose reCAPTCHA v2, &quot;I&apos;m not a robot&quot; Checkbox) and set both environment variables below.
+            (choose reCAPTCHA v3) and set both environment variables below. v2 keys from an older setup will not
+            work — v3 requires its own site registration.
           </AlertDescription>
         </Alert>
       )}

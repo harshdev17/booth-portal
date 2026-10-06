@@ -22,6 +22,7 @@ import { applicationFormSchema, APPLICATION_FORM_DEFAULT_VALUES, type Applicatio
 import { useLanguage } from '@/context/LanguageContext'
 import InstructionsStep from '@/views/public/apply/InstructionsStep'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
+import { useAvailabilityCheck } from '@/views/public/apply/useAvailabilityCheck'
 
 type DraftState = { applicationId: number; applicationNumber: string; accessToken: string } | null
 
@@ -65,6 +66,13 @@ const ApplicationFormOrchestrator = ({
     defaultValues: APPLICATION_FORM_DEFAULT_VALUES,
     mode: 'onBlur'
   })
+
+  // Owned here (not inside ApplicantInfoStep) because it must block
+  // "Review Application" below, independent of react-hook-form's own error
+  // state — see useAvailabilityCheck.ts for why this can't just be
+  // setError/clearErrors on the form itself.
+  const { duplicateFields, check: checkAvailability } = useAvailabilityCheck(lang, draft?.applicationId)
+  const hasDuplicateField = Object.keys(duplicateFields).length > 0
 
   // Create the draft application once, silently, on mount. A ref guards
   // against React Strict Mode's double-invoke in development creating two
@@ -296,6 +304,16 @@ const ApplicationFormOrchestrator = ({
     if (!draft) return
     setSubmitError(null)
 
+    if (hasDuplicateField) {
+      setSubmitError(
+        lang === 'hi'
+          ? 'आगे बढ़ने से पहले कृपया हाइलाइट किए गए डुप्लिकेट फ़ील्ड्स ठीक करें।'
+          : 'Please fix the highlighted duplicate fields before continuing.'
+      )
+
+      return
+    }
+
     if (!requiredDocsUploaded) {
       setSubmitError(
         lang === 'hi'
@@ -472,10 +490,8 @@ const ApplicationFormOrchestrator = ({
                   </div>
                   <ApplicantInfoStep
                     control={form.control}
-                    errors={form.formState.errors}
-                    setError={form.setError}
-                    clearErrors={form.clearErrors}
-                    applicationId={draft?.applicationId}
+                    duplicateFields={duplicateFields}
+                    checkAvailability={checkAvailability}
                   />
                 </div>
               </section>

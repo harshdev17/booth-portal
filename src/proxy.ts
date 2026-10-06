@@ -65,11 +65,11 @@ function buildContentSecurityPolicy(nonce: string): string {
     // (reported: "Connecting to 'https://lumberjack.razorpay.com/...'
     // violates ... connect-src 'self'"). See
     // https://razorpay.com/docs/payments/payment-gateway/web-integration/hosted/build-integration/#3-content-security-policy-csp
-    // google.com/gstatic.com: the reCAPTCHA v2 checkbox widget on the
+    // google.com/gstatic.com: the reCAPTCHA v3 invisible widget on the
     // application Review page (RecaptchaWidget.tsx) — same reasoning as the
-    // Razorpay origin above it, a bare 'self' CSP silently blocks the widget
-    // script and its frame with no visible error beyond the box never
-    // rendering.
+    // Razorpay origin above it, a bare 'self' CSP silently blocks the
+    // widget's script and its frame with no visible error beyond the
+    // submission never getting a token.
     `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/`,
 
     // github.io: the floating chatbot widget (FloatingChatbot.tsx) embeds a
@@ -77,10 +77,19 @@ function buildContentSecurityPolicy(nonce: string): string {
     // is silently blocked exactly like the earlier Razorpay CSP bug (see the
     // frame-src comment above this one), with no visible error beyond the
     // iframe staying blank.
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io https://www.google.com",
+    // blob: on frame-src: the in-page document preview dialog
+    // (DocumentsStep.tsx / ApplicationDocumentsSection.tsx) fetches an
+    // uploaded PDF as a blob and renders it in an <iframe src="blob:...">
+    // instead of opening a new tab — without this, the iframe is silently
+    // blocked exactly like the other frame-src entries above.
+    "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com https://vksinglakkr.github.io https://www.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https://cdn.razorpay.com",
+    // blob: on img-src: same preview dialog renders an uploaded IMAGE
+    // document via <img src="blob:...">  — reported live as a broken-image
+    // icon with no console error, since a CSP img-src block on a blob: URL
+    // fails silently rather than throwing.
+    "img-src 'self' data: blob: https://cdn.razorpay.com",
     "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

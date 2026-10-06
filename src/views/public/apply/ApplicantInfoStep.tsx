@@ -1,15 +1,29 @@
-import { Controller, type Control, type FieldErrors, type UseFormSetError, type UseFormClearErrors } from 'react-hook-form'
+import { useEffect, useRef, useState } from 'react'
+
+import { Controller, useWatch, type Control } from 'react-hook-form'
 
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { useLanguage } from '@/context/LanguageContext'
 import type { ApplicationFormValues } from '@/views/public/apply/form-values'
-import { useAvailabilityCheck } from '@/views/public/apply/useAvailabilityCheck'
+
+type DuplicateCheckField = 'mobileNumber' | 'aadhaarNumber' | 'email'
 
 /**
  * India-only mobile number input: a fixed "+91" prefix, not a full country
  * picker. The stored/submitted value remains the plain 10-digit number.
+ *
+ * Mobile Number and Alternate Mobile both being autofilled with the SAME
+ * saved value (reported live) is Chrome's documented "autofill group"
+ * behavior: same-type (tel) fields on one page/form are grouped and filled
+ * from one profile value, independent of `name`/`id`/`autocomplete="off"` —
+ * Chrome has ignored autocomplete="off" on contact-type fields since ~2014.
+ * The WHATWG-spec mechanism that actually breaks this grouping is a
+ * `section-*` token as the FIRST word of `autocomplete`: fields with
+ * different section tokens are treated as separate logical groups and no
+ * longer share one autofilled value. Each call site below supplies its own
+ * `section-*` prefix alongside the real `tel`/`tel-national` token.
  */
 const MobileNumberInput = ({
   id,
@@ -18,7 +32,8 @@ const MobileNumberInput = ({
   onChange,
   onBlur,
   invalid,
-  autoComplete
+  autoComplete,
+  blockAutofillUntilFocus
 }: {
   id: string
   name: string
@@ -27,49 +42,92 @@ const MobileNumberInput = ({
   onBlur: () => void
   invalid: boolean
   autoComplete: string
-}) => (
-  <InputGroup>
-    <InputGroupAddon align='inline-start'>
-      <InputGroupText>+91</InputGroupText>
-    </InputGroupAddon>
-    <InputGroupInput
-      id={id}
-      // Chrome autofills based on the `name`/`id` TEXT CONTENT (e.g.
-      // anything containing "mobile"/"phone"), not primarily on the
-      // `autocomplete` attribute — it has deliberately ignored
-      // autocomplete="off" on contact-like fields since ~2014. Giving the
-      // Alternate Mobile field a name/id that doesn't look like a phone
-      // field (see the 'contact-alt' call site below) is what actually
-      // stops Chrome from offering the same saved phone number for both
-      // fields (reported live: both fields filled with the identical
-      // autofilled value despite autoComplete='off').
-      name={name}
-      type='tel'
-      inputMode='numeric'
-      autoComplete={autoComplete}
-      maxLength={10}
-      value={value}
-      onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
-      onBlur={onBlur}
-      aria-invalid={invalid}
-    />
-  </InputGroup>
-)
+
+  // The section-*/new-password autocomplete tricks (see the comment above)
+  // reduce but don't reliably eliminate Chrome re-using one saved phone
+  // value across two tel inputs on the same page (confirmed live: still
+  // happened with both tricks applied). `readOnly` is the one mechanism
+  // Chrome genuinely never autofills into — it only ever fills an editable
+  // input — so the Alternate Mobile field renders readOnly until the
+  // applicant actually clicks/tabs into it, at which point it becomes a
+  // normal editable field for manual typing.
+  blockAutofillUntilFocus?: boolean
+}) => {
+  const [locked, setLocked] = useState(!!blockAutofillUntilFocus)
+
+  return (
+    <InputGroup>
+      <InputGroupAddon align='inline-start'>
+        <InputGroupText>+91</InputGroupText>
+      </InputGroupAddon>
+      <InputGroupInput
+        id={id}
+        name={name}
+        type='tel'
+        inputMode='numeric'
+        autoComplete={autoComplete}
+        maxLength={10}
+        value={value}
+        readOnly={locked}
+        onFocus={() => locked && setLocked(false)}
+        onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
+        onBlur={onBlur}
+        aria-invalid={invalid}
+      />
+    </InputGroup>
+  )
+}
 
 const ApplicantInfoStep = ({
   control,
-  setError,
-  clearErrors,
-  applicationId
+  duplicateFields,
+  checkAvailability
 }: {
   control: Control<ApplicationFormValues>
-  errors: FieldErrors<ApplicationFormValues>
-  setError: UseFormSetError<ApplicationFormValues>
-  clearErrors: UseFormClearErrors<ApplicationFormValues>
-  applicationId?: number
+  duplicateFields: Partial<Record<DuplicateCheckField, string>>
+  checkAvailability: (field: DuplicateCheckField, value: string) => Promise<void>
 }) => {
   const { lang } = useLanguage()
-  const checkAvailability = useAvailabilityCheck(setError, clearErrors, lang, applicationId)
+
+  // Browser autofill (confirmed live: Chrome fills Mobile Number on page
+  // load with no user interaction at all) never dispatches a `blur` event —
+  // only `onBlur`-triggered checks were wired before this, so an autofilled
+  // duplicate number silently never got checked until the applicant
+  // happened to click into and back out of the field. Watching the values
+  // directly catches autofill, paste, and typing uniformly. Debounced so
+  // each keystroke doesn't fire its own request.
+  const watchedEmail = useWatch({ control, name: 'common.email' })
+  const watchedMobile = useWatch({ control, name: 'common.mobileNumber' })
+  const watchedAadhaar = useWatch({ control, name: 'common.aadhaarNumber' })
+
+  const debounceRef = useRef<Record<DuplicateCheckField, ReturnType<typeof setTimeout> | null>>({
+    email: null,
+    mobileNumber: null,
+    aadhaarNumber: null
+  })
+
+  const debouncedCheck = (field: DuplicateCheckField, value: string) => {
+    const existing = debounceRef.current[field]
+
+    if (existing) clearTimeout(existing)
+
+    debounceRef.current[field] = setTimeout(() => void checkAvailability(field, value), 400)
+  }
+
+  useEffect(() => {
+    if (watchedEmail) debouncedCheck('email', watchedEmail.trim())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debouncedCheck/checkAvailability identity isn't a dependency of when this should re-run
+  }, [watchedEmail])
+
+  useEffect(() => {
+    if (watchedMobile) debouncedCheck('mobileNumber', watchedMobile)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedMobile])
+
+  useEffect(() => {
+    if (watchedAadhaar) debouncedCheck('aadhaarNumber', watchedAadhaar.trim())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedAadhaar])
 
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
@@ -77,7 +135,7 @@ const ApplicantInfoStep = ({
         name='common.email'
         control={control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field data-invalid={fieldState.invalid || !!duplicateFields.email}>
             <FieldLabel htmlFor={field.name}>
               {lang === 'hi' ? 'ईमेल पता (Email Address) *' : 'Email Address *'}
             </FieldLabel>
@@ -87,10 +145,10 @@ const ApplicantInfoStep = ({
               type='email'
               autoComplete='email'
               placeholder='example@domain.com'
-              aria-invalid={fieldState.invalid}
+              aria-invalid={fieldState.invalid || !!duplicateFields.email}
               onBlur={e => {
                 field.onBlur()
-                void checkAvailability('email', e.target.value.trim(), 'common.email')
+                void checkAvailability('email', e.target.value.trim())
               }}
             />
             <FieldDescription>
@@ -99,6 +157,7 @@ const ApplicantInfoStep = ({
                 : 'We will use this to send you updates about your application.'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.email && <FieldError>{duplicateFields.email}</FieldError>}
           </Field>
         )}
       />
@@ -107,7 +166,7 @@ const ApplicantInfoStep = ({
         name='common.mobileNumber'
         control={control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field data-invalid={fieldState.invalid || !!duplicateFields.mobileNumber}>
             <FieldLabel htmlFor={field.name}>
               {lang === 'hi' ? 'मोबाइल नंबर (Mobile Number) *' : 'Mobile Number *'}
             </FieldLabel>
@@ -118,15 +177,16 @@ const ApplicantInfoStep = ({
               onChange={field.onChange}
               onBlur={() => {
                 field.onBlur()
-                void checkAvailability('mobileNumber', field.value, 'common.mobileNumber')
+                void checkAvailability('mobileNumber', field.value)
               }}
-              invalid={fieldState.invalid}
-              autoComplete='tel-national'
+              invalid={fieldState.invalid || !!duplicateFields.mobileNumber}
+              autoComplete='section-primary-contact tel-national'
             />
             <FieldDescription>
               {lang === 'hi' ? '10 अंकों का मोबाइल नंबर (उदा. 9876543210)' : '10-digit number, for example 9876543210'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.mobileNumber && <FieldError>{duplicateFields.mobileNumber}</FieldError>}
           </Field>
         )}
       />
@@ -146,7 +206,14 @@ const ApplicantInfoStep = ({
               onChange={field.onChange}
               onBlur={field.onBlur}
               invalid={fieldState.invalid}
-              autoComplete='off'
+
+              // 'new-password' here is a deliberate, well-known trick, not a
+              // copy-paste mistake — any autocomplete token Chrome doesn't
+              // recognize as a real category fully disables its autofill
+              // heuristics for that field (unlike "off", which Chrome
+              // special-cases and ignores on contact-type inputs).
+              autoComplete='section-alt-contact new-password'
+              blockAutofillUntilFocus
             />
             <FieldDescription>
               {lang === 'hi'
@@ -233,7 +300,7 @@ const ApplicantInfoStep = ({
         name='common.aadhaarNumber'
         control={control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field data-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}>
             <FieldLabel htmlFor={field.name}>
               {lang === 'hi' ? 'आधार संख्या (Aadhaar Number) *' : 'Aadhaar Number *'}
             </FieldLabel>
@@ -244,10 +311,10 @@ const ApplicantInfoStep = ({
               maxLength={12}
               autoComplete='off'
               placeholder='123456789012'
-              aria-invalid={fieldState.invalid}
+              aria-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}
               onBlur={e => {
                 field.onBlur()
-                void checkAvailability('aadhaarNumber', e.target.value.trim(), 'common.aadhaarNumber')
+                void checkAvailability('aadhaarNumber', e.target.value.trim())
               }}
             />
             <FieldDescription>
@@ -256,6 +323,7 @@ const ApplicantInfoStep = ({
                 : '12-digit number, for example 123456789012. Stored securely, encrypted.'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.aadhaarNumber && <FieldError>{duplicateFields.aadhaarNumber}</FieldError>}
           </Field>
         )}
       />

@@ -20,6 +20,7 @@ import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDe
 import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
+import PersonalDocumentCard from '@/views/admin/documents/PersonalDocumentCard'
 
 export const metadata: Metadata = {
   title: 'Application Detail — IGM Admin Portal'
@@ -142,6 +143,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const canReject = app.status === 'under_review' && !!permissions?.has('application:reject')
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
+  const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
 
   return (
     <div className='flex flex-col gap-6'>
@@ -222,6 +224,9 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   canCheck={canVerifyDocuments}
                   initiallyChecked={checkedFieldKeys.has('aadhaar_number')}
                 />
+                {aadhaarDocument && (
+                  <PersonalDocumentCard document={aadhaarDocument} canVerifyDocuments={canVerifyDocuments} />
+                )}
               </div>
 
               <SectionLabel className='mt-6'>Contact & Address</SectionLabel>

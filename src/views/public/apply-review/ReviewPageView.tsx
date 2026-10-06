@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CreditCardIcon, EyeIcon, Loader2Icon, ShieldCheckIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, CreditCardIcon, EyeIcon, FileTextIcon, Loader2Icon, PencilIcon, ShieldCheckIcon } from 'lucide-react'
 
 import RecaptchaWidget from '@/components/public/RecaptchaWidget'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
-import { openDocumentPreview } from '@/views/public/apply/DocumentsStep'
+import { DocumentPreviewDialog, usePreviewController } from '@/views/public/apply/DocumentsStep'
 import type { ReviewData } from '@/views/public/apply-review/types'
 
 const ReviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => {
@@ -44,8 +44,12 @@ const SectionCard = ({
     <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
       <div className='mb-4 flex items-center justify-between border-b border-[#f1f5f9] pb-3'>
         <h2 className='text-xl font-black text-[#0c2847]'>{title}</h2>
-        <Link href={editHref} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
-          {lang === 'hi' ? 'विवरण संपादित करें ✎' : 'Edit Details ✎'}
+        <Link
+          href={editHref}
+          className='inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1.5 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'
+        >
+          <PencilIcon className='size-3.5' />
+          {lang === 'hi' ? 'विवरण संपादित करें' : 'Edit Details'}
         </Link>
       </div>
       <div className='rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-5 py-2'>{children}</div>
@@ -79,6 +83,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   const [data, setData] = useState<ReviewData | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const { preview, previewError, isLoadingPreview, open: openPreview, close: closePreview } = usePreviewController()
   const [informationCorrect, setInformationCorrect] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -93,7 +98,14 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   // Only required once NEXT_PUBLIC_RECAPTCHA_SITE_KEY is actually configured
   // (RecaptchaWidget renders nothing until then) — see .ai/OPEN_QUESTIONS.md.
   const recaptchaRequired = !!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
+
+  // v3 tokens are short-lived (~2 minutes) and meant to be fetched fresh
+  // right before the action they protect, not held in state from page load
+  // — unlike v2, there's no visible checkbox/callback to drive state from.
+  // getRecaptchaTokenRef holds the function RecaptchaWidget hands back once
+  // the script has loaded; null until then (or if the site key isn't set).
+  const getRecaptchaTokenRef = useRef<(() => Promise<string | null>) | null>(null)
+  const [recaptchaReady, setRecaptchaReady] = useState(!recaptchaRequired)
 
   useEffect(() => {
     if (access === null) {
@@ -203,12 +215,25 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   const handleSubmit = async () => {
     if (!access || !informationCorrect || !agreedToTerms || otpPhase !== 'verified') return
-    if (recaptchaRequired && !recaptchaToken) return
+    if (recaptchaRequired && !getRecaptchaTokenRef.current) return
 
     setIsSubmitting(true)
     setSubmitError(null)
 
     try {
+      const recaptchaToken = recaptchaRequired && getRecaptchaTokenRef.current ? await getRecaptchaTokenRef.current() : null
+
+      if (recaptchaRequired && !recaptchaToken) {
+        setSubmitError(
+          lang === 'hi'
+            ? 'CAPTCHA सत्यापन विफल रहा। कृपया पृष्ठ पुनः लोड करें और पुनः प्रयास करें।'
+            : 'CAPTCHA verification failed. Please reload the page and try again.'
+        )
+        setIsSubmitting(false)
+
+        return
+      }
+
       const response = await fetch(`/api/applications/${applicationId}/finalize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -297,8 +322,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   if (!data) return null
 
-  const canSubmit =
-    informationCorrect && agreedToTerms && otpPhase === 'verified' && (!recaptchaRequired || !!recaptchaToken)
+  const canSubmit = informationCorrect && agreedToTerms && otpPhase === 'verified' && recaptchaReady
 
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -341,7 +365,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
         <div className='flex flex-col gap-8'>
           <SectionCard
             title={lang === 'hi' ? 'आवेदक / संस्था का विवरण' : 'Applicant Details'}
-            editHref={`/apply/${categorySlug}`}
+            editHref={`/apply/${categorySlug}?edit=${applicationId}`}
           >
             <ReviewRow label={lang === 'hi' ? 'ईमेल पता' : 'Email'} value={data.common.email} />
             <ReviewRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={data.common.mobileNumber} />
@@ -359,7 +383,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
           <SectionCard
             title={lang === 'hi' ? 'संपर्क एवं पता विवरण' : 'Contact & Address'}
-            editHref={`/apply/${categorySlug}`}
+            editHref={`/apply/${categorySlug}?edit=${applicationId}`}
           >
             <ReviewRow label={lang === 'hi' ? 'पत्राचार पता' : 'Address'} value={data.common.address} />
             <ReviewRow label={lang === 'hi' ? 'राज्य' : 'State'} value={data.common.state} />
@@ -370,7 +394,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           {(data.shopOptionLabel || data.categoryFields.length > 0) && (
             <SectionCard
               title={lang === 'hi' ? 'श्रेणी विशिष्ट विवरण' : 'Category Details'}
-              editHref={`/apply/${categorySlug}`}
+              editHref={`/apply/${categorySlug}?edit=${applicationId}`}
             >
               <ReviewRow label={lang === 'hi' ? 'बूथ/स्टॉल चयन' : 'Booth/Stall Selection'} value={data.shopOptionLabel} />
               {data.categoryFields.map(field => (
@@ -416,38 +440,50 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           )}
 
           <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-            <div className='mb-4 flex items-center justify-between border-b border-[#f1f5f9] pb-3'>
+            <div className='mb-4 border-b border-[#f1f5f9] pb-3'>
               <h2 className='text-xl font-black text-[#0c2847]'>
                 {lang === 'hi' ? 'अपलोड किए गए दस्तावेज' : 'Uploaded Documents'}
               </h2>
-              <Link href={`/apply/${categorySlug}?edit=${applicationId}`} className='inline-flex items-center gap-1 rounded-lg border border-[#0c2847]/20 bg-[#fafbfc] px-3.5 py-1 text-xs font-bold text-[#0c2847] transition hover:bg-[#0c2847] hover:text-white'>
-                {lang === 'hi' ? 'दस्तावेज संपादित करें ✎' : 'Edit Documents ✎'}
-              </Link>
             </div>
-            <div className='rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-5 py-3 divide-y divide-[#f1f5f9]'>
-              {data.documents.map(doc => (
-                <div key={doc.label} className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2.5 text-sm'>
-                  <div className='flex items-center gap-3'>
-                    <CheckIcon className='size-4 text-emerald-600 shrink-0 stroke-[2.5]' />
-                    <span className='font-bold text-[#0c2847]'>{doc.label}</span>
-                  </div>
-                  <div className='flex items-center gap-2'>
+            <div className='rounded-lg border border-[#e2e8f0]'>
+              <div className='hidden grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-[#e2e8f0] bg-[#f8fafc] px-4 py-2.5 text-xs font-bold tracking-wide text-[#64748b] uppercase sm:grid'>
+                <span>{lang === 'hi' ? 'दस्तावेज़' : 'Document'}</span>
+                <span>{lang === 'hi' ? 'स्थिति' : 'Status'}</span>
+                <span className='text-right'>{lang === 'hi' ? 'कार्रवाई' : 'Action'}</span>
+              </div>
+
+              {data.documents.map((doc, index) => (
+                <div
+                  key={doc.label}
+                  className={`grid grid-cols-1 items-center gap-2 px-4 py-3 sm:grid-cols-[1fr_auto_auto] sm:gap-4 ${
+                    index > 0 ? 'border-t border-[#e2e8f0]' : ''
+                  }`}
+                >
+                  <div className='min-w-0'>
+                    <p className='flex items-center gap-1.5 text-sm font-semibold text-[#0c2847]'>
+                      <FileTextIcon className='size-3.5 shrink-0 text-[#94a3b8]' />
+                      <span className='truncate'>{doc.label}</span>
+                    </p>
                     {doc.originalFilename && (
-                      <span className='font-mono text-xs text-[#64748b] bg-white border border-[#e2e8f0] rounded-md px-2 py-0.5 truncate max-w-xs'>
-                        {doc.originalFilename}
-                      </span>
-                    )}
-                    {access && (
-                      <button
-                        type='button'
-                        onClick={() => void openDocumentPreview(doc.documentId, access.accessToken)}
-                        className='flex shrink-0 items-center gap-1 rounded-md border border-[#e2e8f0] bg-white px-2 py-0.5 text-xs font-bold text-[#0c2847] hover:bg-[#f5f8fb]'
-                      >
-                        <EyeIcon className='size-3' />
-                        {lang === 'hi' ? 'देखें' : 'Preview'}
-                      </button>
+                      <p className='mt-0.5 ml-5 truncate text-xs text-[#94a3b8]'>{doc.originalFilename}</p>
                     )}
                   </div>
+
+                  <div className='flex items-center gap-1.5 text-xs font-semibold sm:justify-self-start'>
+                    <CheckCircle2Icon className='size-3.5 shrink-0 text-emerald-600' />
+                    <span className='text-emerald-700'>{lang === 'hi' ? 'अपलोड हो गया' : 'Uploaded'}</span>
+                  </div>
+
+                  {access && (
+                    <button
+                      type='button'
+                      onClick={() => void openPreview(doc.documentId, doc.label, access.accessToken)}
+                      className='flex shrink-0 items-center gap-1 text-xs font-bold text-[#0c2847] hover:underline sm:justify-self-end'
+                    >
+                      <EyeIcon className='size-3.5' />
+                      {lang === 'hi' ? 'देखें' : 'View'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -557,9 +593,12 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             </div>
 
             {recaptchaRequired && (
-              <div className='mt-5 border-t border-[#f1f5f9] pt-5'>
-                <RecaptchaWidget onChange={setRecaptchaToken} />
-              </div>
+              <RecaptchaWidget
+                onReady={getToken => {
+                  getRecaptchaTokenRef.current = getToken
+                  setRecaptchaReady(true)
+                }}
+              />
             )}
           </section>
 
@@ -596,6 +635,13 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           </div>
         </div>
       </div>
+
+      <DocumentPreviewDialog
+        preview={preview}
+        previewError={previewError}
+        isLoadingPreview={isLoadingPreview}
+        onClose={closePreview}
+      />
     </div>
   )
 }

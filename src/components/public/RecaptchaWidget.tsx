@@ -5,18 +5,15 @@ import { useEffect, useRef, useState } from 'react'
 declare global {
   interface Window {
     grecaptcha?: {
-      render: (
-        container: HTMLElement,
-        params: { sitekey: string; callback: (token: string) => void; 'expired-callback': () => void }
-      ) => number
-      reset: (widgetId?: number) => void
+      ready: (callback: () => void) => void
+      execute: (siteKey: string, options: { action: string }) => Promise<string>
     }
   }
 }
 
-const RECAPTCHA_SCRIPT_SRC = 'https://www.google.com/recaptcha/api.js?render=explicit'
+const RECAPTCHA_SCRIPT_SRC = (siteKey: string) => `https://www.google.com/recaptcha/api.js?render=${siteKey}`
 
-function loadRecaptchaScript(): Promise<boolean> {
+function loadRecaptchaScript(siteKey: string): Promise<boolean> {
   return new Promise(resolve => {
     if (window.grecaptcha) {
       resolve(true)
@@ -24,7 +21,8 @@ function loadRecaptchaScript(): Promise<boolean> {
       return
     }
 
-    const existing = document.querySelector(`script[src="${RECAPTCHA_SCRIPT_SRC}"]`)
+    const src = RECAPTCHA_SCRIPT_SRC(siteKey)
+    const existing = document.querySelector(`script[src="${src}"]`)
 
     if (existing) {
       existing.addEventListener('load', () => resolve(true))
@@ -35,7 +33,7 @@ function loadRecaptchaScript(): Promise<boolean> {
 
     const script = document.createElement('script')
 
-    script.src = RECAPTCHA_SCRIPT_SRC
+    script.src = src
     script.async = true
     script.defer = true
     script.onload = () => resolve(true)
@@ -45,52 +43,72 @@ function loadRecaptchaScript(): Promise<boolean> {
 }
 
 /**
- * Google reCAPTCHA v2 ("I'm not a robot" checkbox) on the application Review
- * page, right above Submit. Renders nothing if NEXT_PUBLIC_RECAPTCHA_SITE_KEY
- * isn't set (keys are being added later via the server environment, not
- * now — see .ai/OPEN_QUESTIONS.md) rather than showing a broken widget.
- * Server-side verification (verifyRecaptcha(), called from the finalize
- * route) is the real gate — same "UI convenience, never the security
- * boundary" pattern as the rest of this page's declaration checkboxes.
+ * Google reCAPTCHA v3 — invisible, no checkbox. Loads the v3 script (render=
+ * <site-key>, not 'explicit' like v2) and calls grecaptcha.execute() to get
+ * a fresh token right before submission, rather than rendering a visible
+ * widget at all. v3 requires its OWN site/secret key pair from
+ * recaptcha.google.com — the old v2 keys this project used previously do
+ * not work here (different API version, different key type). Renders
+ * nothing (and the caller treats a null token as "not required") when
+ * NEXT_PUBLIC_RECAPTCHA_SITE_KEY isn't set.
+ *
+ * Unlike v2, there's no user interaction/callback — the token has to be
+ * fetched on demand (it's short-lived, ~2 minutes), so this component
+ * exposes a getToken() escape hatch via a ref-like callback rather than an
+ * onChange, and the Review page calls it right before submit.
  */
-const RecaptchaWidget = ({ onChange }: { onChange: (token: string | null) => void }) => {
+const RecaptchaWidget = ({ onReady }: { onReady: (getToken: () => Promise<string | null>) => void }) => {
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-  const containerRef = useRef<HTMLDivElement>(null)
   const [loadFailed, setLoadFailed] = useState(false)
+  const readyRef = useRef(false)
 
   useEffect(() => {
-    if (!siteKey || !containerRef.current) return
+    if (!siteKey) return
 
     let cancelled = false
 
-    void loadRecaptchaScript().then(loaded => {
-      if (cancelled || !loaded || !window.grecaptcha || !containerRef.current) {
-        if (!cancelled && !loaded) setLoadFailed(true)
+    void loadRecaptchaScript(siteKey).then(loaded => {
+      if (cancelled) return
+
+      if (!loaded || !window.grecaptcha) {
+        setLoadFailed(true)
 
         return
       }
 
-      window.grecaptcha.render(containerRef.current, {
-        sitekey: siteKey,
-        callback: token => onChange(token),
-        'expired-callback': () => onChange(null)
+      window.grecaptcha.ready(() => {
+        if (cancelled) return
+        readyRef.current = true
+
+        onReady(async () => {
+          if (!window.grecaptcha) return null
+
+          try {
+            return await window.grecaptcha.execute(siteKey, { action: 'submit_application' })
+          } catch {
+            return null
+          }
+        })
       })
     })
 
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- renders once; onChange identity changing shouldn't re-render the widget
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onReady identity changing shouldn't re-trigger script load
   }, [siteKey])
 
   if (!siteKey) return null
 
-  return (
-    <div>
-      <div ref={containerRef} />
-      {loadFailed && <p className='mt-2 text-xs text-red-600'>Could not load CAPTCHA. Please check your connection and reload.</p>}
-    </div>
-  )
+  // v3 shows no visible checkbox — only Google's required "protected by
+  // reCAPTCHA" badge notice, which their terms require displaying when the
+  // visible badge itself is hidden via CSS (not done here; the default
+  // bottom-right badge stays visible, so no extra notice is needed). This
+  // block only ever shows a load-failure message, otherwise it renders
+  // nothing visible.
+  return loadFailed ? (
+    <p className='text-xs text-red-600'>Could not load CAPTCHA protection. Please check your connection and reload.</p>
+  ) : null
 }
 
 export default RecaptchaWidget
