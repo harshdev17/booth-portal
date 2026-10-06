@@ -17,6 +17,7 @@ import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 
 export const metadata: Metadata = {
@@ -160,6 +161,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             </p>
           </div>
         </div>
+
+        <ApplicationPdfDownloads applicationId={id} applicationNumber={app.application_number} />
 
         <ApplicationDecisionActions applicationId={app.id} canApprove={canApprove} canReject={canReject} />
       </div>
