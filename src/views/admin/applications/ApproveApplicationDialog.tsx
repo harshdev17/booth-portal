@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useImperativeHandle, useState, type Ref } from 'react'
 
 import { useRouter } from 'next/navigation'
 
@@ -28,7 +28,19 @@ type Checklist = {
  * (never passed in as a prop) so this works the same from the Application
  * Detail page and from a row in the Applications list table alike.
  */
-const ApproveApplicationDialog = ({ applicationId }: { applicationId: string }) => {
+export type DialogHandle = { open: () => void }
+
+const ApproveApplicationDialog = ({
+  applicationId,
+  hideTrigger,
+  ref
+}: {
+  applicationId: string
+
+  /** Row-action menus open the dialog through `ref` instead of rendering their own button. */
+  hideTrigger?: boolean
+  ref?: Ref<DialogHandle>
+}) => {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -58,6 +70,8 @@ const ApproveApplicationDialog = ({ applicationId }: { applicationId: string }) 
     }
   }
 
+  useImperativeHandle(ref, () => ({ open: () => void openDialog() }))
+
   const confirmApprove = async () => {
     setSubmitting(true)
     setError(null)
@@ -83,15 +97,17 @@ const ApproveApplicationDialog = ({ applicationId }: { applicationId: string }) 
 
   return (
     <>
-      <Button
-        type='button'
-        size='sm'
-        onClick={openDialog}
-        className='whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white'
-      >
-        <CheckIcon />
-        Approve
-      </Button>
+      {!hideTrigger && (
+        <Button
+          type='button'
+          size='sm'
+          onClick={openDialog}
+          className='whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white'
+        >
+          <CheckIcon />
+          Approve
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

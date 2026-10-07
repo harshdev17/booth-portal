@@ -94,7 +94,7 @@ async function decideDocument(
   // query puts it in 'query_raised'; once none remain it returns to
   // 'under_review'. Only these two review-stage statuses are ever touched.
   if (toStatus === 'query') {
-    await query(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status = 'under_review'`, [
+    await query(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [
       current.application_id
     ])
   } else {

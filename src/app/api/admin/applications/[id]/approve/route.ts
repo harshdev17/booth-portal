@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
 
-    if (checklist.status !== 'under_review') {
+    if (!['under_review', 'payment_success'].includes(checklist.status)) {
       return NextResponse.json(
         { error: `This application is "${checklist.status}", not "Under Review" — it cannot be approved from here.` },
         { status: 409 }
@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    await query(`UPDATE applications SET status = 'selected' WHERE id = ? AND status = 'under_review'`, [applicationId])
+    await query(`UPDATE applications SET status = 'selected' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [applicationId])
 
     await logAudit({
       actorUserId: session.userId,

@@ -6,7 +6,9 @@ export const APPLICATION_STATUS_CONFIG: Record<string, { label: string; color: s
   draft: { label: 'Draft', color: 'bg-slate-100 text-slate-700' },
   payment_pending: { label: 'Payment Pending', color: 'bg-amber-100 text-amber-800' },
   payment_failed: { label: 'Payment Failed', color: 'bg-red-100 text-red-800' },
-  payment_success: { label: 'Payment Success', color: 'bg-emerald-100 text-emerald-800' },
+
+  // Payment is mandatory for submission, so "payment success" is just Under Review (legacy value).
+  payment_success: { label: 'Under Review', color: 'bg-blue-100 text-blue-800' },
   under_review: { label: 'Under Review', color: 'bg-blue-100 text-blue-800' },
   query_raised: { label: 'Query Raised', color: 'bg-orange-100 text-orange-800' },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800' },

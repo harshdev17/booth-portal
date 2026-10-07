@@ -86,7 +86,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // 'query_raised' is still the review stage — it is exactly the state in which
     // the applicant is expected to respond to a reviewer's query.
-    const isUnderReviewNow = application.status === 'under_review' || application.status === 'query_raised'
+    // ('payment_success' is what older applications were left in before payment
+    // started moving them to 'under_review' — same review stage.)
+    const isUnderReviewNow = ['under_review', 'query_raised', 'payment_success'].includes(application.status)
 
     const tokenValid = accessToken ? verifyAccessToken(accessToken, application.access_token_hash) : false
     const otpValid = !tokenValid && isUnderReviewNow && (await hasRecentVerifiedOtp(`+91${application.mobile_number}`, 'status_lookup', 20))

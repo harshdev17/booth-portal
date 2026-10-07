@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useImperativeHandle, useState, type Ref } from 'react'
 
 import { useRouter } from 'next/navigation'
 
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import ApproveApplicationDialog from '@/views/admin/applications/ApproveApplicationDialog'
+import ApproveApplicationDialog, { type DialogHandle } from '@/views/admin/applications/ApproveApplicationDialog'
 
 type Props = {
   applicationId: string
@@ -19,11 +19,21 @@ type Props = {
   nowrap?: boolean
 }
 
-const RejectButton = ({ applicationId }: { applicationId: string }) => {
+export const RejectButton = ({
+  applicationId,
+  hideTrigger,
+  ref
+}: {
+  applicationId: string
+  hideTrigger?: boolean
+  ref?: Ref<DialogHandle>
+}) => {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useImperativeHandle(ref, () => ({ open: () => setOpen(true) }))
 
   const submit = async (formData: FormData) => {
     setSubmitting(true)
@@ -55,10 +65,12 @@ const RejectButton = ({ applicationId }: { applicationId: string }) => {
 
   return (
     <>
-      <Button type='button' size='sm' variant='destructive' className='whitespace-nowrap' onClick={() => setOpen(true)}>
-        <XIcon />
-        Reject
-      </Button>
+      {!hideTrigger && (
+        <Button type='button' size='sm' variant='destructive' className='whitespace-nowrap' onClick={() => setOpen(true)}>
+          <XIcon />
+          Reject
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

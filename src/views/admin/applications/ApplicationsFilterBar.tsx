@@ -11,13 +11,11 @@ import { Input } from '@/components/ui/input'
 const SEARCH_DEBOUNCE_MS = 400
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Submitted (All Active)' },
-  { value: 'payment_pending', label: 'Payment Pending' },
+  { value: '', label: 'All Applications' },
   { value: 'under_review', label: 'Under Review' },
   { value: 'query_raised', label: 'Query Raised' },
-  { value: 'selected', label: 'Selected / Allotted' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'all', label: 'Include Incomplete Drafts' }
+  { value: 'selected', label: 'Approved / Allotted' },
+  { value: 'rejected', label: 'Rejected' }
 ]
 
 /**

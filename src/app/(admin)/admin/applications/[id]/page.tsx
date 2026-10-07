@@ -143,16 +143,19 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   const statusCfg = getApplicationStatusConfig(app.status)
 
-  const canApprove =
-    app.status === 'under_review' && !!permissions?.has('application:approve') && !!approvalChecklist?.allDocumentsVerified
+  // 'payment_success' = legacy rows paid before payment moved straight to 'under_review'.
+  const isReviewStage = app.status === 'under_review' || app.status === 'payment_success'
 
-  const canReject = (app.status === 'under_review' || app.status === 'query_raised') && !!permissions?.has('application:reject')
+  const canApprove =
+    isReviewStage && !!permissions?.has('application:approve') && !!approvalChecklist?.allDocumentsVerified
+
+  const canReject = (isReviewStage || app.status === 'query_raised') && !!permissions?.has('application:reject')
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
   const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
 
   const approvalBlockedByDocs =
-    app.status === 'under_review' && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
+    isReviewStage && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
 
   return (
     <div className='flex flex-col gap-6'>

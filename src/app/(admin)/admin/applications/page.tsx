@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { CheckCircle2Icon, ClockIcon, EyeIcon, FileTextIcon, FilterIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, FileTextIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
@@ -11,7 +11,7 @@ import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
-import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import ApplicationRowActions from '@/views/admin/applications/ApplicationRowActions'
 import ApplicationsFilterBar from '@/views/admin/applications/ApplicationsFilterBar'
 
 const DEFAULT_PAGE_SIZE = 25
@@ -30,6 +30,8 @@ type ApplicationItem = {
   mobile_number: string
   email: string
   status: string
+  open_queries: number
+  reuploaded_pending: number
   fee_paise: number | null
   submitted_at: string | null
   created_at: string
@@ -41,13 +43,22 @@ const STATUS_CONFIG: Record<
 > = {
   draft: { label: 'Draft', variant: 'outline', color: 'bg-slate-100 text-slate-700' },
   payment_pending: { label: 'Payment Pending', variant: 'secondary', color: 'bg-amber-100 text-amber-800' },
-  payment_success: { label: 'Payment Success', variant: 'default', color: 'bg-emerald-100 text-emerald-800' },
+  payment_success: { label: 'Under Review', variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
   under_review: { label: 'Under Review', variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
   query_raised: { label: 'Query Raised', variant: 'secondary', color: 'bg-orange-100 text-orange-800' },
   selected: { label: 'Selected / Allotted', variant: 'default', color: 'bg-purple-100 text-purple-800' },
   rejected: { label: 'Rejected', variant: 'destructive', color: 'bg-red-100 text-red-800' },
   allotted: { label: 'Allotted', variant: 'default', color: 'bg-emerald-100 text-emerald-800' }
 }
+
+// Quick-filter tabs: the `status` URL param maps to one or more stored statuses
+// ('payment_success' is the legacy value for Under Review).
+const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> = [
+  { key: 'under_review', label: 'Under Review', statuses: ['under_review', 'payment_success'] },
+  { key: 'query_raised', label: 'Query Raised', statuses: ['query_raised'] },
+  { key: 'selected', label: 'Approved / Allotted', statuses: ['selected', 'allotted', 're_allotted'] },
+  { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] }
+]
 
 const VALID_SORT_FIELDS: Record<string, string> = {
   app_no: 'a.application_number',
@@ -86,11 +97,15 @@ const ApplicationsAdminPage = async ({
   const params: unknown[] = []
 
   // Exclude raw draft applications that were abandoned without submission unless specifically queried
-  if (!status) {
-    conditions.push(`a.status != 'draft'`)
-  } else if (status !== 'all') {
-    conditions.push(`a.status = ?`)
-    params.push(status)
+  // An application only counts once its payment is made: drafts and unpaid
+  // (payment_pending / payment_failed) rows are never listed.
+  const tab = QUICK_FILTERS.find(f => f.key === status)
+
+  if (tab) {
+    conditions.push(`a.status IN (${tab.statuses.map(() => '?').join(', ')})`)
+    params.push(...tab.statuses)
+  } else {
+    conditions.push(`a.status NOT IN ('draft', 'payment_pending', 'payment_failed')`)
   }
 
   if (category && category !== 'all') {
@@ -117,7 +132,11 @@ const ApplicationsAdminPage = async ({
     query<ApplicationItem[]>(
       `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
               a.organisation_name, a.representative_name, a.mobile_number, a.email,
-              a.status, c.fee_paise, a.submitted_at, a.created_at
+              a.status, c.fee_paise, a.submitted_at, a.created_at,
+              (SELECT COUNT(*) FROM application_documents d
+                WHERE d.application_id = a.id AND d.verification_status = 'query') AS open_queries,
+              (SELECT COUNT(*) FROM application_documents d
+                WHERE d.application_id = a.id AND d.reuploaded_at IS NOT NULL AND d.verification_status = 'pending') AS reuploaded_pending
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        ${whereClause}
@@ -129,7 +148,7 @@ const ApplicationsAdminPage = async ({
       `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
     ),
     query<Array<{ status: string; count: number }>>(
-      `SELECT status, COUNT(*) AS count FROM applications WHERE status != 'draft' GROUP BY status`
+      `SELECT status, COUNT(*) AS count FROM applications WHERE status NOT IN ('draft', 'payment_pending', 'payment_failed') GROUP BY status`
     ),
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
@@ -138,7 +157,7 @@ const ApplicationsAdminPage = async ({
   ])
 
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
-  const pendingCount = statsRows.find(r => r.status === 'payment_pending' || r.status === 'under_review')?.count ?? 0
+  const pendingCount = statsRows.find(r => r.status === 'under_review' || r.status === 'payment_success')?.count ?? 0
   const selectedCount = statsRows.find(r => r.status === 'selected' || r.status === 'allotted')?.count ?? 0
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
@@ -236,11 +255,11 @@ const ApplicationsAdminPage = async ({
           hint='Submitted across all commercial stall categories'
         />
         <KpiCard
-          label='Pending Verification / Payment'
+          label='Pending Review'
           value={pendingCount}
           icon={ClockIcon}
           accentColor='text-amber-600'
-          hint='Applications awaiting fee payment or review'
+          hint='Paid applications awaiting a review decision'
         />
         <KpiCard
           label='Allotted / Selected'
@@ -251,72 +270,37 @@ const ApplicationsAdminPage = async ({
         />
       </div>
 
-      {/* Quick Status Filter Tabs */}
-      <div className='flex flex-wrap items-center gap-2'>
-        <span className='text-xs font-bold text-muted-foreground mr-1 flex items-center gap-1'>
-          <FilterIcon className='size-3.5' /> Quick Filters:
-        </span>
-        <Link
-          href={getStatusFilterUrl('')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            !status
-              ? 'bg-[#0c2847] text-white'
-              : 'border border-border bg-white text-muted-foreground hover:bg-muted'
-          }`}
-        >
-          All Active ({totalSubmitted})
-        </Link>
-        <Link
-          href={getStatusFilterUrl('payment_pending')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            status === 'payment_pending'
-              ? 'bg-amber-600 text-white'
-              : 'border border-amber-200 bg-amber-50/70 text-amber-800 hover:bg-amber-100'
-          }`}
-        >
-          Payment Pending
-        </Link>
-        <Link
-          href={getStatusFilterUrl('under_review')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            status === 'under_review'
-              ? 'bg-blue-600 text-white'
-              : 'border border-blue-200 bg-blue-50/70 text-blue-800 hover:bg-blue-100'
-          }`}
-        >
-          Under Review
-        </Link>
-        <Link
-          href={getStatusFilterUrl('selected')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            status === 'selected'
-              ? 'bg-purple-600 text-white'
-              : 'border border-purple-200 bg-purple-50/70 text-purple-800 hover:bg-purple-100'
-          }`}
-        >
-          Selected / Allotted ({selectedCount})
-        </Link>
-        <Link
-          href={getStatusFilterUrl('rejected')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            status === 'rejected'
-              ? 'bg-red-600 text-white'
-              : 'border border-red-200 bg-red-50/70 text-red-800 hover:bg-red-100'
-          }`}
-        >
-          Rejected
-        </Link>
-        <Link
-          href={getStatusFilterUrl('all')}
-          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-            status === 'all'
-              ? 'bg-slate-700 text-white'
-              : 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          Include Incomplete Drafts
-        </Link>
-      </div>
+      {/* Status tabs */}
+      <nav aria-label='Filter by status' className='-mb-2 overflow-x-auto overflow-y-hidden'>
+        <ul className='flex min-w-max gap-6 border-b'>
+          {[{ key: '', label: 'All', statuses: [] as string[] }, ...QUICK_FILTERS].map(filter => {
+            const active = (status ?? '') === filter.key || (!tab && filter.key === '')
+
+            const count = filter.key
+              ? statsRows.filter(r => filter.statuses.includes(r.status)).reduce((acc, r) => acc + Number(r.count), 0)
+              : totalSubmitted
+
+            return (
+              <li key={filter.key || 'all'}>
+                <Link
+                  href={getStatusFilterUrl(filter.key)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-sm font-medium whitespace-nowrap transition ${
+                    active
+                      ? 'border-[#0c2847] text-[#0c2847]'
+                      : 'border-transparent text-muted-foreground hover:border-slate-300 hover:text-slate-800'
+                  }`}
+                >
+                  {filter.label}
+                  <span className={`text-xs tabular-nums ${active ? 'text-[#0c2847]' : 'text-muted-foreground'}`}>
+                    {count}
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
 
       {/* Filters & Search Bar */}
       <Card className='shadow-xs'>
@@ -426,10 +410,10 @@ const ApplicationsAdminPage = async ({
                     }
 
                     const encodedId = encodeId(app.id)
-                    const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
+                    const canApprove = (app.status === 'under_review' || app.status === 'payment_success') && !!permissions?.has('application:approve')
 
                     const canReject =
-                      (app.status === 'under_review' || app.status === 'query_raised') &&
+                      (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'query_raised') &&
                       !!permissions?.has('application:reject')
 
                     return (
@@ -458,6 +442,16 @@ const ApplicationsAdminPage = async ({
                           >
                             {statusCfg.label}
                           </span>
+                          {Number(app.open_queries) > 0 && (
+                            <p className='mt-1 text-[11px] font-semibold text-orange-700'>
+                              {app.open_queries} document {Number(app.open_queries) === 1 ? 'query' : 'queries'} open
+                            </p>
+                          )}
+                          {Number(app.reuploaded_pending) > 0 && (
+                            <p className='mt-1 text-[11px] font-semibold text-emerald-700'>
+                              Re-uploaded · needs review
+                            </p>
+                          )}
                         </td>
                         <td className='py-3.5 px-4 text-xs text-muted-foreground'>
                           {app.submitted_at
@@ -471,19 +465,8 @@ const ApplicationsAdminPage = async ({
                             : new Date(app.created_at).toLocaleDateString('en-IN')}
                         </td>
                         <td className='py-3.5 px-4'>
-                          <div className='flex flex-nowrap items-center justify-end gap-2'>
-                            <Link
-                              href={`/admin/applications/${encodedId}`}
-                              className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                            >
-                              <EyeIcon className='size-3.5' /> View
-                            </Link>
-                            <ApplicationDecisionActions
-                              applicationId={encodedId}
-                              canApprove={canApprove}
-                              canReject={canReject}
-                              nowrap
-                            />
+                          <div className='flex justify-end'>
+                            <ApplicationRowActions applicationId={encodedId} canApprove={canApprove} canReject={canReject} />
                           </div>
                         </td>
                       </tr>

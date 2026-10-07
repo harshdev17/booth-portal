@@ -51,11 +51,13 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   draft: { en: 'Draft', hi: 'ड्राफ्ट' },
   payment_pending: { en: 'Payment Pending', hi: 'भुगतान लंबित' },
   payment_failed: { en: 'Payment Failed', hi: 'भुगतान विफल' },
-  payment_success: { en: 'Payment Received', hi: 'भुगतान प्राप्त' },
-  under_review: { en: 'Under Review', hi: 'समीक्षाधीन' },
+
+  // What the applicant sees: payment received simply means "waiting for review".
+  payment_success: { en: 'Pending (Under Review)', hi: 'लंबित (समीक्षाधीन)' },
+  under_review: { en: 'Pending (Under Review)', hi: 'लंबित (समीक्षाधीन)' },
   query_raised: { en: 'Query Raised', hi: 'स्पष्टीकरण आवश्यक' },
   rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
-  selected: { en: 'Selected', hi: 'चयनित' },
+  selected: { en: 'Approved', hi: 'स्वीकृत' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
   allotted: { en: 'Allotted', hi: 'आवंटित' },
@@ -74,7 +76,10 @@ const DOCUMENT_STATUS_HI: Record<string, string> = {
 // anything) is expected of them.
 const STATUS_HINT: Record<string, { en: string; hi: string }> = {
   payment_pending: { en: 'Your fee payment is not complete yet.', hi: 'आपके आवेदन शुल्क का भुगतान अभी पूरा नहीं हुआ है।' },
+  payment_success: { en: 'Your application and documents are being reviewed.', hi: 'आपके आवेदन और दस्तावेज़ों की समीक्षा की जा रही है।' },
   under_review: { en: 'Your application and documents are being reviewed.', hi: 'आपके आवेदन और दस्तावेज़ों की समीक्षा की जा रही है।' },
+  selected: { en: 'Your application has been approved.', hi: 'आपका आवेदन स्वीकृत हो गया है।' },
+  rejected: { en: 'Your application has been rejected.', hi: 'आपका आवेदन अस्वीकृत कर दिया गया है।' },
   query_raised: {
     en: 'The review team needs a corrected document. Please upload it below.',
     hi: 'समीक्षा टीम को सही दस्तावेज़ चाहिए। कृपया नीचे अपलोड करें।'
@@ -95,6 +100,7 @@ const StatusLookup = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [uploadMessage, setUploadMessage] = useState<string | null>(null)
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null)
   const [reuploadedKeys, setReuploadedKeys] = useState<string[]>([])
 
   const form = useForm<LookupValues>({
@@ -192,6 +198,7 @@ const StatusLookup = () => {
     if (!result) return
 
     setUploadMessage(null)
+    setUploadedFilename(null)
     setUploadingKey(documentKey)
 
     try {
@@ -232,7 +239,7 @@ const StatusLookup = () => {
           : prev
       )
       setReuploadedKeys(prev => [...prev, documentKey])
-      setUploadMessage(lang === 'hi' ? 'अपलोड हो गया। शीघ्र ही पुनः समीक्षा की जाएगी।' : 'Uploaded. It will be reviewed again shortly.')
+      setUploadedFilename(body.originalFilename ?? file.name)
     } catch {
       setUploadMessage(
         lang === 'hi'
@@ -347,6 +354,30 @@ const StatusLookup = () => {
 
       {phase === 'result' && result && (
         <div className='flex flex-col gap-5'>
+          {uploadedFilename && (
+            <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
+              <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+              <div className='text-sm'>
+                <p className='font-semibold text-emerald-900'>
+                  {lang === 'hi' ? 'फ़ाइल सफलतापूर्वक अपलोड हो गई' : 'File uploaded successfully'}
+                </p>
+                <p className='break-all text-emerald-800'>{uploadedFilename}</p>
+                <p className='mt-1 text-emerald-800'>
+                  {lang === 'hi'
+                    ? 'आपका सही किया हुआ दस्तावेज़ जमा हो गया है और समीक्षा के लिए भेज दिया गया है।'
+                    : 'Your corrected document has been submitted and sent back for review.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {uploadMessage && (
+            <Alert variant='destructive'>
+              <AlertCircleIcon className='size-4' />
+              <AlertDescription>{uploadMessage}</AlertDescription>
+            </Alert>
+          )}
+
           <div className='overflow-hidden rounded-lg border border-[var(--kdb-border)] bg-white'>
             <div className='border-b border-[var(--kdb-border)] px-5 py-4'>
               <p className='text-xs text-[var(--kdb-muted)]'>{lang === 'hi' ? 'आवेदन क्रमांक' : 'Application No.'}</p>
@@ -459,11 +490,6 @@ const StatusLookup = () => {
             </div>
           )}
 
-          {uploadMessage && (
-            <p className='text-xs font-medium text-[var(--kdb-text)]' role='status'>
-              {uploadMessage}
-            </p>
-          )}
         </div>
       )}
     </div>
