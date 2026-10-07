@@ -16,10 +16,12 @@ const SuccessPage = async ({ params }: { params: Promise<{ applicationNumber: st
   return (
     <>
       <PublicHeader />
-      <SuccessPageView
-        applicationNumber={decodedApplicationNumber}
-        encryptedToken={encodeApplicationNumber(decodedApplicationNumber)}
-      />
+      <div className='kdb-form-scale'>
+        <SuccessPageView
+          applicationNumber={decodedApplicationNumber}
+          encryptedToken={encodeApplicationNumber(decodedApplicationNumber)}
+        />
+      </div>
       <PublicFooter />
     </>
   )

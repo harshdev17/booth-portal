@@ -93,8 +93,8 @@ const PublicHeader = () => {
               <p className='text-xl font-black tracking-tight text-[var(--kdb-primary)] sm:text-4xl'>
                 International Geeta Jayanti Mahotsav 2026
               </p>
-              <p className='mt-1 text-lg font-bold text-[#6b5a1f] sm:text-2xl'>अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026</p>
-              <p className='mt-1 hidden text-base font-bold text-[#0e7a4d] sm:block'>Kurukshetra Development Board</p>
+              <p className='mt-1 text-xl font-bold text-[#6b5a1f] sm:text-3xl'>अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026</p>
+              <p className='mt-1 hidden text-xl font-bold text-[#0e7a4d] sm:block'>Kurukshetra Development Board</p>
             </div>
 
             <div className='hidden size-20 shrink-0 sm:block sm:size-28' aria-hidden='true' />

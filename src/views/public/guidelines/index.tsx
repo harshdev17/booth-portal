@@ -2,18 +2,11 @@
 
 import { useState } from 'react'
 
-import { Playfair_Display } from 'next/font/google'
 
 import { ChevronDownIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 import { CATEGORY_GUIDELINES, parseGuidelineBullet } from '@/lib/content/category-guidelines'
-
-// Scoped to this page only (not the site-wide font) — a serif display face
-// for the category numerals/headings, matching the "official guidelines
-// booklet" reference design, without touching the Geist sans used
-// everywhere else (see src/app/layout.tsx).
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['700', '800'] })
 
 const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   {
@@ -56,25 +49,16 @@ const GuidelinesView = () => {
 
   return (
     <div className='bg-[#fdf8ef]'>
-      <div className='mx-auto max-w-4xl px-4 py-12 sm:px-6'>
+      <div className='mx-auto max-w-7xl px-4 py-12 sm:px-6'>
         <div className='mb-10 text-center'>
           <div className='mb-4 flex items-center justify-center gap-2' aria-hidden='true'>
             <span className='h-px w-10 bg-[#c88718]/40' />
             <span className='size-1.5 rotate-45 bg-[#c88718]' />
             <span className='h-px w-10 bg-[#c88718]/40' />
           </div>
-          <h1 className={`${playfair.className} mb-3 text-3xl font-bold text-[var(--kdb-primary)] sm:text-4xl`}>
-            {lang === 'hi' ? (
-              'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026'
-            ) : (
-              <>
-                International Gita Jayanti Mahotsav <span className='text-[#c88718]'>2026</span>
-              </>
-            )}
-          </h1>
-          <p className='text-base text-[var(--kdb-muted)]'>
+          <h1 className='text-3xl font-extrabold text-[var(--kdb-primary)] sm:text-4xl'>
             {lang === 'hi' ? 'आवश्यक दिशा-निर्देश एवं दस्तावेज' : 'Essential Guidelines and Documents'}
-          </p>
+          </h1>
         </div>
 
         <div className='flex flex-col gap-4'>
@@ -91,12 +75,12 @@ const GuidelinesView = () => {
                   className='flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6'
                 >
                   <div className='flex items-center gap-4'>
-                    <span className={`${playfair.className} text-3xl text-[#c88718] sm:text-4xl`}>{number}</span>
+                    <span className={`text-4xl font-extrabold text-[#c88718] sm:text-5xl`}>{number}</span>
                     <div>
-                      <h2 className='text-base font-extrabold text-[#0c2847] sm:text-lg'>
+                      <h2 className='text-lg font-extrabold text-[#0c2847] sm:text-2xl'>
                         {lang === 'hi' ? cat.titleHi : cat.title}
                       </h2>
-                      <p className='text-xs text-[var(--kdb-muted)] sm:text-sm'>
+                      <p className='text-sm text-[var(--kdb-muted)] sm:text-base'>
                         {lang === 'hi' ? cat.descriptionHi : cat.description}
                       </p>
                     </div>
@@ -107,30 +91,19 @@ const GuidelinesView = () => {
                 </button>
 
                 {isOpen && (
-                  <div className='grid grid-cols-1 gap-6 border-t border-[#eaddc0] p-6 sm:grid-cols-[220px_1fr] sm:p-8'>
-                    <div className='sm:border-r sm:border-[#eaddc0] sm:pr-6'>
-                      <span className={`${playfair.className} text-4xl text-[#c88718]`}>{number}</span>
-                      <div className='mt-2 mb-3 h-0.5 w-10 bg-[#c88718]' />
-                      <h3 className='text-lg font-extrabold text-[#0c2847] sm:text-xl'>
-                        {lang === 'hi' ? cat.titleHi : cat.title}
-                      </h3>
-                      <p className='mt-2 text-sm text-[var(--kdb-muted)]'>
-                        {lang === 'hi' ? cat.descriptionHi : cat.description}
-                      </p>
-                    </div>
-
+                  <div className='border-t border-[#eaddc0] p-6 sm:p-8'>
                     <div className='flex flex-col'>
                       {cat.body.map((line, i) => {
                         const parsed = parseGuidelineBullet(lang === 'hi' ? line.hi : line.en)
 
                         return (
                           <div key={i} className={`flex gap-4 py-4 ${i > 0 ? 'border-t border-[#f1e7d2]' : ''}`}>
-                            <span className='mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-[#e6cca4] bg-[#fdfbf7] text-xs font-bold text-[#8c5711]'>
+                            <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-[#e6cca4] bg-[#fdfbf7] text-sm font-bold text-[#8c5711]'>
                               {i + 1}
                             </span>
                             <div>
-                              {parsed.title && <p className='mb-1 font-bold text-[#0c2847]'>{parsed.title}</p>}
-                              <p className='text-sm leading-relaxed text-[#334155]'>{parsed.text}</p>
+                              {parsed.title && <p className='mb-1 text-lg font-bold text-[#0c2847] sm:text-xl'>{parsed.title}</p>}
+                              <p className='text-base leading-relaxed text-[#334155] sm:text-lg'>{parsed.text}</p>
                             </div>
                           </div>
                         )
@@ -144,12 +117,12 @@ const GuidelinesView = () => {
         </div>
 
         <div className='mt-4 rounded-2xl border border-[#eaddc0] bg-[#fffbf2] p-6 sm:p-7'>
-          <h2 className='mb-4 text-lg font-extrabold text-[#0c2847] sm:text-xl'>
+          <h2 className='mb-4 text-2xl font-extrabold text-[#0c2847] sm:text-3xl'>
             {lang === 'hi' ? 'अन्य आवश्यक दिशा-निर्देश' : 'Other Important Guidelines'}
           </h2>
           <ol className='flex flex-col gap-3'>
             {ADDITIONAL_GUIDELINES.map((line, idx) => (
-              <li key={idx} className='flex items-baseline gap-3 text-base leading-relaxed text-[#334155]'>
+              <li key={idx} className='flex items-baseline gap-3 text-base leading-relaxed text-[#334155] sm:text-lg'>
                 <span className='shrink-0 font-bold text-[#b8761b]'>{idx + 1}.</span>
                 <span>{lang === 'hi' ? line.hi : line.en}</span>
               </li>

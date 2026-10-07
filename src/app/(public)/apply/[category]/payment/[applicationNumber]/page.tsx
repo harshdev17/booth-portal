@@ -8,17 +8,15 @@ export const metadata: Metadata = {
   title: 'Pay Application Fee | International Geeta Jayanti Mahotsav 2026'
 }
 
-const PaymentPage = async ({
-  params
-}: {
-  params: Promise<{ category: string; applicationNumber: string }>
-}) => {
+const PaymentPage = async ({ params }: { params: Promise<{ category: string; applicationNumber: string }> }) => {
   const { category, applicationNumber } = await params
 
   return (
     <>
       <PublicHeader />
-      <PaymentPageView categorySlug={category} applicationNumber={decodeURIComponent(applicationNumber)} />
+      <div className='kdb-form-scale'>
+        <PaymentPageView categorySlug={category} applicationNumber={decodeURIComponent(applicationNumber)} />
+      </div>
       <PublicFooter />
     </>
   )

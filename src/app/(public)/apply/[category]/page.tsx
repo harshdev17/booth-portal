@@ -33,18 +33,24 @@ export const metadata: Metadata = {
 const FIELD_WARNINGS: Record<string, { value: string; messageEn: string; messageHi: string }> = {
   commercial_activity: {
     value: 'yes',
-    messageEn: 'NGO stalls may not be used for commercial activity. Applications involving commercial use may not be eligible under current guidelines.',
-    messageHi: 'एनजीओ स्टॉल का उपयोग व्यावसायिक गतिविधि हेतु नहीं किया जा सकता। वर्तमान दिशा-निर्देशों के अनुसार व्यावसायिक उपयोग वाले आवेदन पात्र नहीं हो सकते।'
+    messageEn:
+      'NGO stalls may not be used for commercial activity. Applications involving commercial use may not be eligible under current guidelines.',
+    messageHi:
+      'एनजीओ स्टॉल का उपयोग व्यावसायिक गतिविधि हेतु नहीं किया जा सकता। वर्तमान दिशा-निर्देशों के अनुसार व्यावसायिक उपयोग वाले आवेदन पात्र नहीं हो सकते।'
   },
   commercial_promotion: {
     value: 'yes',
-    messageEn: 'The Government Department category is not intended for commercial promotion. Eligible commercial entities may apply under the Brand Promotion category instead.',
-    messageHi: 'सरकारी विभाग श्रेणी व्यावसायिक प्रचार हेतु नहीं है। पात्र व्यावसायिक संस्थाएं इसके बजाय ब्रांड प्रमोशन श्रेणी के अंतर्गत आवेदन कर सकती हैं।'
+    messageEn:
+      'The Government Department category is not intended for commercial promotion. Eligible commercial entities may apply under the Brand Promotion category instead.',
+    messageHi:
+      'सरकारी विभाग श्रेणी व्यावसायिक प्रचार हेतु नहीं है। पात्र व्यावसायिक संस्थाएं इसके बजाय ब्रांड प्रमोशन श्रेणी के अंतर्गत आवेदन कर सकती हैं।'
   },
   lpg_open_flame: {
     value: 'yes',
-    messageEn: 'LPG, gas, open flame, cooking, frying, roasting, baking, coal, wood and furnace use are not permitted at stalls under current guidelines. Only pre-packed / ready-to-sell products may be sold.',
-    messageHi: 'वर्तमान दिशा-निर्देशों के अनुसार स्टॉल पर एलपीजी, गैस, खुली लौ, खाना पकाना, तलना, भूनना, बेकिंग, कोयला, लकड़ी एवं भट्टी के उपयोग की अनुमति नहीं है। केवल पहले से पैक/बिक्री हेतु तैयार उत्पाद ही बेचे जा सकते हैं।'
+    messageEn:
+      'LPG, gas, open flame, cooking, frying, roasting, baking, coal, wood and furnace use are not permitted at stalls under current guidelines. Only pre-packed / ready-to-sell products may be sold.',
+    messageHi:
+      'वर्तमान दिशा-निर्देशों के अनुसार स्टॉल पर एलपीजी, गैस, खुली लौ, खाना पकाना, तलना, भूनना, बेकिंग, कोयला, लकड़ी एवं भट्टी के उपयोग की अनुमति नहीं है। केवल पहले से पैक/बिक्री हेतु तैयार उत्पाद ही बेचे जा सकते हैं।'
   }
 }
 
@@ -69,7 +75,9 @@ const ApplyPage = async ({
     return (
       <>
         <PublicHeader />
-        <ApplicationsClosedNotice categoryName={category.name} categoryNameHi={category.name_hi} />
+        <div className='kdb-form-scale'>
+          <ApplicationsClosedNotice categoryName={category.name} categoryNameHi={category.name_hi} />
+        </div>
         <PublicFooter />
       </>
     )
@@ -110,6 +118,7 @@ const ApplyPage = async ({
         inputType: f.input_type,
         required: Boolean(f.is_required),
         maxLength: f.max_length,
+
         // mysql2 auto-parses a JSON column into a JS value already — never a
         // raw string to re-JSON.parse() (same pitfall documented on the
         // admin inventory logs route; this field def row was the first one
@@ -135,7 +144,9 @@ const ApplyPage = async ({
   return (
     <>
       <PublicHeader />
-      <ApplicationFormOrchestrator config={config} editApplicationId={editApplicationId} />
+      <div className='kdb-form-scale'>
+        <ApplicationFormOrchestrator config={config} editApplicationId={editApplicationId} />
+      </div>
       <PublicFooter />
     </>
   )

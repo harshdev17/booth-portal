@@ -21,7 +21,9 @@ const ReviewPage = async ({ params }: { params: Promise<{ category: string; appl
   return (
     <>
       <PublicHeader />
-      <ReviewPageView categorySlug={category} applicationId={parsedId} />
+      <div className='kdb-form-scale'>
+        <ReviewPageView categorySlug={category} applicationId={parsedId} />
+      </div>
       <PublicFooter />
     </>
   )
