@@ -10,8 +10,9 @@ import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
-import { requirePermission } from '@/lib/rbac/authorize'
+import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
+import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 
 const DEFAULT_PAGE_SIZE = 25
 
@@ -71,6 +72,7 @@ const ApplicationsAdminPage = async ({
 }) => {
   // Authorize server-side
   await requirePermission('application:view')
+  const permissions = await getCurrentUserPermissions()
 
   const { q, status, category, sort = 'date', dir = 'desc', page: pageParam, pageSize: pageSizeParam } =
     await searchParams
@@ -479,10 +481,17 @@ const ApplicationsAdminPage = async ({
                       color: 'bg-gray-100 text-gray-700'
                     }
 
+                    const encodedId = encodeId(app.id)
+                    const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
+
+                    const canReject =
+                      (app.status === 'under_review' || app.status === 'query_raised') &&
+                      !!permissions?.has('application:reject')
+
                     return (
                       <tr key={app.id} className='hover:bg-muted/30 transition'>
                         <td className='py-3.5 px-4 font-mono font-bold text-[#0c2847]'>
-                          <Link href={`/admin/applications/${encodeId(app.id)}`} className='hover:underline'>
+                          <Link href={`/admin/applications/${encodedId}`} className='hover:underline'>
                             {app.application_number}
                           </Link>
                         </td>
@@ -517,13 +526,16 @@ const ApplicationsAdminPage = async ({
                               })
                             : new Date(app.created_at).toLocaleDateString('en-IN')}
                         </td>
-                        <td className='py-3.5 px-4 text-right'>
-                          <Link
-                            href={`/admin/applications/${encodeId(app.id)}`}
-                            className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                          >
-                            <EyeIcon className='size-3.5' /> View
-                          </Link>
+                        <td className='py-3.5 px-4'>
+                          <div className='flex flex-wrap items-center justify-end gap-2'>
+                            <Link
+                              href={`/admin/applications/${encodedId}`}
+                              className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                            >
+                              <EyeIcon className='size-3.5' /> View
+                            </Link>
+                            <ApplicationDecisionActions applicationId={encodedId} canApprove={canApprove} canReject={canReject} />
+                          </div>
                         </td>
                       </tr>
                     )

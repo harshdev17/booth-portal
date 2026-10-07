@@ -1,79 +1,65 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useState } from 'react'
 
-import { CheckIcon, Loader2Icon, XIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+
+import { Loader2Icon, XIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-
-import {
-  rejectApplicationAction,
-  selectApplicationAction,
-  type ApplicationActionState
-} from '@/app/server/application-actions'
-
-const initialState: ApplicationActionState = {}
+import ApproveApplicationDialog from '@/views/admin/applications/ApproveApplicationDialog'
 
 type Props = {
-  applicationId: number
+  applicationId: string
   canApprove: boolean
   canReject: boolean
 }
 
-/**
- * Decision actions shown only when the application is "Under Review" — the
- * only stage from which these transitions are valid per
- * .ai/APPLICATION_FLOW.md Section 3. The server action independently
- * re-verifies both the current status and the caller's permission, so this
- * component being rendered is a UI convenience only, never the real gate.
- */
-const ApplicationDecisionActions = ({ applicationId, canApprove, canReject }: Props) => {
-  const [selectState, selectAction, isSelecting] = useActionState(selectApplicationAction, initialState)
-  const [rejectState, rejectAction, isRejecting] = useActionState(rejectApplicationAction, initialState)
-  const [rejectOpen, setRejectOpen] = useState(false)
+const RejectButton = ({ applicationId }: { applicationId: string }) => {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!canApprove && !canReject) return null
+  const submit = async (formData: FormData) => {
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/admin/applications/${applicationId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: formData.get('reason') })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error ?? 'Could not reject this application.')
+
+        return
+      }
+
+      setOpen(false)
+      router.refresh()
+    } catch {
+      setError('Could not reach the server. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
-    <div className='flex flex-col gap-3'>
-      {selectState.error && (
-        <Alert variant='destructive'>
-          <AlertDescription>{selectState.error}</AlertDescription>
-        </Alert>
-      )}
-      {selectState.success && (
-        <Alert>
-          <AlertDescription>{selectState.success}</AlertDescription>
-        </Alert>
-      )}
+    <>
+      <Button type='button' size='sm' variant='destructive' onClick={() => setOpen(true)}>
+        <XIcon />
+        Reject Application
+      </Button>
 
-      <div className='flex flex-wrap gap-2'>
-        {canApprove && (
-          <form action={selectAction}>
-            <input type='hidden' name='applicationId' value={applicationId} />
-            <Button
-              type='submit'
-              disabled={isSelecting}
-              className='bg-emerald-600 hover:bg-emerald-700 text-white'
-            >
-              {isSelecting ? <Loader2Icon className='animate-spin' /> : <CheckIcon />}
-              Mark as Selected
-            </Button>
-          </form>
-        )}
-
-        {canReject && (
-          <Button type='button' variant='destructive' onClick={() => setRejectOpen(true)}>
-            <XIcon />
-            Reject Application
-          </Button>
-        )}
-      </div>
-
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reject Application</DialogTitle>
@@ -82,27 +68,46 @@ const ApplicationDecisionActions = ({ applicationId, canApprove, canReject }: Pr
             </DialogDescription>
           </DialogHeader>
 
-          {rejectState.error && (
+          {error && (
             <Alert variant='destructive'>
-              <AlertDescription>{rejectState.error}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <form action={rejectAction} className='flex flex-col gap-3'>
-            <input type='hidden' name='applicationId' value={applicationId} />
+          <form action={submit} className='flex flex-col gap-3'>
             <Textarea name='reason' placeholder='Reason for rejection (required)' required maxLength={512} rows={4} />
             <DialogFooter>
-              <Button type='button' variant='outline' onClick={() => setRejectOpen(false)}>
+              <Button type='button' variant='outline' onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type='submit' variant='destructive' disabled={isRejecting}>
-                {isRejecting && <Loader2Icon className='animate-spin' />}
+              <Button type='submit' variant='destructive' disabled={submitting}>
+                {submitting && <Loader2Icon className='animate-spin' />}
                 Confirm Rejection
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
+
+/**
+ * Decision actions shown only when the application is "Under Review" (or,
+ * for Reject, also "Query Raised") — the only stages from which these
+ * transitions are valid per .ai/APPLICATION_FLOW.md Section 3. Both server
+ * routes independently re-verify status/permission/document-verification,
+ * so this component being rendered is a UI convenience only, never the real
+ * gate. Used both on the Application Detail page and inline in the
+ * Applications list table's Actions column.
+ */
+const ApplicationDecisionActions = ({ applicationId, canApprove, canReject }: Props) => {
+  if (!canApprove && !canReject) return null
+
+  return (
+    <div className='flex flex-wrap gap-2'>
+      {canApprove && <ApproveApplicationDialog applicationId={applicationId} />}
+      {canReject && <RejectButton applicationId={applicationId} />}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { query } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
@@ -62,7 +63,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   if (applicationId === null) notFound()
 
-  const [rows, fieldValues, checkedFieldRows, documents, auditEntries, permissions] = await Promise.all([
+  const [rows, fieldValues, checkedFieldRows, documents, auditEntries, permissions, approvalChecklist] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
               a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
@@ -115,7 +116,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
        LIMIT 50`,
       [String(applicationId)]
     ),
-    getCurrentUserPermissions()
+    getCurrentUserPermissions(),
+    getApprovalChecklist(applicationId)
   ])
 
   const app = rows[0]
@@ -140,11 +142,17 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   })
 
   const statusCfg = getApplicationStatusConfig(app.status)
-  const canApprove = app.status === 'under_review' && !!permissions?.has('application:approve')
+
+  const canApprove =
+    app.status === 'under_review' && !!permissions?.has('application:approve') && !!approvalChecklist?.allDocumentsVerified
+
   const canReject = (app.status === 'under_review' || app.status === 'query_raised') && !!permissions?.has('application:reject')
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
   const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
+
+  const approvalBlockedByDocs =
+    app.status === 'under_review' && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
 
   return (
     <div className='flex flex-col gap-6'>
@@ -172,7 +180,16 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
         <ApplicationPdfDownloads applicationId={id} />
 
-        <ApplicationDecisionActions applicationId={app.id} canApprove={canApprove} canReject={canReject} />
+        {approvalBlockedByDocs && (
+          <p className='text-xs font-medium text-amber-700'>
+            Approve will be available once every required document is verified
+            {approvalChecklist && approvalChecklist.missingDocumentLabels.length > 0
+              ? ` — still pending: ${approvalChecklist.missingDocumentLabels.join(', ')}.`
+              : '.'}
+          </p>
+        )}
+
+        <ApplicationDecisionActions applicationId={id} canApprove={canApprove} canReject={canReject} />
       </div>
 
       <Tabs defaultValue='personal'>
