@@ -2,7 +2,30 @@ export type CategoryGuideline = {
   slug: string
   title: string
   titleHi: string
+  description: string
+  descriptionHi: string
   body: Array<{ en: string; hi: string }>
+}
+
+export type ParsedGuidelineBullet = { title: string | null; text: string }
+
+// Most bullets below are already authored as "Topic: explanation..." (or,
+// for a numbered one, "3. Topic: explanation..." / "Topic — explanation...")
+// — a deliberate structure, not incidental, so the accordion UI
+// (GuidelinesView) can split each bullet into a short topic label + its
+// text without duplicating that label as separate data. Only a handful of
+// bullets were plain prose with no such lead-in; those got a short label
+// prepended directly into their en/hi text above (e.g. NGO's "Eligibility:
+// for any NGO/Social Organisation..."), rather than carrying parallel
+// title/titleHi fields that could drift from the sentence they label.
+export function parseGuidelineBullet(text: string): ParsedGuidelineBullet {
+  const match = text.match(/^(?:\d+\.\s*)?([^:—]{2,100}?)\s*[:—]\s*([\s\S]*)$/)
+
+  if (!match) return { title: null, text }
+
+  const [, title, rest] = match
+
+  return { title: title.trim(), text: rest.trim() }
 }
 
 // Content supplied directly from the official "Instructions & Guidelines"
@@ -37,18 +60,20 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'ngos-social-organizations',
     title: 'Social Organisation (NGO)',
     titleHi: 'सामाजिक संगठन (एनजीओ)',
+    description: 'Guidelines for NGOs and social-service organisations',
+    descriptionHi: 'एनजीओ एवं समाज सेवा संगठनों हेतु दिशा-निर्देश',
     body: [
       {
-        en: 'For any NGO/Social Organisation to take a booth/stall at International Geeta Jayanti Mahotsav 2026, the organisation must be duly registered.',
-        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में किसी भी सामाजिक संस्था (एनजीओ) द्वारा बूथ/स्टॉल लेने के लिए संस्था का विधिवत पंजीकृत होना अनिवार्य है।'
+        en: 'Eligibility: for any NGO/Social Organisation to take a booth/stall at International Geeta Jayanti Mahotsav 2026, the organisation must be duly registered.',
+        hi: 'पात्रता: अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में किसी भी सामाजिक संस्था (एनजीओ) द्वारा बूथ/स्टॉल लेने के लिए संस्था का विधिवत पंजीकृत होना अनिवार्य है।'
       },
       {
-        en: 'At the time of application, the representative’s Aadhaar Card and the organisation’s valid Registration Certificate must be attached with the online application.',
-        hi: 'आवेदन के समय संस्था के प्रतिनिधि का आधार कार्ड तथा संस्था का वैध पंजीकरण प्रमाणपत्र ऑनलाइन आवेदन के साथ संलग्न करना अनिवार्य होगा।'
+        en: 'Required Documents: at the time of application, the representative’s Aadhaar Card and the organisation’s valid Registration Certificate must be attached with the online application.',
+        hi: 'आवश्यक दस्तावेज: आवेदन के समय संस्था के प्रतिनिधि का आधार कार्ड तथा संस्था का वैध पंजीकरण प्रमाणपत्र ऑनलाइन आवेदन के साथ संलग्न करना अनिवार्य होगा।'
       },
       {
         en: 'Application Fee: ₹200 + 18% GST = ₹236. Every organisation applying online must pay the ₹236 application fee — this applies to all applicants. The application fee is Non-Refundable: it will not be returned whether the application is approved or rejected, whether a booth/stall is allotted or not, or if not selected in the draw.',
-        hi: 'आवेदन शुल्क ₹200/- + 18% GST = ₹236/-। ऑनलाइन आवेदन करने वाली प्रत्येक संस्था के लिए ₹236/- की आवेदन फीस जमा करना अनिवार्य होगा। यह फीस सभी आवेदकों पर लागू होगी। आवेदन फीस वापस नहीं की जाएगी। आवेदन स्वीकृत या अस्वीकृत होने, बूथ/स्टॉल आवंटित होने या न होने अथवा लॉटरी में चयन न होने की स्थिति में भी जमा की गई आवेदन फीस वापस नहीं की जाएगी।'
+        hi: 'आवेदन शुल्क: ₹200/- + 18% GST = ₹236/-। ऑनलाइन आवेदन करने वाली प्रत्येक संस्था के लिए ₹236/- की आवेदन फीस जमा करना अनिवार्य होगा। यह फीस सभी आवेदकों पर लागू होगी। आवेदन फीस वापस नहीं की जाएगी। आवेदन स्वीकृत या अस्वीकृत होने, बूथ/स्टॉल आवंटित होने या न होने अथवा लॉटरी में चयन न होने की स्थिति में भी जमा की गई आवेदन फीस वापस नहीं की जाएगी।'
       },
       {
         en: 'Booth/Stall Fee: eligible NGOs and social-service organisations selected after verification by Kurukshetra Development Board, following the prescribed process, will be allotted a booth/stall free of cost. No additional booth fee or allotment fee will be charged to the selected organisation.',
@@ -59,12 +84,12 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
         hi: 'आवेदन एवं आवंटन प्रक्रिया: संस्था द्वारा ऑनलाइन आवेदन पत्र भरना एवं ₹236/- (₹200/- + 18% GST) आवेदन फीस जमा करना अनिवार्य होगा। आवेदन के साथ संस्था के प्रतिनिधि का आधार कार्ड एवं वैध पंजीकरण प्रमाणपत्र अपलोड करना होगा। कुरुक्षेत्र विकास बोर्ड द्वारा प्राप्त सभी आवेदनों एवं संलग्न दस्तावेजों की जांच एवं सत्यापन किया जाएगा। केवल दस्तावेजों के सत्यापन के बाद पात्र पाए गए आवेदनों को ही बूथ/स्टॉल आवंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'If, after verification, the number of eligible applications is equal to or less than the fixed number of available booths/stalls, eligible organisations will be directly allotted a booth/stall as per the rules. If eligible applications exceed the fixed number of available booths/stalls, allotment among eligible and verified organisations will be made through a Draw of Lots. Only organisations whose documents have been verified and found eligible by Kurukshetra Development Board will take part in the draw. Document verification is mandatory in both Direct Allotment and Draw situations.',
-        hi: 'यदि सत्यापन के बाद पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की निर्धारित संख्या के बराबर या उससे कम रहती है, तो पात्र संस्थाओं को नियमानुसार सीधे बूथ/स्टॉल आवंटित किए जाएंगे। यदि सत्यापन के बाद पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की निर्धारित संख्या से अधिक होती है, तो पात्र एवं सत्यापित संस्थाओं के बीच लॉटरी (ड्रॉ) के माध्यम से बूथ/स्टॉल का आवंटन किया जाएगा। लॉटरी में केवल वही संस्थाएं शामिल होंगी जिनके दस्तावेज कुरुक्षेत्र विकास बोर्ड द्वारा सत्यापित एवं पात्र पाए गए हों। सीधे आवंटन अथवा लॉटरी—दोनों ही परिस्थितियों में दस्तावेजों का सत्यापन अनिवार्य होगा।'
+        en: 'Allotment Method: if, after verification, the number of eligible applications is equal to or less than the fixed number of available booths/stalls, eligible organisations will be directly allotted a booth/stall as per the rules. If eligible applications exceed the fixed number of available booths/stalls, allotment among eligible and verified organisations will be made through a Draw of Lots. Only organisations whose documents have been verified and found eligible by Kurukshetra Development Board will take part in the draw. Document verification is mandatory in both Direct Allotment and Draw situations.',
+        hi: 'आवंटन विधि: यदि सत्यापन के बाद पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की निर्धारित संख्या के बराबर या उससे कम रहती है, तो पात्र संस्थाओं को नियमानुसार सीधे बूथ/स्टॉल आवंटित किए जाएंगे। यदि सत्यापन के बाद पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की निर्धारित संख्या से अधिक होती है, तो पात्र एवं सत्यापित संस्थाओं के बीच लॉटरी (ड्रॉ) के माध्यम से बूथ/स्टॉल का आवंटन किया जाएगा। लॉटरी में केवल वही संस्थाएं शामिल होंगी जिनके दस्तावेज कुरुक्षेत्र विकास बोर्ड द्वारा सत्यापित एवं पात्र पाए गए हों। सीधे आवंटन अथवा लॉटरी—दोनों ही परिस्थितियों में दस्तावेजों का सत्यापन अनिवार्य होगा।'
       },
       {
-        en: 'The selected NGO will be given the booth/stall free of cost. The ₹236 application fee is only for the application process and is Non-Refundable.',
-        hi: 'चयनित एनजीओ को बूथ/स्टॉल निःशुल्क प्रदान किया जाएगा। ₹236/- की आवेदन फीस केवल आवेदन प्रक्रिया के लिए है और यह वापस नहीं की जाएगी।'
+        en: 'Use of Booth/Stall: the selected NGO will be given the booth/stall free of cost. The ₹236 application fee is only for the application process and is Non-Refundable.',
+        hi: 'बूथ/स्टॉल का उपयोग: चयनित एनजीओ को बूथ/स्टॉल निःशुल्क प्रदान किया जाएगा। ₹236/- की आवेदन फीस केवल आवेदन प्रक्रिया के लिए है और यह वापस नहीं की जाएगी।'
       },
       {
         en: 'Condition on activities: the booth/stall will be given to the NGO only for publicity, social awareness, and social-service related activities. No commercial activity, sale of goods, or trading work of any kind will be permitted at the booth/stall.',
@@ -76,10 +101,12 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'govt-departments',
     title: 'Government Department',
     titleHi: 'सरकारी विभाग',
+    description: 'Guidelines for central, state and other government departments',
+    descriptionHi: 'केंद्र, राज्य एवं अन्य सरकारी विभागों हेतु दिशा-निर्देश',
     body: [
       {
-        en: 'Booths/stalls may be made available to central government, state government, and other government departments/institutions at International Geeta Jayanti Mahotsav 2026, for the publicity of their departmental work, government schemes, citizen services, public awareness, and public-interest activities.',
-        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में केंद्र सरकार, राज्य सरकार एवं अन्य सरकारी विभागों/सरकारी संस्थानों को उनके विभागीय कार्यों, सरकारी योजनाओं, नागरिक सेवाओं, जन-जागरूकता एवं सार्वजनिक हित से संबंधित गतिविधियों के प्रचार-प्रसार हेतु बूथ/स्टॉल उपलब्ध करवाए जा सकते हैं।'
+        en: 'Overview: booths/stalls may be made available to central government, state government, and other government departments/institutions at International Geeta Jayanti Mahotsav 2026, for the publicity of their departmental work, government schemes, citizen services, public awareness, and public-interest activities.',
+        hi: 'विवरण: अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में केंद्र सरकार, राज्य सरकार एवं अन्य सरकारी विभागों/सरकारी संस्थानों को उनके विभागीय कार्यों, सरकारी योजनाओं, नागरिक सेवाओं, जन-जागरूकता एवं सार्वजनिक हित से संबंधित गतिविधियों के प्रचार-प्रसार हेतु बूथ/स्टॉल उपलब्ध करवाए जा सकते हैं।'
       },
       {
         en: 'Eligibility & documents: the concerned government department/institution may apply. The application must be made by the department’s authorized officer/representative. The authorized officer/representative’s valid ID/Aadhaar Card must be attached. An authorized application/permission letter from the department, or a related authorization document, must be attached. The application must briefly describe the government schemes, services, and public-awareness activities to be displayed at the booth/stall.',
@@ -102,12 +129,12 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
         hi: 'आवंटन प्रक्रिया: संबंधित सरकारी विभाग द्वारा निर्धारित ऑनलाइन आवेदन प्रक्रिया के माध्यम से आवेदन किया जाएगा। आवेदन के साथ आवश्यक विभागीय दस्तावेज एवं अधिकृत प्रतिनिधि के पहचान संबंधी दस्तावेज संलग्न किए जाएंगे। कुरुक्षेत्र विकास बोर्ड द्वारा आवेदन एवं दस्तावेजों की जांच एवं सत्यापन किया जाएगा। दस्तावेज एवं विभागीय पात्रता के सत्यापन के बाद ही बूथ/स्टॉल आवंटन किया जाएगा। पात्र आवेदनों की संख्या एवं उपलब्ध बूथ/स्टॉल के आधार पर आवंटन किया जाएगा।'
       },
       {
-        en: 'The booth/stall location will be decided by Kurukshetra Development Board as per the prescribed layout and availability — accommodating a request for a particular location/booth is not mandatory. If a government institution’s application is actually found to be for a commercial/brand-promotion purpose, it will not be included in the Government Department category; such an institution may, if eligible, be permitted to apply under the Brand Promotion category instead.',
-        hi: 'बूथ/स्टॉल का स्थान कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित लेआउट एवं उपलब्धता के अनुसार तय किया जाएगा। किसी विशेष स्थान/बूथ की मांग को स्वीकार करना अनिवार्य नहीं होगा। यदि किसी सरकारी संस्था का आवेदन वास्तव में व्यावसायिक/ब्रांड प्रमोशन उद्देश्य का पाया जाता है, तो उसे सरकारी विभाग श्रेणी में शामिल नहीं किया जाएगा। ऐसी संस्था को, यदि पात्र हो, ब्रांड प्रमोशन श्रेणी में आवेदन करने की अनुमति दी जा सकती है।'
+        en: 'Booth Location: the booth/stall location will be decided by Kurukshetra Development Board as per the prescribed layout and availability — accommodating a request for a particular location/booth is not mandatory. If a government institution’s application is actually found to be for a commercial/brand-promotion purpose, it will not be included in the Government Department category; such an institution may, if eligible, be permitted to apply under the Brand Promotion category instead.',
+        hi: 'बूथ का स्थान: बूथ/स्टॉल का स्थान कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित लेआउट एवं उपलब्धता के अनुसार तय किया जाएगा। किसी विशेष स्थान/बूथ की मांग को स्वीकार करना अनिवार्य नहीं होगा। यदि किसी सरकारी संस्था का आवेदन वास्तव में व्यावसायिक/ब्रांड प्रमोशन उद्देश्य का पाया जाता है, तो उसे सरकारी विभाग श्रेणी में शामिल नहीं किया जाएगा। ऐसी संस्था को, यदि पात्र हो, ब्रांड प्रमोशन श्रेणी में आवेदन करने की अनुमति दी जा सकती है।'
       },
       {
-        en: 'A booth allotted to a government department may be used only for government schemes, services, public awareness, and departmental activities. The allotted booth may not be used for the commercial promotion of any private person, company, or other entity, and may not be rented, sublet, or transferred to any other person/entity. An application/allotment may be cancelled at any stage if false information, incorrect documents, or concealment of facts relevant to eligibility is found. The final allotment of a booth/stall will be made by Kurukshetra Development Board as per its prescribed rules, availability, and process.',
-        hi: 'सरकारी विभाग को आवंटित बूथ का उपयोग केवल सरकारी योजनाओं, सेवाओं, जन-जागरूकता एवं विभागीय गतिविधियों के लिए किया जाएगा। आवंटित बूथ का उपयोग किसी निजी व्यक्ति, कंपनी अथवा अन्य संस्था के व्यावसायिक प्रचार के लिए नहीं किया जा सकेगा। आवंटित बूथ को किसी अन्य व्यक्ति/संस्था को किराये पर देना, उप-किराए पर देना अथवा हस्तांतरित करना अनुमत नहीं होगा। गलत जानकारी, गलत दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आवंटन को किसी भी चरण पर निरस्त किया जा सकता है। बूथ/स्टॉल का अंतिम आवंटन कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित नियमों, उपलब्धता एवं प्रक्रिया के अनुसार किया जाएगा।'
+        en: 'Permitted Use of Booth: a booth allotted to a government department may be used only for government schemes, services, public awareness, and departmental activities. The allotted booth may not be used for the commercial promotion of any private person, company, or other entity, and may not be rented, sublet, or transferred to any other person/entity. An application/allotment may be cancelled at any stage if false information, incorrect documents, or concealment of facts relevant to eligibility is found. The final allotment of a booth/stall will be made by Kurukshetra Development Board as per its prescribed rules, availability, and process.',
+        hi: 'बूथ के अनुमत उपयोग: सरकारी विभाग को आवंटित बूथ का उपयोग केवल सरकारी योजनाओं, सेवाओं, जन-जागरूकता एवं विभागीय गतिविधियों के लिए किया जाएगा। आवंटित बूथ का उपयोग किसी निजी व्यक्ति, कंपनी अथवा अन्य संस्था के व्यावसायिक प्रचार के लिए नहीं किया जा सकेगा। आवंटित बूथ को किसी अन्य व्यक्ति/संस्था को किराये पर देना, उप-किराए पर देना अथवा हस्तांतरित करना अनुमत नहीं होगा। गलत जानकारी, गलत दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आवंटन को किसी भी चरण पर निरस्त किया जा सकता है। बूथ/स्टॉल का अंतिम आवंटन कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित नियमों, उपलब्धता एवं प्रक्रिया के अनुसार किया जाएगा।'
       },
       {
         en: 'Important clarification: the purpose of the Government Department category is solely the publicity of government schemes, citizen services, and public-interest activities. Banks, Insurance Companies, Financial Institutions, and other commercial entities applying for commercial-promotion purposes will not be given a free booth/stall under this category — they may apply under the prescribed Brand Promotion category, with its applicable fee.',
@@ -119,6 +146,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'refreshment-stalls',
     title: 'Refreshment Food Stall (Through Auction)',
     titleHi: 'रिफ्रेशमेंट फूड स्टॉल (नीलामी द्वारा)',
+    description: 'Guidelines for food and refreshment stall applicants',
+    descriptionHi: 'खाद्य एवं जलपान स्टॉल आवेदकों हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Online Application: every applicant interested in a Refreshment Food Stall must apply online through the prescribed portal, and pay an Application Fee of ₹200 + 18% GST = ₹236 at the time of application. This ₹236 fee is mandatory for every applicant and Non-Refundable — it will not be returned even if the application is rejected, the applicant is not found eligible for the Auction, or not selected in the Auction. Last date to apply: 6 November 2026, 11:59 PM.',
@@ -178,6 +207,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'artisan-card-holders',
     title: 'Artisan (Card Holder)',
     titleHi: 'शिल्पकार (कार्डधारक)',
+    description: 'Guidelines for Artisan Card holding craftspersons',
+    descriptionHi: 'शिल्पकार कार्डधारक कारीगरों हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Eligibility: to apply in this category, the applicant must be genuinely engaged in handicraft/artisan work, and must hold a Valid Artisan Card / Artist Registration Card / Artisan Certificate issued by the concerned department/government authority. The Artisan Card must be valid through the last date of application — an expired, invalid, or unverified Artisan Card will not be accepted. The application must be made for the same type of art/handicraft work the applicant actually does.',
@@ -229,22 +260,24 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'national-awardees',
     title: 'National Awardee',
     titleHi: 'राष्ट्रीय पुरस्कार प्राप्तकर्ता',
+    description: 'Guidelines for national award-winning artists and artisans',
+    descriptionHi: 'राष्ट्रीय पुरस्कार प्राप्त कलाकारों एवं शिल्पकारों हेतु दिशा-निर्देश',
     body: [
       {
-        en: 'This category is for eligible applicants who are national award-winning artists/artisans.',
-        hi: 'यह श्रेणी राष्ट्रीय पुरस्कार प्राप्त कलाकारों/शिल्पकारों से संबंधित पात्र आवेदकों के लिए है।'
+        en: 'About this Category: this category is for eligible applicants who are national award-winning artists/artisans.',
+        hi: 'इस श्रेणी के बारे में: यह श्रेणी राष्ट्रीय पुरस्कार प्राप्त कलाकारों/शिल्पकारों से संबंधित पात्र आवेदकों के लिए है।'
       },
       {
         en: 'Required documents: Aadhaar Card, a valid National Award Certificate, a passport-size photograph, and work/product photographs.',
         hi: 'आवश्यक दस्तावेज: आधार कार्ड, वैध राष्ट्रीय पुरस्कार प्रमाणपत्र, पासपोर्ट साइज़ फोटो, तथा कार्य/उत्पाद की तस्वीरें।'
       },
       {
-        en: 'The National Award Certificate must be clear and valid; only genuine, relevant work/product photographs should be uploaded. False information or incorrect documents may lead to rejection.',
-        hi: 'राष्ट्रीय पुरस्कार प्रमाणपत्र स्पष्ट एवं वैध होना चाहिए। केवल वास्तविक और संबंधित कार्य/उत्पाद की तस्वीरें अपलोड करें। गलत जानकारी या गलत दस्तावेज पाए जाने पर आवेदन अस्वीकार किया जा सकता है।'
+        en: 'Important Note: the National Award Certificate must be clear and valid; only genuine, relevant work/product photographs should be uploaded. False information or incorrect documents may lead to rejection.',
+        hi: 'महत्वपूर्ण सूचना: राष्ट्रीय पुरस्कार प्रमाणपत्र स्पष्ट एवं वैध होना चाहिए। केवल वास्तविक और संबंधित कार्य/उत्पाद की तस्वीरें अपलोड करें। गलत जानकारी या गलत दस्तावेज पाए जाने पर आवेदन अस्वीकार किया जा सकता है।'
       },
       {
-        en: 'Application Fee, Stall Fee, and Allotment Method for this category are not yet specified in the official guidelines — [TBC – Business Confirmation Required]. Final eligibility and allotment will follow KDB’s verification and prescribed process.',
-        hi: 'इस श्रेणी की आवेदन शुल्क, स्टॉल शुल्क और आवंटन विधि का विवरण वर्तमान में उपलब्ध नहीं है — [TBC – व्यावसायिक पुष्टि आवश्यक]। अंतिम पात्रता और आवंटन KDB के सत्यापन एवं निर्धारित प्रक्रिया के अनुसार होगा।'
+        en: 'Fees & Allotment Method: Application Fee, Stall Fee, and Allotment Method for this category are not yet specified in the official guidelines — [TBC – Business Confirmation Required]. Final eligibility and allotment will follow KDB’s verification and prescribed process.',
+        hi: 'शुल्क एवं आवंटन विधि: इस श्रेणी की आवेदन शुल्क, स्टॉल शुल्क और आवंटन विधि का विवरण वर्तमान में उपलब्ध नहीं है — [TBC – व्यावसायिक पुष्टि आवश्यक]। अंतिम पात्रता और आवंटन KDB के सत्यापन एवं निर्धारित प्रक्रिया के अनुसार होगा।'
       }
     ]
   },
@@ -252,6 +285,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'brand-promotions',
     title: 'Brand Promotion',
     titleHi: 'ब्रांड प्रमोशन',
+    description: 'Guidelines for companies, firms and agencies seeking brand promotion',
+    descriptionHi: 'ब्रांड प्रमोशन चाहने वाली कंपनियों, फर्मों एवं एजेंसियों हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Purpose of this category: a reputed Agency/Company/Firm/Business Entity may apply for a Stall/Booth under this category to promote its product, service, or brand. The Stall/Booth in this category will mainly be used for Brand Promotion, Product Promotion, Publicity, and Marketing Activities. Booths under this category will be kept Reserved for Brand Promotion, separate from the other general categories.',
@@ -299,6 +334,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'self-help-groups',
     title: 'Self Help Groups (SHG)',
     titleHi: 'स्वयं सहायता समूह (SHG)',
+    description: 'Guidelines for registered Self Help Groups (SHGs)',
+    descriptionHi: 'पंजीकृत स्वयं सहायता समूहों (SHG) हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Purpose of this category: under this category, Registered Self Help Groups (SHGs) will be provided a Stall/Booth to display and sell products made and prepared by their own group. The purpose is to provide an opportunity for SHGs to display and sell domestic, handicraft, traditional, food, and other products made by them.',
@@ -358,6 +395,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'special-art-craft',
     title: 'Special Art & Craft',
     titleHi: 'विशेष कला एवं शिल्प',
+    description: 'Guidelines for traditional and distinctive Indian Art & Craft applicants',
+    descriptionHi: 'पारंपरिक एवं विशिष्ट भारतीय कला एवं शिल्प आवेदकों हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Purpose of this category: this category provides a Stall/Booth to participants connected with traditional, special, and distinctive Indian Art & Craft. Its purpose is to display India’s traditional art, handicraft, and special craft, and to give related artists/businesspersons an opportunity to display and sell their products.',
@@ -413,14 +452,16 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     slug: 'wooden-craft-carpets',
     title: 'Wooden Craft & Carpets (Large Space)',
     titleHi: 'काष्ठ शिल्प एवं कालीन (बड़ा स्थान)',
+    description: 'Guidelines for applicants needing large display space',
+    descriptionHi: 'बड़े प्रदर्शन स्थान की आवश्यकता वाले आवेदकों हेतु दिशा-निर्देश',
     body: [
       {
         en: '1. Purpose of this category: Artisans/Craftspersons/Businesses/Exhibitors who need Large Space/a bigger stall area to display and sell their products may apply in this category. This category is specifically meant for large-size, space-intensive products such as — Heavy Wooden Handicrafts; Wooden Craft Products; Wooden Furniture; Large Wooden Decorative Items; Handmade Carpets; Rugs; Large Handcrafted Products; and other Art & Craft products that need more space than a regular stall.',
         hi: '1. श्रेणी का उद्देश्य: इस श्रेणी के अंतर्गत ऐसे शिल्पकार/कारीगर/व्यवसाय/प्रदर्शक आवेदन कर सकते हैं जिन्हें अपने उत्पादों के प्रदर्शन एवं बिक्री के लिए बड़े स्थान/बड़े स्टॉल क्षेत्र की आवश्यकता होती है। यह श्रेणी विशेष रूप से निम्न प्रकार के बड़े आकार वाले एवं अधिक स्थान लेने वाले उत्पादों के लिए निर्धारित है: भारी काष्ठ हस्तशिल्प; काष्ठ शिल्प उत्पाद; काष्ठ फर्नीचर; बड़ी काष्ठ सजावटी वस्तुएं; हस्तनिर्मित कालीन; दरी; बड़े हस्तशिल्प उत्पाद; अन्य ऐसे कला एवं शिल्प उत्पाद जिनके लिए सामान्य स्टॉल की तुलना में अधिक स्थान आवश्यक हो।'
       },
       {
-        en: '2. Important — apply only if you need Large Space: this category is specifically for applicants who need a large space to display their products. If an applicant does not need Large Space, they do not need to apply in this category, and should instead apply under another category suitable to their art/products. Applying in this category merely to obtain more space, without actually needing Large Space, is not appropriate. KDB may assess the space requirement based on the applicant’s products, the space needed, and the available layout.',
-        hi: '2. महत्वपूर्ण – केवल वही आवेदन करें जिन्हें बड़े स्थान की आवश्यकता हो: यह श्रेणी विशेष रूप से उन आवेदकों के लिए है जिन्हें अपने उत्पादों के प्रदर्शन के लिए बड़े स्थान की आवश्यकता है। यदि आवेदक को बड़े स्थान की आवश्यकता नहीं है, तो उसे इस श्रेणी में आवेदन करने की आवश्यकता नहीं है। ऐसे आवेदक अपनी कला/उत्पादों के अनुसार किसी अन्य उपयुक्त श्रेणी में आवेदन कर सकते हैं। बड़े स्थान की आवश्यकता न होने पर केवल अधिक स्थान प्राप्त करने के उद्देश्य से इस श्रेणी में आवेदन करना उचित नहीं होगा। KDB द्वारा आवेदक के उत्पादों, आवश्यक स्थान तथा उपलब्ध लेआउट के आधार पर स्थान की आवश्यकता का आकलन किया जा सकता है।'
+        en: '2. Apply only if you need Large Space: this category is specifically for applicants who need a large space to display their products. If an applicant does not need Large Space, they do not need to apply in this category, and should instead apply under another category suitable to their art/products. Applying in this category merely to obtain more space, without actually needing Large Space, is not appropriate. KDB may assess the space requirement based on the applicant’s products, the space needed, and the available layout.',
+        hi: '2. केवल वही आवेदन करें जिन्हें बड़े स्थान की आवश्यकता हो: यह श्रेणी विशेष रूप से उन आवेदकों के लिए है जिन्हें अपने उत्पादों के प्रदर्शन के लिए बड़े स्थान की आवश्यकता है। यदि आवेदक को बड़े स्थान की आवश्यकता नहीं है, तो उसे इस श्रेणी में आवेदन करने की आवश्यकता नहीं है। ऐसे आवेदक अपनी कला/उत्पादों के अनुसार किसी अन्य उपयुक्त श्रेणी में आवेदन कर सकते हैं। बड़े स्थान की आवश्यकता न होने पर केवल अधिक स्थान प्राप्त करने के उद्देश्य से इस श्रेणी में आवेदन करना उचित नहीं होगा। KDB द्वारा आवेदक के उत्पादों, आवश्यक स्थान तथा उपलब्ध लेआउट के आधार पर स्थान की आवश्यकता का आकलन किया जा सकता है।'
       },
       {
         en: '3. Eligibility: applicants connected to the making, display, or sale of Wooden Craft, Furniture, Carpets, or other large-size Traditional/Handmade Products may apply in this category. The applicant must give a clear description of their products and required space in the Application Form. The products proposed by the applicant must match the purpose of this category.',

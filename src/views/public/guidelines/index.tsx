@@ -1,7 +1,19 @@
 'use client'
 
+import { useState } from 'react'
+
+import { Playfair_Display } from 'next/font/google'
+
+import { ChevronDownIcon } from 'lucide-react'
+
 import { useLanguage } from '@/context/LanguageContext'
-import { CATEGORY_GUIDELINES } from '@/lib/content/category-guidelines'
+import { CATEGORY_GUIDELINES, parseGuidelineBullet } from '@/lib/content/category-guidelines'
+
+// Scoped to this page only (not the site-wide font) — a serif display face
+// for the category numerals/headings, matching the "official guidelines
+// booklet" reference design, without touching the Geist sans used
+// everywhere else (see src/app/layout.tsx).
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['700', '800'] })
 
 const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   {
@@ -40,42 +52,99 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
 
 const GuidelinesView = () => {
   const { lang } = useLanguage()
+  const [openSlug, setOpenSlug] = useState<string | null>(CATEGORY_GUIDELINES[0]?.slug ?? null)
 
   return (
-    <div className='mx-auto max-w-4xl px-4 py-12 sm:px-6'>
-      <div className='mb-10 text-center'>
-        <p className='mb-2 text-xs font-extrabold tracking-widest text-[var(--kdb-saffron)] uppercase'>
-          {lang === 'hi' ? 'आधिकारिक दिशा-निर्देश' : 'Official Guidelines'}
-        </p>
-        <h1 className='mb-3 text-3xl sm:text-4xl font-extrabold text-[var(--kdb-primary)]'>
-          {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Gita Jayanti Mahotsav 2026'}
-        </h1>
-        <p className='text-base text-[var(--kdb-muted)]'>
-          {lang === 'hi' ? 'आवश्यक दिशा-निर्देश एवं दस्तावेज' : 'Essential Guidelines and Documents'}
-        </p>
-      </div>
-
-      <div className='flex flex-col gap-6'>
-        {CATEGORY_GUIDELINES.map((cat, idx) => (
-          <div key={cat.slug} className='rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-7 shadow-xs'>
-            <h2 className='mb-3 flex items-center gap-3 text-lg sm:text-xl font-extrabold text-[#0c2847]'>
-              <span className='flex size-8 shrink-0 items-center justify-center rounded-full bg-[#fdfbf7] border-2 border-[#e6cca4] text-sm font-bold text-[#8c5711]'>
-                {idx + 1}
-              </span>
-              {lang === 'hi' ? cat.titleHi : cat.title}
-            </h2>
-            <ul className='flex flex-col gap-2.5 pl-11 text-base leading-relaxed text-[#334155]'>
-              {cat.body.map((line, i) => (
-                <li key={i} className='list-disc marker:text-[#b8761b]'>
-                  {lang === 'hi' ? line.hi : line.en}
-                </li>
-              ))}
-            </ul>
+    <div className='bg-[#fdf8ef]'>
+      <div className='mx-auto max-w-4xl px-4 py-12 sm:px-6'>
+        <div className='mb-10 text-center'>
+          <div className='mb-4 flex items-center justify-center gap-2' aria-hidden='true'>
+            <span className='h-px w-10 bg-[#c88718]/40' />
+            <span className='size-1.5 rotate-45 bg-[#c88718]' />
+            <span className='h-px w-10 bg-[#c88718]/40' />
           </div>
-        ))}
+          <h1 className={`${playfair.className} mb-3 text-3xl font-bold text-[var(--kdb-primary)] sm:text-4xl`}>
+            {lang === 'hi' ? (
+              'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026'
+            ) : (
+              <>
+                International Gita Jayanti Mahotsav <span className='text-[#c88718]'>2026</span>
+              </>
+            )}
+          </h1>
+          <p className='text-base text-[var(--kdb-muted)]'>
+            {lang === 'hi' ? 'आवश्यक दिशा-निर्देश एवं दस्तावेज' : 'Essential Guidelines and Documents'}
+          </p>
+        </div>
 
-        <div className='rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-7 shadow-xs'>
-          <h2 className='mb-4 text-lg sm:text-xl font-extrabold text-[#0c2847]'>
+        <div className='flex flex-col gap-4'>
+          {CATEGORY_GUIDELINES.map((cat, idx) => {
+            const isOpen = openSlug === cat.slug
+            const number = String(idx + 1).padStart(2, '0')
+
+            return (
+              <div key={cat.slug} className='overflow-hidden rounded-2xl border border-[#eaddc0] bg-[#fffbf2]'>
+                <button
+                  type='button'
+                  onClick={() => setOpenSlug(isOpen ? null : cat.slug)}
+                  aria-expanded={isOpen}
+                  className='flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6'
+                >
+                  <div className='flex items-center gap-4'>
+                    <span className={`${playfair.className} text-3xl text-[#c88718] sm:text-4xl`}>{number}</span>
+                    <div>
+                      <h2 className='text-base font-extrabold text-[#0c2847] sm:text-lg'>
+                        {lang === 'hi' ? cat.titleHi : cat.title}
+                      </h2>
+                      <p className='text-xs text-[var(--kdb-muted)] sm:text-sm'>
+                        {lang === 'hi' ? cat.descriptionHi : cat.description}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDownIcon
+                    className={`size-5 shrink-0 text-[#8c5711] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {isOpen && (
+                  <div className='grid grid-cols-1 gap-6 border-t border-[#eaddc0] p-6 sm:grid-cols-[220px_1fr] sm:p-8'>
+                    <div className='sm:border-r sm:border-[#eaddc0] sm:pr-6'>
+                      <span className={`${playfair.className} text-4xl text-[#c88718]`}>{number}</span>
+                      <div className='mt-2 mb-3 h-0.5 w-10 bg-[#c88718]' />
+                      <h3 className='text-lg font-extrabold text-[#0c2847] sm:text-xl'>
+                        {lang === 'hi' ? cat.titleHi : cat.title}
+                      </h3>
+                      <p className='mt-2 text-sm text-[var(--kdb-muted)]'>
+                        {lang === 'hi' ? cat.descriptionHi : cat.description}
+                      </p>
+                    </div>
+
+                    <div className='flex flex-col'>
+                      {cat.body.map((line, i) => {
+                        const parsed = parseGuidelineBullet(lang === 'hi' ? line.hi : line.en)
+
+                        return (
+                          <div key={i} className={`flex gap-4 py-4 ${i > 0 ? 'border-t border-[#f1e7d2]' : ''}`}>
+                            <span className='mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-[#e6cca4] bg-[#fdfbf7] text-xs font-bold text-[#8c5711]'>
+                              {i + 1}
+                            </span>
+                            <div>
+                              {parsed.title && <p className='mb-1 font-bold text-[#0c2847]'>{parsed.title}</p>}
+                              <p className='text-sm leading-relaxed text-[#334155]'>{parsed.text}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className='mt-4 rounded-2xl border border-[#eaddc0] bg-[#fffbf2] p-6 sm:p-7'>
+          <h2 className='mb-4 text-lg font-extrabold text-[#0c2847] sm:text-xl'>
             {lang === 'hi' ? 'अन्य आवश्यक दिशा-निर्देश' : 'Other Important Guidelines'}
           </h2>
           <ol className='flex flex-col gap-3'>
