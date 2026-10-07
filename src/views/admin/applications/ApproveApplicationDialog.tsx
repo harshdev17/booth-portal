@@ -83,9 +83,14 @@ const ApproveApplicationDialog = ({ applicationId }: { applicationId: string }) 
 
   return (
     <>
-      <Button type='button' size='sm' onClick={openDialog} className='bg-emerald-600 hover:bg-emerald-700 text-white'>
+      <Button
+        type='button'
+        size='sm'
+        onClick={openDialog}
+        className='whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white'
+      >
         <CheckIcon />
-        Approve Application
+        Approve
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -2,10 +2,9 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { CheckCircle2Icon, ClockIcon, EyeIcon, FileTextIcon, FilterIcon, SearchIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, EyeIcon, FileTextIcon, FilterIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
@@ -13,6 +12,7 @@ import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import ApplicationsFilterBar from '@/views/admin/applications/ApplicationsFilterBar'
 
 const DEFAULT_PAGE_SIZE = 25
 
@@ -321,63 +321,7 @@ const ApplicationsAdminPage = async ({
       {/* Filters & Search Bar */}
       <Card className='shadow-xs'>
         <CardContent className='pt-6'>
-          <form method='GET' className='flex flex-col sm:flex-row gap-3'>
-            <input type='hidden' name='sort' value={sort} />
-            <input type='hidden' name='dir' value={dir} />
-
-            <div className='relative flex-1'>
-              <SearchIcon className='absolute left-3 top-3 size-4 text-muted-foreground' />
-              <Input
-                name='q'
-                defaultValue={q}
-                placeholder='Search by Application Number, Name, Firm, Mobile or Email...'
-                className='pl-9'
-              />
-            </div>
-
-            <select
-              name='category'
-              defaultValue={category ?? 'all'}
-              className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background'
-            >
-              <option value='all'>All Categories</option>
-              {categories.map(c => (
-                <option key={c.slug} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              name='status'
-              defaultValue={status ?? ''}
-              className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background'
-            >
-              <option value=''>Submitted (All Active)</option>
-              <option value='payment_pending'>Payment Pending</option>
-              <option value='under_review'>Under Review</option>
-              <option value='query_raised'>Query Raised</option>
-              <option value='selected'>Selected / Allotted</option>
-              <option value='rejected'>Rejected</option>
-              <option value='all'>Include Incomplete Drafts</option>
-            </select>
-
-            <button
-              type='submit'
-              className='inline-flex items-center justify-center rounded-md bg-[#0c2847] px-4 py-2 text-sm font-semibold text-white hover:bg-[#071f3a] transition'
-            >
-              Filter
-            </button>
-
-            {(q || status || category) && (
-              <Link
-                href='/admin/applications'
-                className='inline-flex items-center justify-center rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted transition'
-              >
-                Clear
-              </Link>
-            )}
-          </form>
+          <ApplicationsFilterBar categories={categories} />
         </CardContent>
       </Card>
 
@@ -527,14 +471,19 @@ const ApplicationsAdminPage = async ({
                             : new Date(app.created_at).toLocaleDateString('en-IN')}
                         </td>
                         <td className='py-3.5 px-4'>
-                          <div className='flex flex-wrap items-center justify-end gap-2'>
+                          <div className='flex flex-nowrap items-center justify-end gap-2'>
                             <Link
                               href={`/admin/applications/${encodedId}`}
-                              className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                              className='inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
                             >
                               <EyeIcon className='size-3.5' /> View
                             </Link>
-                            <ApplicationDecisionActions applicationId={encodedId} canApprove={canApprove} canReject={canReject} />
+                            <ApplicationDecisionActions
+                              applicationId={encodedId}
+                              canApprove={canApprove}
+                              canReject={canReject}
+                              nowrap
+                            />
                           </div>
                         </td>
                       </tr>

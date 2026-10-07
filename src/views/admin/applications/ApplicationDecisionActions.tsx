@@ -16,6 +16,7 @@ type Props = {
   applicationId: string
   canApprove: boolean
   canReject: boolean
+  nowrap?: boolean
 }
 
 const RejectButton = ({ applicationId }: { applicationId: string }) => {
@@ -54,9 +55,9 @@ const RejectButton = ({ applicationId }: { applicationId: string }) => {
 
   return (
     <>
-      <Button type='button' size='sm' variant='destructive' onClick={() => setOpen(true)}>
+      <Button type='button' size='sm' variant='destructive' className='whitespace-nowrap' onClick={() => setOpen(true)}>
         <XIcon />
-        Reject Application
+        Reject
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -101,11 +102,11 @@ const RejectButton = ({ applicationId }: { applicationId: string }) => {
  * gate. Used both on the Application Detail page and inline in the
  * Applications list table's Actions column.
  */
-const ApplicationDecisionActions = ({ applicationId, canApprove, canReject }: Props) => {
+const ApplicationDecisionActions = ({ applicationId, canApprove, canReject, nowrap }: Props) => {
   if (!canApprove && !canReject) return null
 
   return (
-    <div className='flex flex-wrap gap-2'>
+    <div className={`flex gap-2 ${nowrap ? 'flex-nowrap' : 'flex-wrap'}`}>
       {canApprove && <ApproveApplicationDialog applicationId={applicationId} />}
       {canReject && <RejectButton applicationId={applicationId} />}
     </div>
