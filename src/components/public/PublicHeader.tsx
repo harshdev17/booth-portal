@@ -10,17 +10,21 @@ import { MailIcon, MenuIcon, PhoneIcon } from 'lucide-react'
 import HeaderMarquee from '@/components/public/HeaderMarquee'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useContactSettings } from '@/context/ContactSettingsContext'
 import { useLanguage } from '@/context/LanguageContext'
 
 const PublicHeader = () => {
   const { lang, setLang, t } = useLanguage()
+  const { phone, email } = useContactSettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 0)
+
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
+
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
@@ -37,8 +41,10 @@ const PublicHeader = () => {
   return (
     <>
       {/* Top contact bar — scrolls away normally, not part of the sticky header below.
-          Same placeholder helpline/email used site-wide (ContactBannerSection.tsx,
-          PublicFooter.tsx) — [TBC – Business Confirmation Required], see .ai/OPEN_QUESTIONS.md. */}
+          Phone/email are admin-configurable (see /admin/settings/contact,
+          ContactSettingsContext) — the same values are also used in
+          ContactBannerSection.tsx, PublicFooter.tsx, and
+          FloatingContactButtons.tsx. */}
       <div
         className='hidden transition-[grid-template-rows] duration-300 ease-in-out sm:grid print:hidden'
         style={{ gridTemplateRows: scrolled ? '0fr' : '1fr' }}
@@ -51,17 +57,21 @@ const PublicHeader = () => {
                 : 'International Geeta Jayanti Mahotsav 2026 Application Portal'}
             </span>
             <div className='flex items-center gap-5'>
-              <a href='tel:+919876543210' className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'>
-                <PhoneIcon className='size-3' />
-                <span>+91 98765 43210</span>
-              </a>
-              <a
-                href='mailto:helpdesk@stallportal.in'
-                className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'
-              >
-                <MailIcon className='size-3' />
-                <span>helpdesk@stallportal.in</span>
-              </a>
+              {phone && (
+                <a href={`tel:${phone}`} className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'>
+                  <PhoneIcon className='size-3' />
+                  <span>{phone}</span>
+                </a>
+              )}
+              {email && (
+                <a
+                  href={`mailto:${email}`}
+                  className='flex items-center gap-1.5 text-xs font-medium transition hover:text-[#f0b429]'
+                >
+                  <MailIcon className='size-3' />
+                  <span>{email}</span>
+                </a>
+              )}
             </div>
           </div>
         </div>

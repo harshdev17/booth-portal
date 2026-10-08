@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import AddressStep from '@/views/public/apply/AddressStep'
 import ApplicantInfoStep from '@/views/public/apply/ApplicantInfoStep'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
@@ -59,6 +60,7 @@ const ApplicationFormOrchestrator = ({
   const [uploadState, setUploadState] = useState<DocumentUploadState>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isProceeding, setIsProceeding] = useState(false)
+  const [guidelinesConfirmed, setGuidelinesConfirmed] = useState(false)
   const draftRequested = useRef(false)
 
   const form = useForm<ApplicationFormValues>({
@@ -376,6 +378,38 @@ const ApplicationFormOrchestrator = ({
 
   return (
     <div className='kdb-apply-form min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
+      {/* Mandatory gate shown on every landing on this page — no close
+          button, no dismiss via overlay/escape (onOpenChange is a no-op) —
+          the applicant must explicitly say whether they've read this
+          category's guidelines before the form becomes usable. "No" sends
+          them to the category's own guideline page (category-detail/
+          index.tsx), not the general /guidelines page, same reasoning as
+          the red banner below. */}
+      <Dialog open={!guidelinesConfirmed} onOpenChange={() => {}}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>{lang === 'hi' ? 'क्या आपने दिशा-निर्देश पढ़ लिए हैं?' : 'Have you read the Guidelines?'}</DialogTitle>
+            <DialogDescription>
+              {lang === 'hi'
+                ? 'आवेदन शुरू करने से पहले कृपया इस श्रेणी के दिशा-निर्देश ध्यानपूर्वक पढ़ें।'
+                : 'Please read this category’s guidelines carefully before starting your application.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => router.push(`/categories/${config.category.slug}`)}
+            >
+              {lang === 'hi' ? 'नहीं, दिशा-निर्देश दिखाएं' : 'No, show me the Guidelines'}
+            </Button>
+            <Button type='button' onClick={() => setGuidelinesConfirmed(true)}>
+              {lang === 'hi' ? 'हाँ, मैंने पढ़ लिए हैं' : 'Yes, I’ve read them'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className='mx-auto max-w-[1200px]'>
         {/* Header with Home Theme Ornamental Divider */}
         <div className='mb-8 text-left'>

@@ -170,6 +170,12 @@ export const navItems: NavItem[] = [
         label: 'reCAPTCHA Settings',
         href: '/admin/settings/recaptcha',
         permission: 'config:manage'
+      },
+      {
+        icon: 'Phone',
+        label: 'Contact & Social Settings',
+        href: '/admin/settings/contact',
+        permission: 'config:manage'
       }
     ]
   }

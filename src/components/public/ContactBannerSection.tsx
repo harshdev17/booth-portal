@@ -1,13 +1,18 @@
 'use client'
 
 import React from 'react'
+
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRightIcon } from 'lucide-react'
+
+import { useContactSettings } from '@/context/ContactSettingsContext'
 import { useLanguage } from '@/context/LanguageContext'
 
 export default function ContactBannerSection() {
   const { lang } = useLanguage()
+  const { phone, email, address, addressHi } = useContactSettings()
+  const displayAddress = (lang === 'hi' ? (addressHi ?? address) : (address ?? addressHi)) ?? '—'
 
   return (
     <section id='contact' className='py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white border-t border-[#ede5db]/60'>
@@ -70,10 +75,10 @@ export default function ContactBannerSection() {
                 </div>
               </div>
               <a
-                href='tel:+919876543210'
+                href={phone ? `tel:${phone}` : undefined}
                 className='block text-xl sm:text-2xl font-black text-[#0c2847] hover:text-[#b8761b] transition tracking-tight mb-2'
               >
-                +91 98765 43210
+                {phone ?? '—'}
               </a>
               <p className='text-xs sm:text-sm text-[#64748b] leading-relaxed'>
                 {lang === 'hi' ? 'सोमवार – शुक्रवार' : 'Monday – Friday'}
@@ -100,10 +105,10 @@ export default function ContactBannerSection() {
                 </div>
               </div>
               <a
-                href='mailto:helpdesk@stallportal.in'
+                href={email ? `mailto:${email}` : undefined}
                 className='block text-lg sm:text-xl font-black text-[#0c2847] hover:text-[#b8761b] transition break-all tracking-tight mb-2'
               >
-                helpdesk@stallportal.in
+                {email ?? '—'}
               </a>
               <p className='text-xs sm:text-sm text-[#64748b] leading-relaxed'>
                 {lang === 'hi'
@@ -132,9 +137,7 @@ export default function ContactBannerSection() {
               <h3 className='text-base sm:text-lg font-black text-[#0c2847] leading-snug mb-1'>
                 {lang === 'hi' ? 'जिला प्रशासन कार्यालय' : 'District Administration Office'}
               </h3>
-              <p className='text-sm sm:text-[15px] font-bold text-[#0c2847] mb-1'>
-                {lang === 'hi' ? 'कुरुक्षेत्र, हरियाणा – 136118' : 'Kurukshetra, Haryana – 136118'}
-              </p>
+              <p className='text-sm sm:text-[15px] font-bold text-[#0c2847] mb-1'>{displayAddress}</p>
               <p className='text-xs text-[#64748b]'>
                 {lang === 'hi' ? '(स्टॉल आवंटन हेल्पडेस्क)' : '(Stall Allotment Helpdesk)'}
               </p>
@@ -169,7 +172,7 @@ export default function ContactBannerSection() {
             </div>
 
             <Link
-              href='tel:+919876543210'
+              href={phone ? `tel:${phone}` : '#contact'}
               className='mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#9e6315] hover:bg-[#85520d] px-6 py-3.5 text-sm sm:text-[15px] font-bold text-white shadow-xs transition active:scale-[0.98]'
             >
               <span>{lang === 'hi' ? 'संपर्क करें' : 'Contact Us'}</span>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 
+import { useContactSettings } from '@/context/ContactSettingsContext'
 import { useLanguage } from '@/context/LanguageContext'
 
 // lucide-react dropped brand/logo icons (licensing) — Facebook/Instagram/
@@ -30,8 +31,22 @@ const YoutubeIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox='0 0 24 24' fill='currentColor' className={className} aria-hidden='true'>
+    <path d='M18.24 2.25h3.3l-7.2 8.23 8.47 11.27h-6.63l-5.2-6.8-5.94 6.8H1.73l7.7-8.8L1.3 2.25h6.8l4.7 6.22ZM17.04 19.8h1.83L7.04 4.1H5.08Z' />
+  </svg>
+)
+
 const PublicFooter = () => {
   const { lang } = useLanguage()
+  const { phone, email, address, addressHi, facebookUrl, instagramUrl, youtubeUrl, twitterUrl } = useContactSettings()
+
+  const socialLinks = [
+    { href: facebookUrl, icon: FacebookIcon, label: 'Facebook' },
+    { href: instagramUrl, icon: InstagramIcon, label: 'Instagram' },
+    { href: youtubeUrl, icon: YoutubeIcon, label: 'YouTube' },
+    { href: twitterUrl, icon: XIcon, label: 'X (Twitter)' }
+  ].filter((item): item is { href: string; icon: typeof FacebookIcon; label: string } => !!item.href)
 
   const quickLinks = [
     { label: lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home', href: '/' },
@@ -155,52 +170,58 @@ const PublicFooter = () => {
               <span>{lang === 'hi' ? 'हेल्पडेस्क' : 'Helpdesk'}</span>
             </h4>
             <div className='space-y-2.5 text-sm text-white/80'>
-              <div className='flex items-start gap-2'>
-                <PhoneIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
-                <a href='tel:+919876543210' className='text-base font-bold hover:text-white'>
-                  +91 98765 43210
-                </a>
-              </div>
-              <div className='flex items-start gap-2'>
-                <MailIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
-                <a href='mailto:helpdesk@stallportal.in' className='break-all text-sm sm:text-base hover:text-white'>
-                  helpdesk@stallportal.in
-                </a>
-              </div>
-              <div className='flex items-start gap-2 pt-1'>
-                <MapPinIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
-                <span className='text-sm leading-relaxed text-white/70'>
-                  {lang === 'hi' ? 'कुरुक्षेत्र, हरियाणा – 136118' : 'Kurukshetra, Haryana – 136118'}
-                </span>
-              </div>
+              {phone && (
+                <div className='flex items-start gap-2'>
+                  <PhoneIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                  <a href={`tel:${phone}`} className='text-base font-bold hover:text-white'>
+                    {phone}
+                  </a>
+                </div>
+              )}
+              {email && (
+                <div className='flex items-start gap-2'>
+                  <MailIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                  <a href={`mailto:${email}`} className='break-all text-sm sm:text-base hover:text-white'>
+                    {email}
+                  </a>
+                </div>
+              )}
+              {(address || addressHi) && (
+                <div className='flex items-start gap-2 pt-1'>
+                  <MapPinIcon className='mt-0.5 size-4 shrink-0 text-[#fbd38d]' />
+                  <span className='text-sm leading-relaxed text-white/70'>
+                    {lang === 'hi' ? (addressHi ?? address) : (address ?? addressHi)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Social Icons */}
-            <div className='pt-2'>
-              <p className='mb-2 text-xs font-bold tracking-wider text-white/60 uppercase sm:text-sm'>
-                {lang === 'hi' ? 'हमें फॉलो करें' : 'Follow Us'}
-              </p>
-              <div className='flex items-center gap-2.5'>
-                {[
-                  { icon: FacebookIcon, label: 'Facebook' },
-                  { icon: InstagramIcon, label: 'Instagram' },
-                  { icon: YoutubeIcon, label: 'YouTube' }
-                ].map((item, idx) => {
-                  const Icon = item.icon
+            {socialLinks.length > 0 && (
+              <div className='pt-2'>
+                <p className='mb-2 text-xs font-bold tracking-wider text-white/60 uppercase sm:text-sm'>
+                  {lang === 'hi' ? 'हमें फॉलो करें' : 'Follow Us'}
+                </p>
+                <div className='flex items-center gap-2.5'>
+                  {socialLinks.map(item => {
+                    const Icon = item.icon
 
-                  return (
-                    <a
-                      key={idx}
-                      href='#'
-                      aria-label={item.label}
-                      className='flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/75 transition hover:border-[#d8891d] hover:bg-[#d8891d] hover:text-[#071f3a]'
-                    >
-                      <Icon className='size-4' />
-                    </a>
-                  )
-                })}
+                    return (
+                      <a
+                        key={item.label}
+                        href={item.href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        aria-label={item.label}
+                        className='flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/75 transition hover:border-[#d8891d] hover:bg-[#d8891d] hover:text-[#071f3a]'
+                      >
+                        <Icon className='size-4' />
+                      </a>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
