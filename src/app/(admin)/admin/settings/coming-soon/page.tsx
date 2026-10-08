@@ -29,6 +29,8 @@ const ComingSoonSettingsPage = async () => {
         <p className='text-sm text-muted-foreground'>
           When on, every visitor is redirected to a &quot;Coming Soon&quot; page instead of the public site. The admin panel
           (everything under /admin) and all /api routes stay reachable either way, so you can still log in and work.
+          A logged-in admin also sees the real public site (not the Coming Soon page) in the same browser — log in
+          here, then open the site in a new tab to preview it, e.g. the application form.
         </p>
       </div>
 

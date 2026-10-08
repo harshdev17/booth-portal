@@ -136,19 +136,27 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  * so an admin can still log in and work (and so the admin's own API
  * calls from /admin/* pages keep functioning) while every other route
  * redirects to /coming-soon.
+ *
+ * A logged-in admin also bypasses the gate on the public site itself —
+ * otherwise nobody could preview the live application form/pages while
+ * Coming Soon is on (reported live: "main form dekhna hai to vo kaise
+ * dekhenge?"). Reuses the same admin session cookie already checked below
+ * for /admin routes, so there's no separate preview secret to manage —
+ * log in once at /admin/login and the public site becomes visible too,
+ * in that same browser, while everyone else still sees /coming-soon.
  */
 const COMING_SOON_MODE = process.env.COMING_SOON_MODE === 'true'
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (
-    COMING_SOON_MODE &&
-    !pathname.startsWith('/admin') &&
-    !pathname.startsWith('/api') &&
-    pathname !== '/coming-soon'
-  ) {
-    return NextResponse.redirect(new URL('/coming-soon', request.url))
+  if (COMING_SOON_MODE && !pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon') {
+    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
+    const isLoggedInAdmin = await hasValidSessionToken(sessionToken)
+
+    if (!isLoggedInAdmin) {
+      return NextResponse.redirect(new URL('/coming-soon', request.url))
+    }
   }
 
   const isAdminAuthRoute = pathname.startsWith('/admin/login')
