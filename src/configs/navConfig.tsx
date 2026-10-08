@@ -176,6 +176,12 @@ export const navItems: NavItem[] = [
         label: 'Contact & Social Settings',
         href: '/admin/settings/contact',
         permission: 'config:manage'
+      },
+      {
+        icon: 'EyeOff',
+        label: 'Coming Soon Mode',
+        href: '/admin/settings/coming-soon',
+        permission: 'config:manage'
       }
     ]
   }

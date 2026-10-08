@@ -128,8 +128,28 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  * breaks routing with "Could not parse module 'middleware.ts', file not
  * found" once removed — always use `proxy.ts` + `export function proxy`).
  */
+/**
+ * Whole-site "Coming Soon" gate — env-var controlled (no DB read: this
+ * runs in the edge runtime, same constraint as hasValidSessionToken()
+ * above), so flipping it needs an env var change + restart, not a DB
+ * write. The admin panel and all /api routes stay reachable either way,
+ * so an admin can still log in and work (and so the admin's own API
+ * calls from /admin/* pages keep functioning) while every other route
+ * redirects to /coming-soon.
+ */
+const COMING_SOON_MODE = process.env.COMING_SOON_MODE === 'true'
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (
+    COMING_SOON_MODE &&
+    !pathname.startsWith('/admin') &&
+    !pathname.startsWith('/api') &&
+    pathname !== '/coming-soon'
+  ) {
+    return NextResponse.redirect(new URL('/coming-soon', request.url))
+  }
 
   const isAdminAuthRoute = pathname.startsWith('/admin/login')
   const isProtectedAdminRoute = pathname.startsWith('/admin') && !isAdminAuthRoute
