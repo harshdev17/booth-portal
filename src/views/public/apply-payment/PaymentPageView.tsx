@@ -308,7 +308,7 @@ const PaymentPageView = ({
         </h1>
         <p className='mb-6 text-xs sm:text-sm text-[#526478]'>
           {lang === 'hi'
-            ? 'कुरुक्षेत्र विकास बोर्ड (KDB) के सुरक्षित पेमेंट गेटवे द्वारा अपने स्टॉल आवेदन का शुल्क जमा करें।'
+            ? 'कुरुक्षेत्र विकास बोर्ड के सुरक्षित पेमेंट गेटवे द्वारा अपने स्टॉल आवेदन का शुल्क जमा करें।'
             : 'Complete your stall application payment securely via Kurukshetra Development Board payment gateway.'}
         </p>
 
@@ -339,7 +339,7 @@ const PaymentPageView = ({
           {/* Breakdown */}
           <div className='space-y-2 text-sm'>
             <div className='flex justify-between text-[#64748b]'>
-              <span>{lang === 'hi' ? 'मूल आवेदन शुल्क (Base Fee):' : 'Base Application Fee:'}</span>
+              <span>{lang === 'hi' ? 'मूल आवेदन शुल्क:' : 'Base Application Fee:'}</span>
               <span className='font-semibold text-[#0c2847]'>₹{(feeBasePaise / 100).toLocaleString('en-IN')}</span>
             </div>
             {gstAmount > 0 && (

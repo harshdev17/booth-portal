@@ -26,8 +26,8 @@ const TestRazorpayConnection = () => {
       <CardHeader className='border-b bg-muted/40 py-4'>
         <CardTitle className='text-base font-bold text-[#0c2847]'>Test Razorpay Connection</CardTitle>
         <CardDescription className='text-xs'>
-          Creates one real ₹1 test order via the live Razorpay API to verify RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET
-          are valid and reachable. Does not charge anyone or touch any application record.
+          Creates one ₹1 test order with Razorpay to check that the payment connection is working. Does not charge
+          anyone or touch any application record.
         </CardDescription>
       </CardHeader>
       <CardContent className='pt-6'>

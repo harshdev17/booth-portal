@@ -159,7 +159,7 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
         <CardHeader className='border-b bg-muted/40 py-4'>
           <CardTitle className='text-base font-bold text-[#0c2847]'>Transaction History</CardTitle>
           <CardDescription className='text-xs'>
-            Every attempt against this payment — order creation, checkout result, webhook confirmation. Append-only,
+            Every attempt against this payment — order creation, checkout result, automatic confirmation from Razorpay. Append-only,
             never edited.
           </CardDescription>
         </CardHeader>

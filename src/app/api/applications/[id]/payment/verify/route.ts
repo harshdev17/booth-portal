@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
-import { sendNotification } from '@/lib/notifications/service'
+import { notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 import { getPaymentForApplication, recordCheckoutFailure, recordCheckoutSuccess } from '@/lib/payments/payment-records'
 import { verifyCheckoutSignature } from '@/lib/payments/razorpay'
 import { logServerError } from '@/lib/security/error-log'
@@ -142,13 +142,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ipAddress
     })
 
-    void sendNotification({
-      category: 'payment_confirmation',
-      destination: `+91${application.mobile_number}`,
-      userName: application.representative_name,
-      templateParams: [application.representative_name, application.application_number, String(payment.amount_paise / 100)],
-      applicationId
-    })
+    void notifyPaymentSuccess(applicationId, payment.amount_paise)
 
     return NextResponse.json({ status: 'success' })
   } catch (error) {

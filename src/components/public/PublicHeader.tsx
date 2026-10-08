@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 import { MailIcon, MenuIcon, PhoneIcon } from 'lucide-react'
 
@@ -16,6 +17,7 @@ import { useLanguage } from '@/context/LanguageContext'
 const PublicHeader = () => {
   const { lang, setLang, t } = useLanguage()
   const { phone, email } = useContactSettings()
+  const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -29,14 +31,41 @@ const PublicHeader = () => {
   }, [])
 
   const navItems = [
-    { label: t('nav.home'), href: '/', active: true },
+    { label: t('nav.home'), href: '/' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
-    { label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' }
-  ]
+    { label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' },
+    { label: lang === 'hi' ? 'आवंटन पत्र' : 'Allotment Letter', href: '/allotment-letter' },
+    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/#contact' }
+  ].map(item => ({
+    ...item,
+
+    // Active = the page you are on. In-page anchors ("/#categories") share the home
+    // pathname, so they never count as active on their own.
+    active: !item.href.includes('#') && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href))
+  }))
+
+  // Simple text toggle (not a filled pill). Rendered in the top bar on sm+ and,
+  // because that bar is hidden on phones, again inside the mobile menu.
+  const languageSwitcher = (tone: 'light' | 'dark') => {
+    const active = tone === 'light' ? 'text-white underline underline-offset-4' : 'text-[#0c2847] underline underline-offset-4'
+    const idle = tone === 'light' ? 'text-white/60 hover:text-white' : 'text-[#4b5563] hover:text-[#0c2847]'
+
+    return (
+      <div className='flex items-center gap-1.5 text-sm font-bold' role='group' aria-label='Language switcher'>
+        <button type='button' onClick={() => setLang('hi')} aria-pressed={lang === 'hi'} className={lang === 'hi' ? active : idle}>
+          हिंदी
+        </button>
+        <span className={tone === 'light' ? 'text-white/30' : 'text-[#cbd5e1]'}>|</span>
+        <button type='button' onClick={() => setLang('en')} aria-pressed={lang === 'en'} className={lang === 'en' ? active : idle}>
+          English
+        </button>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -72,6 +101,7 @@ const PublicHeader = () => {
                   <span>{email}</span>
                 </a>
               )}
+              {languageSwitcher('light')}
             </div>
           </div>
         </div>
@@ -115,16 +145,17 @@ const PublicHeader = () => {
         {/* Navigation bar — nav links, language switcher, Apply CTA, social icons */}
         <header className='bg-[var(--kdb-primary)]'>
           <nav className='mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6'>
-            <ul className='hidden items-center gap-5 lg:flex'>
+            <ul className='hidden items-center gap-0.5 xl:flex'>
               {navItems.map(item => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className={
+                    aria-current={item.active ? 'page' : undefined}
+                    className={`relative block rounded-md px-2.5 py-2 text-base transition-colors 2xl:px-3.5 2xl:text-lg after:absolute after:inset-x-2.5 2xl:after:inset-x-3.5 after:bottom-0.5 after:h-[3px] after:origin-center after:rounded-full after:bg-[#f0b429] after:transition-transform after:duration-300 hover:text-[#ffd56b] hover:after:scale-x-100 ${
                       item.active
-                        ? 'text-base font-bold text-white'
-                        : 'text-base font-semibold text-white/80 transition hover:text-[#f0b429]'
-                    }
+                        ? 'bg-white/15 font-extrabold text-white after:scale-x-100'
+                        : 'font-semibold text-white/85 after:scale-x-0'
+                    }`}
                   >
                     {item.label}
                   </Link>
@@ -132,34 +163,13 @@ const PublicHeader = () => {
               ))}
             </ul>
 
-            <div className='flex items-center gap-4 lg:ml-auto'>
-              {/* Simple text toggle, not a filled pill — lighter visual weight than the previous segmented control */}
-              <div className='flex items-center gap-1.5 text-sm font-bold' role='group' aria-label='Language switcher'>
-                <button
-                  type='button'
-                  onClick={() => setLang('hi')}
-                  aria-pressed={lang === 'hi'}
-                  className={lang === 'hi' ? 'text-white underline underline-offset-4' : 'text-white/60 hover:text-white'}
-                >
-                  हिंदी
-                </button>
-                <span className='text-white/30'>|</span>
-                <button
-                  type='button'
-                  onClick={() => setLang('en')}
-                  aria-pressed={lang === 'en'}
-                  className={lang === 'en' ? 'text-white underline underline-offset-4' : 'text-white/60 hover:text-white'}
-                >
-                  English
-                </button>
-              </div>
-
+            <div className='flex items-center gap-4 ml-auto'>
               {/* Mobile menu trigger */}
               <Button
                 type='button'
                 variant='ghost'
                 size='icon'
-                className='text-white hover:bg-white/10 hover:text-white lg:hidden'
+                className='text-white hover:bg-white/10 hover:text-white xl:hidden'
                 aria-label={lang === 'hi' ? 'मेनू खोलें' : 'Open menu'}
                 onClick={() => setMobileMenuOpen(true)}
               >
@@ -179,6 +189,8 @@ const PublicHeader = () => {
               {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}
             </SheetTitle>
           </SheetHeader>
+
+          <div className='px-7 pb-3'>{languageSwitcher('dark')}</div>
 
           <ul className='flex flex-col gap-1 px-4'>
             {navItems.map(item => (

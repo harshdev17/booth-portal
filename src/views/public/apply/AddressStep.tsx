@@ -17,7 +17,7 @@ const AddressStep = ({ control }: { control: Control<ApplicationFormValues> }) =
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'पत्राचार का पता (Correspondence Address) *' : 'Correspondence Address *'}
+              {lang === 'hi' ? 'पत्राचार का पता *' : 'Correspondence Address *'}
             </FieldLabel>
             <Textarea
               {...field}
@@ -39,7 +39,7 @@ const AddressStep = ({ control }: { control: Control<ApplicationFormValues> }) =
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'राज्य (State) *' : 'State *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'राज्य *' : 'State *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}
@@ -57,7 +57,7 @@ const AddressStep = ({ control }: { control: Control<ApplicationFormValues> }) =
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'ज़िला (District) *' : 'District *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'ज़िला *' : 'District *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}
@@ -75,7 +75,7 @@ const AddressStep = ({ control }: { control: Control<ApplicationFormValues> }) =
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'पिन कोड (PIN Code) *' : 'PIN Code *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'पिन कोड *' : 'PIN Code *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}

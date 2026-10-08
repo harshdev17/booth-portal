@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
+
 import Image from 'next/image'
 import { ChevronDownIcon } from 'lucide-react'
+
 import { useLanguage } from '@/context/LanguageContext'
 
 type FaqItem = {
@@ -20,7 +22,7 @@ const FAQ_ITEMS: FaqItem[] = [
     questionHi: 'आवेदन कौन कर सकता है?',
     questionEn: 'Who is eligible to apply?',
     answerHi:
-      'कोई भी भारतीय नागरिक, पंजीकृत व्यापारी, कारीगर, स्वयं सहायता समूह (SHG), खाद्य व खान-पान विक्रेता अथवा व्यावसायिक प्रतिष्ठान जो केडीबी के पात्रता नियमों और आवश्यक पहचान व व्यापार दस्तावेजों को पूरा करता हो, आवेदन कर सकता है।',
+      'कोई भी भारतीय नागरिक, पंजीकृत व्यापारी, कारीगर, स्वयं सहायता समूह, खाद्य व खान-पान विक्रेता अथवा व्यावसायिक प्रतिष्ठान जो केडीबी के पात्रता नियमों और आवश्यक पहचान व व्यापार दस्तावेजों को पूरा करता हो, आवेदन कर सकता है।',
     answerEn:
       'Any Indian citizen, registered merchant, artisan, Self Help Group (SHG), food vendor, or commercial enterprise meeting KDB eligibility rules with valid identity and business documents can apply.'
   },
@@ -56,7 +58,7 @@ const FAQ_ITEMS: FaqItem[] = [
     questionHi: 'आवेदन की स्थिति कैसे देखें?',
     questionEn: 'How can I check application status?',
     answerHi:
-      'पोर्टल के "स्थिति जांचें" (Status Check) पृष्ठ पर जाकर अपना आवेदन क्रमांक (Application Number) और डिजिटल एक्सेस कोड दर्ज करके आप वास्तविक समय में स्थिति, दस्तावेज स्वीकृति एवं आवंटन परिणाम देख सकते हैं।',
+      'पोर्टल के "स्थिति जांचें" पृष्ठ पर जाकर अपना आवेदन क्रमांक और डिजिटल एक्सेस कोड दर्ज करके आप वास्तविक समय में स्थिति, दस्तावेज स्वीकृति एवं आवंटन परिणाम देख सकते हैं।',
     answerEn:
       'Visit the portal’s "Status Check" section and enter your Application Number and digital Access Code to track verification, draw eligibility, and allotment results in real time.'
   },
@@ -73,7 +75,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: 'faq-7',
-    questionHi: 'क्या आवेदन रद्द किया जा सकता है? और धनवापसी (Refund) का क्या नियम है?',
+    questionHi: 'क्या आवेदन रद्द किया जा सकता है? और धनवापसी का क्या नियम है?',
     questionEn: 'Can an application be cancelled? What is the refund policy?',
     answerHi:
       'आवेदन जमा करने के बाद पंजीकरण शुल्क अहस्तांतरणीय और गैर-वापसी योग्य होता है। यदि केडीबी द्वारा प्रशासनिक कारणों से कोई श्रेणी निरस्त की जाती है, तो नियमानुसार सिक्योरिटी डिपॉजिट की वापसी प्रक्रिया की जाएगी।',
@@ -103,7 +105,7 @@ const FAQ_ITEMS: FaqItem[] = [
     questionHi: 'स्टॉल का स्थान (लोकेशन) कब और कैसे पता चलेगा?',
     questionEn: 'When and how will the stall location be notified?',
     answerHi:
-      'लकी ड्रॉ और शुल्क भुगतान पूर्ण होने के बाद आधिकारिक स्टॉल नंबर व ब्रह्मसरोवर पर उसका सटीक लेआउट मैप पोर्टल पर आपके आवंटन पत्र (Allotment Letter) में दर्शा दिया जाएगा।',
+      'लकी ड्रॉ और शुल्क भुगतान पूर्ण होने के बाद आधिकारिक स्टॉल नंबर व ब्रह्मसरोवर पर उसका सटीक लेआउट मैप पोर्टल पर आपके आवंटन पत्र में दर्शा दिया जाएगा।',
     answerEn:
       'Upon completion of draw selection and payment, the exact stall number and site layout map at Brahma Sarovar will be generated on your downloadable Allotment Letter via the portal.'
   }

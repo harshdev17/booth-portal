@@ -52,8 +52,8 @@ const PublicFooter = () => {
     { label: lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home', href: '/' },
     { label: lang === 'hi' ? 'स्टॉल श्रेणियां' : 'Stall Categories', href: '/#categories' },
     { label: lang === 'hi' ? 'आवेदन की स्थिति' : 'Track Application Status', href: '/#status-check' },
-    { label: lang === 'hi' ? 'आवंटन प्रक्रिया (How It Works)' : 'Allotment Procedure', href: '/#how-it-works' },
-    { label: lang === 'hi' ? 'सामान्य प्रश्न (FAQ)' : 'Frequently Asked Questions', href: '/#faq' }
+    { label: lang === 'hi' ? 'आवंटन प्रक्रिया' : 'Allotment Procedure', href: '/#how-it-works' },
+    { label: lang === 'hi' ? 'सामान्य प्रश्न' : 'Frequently Asked Questions', href: '/#faq' }
   ]
 
   const relatedPortals = [
@@ -66,18 +66,12 @@ const PublicFooter = () => {
       href: 'https://48koskurukshetra.com/'
     },
     {
-      label: lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board',
+      label: lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड' : 'Kurukshetra Development Board',
       href: 'https://kdb.org.in'
-    },
-    {
-      label: lang === 'hi' ? 'हरियाणा पर्यटन निगम' : 'Haryana Tourism Corporation',
-      href: 'https://haryanatourism.gov.in'
-    },
-    {
-      label: lang === 'hi' ? 'हरियाणा सरकार आधिकारिक पोर्टल' : 'Official Portal of Haryana Govt',
-      href: 'https://haryana.gov.in'
-    },
-    { label: lang === 'hi' ? 'डिजिटल इंडिया पहल' : 'Digital India Initiative', href: 'https://digitalindia.gov.in' }
+    }
+
+    // Hidden for now (re-add to show): Haryana Tourism Corporation (https://haryanatourism.gov.in),
+    // Official Portal of Haryana Govt (https://haryana.gov.in), Digital India Initiative (https://digitalindia.gov.in).
   ]
 
   return (
@@ -104,7 +98,7 @@ const PublicFooter = () => {
                   {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}
                 </h3>
                 <p className='text-sm font-semibold tracking-wide text-[#fbd38d] sm:text-base'>
-                  {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board'}
+                  {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड' : 'Kurukshetra Development Board'}
                 </p>
                 <p className='text-xs text-white/60 sm:text-sm'>
                   {lang === 'hi' ? 'हरियाणा सरकार का उपक्रम' : 'Govt. of Haryana Undertaking'}
@@ -228,7 +222,7 @@ const PublicFooter = () => {
         {/* Bottom Strip */}
         <div className='mt-6 flex flex-col items-center justify-center gap-3 text-sm text-white/55 sm:flex-row'>
           <div>
-            <span>© 2026 {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड (KDB)' : 'Kurukshetra Development Board'}. </span>
+            <span>© 2026 {lang === 'hi' ? 'कुरुक्षेत्र विकास बोर्ड' : 'Kurukshetra Development Board'}. </span>
             <span>{lang === 'hi' ? 'सर्वाधिकार सुरक्षित।' : 'All Rights Reserved.'}</span>
           </div>
         </div>

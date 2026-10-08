@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { logAudit } from '@/lib/audit/log'
+import { notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 import {
   getPaymentByRazorpayOrderId,
   recordWebhookConfirmed,
@@ -97,6 +98,8 @@ export async function POST(request: Request) {
           entityId: String(payment.application_id),
           newValue: { razorpayOrderId: paymentEntity.order_id, razorpayPaymentId: paymentEntity.id }
         })
+
+        void notifyPaymentSuccess(payment.application_id, payment.amount_paise)
       }
     } else {
       await recordWebhookFailure({

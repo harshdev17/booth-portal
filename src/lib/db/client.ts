@@ -26,7 +26,12 @@ export function getPool(): mysql.Pool {
     waitForConnections: true,
     connectionLimit: 10,
     maxIdle: 10,
-    idleTimeout: 60000,
+    idleTimeout: 300000,
+
+    // Keep pooled connections warm: with a remote DB each fresh connect costs ~1s+, and a
+    // 60s idle timeout made the first request after a short pause (e.g. a settings save) pay it.
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
 
     // dateStrings avoids timezone-conversion surprises when reading DATETIME columns.
     dateStrings: true

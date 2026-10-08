@@ -386,24 +386,37 @@ const ApplicationFormOrchestrator = ({
           index.tsx), not the general /guidelines page, same reasoning as
           the red banner below. */}
       <Dialog open={!guidelinesConfirmed} onOpenChange={() => {}}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>{lang === 'hi' ? 'क्या आपने दिशा-निर्देश पढ़ लिए हैं?' : 'Have you read the Guidelines?'}</DialogTitle>
-            <DialogDescription>
+        <DialogContent
+          showCloseButton={false}
+          overlayClassName='bg-[#071f3a]/60 supports-backdrop-filter:backdrop-blur-lg'
+          className='gap-7 border-t-4 border-[#d8891d] p-8 shadow-2xl ring-2 ring-[#d8891d]/30 sm:max-w-xl'
+        >
+          <DialogHeader className='gap-3'>
+            <DialogTitle className='text-2xl font-extrabold text-[#0c2847] sm:text-3xl'>
+              {lang === 'hi' ? 'क्या आपने दिशा-निर्देश पढ़ लिए हैं?' : 'Have you read the Guidelines?'}
+            </DialogTitle>
+            <DialogDescription className='text-base text-[#334155] sm:text-lg'>
               {lang === 'hi'
                 ? 'आवेदन शुरू करने से पहले कृपया इस श्रेणी के दिशा-निर्देश ध्यानपूर्वक पढ़ें।'
                 : 'Please read this category’s guidelines carefully before starting your application.'}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className='gap-3 sm:gap-3'>
             <Button
               type='button'
               variant='outline'
+              size='lg'
+              className='h-12 px-6 text-base'
               onClick={() => router.push(`/categories/${config.category.slug}`)}
             >
               {lang === 'hi' ? 'नहीं, दिशा-निर्देश दिखाएं' : 'No, show me the Guidelines'}
             </Button>
-            <Button type='button' onClick={() => setGuidelinesConfirmed(true)}>
+            <Button
+              type='button'
+              size='lg'
+              className='h-12 bg-[#0c2847] px-6 text-base hover:bg-[#06192e]'
+              onClick={() => setGuidelinesConfirmed(true)}
+            >
               {lang === 'hi' ? 'हाँ, मैंने पढ़ लिए हैं' : 'Yes, I’ve read them'}
             </Button>
           </DialogFooter>
@@ -415,7 +428,9 @@ const ApplicationFormOrchestrator = ({
         <div className='mb-8 text-left'>
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — स्टॉल आवेदन
+              {lang === 'hi'
+                ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — स्टॉल आवेदन'
+                : 'International Gita Jayanti Mahotsav 2026 — Stall Application'}
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -656,7 +671,7 @@ const ApplicationFormOrchestrator = ({
                         onClick={() => void createDraft()}
                         className='shrink-0 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition'
                       >
-                        {lang === 'hi' ? 'पुनः प्रयास करें (Retry)' : 'Retry'}
+                        {lang === 'hi' ? 'पुनः प्रयास करें' : 'Retry'}
                       </button>
                     </div>
                   )}
@@ -667,7 +682,7 @@ const ApplicationFormOrchestrator = ({
               <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>
                 <p className='text-xs sm:text-sm text-[#64748b] text-center sm:text-left'>
                   {lang === 'hi'
-                    ? 'समीक्षा स्क्रीन (Review) पर जाने से पहले सुनिश्चित करें कि सभी जानकारी सही है।'
+                    ? 'समीक्षा स्क्रीन पर जाने से पहले सुनिश्चित करें कि सभी जानकारी सही है।'
                     : 'Please ensure all details are verified before proceeding to the review screen.'}
                 </p>
                 <Button
@@ -677,7 +692,7 @@ const ApplicationFormOrchestrator = ({
                   className='w-full sm:w-auto rounded-xl bg-[#0c2847] px-8 py-4 text-sm font-bold text-white shadow-sm hover:bg-[#06192e] transition active:scale-[0.98]'
                 >
                   {isProceeding ? <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' /> : null}
-                  <span>{lang === 'hi' ? 'आवेदन की समीक्षा करें (Review)' : 'Review Application'}</span>
+                  <span>{lang === 'hi' ? 'आवेदन की समीक्षा करें' : 'Review Application'}</span>
                   <span className='ml-2 text-base font-bold'>→</span>
                 </Button>
               </div>

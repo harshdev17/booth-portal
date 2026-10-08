@@ -344,7 +344,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             </div>
           </div>
           <h1 className='text-3xl sm:text-4xl font-black text-[#0c2847] tracking-tight mb-2'>
-            {lang === 'hi' ? 'आवेदन की अंतिम समीक्षा (Review)' : 'Review Your Application'}
+            {lang === 'hi' ? 'आवेदन की अंतिम समीक्षा' : 'Review Your Application'}
           </h1>
           <p className='text-sm sm:text-base text-[#526478]'>
             {lang === 'hi' ? 'श्रेणी: ' : 'Category: '}
@@ -566,7 +566,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
           <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
             <h2 className='mb-2 text-xl font-black text-[#0c2847]'>
-              {lang === 'hi' ? 'शपथ पत्र / घोषणा (Declaration)' : 'Declaration'}
+              {lang === 'hi' ? 'शपथ पत्र / घोषणा' : 'Declaration'}
             </h2>
             <p className='mb-5 text-xs sm:text-sm text-[#64748b]'>
               {lang === 'hi'
@@ -586,7 +586,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                 <Checkbox checked={agreedToTerms} onCheckedChange={v => setAgreedToTerms(Boolean(v))} className='mt-0.5' />
                 <span className='text-xs sm:text-sm text-[#334155] leading-relaxed'>
                   {lang === 'hi'
-                    ? 'मैंने ऊपर दी गई जानकारी एवं दस्तावेजों की समीक्षा कर ली है तथा कुरुक्षेत्र विकास बोर्ड (KDB) के सभी लागू नियमों एवं शर्तों से पूर्णतः सहमत हूँ।'
+                    ? 'मैंने ऊपर दी गई जानकारी एवं दस्तावेजों की समीक्षा कर ली है तथा कुरुक्षेत्र विकास बोर्ड के सभी लागू नियमों एवं शर्तों से पूर्णतः सहमत हूँ।'
                     : 'I have reviewed the information and documents provided above and agree to the applicable terms and conditions of the Kurukshetra Development Board (KDB).'}
                 </span>
               </label>
@@ -623,7 +623,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                     ? `शुल्क भुगतान एवं सबमिट (₹${(data.feePaise / 100).toLocaleString('en-IN')})`
                     : `Proceed to Pay Fee (₹${(data.feePaise / 100).toLocaleString('en-IN')})`
                   : lang === 'hi'
-                    ? 'आवेदन सबमिट करें (Submit)'
+                    ? 'आवेदन सबमिट करें'
                     : 'Submit Application'}
               </span>
               {data.feePaise && data.feePaise > 0 ? (

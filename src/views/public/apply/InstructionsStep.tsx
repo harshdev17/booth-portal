@@ -74,7 +74,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
               <span>•</span>
               <span>
-                {lang === 'hi' ? 'नीलामी (Auction): ' : 'Auction: '}
+                {lang === 'hi' ? 'नीलामी: ' : 'Auction: '}
                 {formatDateTime(category.auctionDate, lang)}
                 {' — '}
                 {auctionVenue}
@@ -108,7 +108,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
       {/* Important Instructions Box (clean without background or border) */}
       <div className='pt-2'>
         <p className='mb-2 text-base sm:text-lg font-extrabold text-[#0c2847]'>
-          {lang === 'hi' ? 'महत्वपूर्ण निर्देश (Important Instructions)' : 'Important Instructions'}
+          {lang === 'hi' ? 'महत्वपूर्ण निर्देश' : 'Important Instructions'}
         </p>
         <ol className='space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
           <li className='flex items-baseline gap-2'>

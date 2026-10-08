@@ -137,7 +137,7 @@ const ApplicantInfoStep = ({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.email}>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'ईमेल पता (Email Address) *' : 'Email Address *'}
+              {lang === 'hi' ? 'ईमेल पता *' : 'Email Address *'}
             </FieldLabel>
             <Input
               {...field}
@@ -168,7 +168,7 @@ const ApplicantInfoStep = ({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.mobileNumber}>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'मोबाइल नंबर (Mobile Number) *' : 'Mobile Number *'}
+              {lang === 'hi' ? 'मोबाइल नंबर *' : 'Mobile Number *'}
             </FieldLabel>
             <MobileNumberInput
               id={field.name}
@@ -197,7 +197,7 @@ const ApplicantInfoStep = ({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'वैकल्पिक मोबाइल नंबर (Alternate Mobile)' : 'Alternate Mobile Number (Optional)'}
+              {lang === 'hi' ? 'वैकल्पिक मोबाइल नंबर' : 'Alternate Mobile Number (Optional)'}
             </FieldLabel>
             <MobileNumberInput
               id={field.name}
@@ -302,7 +302,7 @@ const ApplicantInfoStep = ({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'आधार संख्या (Aadhaar Number) *' : 'Aadhaar Number *'}
+              {lang === 'hi' ? 'आधार संख्या *' : 'Aadhaar Number *'}
             </FieldLabel>
             <Input
               {...field}
@@ -334,7 +334,7 @@ const ApplicantInfoStep = ({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'कार्य का प्रकार / उद्देश्य (Type of Work / Purpose) *' : 'Type of Work / Purpose *'}
+              {lang === 'hi' ? 'कार्य का प्रकार / उद्देश्य *' : 'Type of Work / Purpose *'}
             </FieldLabel>
             <Input
               {...field}

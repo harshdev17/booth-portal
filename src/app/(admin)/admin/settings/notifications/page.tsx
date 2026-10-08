@@ -43,8 +43,8 @@ const NotificationSettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>WhatsApp / SMS Settings</h1>
         <p className='text-sm text-muted-foreground'>
-          Configuration status for AiSensy WhatsApp notification categories. Values are set via environment
-          variables, not editable from this UI.
+          Status of each WhatsApp notification sent to applicants. These are set up by the technical team and cannot
+          be edited here.
         </p>
       </div>
 
@@ -56,11 +56,11 @@ const NotificationSettingsPage = async () => {
             <XCircleIcon className='size-5 text-red-600' />
           )}
           <div>
-            <p className='text-sm font-semibold text-slate-800'>AiSensy API Key</p>
+            <p className='text-sm font-semibold text-slate-800'>WhatsApp service connection</p>
             <p className='text-xs text-muted-foreground'>
               {apiKeyConfigured
-                ? 'Configured in the server environment (value never shown here).'
-                : 'Not configured — no notification will send until AISENSY_API_KEY is set.'}
+                ? 'Connected.'
+                : 'Not connected — no WhatsApp message will be sent until the technical team completes the setup.'}
             </p>
           </div>
         </CardContent>
@@ -70,7 +70,7 @@ const NotificationSettingsPage = async () => {
         <CardHeader className='border-b bg-muted/40 py-4'>
           <CardTitle className='text-base font-bold text-[#0c2847]'>Notification Categories</CardTitle>
           <CardDescription className='text-xs'>
-            A category with no campaign configured fails safely (logged, not thrown) — see src/lib/notifications/aisensy.ts
+            A notification that is not configured is skipped and recorded as failed; it never blocks the applicant.
           </CardDescription>
         </CardHeader>
         <CardContent className='p-0'>
@@ -81,7 +81,6 @@ const NotificationSettingsPage = async () => {
                   <MessageSquareIcon className='size-4 text-muted-foreground' />
                   <div>
                     <p className='text-sm font-semibold text-slate-800'>{row.label}</p>
-                    <p className='font-mono text-xs text-muted-foreground'>{row.envVar}</p>
                   </div>
                 </div>
                 <span
@@ -89,7 +88,7 @@ const NotificationSettingsPage = async () => {
                     row.campaignName ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  {row.campaignName ? row.campaignName : 'Not configured'}
+                  {row.campaignName ? 'Configured' : 'Not configured'}
                 </span>
               </div>
             ))}
@@ -98,7 +97,7 @@ const NotificationSettingsPage = async () => {
       </Card>
 
       <p className='text-xs text-muted-foreground'>
-        Template wording and Meta approval happen in the AiSensy dashboard, not in this application.
+        Message wording and WhatsApp approval are managed in the WhatsApp messaging service, not in this application.
       </p>
 
       <SendTestNotification />

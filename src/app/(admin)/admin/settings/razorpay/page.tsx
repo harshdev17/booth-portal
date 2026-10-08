@@ -45,8 +45,8 @@ const RazorpaySettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Razorpay Settings</h1>
         <p className='text-sm text-muted-foreground'>
-          Configuration status for the Razorpay payment gateway used to collect application fees. Values are set via
-          environment variables, not editable from this UI.
+          Status of the Razorpay payment gateway used to collect application fees. These details are set up by the
+          technical team and cannot be edited here.
         </p>
       </div>
 
@@ -63,7 +63,6 @@ const RazorpaySettingsPage = async () => {
                   )}
                   <div>
                     <p className='text-sm font-semibold text-slate-800'>{row.label}</p>
-                    <p className='font-mono text-xs text-muted-foreground'>{row.envVar}</p>
                   </div>
                 </div>
                 <span
@@ -90,11 +89,7 @@ const RazorpaySettingsPage = async () => {
       />
 
       <p className='text-xs text-muted-foreground'>
-        The webhook endpoint is <code className='rounded bg-muted px-1 py-0.5'>/api/webhooks/razorpay</code> —
-        configure this URL in the Razorpay dashboard&apos;s webhook settings (Payments → Webhooks) with the{' '}
-        <code className='rounded bg-muted px-1 py-0.5'>payment.captured</code> and{' '}
-        <code className='rounded bg-muted px-1 py-0.5'>payment.failed</code> events enabled, and set the same secret
-        as <code className='rounded bg-muted px-1 py-0.5'>RAZORPAY_WEBHOOK_SECRET</code>.
+        Automatic payment confirmation is configured by the technical team in the Razorpay dashboard.
       </p>
     </div>
   )

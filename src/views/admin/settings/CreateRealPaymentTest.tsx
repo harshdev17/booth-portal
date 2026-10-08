@@ -51,9 +51,8 @@ const CreateRealPaymentTest = ({ categories }: { categories: CategoryOption[] })
           Creates one real, throwaway application (dummy details, your real mobile number) and sends a real WhatsApp
           OTP to it — the exact same path a real applicant follows. You finish it yourself: verify the OTP on the
           Review page, then complete a real Razorpay checkout. This is a genuine transaction using{' '}
-          {process.env.NODE_ENV === 'production' ? 'the configured' : 'whichever'} Razorpay key is currently set in{' '}
-          <code className='rounded bg-muted px-1 py-0.5'>RAZORPAY_KEY_ID</code> — confirm that&apos;s a test key
-          before running this if you don&apos;t want a real charge.
+          the Razorpay account currently connected — confirm it is a test account before running this if you
+          don&apos;t want a real charge.
         </CardDescription>
       </CardHeader>
       <CardContent className='pt-6'>

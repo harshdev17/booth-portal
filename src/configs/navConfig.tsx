@@ -89,12 +89,6 @@ export const navItems: NavItem[] = [
         label: 'All Payments',
         href: '/admin/payments',
         permission: 'payment:view'
-      },
-      {
-        icon: 'Settings2',
-        label: 'Razorpay Settings',
-        href: '/admin/settings/razorpay',
-        permission: 'config:manage'
       }
     ]
   },
@@ -148,40 +142,18 @@ export const navItems: NavItem[] = [
         permission: 'role:manage'
       },
       {
-        icon: 'MessageSquare',
-        label: 'WhatsApp / SMS Settings',
-        href: '/admin/settings/notifications',
-        permission: 'config:manage'
-      },
-      {
-        icon: 'SlidersHorizontal',
-        label: 'Fees / Categories / Event Settings',
-        href: '/admin/settings/general',
-        permission: 'config:manage'
-      },
-      {
-        icon: 'Megaphone',
-        label: 'Homepage Notices',
-        href: '/admin/settings/notices',
-        permission: 'config:manage'
-      },
-      {
-        icon: 'Bot',
-        label: 'reCAPTCHA Settings',
-        href: '/admin/settings/recaptcha',
-        permission: 'config:manage'
-      },
-      {
-        icon: 'Phone',
-        label: 'Contact & Social Settings',
-        href: '/admin/settings/contact',
-        permission: 'config:manage'
-      },
-      {
-        icon: 'EyeOff',
-        label: 'Coming Soon Mode',
-        href: '/admin/settings/coming-soon',
-        permission: 'config:manage'
+        icon: 'Settings',
+        label: 'Settings',
+        permission: 'config:manage',
+        childItems: [
+          { label: 'Razorpay', href: '/admin/settings/razorpay' },
+          { label: 'WhatsApp / SMS', href: '/admin/settings/notifications' },
+          { label: 'Fees / Categories / Event', href: '/admin/settings/general' },
+          { label: 'Homepage Notices', href: '/admin/settings/notices' },
+          { label: 'reCAPTCHA', href: '/admin/settings/recaptcha' },
+          { label: 'Contact & Social', href: '/admin/settings/contact' },
+          { label: 'Coming Soon Mode', href: '/admin/settings/coming-soon' }
+        ]
       }
     ]
   }

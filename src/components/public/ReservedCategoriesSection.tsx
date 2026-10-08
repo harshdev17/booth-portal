@@ -15,7 +15,7 @@ const RESERVED_CATEGORIES: Array<{ name: string; nameHi: string; totalShops: num
   { name: 'NZCC', nameHi: 'एनजेडसीसी', totalShops: 200 },
   { name: 'SARAS', nameHi: 'सरस', totalShops: 60 },
   { name: "NGO's", nameHi: 'एनजीओ', totalShops: null },
-  { name: 'SHG', nameHi: 'स्वयं सहायता समूह (SHG)', totalShops: null },
+  { name: 'SHG', nameHi: 'स्वयं सहायता समूह', totalShops: null },
   { name: 'Government Departments', nameHi: 'सरकारी विभाग', totalShops: null }
 ]
 

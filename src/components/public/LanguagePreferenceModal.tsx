@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -12,8 +13,11 @@ import { useLanguage } from '@/context/LanguageContext'
  */
 const LanguagePreferenceModal = () => {
   const { showLanguagePrompt, choosePreferredLanguage } = useLanguage()
+  const pathname = usePathname()
 
-  if (!showLanguagePrompt) return null
+  // The Coming Soon page has its own small हिंदी | English switcher; a blocking
+  // language popup there is just friction for visitors who only see that page.
+  if (!showLanguagePrompt || pathname === '/coming-soon') return null
 
   return (
     <div className='fixed inset-0 z-[100] flex items-center justify-center bg-[#071f3a]/60 px-4 backdrop-blur-sm'>

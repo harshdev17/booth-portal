@@ -10,12 +10,12 @@ const ENV_ROWS: Array<{ label: string; envVar: string; note: string }> = [
   {
     label: 'Site Key',
     envVar: 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY',
-    note: 'Public — embedded in the applicant-facing page. Next.js inlines NEXT_PUBLIC_* values at build time, so the app must be rebuilt (not just restarted) after setting or changing this one.'
+    note: 'Shown to the Google reCAPTCHA service from the application form.'
   },
   {
     label: 'Secret Key',
     envVar: 'RECAPTCHA_SECRET_KEY',
-    note: 'Server-only, used to verify each submission with Google. Takes effect on the next server restart — no rebuild needed.'
+    note: 'Used privately to verify each submission with Google.'
   }
 ]
 
@@ -48,8 +48,8 @@ const RecaptchaSettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>reCAPTCHA Settings</h1>
         <p className='text-sm text-muted-foreground'>
-          Configuration status for the Google reCAPTCHA v3 (invisible) widget on the public application form&apos;s
-          final submit step. Values are set via environment variables, not editable from this UI.
+          Status of the Google reCAPTCHA (invisible spam check) on the final submit step of the application form.
+          These keys are set up by the technical team and cannot be edited here.
         </p>
       </div>
 
@@ -67,8 +67,8 @@ const RecaptchaSettingsPage = async () => {
             >
               google.com/recaptcha/admin
             </a>{' '}
-            (choose reCAPTCHA v3) and set both environment variables below. v2 keys from an older setup will not
-            work — v3 requires its own site registration.
+            (choose reCAPTCHA v3) and hand both keys to the technical team to set up. Keys from an older v2 setup
+            will not work.
           </AlertDescription>
         </Alert>
       )}
@@ -86,7 +86,6 @@ const RecaptchaSettingsPage = async () => {
                   )}
                   <div>
                     <p className='text-sm font-semibold text-slate-800'>{row.label}</p>
-                    <p className='font-mono text-xs text-muted-foreground'>{row.envVar}</p>
                     <p className='mt-1 max-w-xl text-xs text-muted-foreground'>{row.note}</p>
                   </div>
                 </div>

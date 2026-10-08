@@ -36,6 +36,7 @@ const FloatingChatbot = () => {
   }
 
   return (
+
     // bottom offset raised above the default ~56px height of Google's
     // reCAPTCHA v3 badge (also bottom-right, shown on the apply Review page
     // once grecaptcha.execute() runs) — reported live as overlapping it.

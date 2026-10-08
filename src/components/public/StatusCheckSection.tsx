@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
@@ -13,6 +14,7 @@ export default function StatusCheckSection() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+
     if (appNumber.trim()) {
       router.push(`/status?appNo=${encodeURIComponent(appNumber.trim())}`)
     } else {

@@ -8,7 +8,6 @@ import FaqSection from '@/components/public/FaqSection'
 import HeroSlider from '@/components/public/HeroSlider'
 import HowItWorks from '@/components/public/HowItWorks'
 import ImportantNoticeSection from '@/components/public/ImportantNoticeSection'
-import ReservedCategoriesSection from '@/components/public/ReservedCategoriesSection'
 import StatusCheckSection from '@/components/public/StatusCheckSection'
 import WhyParticipateSection from '@/components/public/WhyParticipateSection'
 import { useLanguage } from '@/context/LanguageContext'
@@ -89,8 +88,7 @@ export default function PublicHomeClient({ categories, eventStartsOn, eventEndsO
       {/* Why Participate? */}
       <WhyParticipateSection />
 
-      {/* Reserved Categories */}
-      <ReservedCategoriesSection />
+      {/* Reserved Categories section is hidden for now — re-add `<ReservedCategoriesSection />` (src/components/public/ReservedCategoriesSection.tsx) to bring it back. */}
 
       {/* How It Works Section */}
       <section id='how-it-works' className='px-4 py-20 sm:px-6 border-t border-[#ede5db]/60 bg-[#faf8f5]'>

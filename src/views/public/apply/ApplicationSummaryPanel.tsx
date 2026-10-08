@@ -34,6 +34,7 @@ const ApplicationSummaryPanel = ({ config }: { config: CategoryConfigResponse })
   const requiredDocCount = documents.filter(d => d.required).length
 
   const displayName = lang === 'hi' && category.nameHi ? category.nameHi : category.name
+
   const methodLabel =
     SELECTION_METHOD_LABEL[category.selectionMethod]?.[lang] ??
     SELECTION_METHOD_LABEL[category.selectionMethod]?.en ??

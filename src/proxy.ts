@@ -129,10 +129,11 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  * found" once removed — always use `proxy.ts` + `export function proxy`).
  */
 /**
- * Whole-site "Coming Soon" gate — env-var controlled (no DB read: this
- * runs in the edge runtime, same constraint as hasValidSessionToken()
- * above), so flipping it needs an env var change + restart, not a DB
- * write. The admin panel and all /api routes stay reachable either way,
+ * Whole-site "Coming Soon" gate — switched on/off by an admin from
+ * /admin/settings/coming-soon (site_mode_settings). This file runs in the edge
+ * runtime and cannot reach MySQL (same constraint as hasValidSessionToken()
+ * above), so the flag is read through GET /api/site-status and cached in
+ * memory for a few seconds. The admin panel and all /api routes stay reachable either way,
  * so an admin can still log in and work (and so the admin's own API
  * calls from /admin/* pages keep functioning) while every other route
  * redirects to /coming-soon.
@@ -145,12 +146,34 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  * log in once at /admin/login and the public site becomes visible too,
  * in that same browser, while everyone else still sees /coming-soon.
  */
-const COMING_SOON_MODE = process.env.COMING_SOON_MODE === 'true'
+const COMING_SOON_CACHE_MS = 5000
+let comingSoonCache: { value: boolean; fetchedAt: number } | null = null
+
+/** Fails open (false) if the status endpoint is unreachable — never lock visitors out on a read error. */
+async function isComingSoonOn(request: NextRequest): Promise<boolean> {
+  const now = Date.now()
+
+  if (comingSoonCache && now - comingSoonCache.fetchedAt < COMING_SOON_CACHE_MS) return comingSoonCache.value
+
+  let value = false
+
+  try {
+    const response = await fetch(new URL('/api/site-status', request.url), { cache: 'no-store' })
+
+    if (response.ok) value = (await response.json()).comingSoon === true
+  } catch {
+    // fall through with the default (off)
+  }
+
+  comingSoonCache = { value, fetchedAt: now }
+
+  return value
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (COMING_SOON_MODE && !pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon') {
+  if (!pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon' && (await isComingSoonOn(request))) {
     const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
     const isLoggedInAdmin = await hasValidSessionToken(sessionToken)
 

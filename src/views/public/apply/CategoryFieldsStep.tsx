@@ -66,7 +66,7 @@ const CategoryFieldsStep = ({
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
               <FieldLabel htmlFor='shopOptionId'>
-                {lang === 'hi' ? 'बूथ/स्टॉल / स्थान चयन (Booth/Stall Selection) *' : 'Booth/Stall Selection *'}
+                {lang === 'hi' ? 'बूथ/स्टॉल / स्थान चयन *' : 'Booth/Stall Selection *'}
               </FieldLabel>
               <Select
                 name='shopOptionId'
@@ -166,6 +166,7 @@ const CategoryFieldsStep = ({
                   {...rhfField}
                   value={rhfField.value ?? ''}
                   id={rhfField.name}
+
                   // Date-like fields (registration_date, fssai_validity_date,
                   // artisan_card_validity, etc.) were seeded as plain 'text'
                   // since category_field_definitions has no dedicated 'date'
