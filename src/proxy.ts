@@ -2,16 +2,19 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
+import { isComingSoonEnabled } from '@/lib/site/coming-soon'
+
 const SESSION_COOKIE_NAME = 'kdb_admin_session'
 
 /**
- * Edge-safe session presence check. This ONLY verifies the JWT signature and
- * expiry — it does NOT check the database for revocation (jose in the edge
- * runtime can't reach MySQL). The authoritative check (revocation, disabled
- * user, current role) happens again in src/app/(admin)/layout.tsx via
- * getSession(), which is the actual security boundary. This proxy is the
- * fast-path redirect for the common case (no cookie / expired / tampered
- * token at all) so unauthenticated users never even reach a render.
+ * Fast-path session presence check. This ONLY verifies the JWT signature and
+ * expiry — it does NOT check the database for revocation, so it's a single
+ * cheap in-memory verification rather than a DB round-trip on every request.
+ * The authoritative check (revocation, disabled user, current role) happens
+ * again in src/app/(admin)/layout.tsx via getSession(), which is the actual
+ * security boundary. This proxy is the fast-path redirect for the common
+ * case (no cookie / expired / tampered token at all) so unauthenticated
+ * users never even reach a render.
  */
 async function hasValidSessionToken(token: string | undefined): Promise<boolean> {
   if (!token) return false
@@ -130,13 +133,32 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  */
 /**
  * Whole-site "Coming Soon" gate — switched on/off by an admin from
- * /admin/settings/coming-soon (site_mode_settings). This file runs in the edge
- * runtime and cannot reach MySQL (same constraint as hasValidSessionToken()
- * above), so the flag is read through GET /api/site-status and cached in
- * memory for a few seconds. The admin panel and all /api routes stay reachable either way,
- * so an admin can still log in and work (and so the admin's own API
- * calls from /admin/* pages keep functioning) while every other route
- * redirects to /coming-soon.
+ * /admin/settings/coming-soon (site_mode_settings), read here with a short
+ * in-memory cache so most requests skip the DB round-trip entirely.
+ *
+ * This file (`src/proxy.ts`, Next.js 16's replacement for `middleware.ts`)
+ * always runs on the Node.js runtime — unlike old-style Next.js middleware,
+ * it was never limited to the Edge runtime (confirmed by trying to force
+ * `runtime: 'nodejs'` in the exported config below: Next.js rejects it with
+ * "Proxy always runs on Node.js runtime"). That means isComingSoonEnabled()
+ * — which uses mysql2, a real TCP client — can be called directly here. An
+ * earlier version of this file didn't realize that and assumed it was
+ * Edge-only (same mistaken assumption behind hasValidSessionToken() above's
+ * comment, which has since been corrected), so it worked around a
+ * non-existent constraint by having the proxy fetch() its own
+ * /api/site-status route over the network — that self-referential HTTP
+ * call turned out to silently fail in production (shared hosting commonly
+ * blocks or limits a server calling back into itself), and since the check
+ * fails open (false) on any error to avoid locking out visitors on a DB
+ * hiccup, Coming Soon mode appeared permanently OFF to real visitors no
+ * matter what the admin toggle or the database said. Calling the DB
+ * function directly removes that network hop — and that whole failure
+ * mode — completely. The now-unused /api/site-status route was deleted.
+ *
+ * The admin panel and all /api routes stay reachable either way, so an
+ * admin can still log in and work (and so the admin's own API calls from
+ * /admin/* pages keep functioning) while every other route redirects to
+ * /coming-soon.
  *
  * A logged-in admin also bypasses the gate on the public site itself —
  * otherwise nobody could preview the live application form/pages while
@@ -149,21 +171,13 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
 const COMING_SOON_CACHE_MS = 5000
 let comingSoonCache: { value: boolean; fetchedAt: number } | null = null
 
-/** Fails open (false) if the status endpoint is unreachable — never lock visitors out on a read error. */
-async function isComingSoonOn(request: NextRequest): Promise<boolean> {
+/** Fails open (false) if the DB is unreachable — never lock visitors out on a read error. */
+async function isComingSoonOn(): Promise<boolean> {
   const now = Date.now()
 
   if (comingSoonCache && now - comingSoonCache.fetchedAt < COMING_SOON_CACHE_MS) return comingSoonCache.value
 
-  let value = false
-
-  try {
-    const response = await fetch(new URL('/api/site-status', request.url), { cache: 'no-store' })
-
-    if (response.ok) value = (await response.json()).comingSoon === true
-  } catch {
-    // fall through with the default (off)
-  }
+  const value = await isComingSoonEnabled()
 
   comingSoonCache = { value, fetchedAt: now }
 
@@ -173,7 +187,7 @@ async function isComingSoonOn(request: NextRequest): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (!pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon' && (await isComingSoonOn(request))) {
+  if (!pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon' && (await isComingSoonOn())) {
     const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
     const isLoggedInAdmin = await hasValidSessionToken(sessionToken)
 
