@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-import { isComingSoonEnabled } from '@/lib/site/coming-soon'
-
 const SESSION_COOKIE_NAME = 'kdb_admin_session'
 
 /**
@@ -132,68 +130,32 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
  * found" once removed — always use `proxy.ts` + `export function proxy`).
  */
 /**
- * Whole-site "Coming Soon" gate — switched on/off by an admin from
- * /admin/settings/coming-soon (site_mode_settings), read here with a short
- * in-memory cache so most requests skip the DB round-trip entirely.
+ * Whole-site "Coming Soon" lockdown — a single env var, `COMING_SOON_MODE`.
+ * Deliberately simple and absolute, per explicit instruction: when it's
+ * `'true'`, every single route is blocked and redirected to /coming-soon —
+ * no exceptions for /admin, /api, or a logged-in admin session. There is no
+ * bypass of any kind, by design: this is meant for a throwaway/holding
+ * deployment (e.g. the live domain while real testing happens on a separate
+ * domain that has COMING_SOON_MODE unset), not a "preview while admins
+ * work" mode. To actually use the site on a given deployment, set
+ * COMING_SOON_MODE to 'false' (or leave it unset) there — there is no
+ * in-app toggle.
  *
- * This file (`src/proxy.ts`, Next.js 16's replacement for `middleware.ts`)
- * always runs on the Node.js runtime — unlike old-style Next.js middleware,
- * it was never limited to the Edge runtime (confirmed by trying to force
- * `runtime: 'nodejs'` in the exported config below: Next.js rejects it with
- * "Proxy always runs on Node.js runtime"). That means isComingSoonEnabled()
- * — which uses mysql2, a real TCP client — can be called directly here. An
- * earlier version of this file didn't realize that and assumed it was
- * Edge-only (same mistaken assumption behind hasValidSessionToken() above's
- * comment, which has since been corrected), so it worked around a
- * non-existent constraint by having the proxy fetch() its own
- * /api/site-status route over the network — that self-referential HTTP
- * call turned out to silently fail in production (shared hosting commonly
- * blocks or limits a server calling back into itself), and since the check
- * fails open (false) on any error to avoid locking out visitors on a DB
- * hiccup, Coming Soon mode appeared permanently OFF to real visitors no
- * matter what the admin toggle or the database said. Calling the DB
- * function directly removes that network hop — and that whole failure
- * mode — completely. The now-unused /api/site-status route was deleted.
- *
- * The admin panel and all /api routes stay reachable either way, so an
- * admin can still log in and work (and so the admin's own API calls from
- * /admin/* pages keep functioning) while every other route redirects to
- * /coming-soon.
- *
- * A logged-in admin also bypasses the gate on the public site itself —
- * otherwise nobody could preview the live application form/pages while
- * Coming Soon is on (reported live: "main form dekhna hai to vo kaise
- * dekhenge?"). Reuses the same admin session cookie already checked below
- * for /admin routes, so there's no separate preview secret to manage —
- * log in once at /admin/login and the public site becomes visible too,
- * in that same browser, while everyone else still sees /coming-soon.
+ * This replaces an earlier DB-backed version (site_mode_settings,
+ * /admin/settings/coming-soon's on/off switch) that let a logged-in admin
+ * preview the live site while everyone else saw /coming-soon — reverted
+ * back to this simpler env-only gate per explicit instruction. The
+ * site_mode_settings table/migration is left in place (unused) rather than
+ * dropped, since dropping a table is a destructive DB change this project
+ * never does without explicit approval.
  */
-const COMING_SOON_CACHE_MS = 5000
-let comingSoonCache: { value: boolean; fetchedAt: number } | null = null
-
-/** Fails open (false) if the DB is unreachable — never lock visitors out on a read error. */
-async function isComingSoonOn(): Promise<boolean> {
-  const now = Date.now()
-
-  if (comingSoonCache && now - comingSoonCache.fetchedAt < COMING_SOON_CACHE_MS) return comingSoonCache.value
-
-  const value = await isComingSoonEnabled()
-
-  comingSoonCache = { value, fetchedAt: now }
-
-  return value
-}
+const COMING_SOON_MODE = process.env.COMING_SOON_MODE === 'true'
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (!pathname.startsWith('/admin') && !pathname.startsWith('/api') && pathname !== '/coming-soon' && (await isComingSoonOn())) {
-    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
-    const isLoggedInAdmin = await hasValidSessionToken(sessionToken)
-
-    if (!isLoggedInAdmin) {
-      return NextResponse.redirect(new URL('/coming-soon', request.url))
-    }
+  if (COMING_SOON_MODE && pathname !== '/coming-soon') {
+    return NextResponse.redirect(new URL('/coming-soon', request.url))
   }
 
   const isAdminAuthRoute = pathname.startsWith('/admin/login')
