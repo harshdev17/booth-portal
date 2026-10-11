@@ -29,7 +29,8 @@ export const PERMISSIONS = [
   'config:manage',
   'user:manage',
   'role:manage',
-  'audit:view'
+  'audit:view',
+  'police:view'
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]

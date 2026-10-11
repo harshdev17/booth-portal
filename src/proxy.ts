@@ -158,15 +158,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/coming-soon', request.url))
   }
 
-  const isAdminAuthRoute = pathname.startsWith('/admin/login')
-  const isProtectedAdminRoute = pathname.startsWith('/admin') && !isAdminAuthRoute
+  const isAdminAuthRoute = pathname.startsWith('/admin/login') || pathname.startsWith('/police/login')
+  const isProtectedAdminRoute =
+    (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) ||
+    (pathname.startsWith('/police') && !pathname.startsWith('/police/login'))
 
   if (isProtectedAdminRoute) {
     const token = request.cookies.get(SESSION_COOKIE_NAME)?.value
     const valid = await hasValidSessionToken(token)
 
     if (!valid) {
-      const loginUrl = new URL('/admin/login', request.url)
+      const loginUrl = new URL(pathname.startsWith('/police') ? '/police/login' : '/admin/login', request.url)
 
       return NextResponse.redirect(loginUrl)
     }

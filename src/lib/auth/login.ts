@@ -9,7 +9,7 @@ const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
 
 export type LoginResult =
-  | { ok: true }
+  | { ok: true; roleKey: string }
   | { ok: false; error: 'invalid_credentials' | 'account_disabled' | 'account_locked' }
 
 type UserRow = {
@@ -19,6 +19,7 @@ type UserRow = {
   status: 'active' | 'disabled'
   failed_login_count: number
   locked_until: string | null
+  role_key: string
 }
 
 /**
@@ -39,8 +40,10 @@ export async function login(
   meta: { ipAddress?: string; userAgent?: string }
 ): Promise<LoginResult> {
   const rows = await query<UserRow[]>(
-    `SELECT id, email, password_hash, status, failed_login_count, locked_until
-     FROM users WHERE email = ? LIMIT 1`,
+    `SELECT u.id, u.email, u.password_hash, u.status, u.failed_login_count, u.locked_until, r.\`key\` AS role_key
+     FROM users u
+     JOIN roles r ON r.id = u.role_id
+     WHERE u.email = ? LIMIT 1`,
     [email.trim().toLowerCase()]
   )
 
@@ -142,5 +145,5 @@ export async function login(
     userAgent: meta.userAgent
   })
 
-  return { ok: true }
+  return { ok: true, roleKey: user.role_key }
 }

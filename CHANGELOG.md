@@ -2,6 +2,34 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.2.0 (2026-10-11)
+
+### Added
+- **Full Applications Export Feature (`/api/admin/applications/export`)**:
+  - Implemented streaming CSV export endpoint supporting both filtered search results and all submitted applications.
+  - Added `ExportApplicationsButton` component with dropdown options to export filtered or complete application records with detailed metadata (applicant details, category, fees, queries, statuses).
+- **Approved Status in Application Lifecycle & Database Schema**:
+  - Expanded `applications.status` database ENUM to include `approved`.
+  - Added `Approved for Draw` status badge, dedicated filter tab, and dedicated KPI metric card on `/admin/applications`.
+  - Standardized application lifecycle: `under_review` (pending verification) -> `approved` (officer verified & eligible for draw) -> `allotted` (lucky draw winner allotted to stall).
+- **Executive Operational Insights on Admin Dashboard (`/admin/dashboard`)**:
+  - Replaced generic placeholder activity with actionable administration widgets:
+    - Real-Time Application Stage Distribution breakdown (`under_review`, `approved`, `query_raised`, `allotted`, `rejected`).
+    - Urgent Action Items panel tracking pending verifications, applicant query responses, and draw-ready queues.
+    - Category-wise Demand & Stall Allocation load matrix comparing quotas against incoming applications.
+
+### Changed
+- **Lucky Draw Service Eligibility Engine (`src/lib/draw/draw-service.ts`)**:
+  - Updated candidate selection query in both simulation and live execution modes to consider exclusively `approved` applications. Applications in `under_review` status are strictly excluded until verified by an officer.
+  - Successfully drawn candidates now explicitly transition to status `allotted` alongside shop unit allotment.
+- **Officer Verification Workflow (`/api/admin/applications/[id]/approve`)**:
+  - Officer document approval action now sets application status to `approved`, qualifying it for the upcoming computerized lucky draw.
+- **Draw Control Center UI (`/admin/draw`)**:
+  - Updated eligible candidate counts and labels to reflect verified `approved` applications ready for draw execution.
+- **UI & Layout Cleanliness**:
+  - Cleaned up container spacing and resolved negative margin card header clipping across dashboard and reporting screens.
+  - Removed all emojis across portal controls, badges, and headers in adherence with institutional design standards.
+
 ## v1.1.0 (2026-09-27)
 
 ### Added

@@ -69,6 +69,10 @@ export async function loginAction(_prevState: LoginFormState, formData: FormData
     return { error: messages[result.error] }
   }
 
+  if (result.roleKey === 'police_user') {
+    redirect('/police/dashboard')
+  }
+
   redirect('/admin/dashboard')
 }
 

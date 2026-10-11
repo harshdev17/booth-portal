@@ -77,7 +77,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       if (session) {
         const permissions = await getCurrentUserPermissions()
 
-        isAuthorizedAdmin = !!permissions && (permissions.has('document:verify') || permissions.has('application:view'))
+        isAuthorizedAdmin =
+          !!permissions &&
+          (permissions.has('document:verify') ||
+            permissions.has('document:view') ||
+            permissions.has('application:view') ||
+            permissions.has('police:view'))
 
         if (isAuthorizedAdmin) {
           await logAudit({

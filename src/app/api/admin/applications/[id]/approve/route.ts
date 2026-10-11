@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    await query(`UPDATE applications SET status = 'selected' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [applicationId])
+    await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [applicationId])
 
     await logAudit({
       actorUserId: session.userId,
@@ -74,7 +74,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       entityType: 'application',
       entityId: String(applicationId),
       previousValue: { status: 'under_review' },
-      newValue: { status: 'selected', fieldsMarkedChecked: newlyCheckedKeys }
+      newValue: { status: 'approved', fieldsMarkedChecked: newlyCheckedKeys }
     })
 
     return NextResponse.json({ success: true })

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { CheckCircle2Icon, ClockIcon, FileTextIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, FileTextIcon, ShieldCheckIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
@@ -13,6 +13,7 @@ import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authori
 import { encodeId } from '@/lib/security/opaque-id'
 import ApplicationRowActions from '@/views/admin/applications/ApplicationRowActions'
 import ApplicationsFilterBar from '@/views/admin/applications/ApplicationsFilterBar'
+import ExportApplicationsButton from '@/views/admin/applications/ExportApplicationsButton'
 
 const DEFAULT_PAGE_SIZE = 25
 
@@ -46,17 +47,18 @@ const STATUS_CONFIG: Record<
   payment_success: { label: 'Under Review', variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
   under_review: { label: 'Under Review', variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
   query_raised: { label: 'Query Raised', variant: 'secondary', color: 'bg-orange-100 text-orange-800' },
+  approved: { label: 'Approved for Draw', variant: 'default', color: 'bg-emerald-100 text-emerald-800' },
   selected: { label: 'Selected / Allotted', variant: 'default', color: 'bg-purple-100 text-purple-800' },
   rejected: { label: 'Rejected', variant: 'destructive', color: 'bg-red-100 text-red-800' },
-  allotted: { label: 'Allotted', variant: 'default', color: 'bg-emerald-100 text-emerald-800' }
+  allotted: { label: 'Allotted', variant: 'default', color: 'bg-teal-100 text-teal-800' }
 }
 
 // Quick-filter tabs: the `status` URL param maps to one or more stored statuses
-// ('payment_success' is the legacy value for Under Review).
 const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> = [
   { key: 'under_review', label: 'Under Review', statuses: ['under_review', 'payment_success'] },
+  { key: 'approved', label: 'Approved for Draw', statuses: ['approved'] },
   { key: 'query_raised', label: 'Query Raised', statuses: ['query_raised'] },
-  { key: 'selected', label: 'Approved / Allotted', statuses: ['selected', 'allotted', 're_allotted'] },
+  { key: 'selected', label: 'Allotted / Selected', statuses: ['selected', 'allotted', 're_allotted'] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] }
 ]
 
@@ -158,6 +160,7 @@ const ApplicationsAdminPage = async ({
 
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
   const pendingCount = statsRows.find(r => r.status === 'under_review' || r.status === 'payment_success')?.count ?? 0
+  const approvedCount = statsRows.find(r => r.status === 'approved')?.count ?? 0
   const selectedCount = statsRows.find(r => r.status === 'selected' || r.status === 'allotted')?.count ?? 0
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
@@ -243,10 +246,13 @@ const ApplicationsAdminPage = async ({
             Review, verify documents, and manage submitted stall applications for International Geeta Jayanti Mahotsav 2026.
           </p>
         </div>
+        <div className='flex items-center gap-2'>
+          <ExportApplicationsButton totalFiltered={totalFiltered} totalAll={totalSubmitted} />
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         <KpiCard
           label='Total Applications'
           value={totalSubmitted}
@@ -260,6 +266,13 @@ const ApplicationsAdminPage = async ({
           icon={ClockIcon}
           accentColor='text-amber-600'
           hint='Paid applications awaiting a review decision'
+        />
+        <KpiCard
+          label='Approved for Draw'
+          value={approvedCount}
+          icon={ShieldCheckIcon}
+          accentColor='text-emerald-600'
+          hint='Scrutinized and eligible for Lucky Draw'
         />
         <KpiCard
           label='Allotted / Selected'

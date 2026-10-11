@@ -26,6 +26,7 @@ const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
   const session = await getSession()
 
   if (!session) redirect('/admin/login')
+  if (session.role.key === 'police_user') redirect('/police/dashboard')
 
   const permissions = await getCurrentUserPermissions()
 
