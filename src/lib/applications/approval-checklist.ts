@@ -18,7 +18,6 @@ export type ApprovalChecklist = {
 const STATIC_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'representative_name', label: 'Representative Name' },
   { key: 'father_name', label: "Father's Name" },
-  { key: 'organisation_name', label: 'Organisation / Firm Name' },
   { key: 'aadhaar_number', label: 'Aadhaar Number' },
   { key: 'email', label: 'Email' },
   { key: 'mobile_number', label: 'Mobile Number' },
@@ -30,7 +29,12 @@ const STATIC_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'category', label: 'Category' },
   { key: 'selection_method', label: 'Selection Method' },
   { key: 'shop_option', label: 'Booth/Stall Option' },
-  { key: 'submitted_at', label: 'Submitted At' },
+  { key: 'submitted_at', label: 'Submitted At' }
+]
+
+// Older applications also carry these (no longer asked on new ones — stored empty).
+const LEGACY_FIELDS: Array<{ key: 'organisation_name' | 'work_purpose' | 'achievement_experience'; label: string }> = [
+  { key: 'organisation_name', label: 'Organisation / Firm Name' },
   { key: 'work_purpose', label: 'Purpose of Work' },
   { key: 'achievement_experience', label: 'Achievements / Experience' }
 ]
@@ -45,8 +49,19 @@ const STATIC_FIELDS: Array<{ key: string; label: string }> = [
  * on the detail page first.
  */
 export async function getApprovalChecklist(applicationId: number): Promise<ApprovalChecklist | null> {
-  const rows = await query<Array<{ id: number; status: string; category_id: number; remarks: string | null }>>(
-    `SELECT id, status, category_id, remarks FROM applications WHERE id = ? LIMIT 1`,
+  const rows = await query<
+    Array<{
+      id: number
+      status: string
+      category_id: number
+      remarks: string | null
+      organisation_name: string | null
+      work_purpose: string | null
+      achievement_experience: string | null
+    }>
+  >(
+    `SELECT id, status, category_id, remarks, organisation_name, work_purpose, achievement_experience
+     FROM applications WHERE id = ? LIMIT 1`,
     [applicationId]
   )
 
@@ -82,6 +97,7 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
 
   const fieldDefinitions: Array<{ key: string; label: string }> = [
     ...STATIC_FIELDS,
+    ...LEGACY_FIELDS.filter(f => !!app[f.key]),
     ...(app.remarks ? [{ key: 'remarks', label: 'Applicant Remarks' }] : []),
     ...dynamicFields.map(f => ({ key: `dynamic:${f.field_definition_id}`, label: f.label }))
   ]

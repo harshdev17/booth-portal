@@ -86,8 +86,10 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
         label={lang === 'hi' ? 'श्रेणी' : 'Category'}
         value={lang === 'hi' ? (result.categoryNameHi ?? result.categoryName) : result.categoryName}
       />
-      <SummaryRow label={lang === 'hi' ? 'संगठन/व्यक्ति का नाम' : 'Organisation / Applicant Name'} value={result.organisationName} />
-      <SummaryRow label={lang === 'hi' ? 'प्रतिनिधि का नाम' : 'Representative Name'} value={result.representativeName} />
+      {result.organisationName && (
+        <SummaryRow label={lang === 'hi' ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name'} value={result.organisationName} />
+      )}
+      <SummaryRow label={lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name'} value={result.representativeName} />
       <SummaryRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={result.fatherName} />
       <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarNumber} />
       <SummaryRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={result.mobileNumber} />
@@ -105,12 +107,16 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       {result.feePaise !== null && (
         <SummaryRow label={lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'} value={formatRupees(result.feePaise)} />
       )}
-      <SummaryRow label={lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work'} value={result.workPurpose} span />
-      <SummaryRow
-        label={lang === 'hi' ? 'उपलब्धि/अनुभव' : 'Achievement / Experience'}
-        value={result.achievementExperience}
-        span
-      />
+      {result.workPurpose && (
+        <SummaryRow label={lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work'} value={result.workPurpose} span />
+      )}
+      {result.achievementExperience && (
+        <SummaryRow
+          label={lang === 'hi' ? 'उपलब्धि/अनुभव' : 'Achievement / Experience'}
+          value={result.achievementExperience}
+          span
+        />
+      )}
       {result.remarks && <SummaryRow label={lang === 'hi' ? 'टिप्पणी' : 'Remarks'} value={result.remarks} span />}
       {result.fieldValues.map(fv => (
         <SummaryRow key={fv.label} label={lang === 'hi' ? (fv.labelHi ?? fv.label) : fv.label} value={fv.value} />

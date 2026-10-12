@@ -67,7 +67,6 @@ const pinCode = z
 
 export const applicationCommonFieldsSchema = z.object({
   email,
-  organisationName: shortText(191),
   representativeName: shortText(191),
   fatherName: shortText(191),
   aadhaarNumber,
@@ -83,8 +82,6 @@ export const applicationCommonFieldsSchema = z.object({
     .optional()
     .or(z.literal(''))
     .transform(v => (v ? v : undefined)),
-  workPurpose: shortText(512),
-  achievementExperience: shortText(1024),
   remarks: optionalShortText(1024)
 })
 

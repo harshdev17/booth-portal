@@ -132,132 +132,11 @@ const ApplicantInfoStep = ({
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
       <Controller
-        name='common.email'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid || !!duplicateFields.email}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'ईमेल पता *' : 'Email Address *'}
-            </FieldLabel>
-            <Input
-              {...field}
-              id={field.name}
-              type='email'
-              autoComplete='email'
-              placeholder='example@domain.com'
-              aria-invalid={fieldState.invalid || !!duplicateFields.email}
-              onBlur={e => {
-                field.onBlur()
-                void checkAvailability('email', e.target.value.trim())
-              }}
-            />
-            <FieldDescription>
-              {lang === 'hi'
-                ? 'हम आवेदन की महत्वपूर्ण सूचनाएं इस ईमेल पर भेजेंगे।'
-                : 'We will use this to send you updates about your application.'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-            {!fieldState.invalid && duplicateFields.email && <FieldError>{duplicateFields.email}</FieldError>}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.mobileNumber'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid || !!duplicateFields.mobileNumber}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'मोबाइल नंबर *' : 'Mobile Number *'}
-            </FieldLabel>
-            <MobileNumberInput
-              id={field.name}
-              name={field.name}
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={() => {
-                field.onBlur()
-                void checkAvailability('mobileNumber', field.value)
-              }}
-              invalid={fieldState.invalid || !!duplicateFields.mobileNumber}
-              autoComplete='section-primary-contact tel-national'
-            />
-            <FieldDescription>
-              {lang === 'hi' ? '10 अंकों का मोबाइल नंबर (उदा. 9876543210)' : '10-digit number, for example 9876543210'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-            {!fieldState.invalid && duplicateFields.mobileNumber && <FieldError>{duplicateFields.mobileNumber}</FieldError>}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.alternateMobile'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'वैकल्पिक मोबाइल नंबर' : 'Alternate Mobile Number (Optional)'}
-            </FieldLabel>
-            <MobileNumberInput
-              id={field.name}
-              name='contact-alt'
-              value={field.value ?? ''}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              invalid={fieldState.invalid}
-
-              // 'new-password' here is a deliberate, well-known trick, not a
-              // copy-paste mistake — any autocomplete token Chrome doesn't
-              // recognize as a real category fully disables its autofill
-              // heuristics for that field (unlike "off", which Chrome
-              // special-cases and ignores on contact-type inputs).
-              autoComplete='section-alt-contact new-password'
-              blockAutofillUntilFocus
-            />
-            <FieldDescription>
-              {lang === 'hi'
-                ? 'कोई दूसरा संपर्क नंबर, यदि उपलब्ध हो'
-                : 'A second number we can reach you on, if needed'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.organisationName'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'फर्म / एनजीओ / संस्था का नाम *' : 'Name of Firm / NGO / Organisation *'}
-            </FieldLabel>
-            <Input
-              {...field}
-              id={field.name}
-              autoComplete='off'
-              placeholder={lang === 'hi' ? 'संस्था या व्यापारिक प्रतिष्ठान का नाम' : 'Enter registered name'}
-              aria-invalid={fieldState.invalid}
-            />
-            <FieldDescription>
-              {lang === 'hi'
-                ? 'दस्तावेज में पंजीकृत नाम के अनुसार दर्ज करें'
-                : 'Enter the registered name, exactly as on your documents'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
-      />
-
-      <Controller
         name='common.representativeName'
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'मालिक / प्रोप्राइटर / प्रतिनिधि का नाम *' : 'Name of Owner / Proprietor / Representative *'}
-            </FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'पूरा नाम *' : 'Full Name *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}
@@ -297,13 +176,103 @@ const ApplicantInfoStep = ({
       />
 
       <Controller
+        name='common.mobileNumber'
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid || !!duplicateFields.mobileNumber}>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'मोबाइल नंबर *' : 'Mobile Number *'}</FieldLabel>
+            <MobileNumberInput
+              id={field.name}
+              name={field.name}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={() => {
+                field.onBlur()
+                void checkAvailability('mobileNumber', field.value)
+              }}
+              invalid={fieldState.invalid || !!duplicateFields.mobileNumber}
+              autoComplete='section-primary-contact tel-national'
+            />
+            <FieldDescription>
+              {lang === 'hi' ? '10 अंकों का मोबाइल नंबर (उदा. 9876543210)' : '10-digit number, for example 9876543210'}
+            </FieldDescription>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.mobileNumber && (
+              <FieldError>{duplicateFields.mobileNumber}</FieldError>
+            )}
+          </Field>
+        )}
+      />
+
+      <Controller
+        name='common.alternateMobile'
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel htmlFor={field.name}>
+              {lang === 'hi' ? 'वैकल्पिक मोबाइल नंबर' : 'Alternate Mobile Number (Optional)'}
+            </FieldLabel>
+            <MobileNumberInput
+              id={field.name}
+              name='contact-alt'
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              invalid={fieldState.invalid}
+
+              // 'new-password' here is a deliberate, well-known trick, not a
+              // copy-paste mistake — any autocomplete token Chrome doesn't
+              // recognize as a real category fully disables its autofill
+              // heuristics for that field (unlike "off", which Chrome
+              // special-cases and ignores on contact-type inputs).
+              autoComplete='section-alt-contact new-password'
+              blockAutofillUntilFocus
+            />
+            <FieldDescription>
+              {lang === 'hi'
+                ? 'कोई दूसरा संपर्क नंबर, यदि उपलब्ध हो'
+                : 'A second number we can reach you on, if needed'}
+            </FieldDescription>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+
+      <Controller
+        name='common.email'
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid || !!duplicateFields.email}>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'ईमेल पता *' : 'Email Address *'}</FieldLabel>
+            <Input
+              {...field}
+              id={field.name}
+              type='email'
+              autoComplete='email'
+              placeholder='example@domain.com'
+              aria-invalid={fieldState.invalid || !!duplicateFields.email}
+              onBlur={e => {
+                field.onBlur()
+                void checkAvailability('email', e.target.value.trim())
+              }}
+            />
+            <FieldDescription>
+              {lang === 'hi'
+                ? 'हम आवेदन की महत्वपूर्ण सूचनाएं इस ईमेल पर भेजेंगे।'
+                : 'We will use this to send you updates about your application.'}
+            </FieldDescription>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.email && <FieldError>{duplicateFields.email}</FieldError>}
+          </Field>
+        )}
+      />
+
+      <Controller
         name='common.aadhaarNumber'
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'आधार संख्या *' : 'Aadhaar Number *'}
-            </FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आधार संख्या *' : 'Aadhaar Number *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}
@@ -323,72 +292,9 @@ const ApplicantInfoStep = ({
                 : '12-digit number, for example 123456789012. Stored securely, encrypted.'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-            {!fieldState.invalid && duplicateFields.aadhaarNumber && <FieldError>{duplicateFields.aadhaarNumber}</FieldError>}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.workPurpose'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'कार्य का प्रकार / उद्देश्य *' : 'Type of Work / Purpose *'}
-            </FieldLabel>
-            <Input
-              {...field}
-              id={field.name}
-              placeholder={lang === 'hi' ? 'उदा. हस्तशिल्प बिक्री, पारंपरिक परिधान, खान-पान स्टॉल' : 'e.g. Handicraft sale or Food stall'}
-              aria-invalid={fieldState.invalid}
-            />
-            <FieldDescription>
-              {lang === 'hi'
-                ? 'जो सामग्री आप बेचना या प्रदर्शित करना चाहते हैं'
-                : 'What you intend to sell or display, for example "Handicraft sale" or "Food stall"'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.achievementExperience'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'पुरस्कार / उपलब्धि / अनुभव *' : 'Award / Achievement / Experience *'}
-            </FieldLabel>
-            <Input
-              {...field}
-              id={field.name}
-              placeholder={lang === 'hi' ? 'उदा. राज्य/राष्ट्रीय पुरस्कार, 5 वर्षों का अनुभव' : 'e.g. State award or 5 years experience'}
-              aria-invalid={fieldState.invalid}
-            />
-            <FieldDescription>
-              {lang === 'hi'
-                ? 'इस क्षेत्र में कोई प्राप्त पुरस्कार, मान्यता या अनुभव के वर्ष'
-                : 'Any relevant award, recognition, or years of experience in this field'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-          </Field>
-        )}
-      />
-
-      <Controller
-        name='common.remarks'
-        control={control}
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
-            <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'अन्य विवरण / टिप्पणी (वैकल्पिक)' : 'Other Remarks (Optional)'}
-            </FieldLabel>
-            <Input {...field} id={field.name} aria-invalid={fieldState.invalid} />
-            <FieldDescription>
-              {lang === 'hi' ? 'यदि कोई अन्य विवरण देना चाहें' : 'Anything else you would like to mention'}
-            </FieldDescription>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && duplicateFields.aadhaarNumber && (
+              <FieldError>{duplicateFields.aadhaarNumber}</FieldError>
+            )}
           </Field>
         )}
       />

@@ -17,14 +17,17 @@ export class ProvablyFairRandom {
 
     const nextRandom = (): number => {
       const hmac = createHmac('sha256', serverSeed)
+
       hmac.update(`${clientSeed}:${counter++}`)
       const digest = hmac.digest()
+
       return digest.readUInt32BE(0) / 0xffffffff
     }
 
     for (let i = list.length - 1; i > 0; i--) {
       const j = Math.floor(nextRandom() * (i + 1))
       const temp = list[i]
+
       list[i] = list[j]
       list[j] = temp
     }

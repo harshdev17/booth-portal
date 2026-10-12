@@ -118,8 +118,8 @@ export function receiptHtml(data: ReceiptPdfData, lang: 'hi' | 'en'): string {
   const fields = [
     field(lang === 'hi' ? 'आवेदन क्रमांक' : 'Application Number', data.applicationNumber),
     field(lang === 'hi' ? 'श्रेणी' : 'Category', lang === 'hi' ? (data.categoryNameHi ?? data.categoryName) : data.categoryName),
-    field(lang === 'hi' ? 'संगठन/व्यक्ति का नाम' : 'Organisation / Applicant Name', data.organisationName),
-    field(lang === 'hi' ? 'प्रतिनिधि का नाम' : 'Representative Name', data.representativeName),
+    data.organisationName ? field(lang === 'hi' ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
+    field(lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name', data.representativeName),
     data.amountPaise !== null ? field(lang === 'hi' ? 'भुगतान राशि' : 'Amount Paid', formatRupees(data.amountPaise)) : '',
     data.razorpayPaymentId ? field(lang === 'hi' ? 'भुगतान आईडी' : 'Payment ID', data.razorpayPaymentId) : '',
     data.razorpayOrderId ? field(lang === 'hi' ? 'ऑर्डर आईडी' : 'Order ID', data.razorpayOrderId) : '',
@@ -192,8 +192,8 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
   const fields = [
     field(lang === 'hi' ? 'आवेदन क्रमांक' : 'Application Number', data.applicationNumber),
     field(lang === 'hi' ? 'श्रेणी' : 'Category', lang === 'hi' ? (data.categoryNameHi ?? data.categoryName) : data.categoryName),
-    field(lang === 'hi' ? 'संगठन/व्यक्ति का नाम' : 'Organisation / Applicant Name', data.organisationName),
-    field(lang === 'hi' ? 'प्रतिनिधि का नाम' : 'Representative Name', data.representativeName),
+    data.organisationName ? field(lang === 'hi' ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
+    field(lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name', data.representativeName),
     field(lang === 'hi' ? 'पिता का नाम' : "Father's Name", data.fatherName),
     field(lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number', data.aadhaarNumber),
     field(lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number', data.mobileNumber),
@@ -205,8 +205,10 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
     field(lang === 'hi' ? 'पिन कोड' : 'PIN Code', data.pinCode),
     data.shopOptionLabel ? field(lang === 'hi' ? 'बूथ/स्टॉल विकल्प' : 'Booth/Stall Option', data.shopOptionLabel) : '',
     data.feePaise !== null ? field(lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee', formatRupees(data.feePaise)) : '',
-    field(lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work', data.workPurpose, true),
-    field(lang === 'hi' ? 'उपलब्धि/अनुभव' : 'Achievement / Experience', data.achievementExperience, true),
+    data.workPurpose ? field(lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work', data.workPurpose, true) : '',
+    data.achievementExperience
+      ? field(lang === 'hi' ? 'उपलब्धि/अनुभव' : 'Achievement / Experience', data.achievementExperience, true)
+      : '',
     data.remarks ? field(lang === 'hi' ? 'टिप्पणी' : 'Remarks', data.remarks, true) : '',
     ...data.fieldValues.map(fv => field(lang === 'hi' ? (fv.labelHi ?? fv.label) : fv.label, fv.value)),
     data.submittedAt

@@ -367,15 +367,21 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             title={lang === 'hi' ? 'आवेदक / संस्था का विवरण' : 'Applicant Details'}
             editHref={`/apply/${categorySlug}?edit=${applicationId}`}
           >
-            <ReviewRow label={lang === 'hi' ? 'ईमेल पता' : 'Email'} value={data.common.email} />
+            <ReviewRow label={lang === 'hi' ? 'पूरा नाम' : 'Full Name'} value={data.common.representativeName} />
+            <ReviewRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={data.common.fatherName} />
             <ReviewRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={data.common.mobileNumber} />
             <ReviewRow label={lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile'} value={data.common.alternateMobile} />
-            <ReviewRow label={lang === 'hi' ? 'फर्म / एनजीओ / संस्था' : 'Firm / NGO / Organisation'} value={data.common.organisationName} />
-            <ReviewRow label={lang === 'hi' ? 'मालिक / प्रतिनिधि' : 'Representative Name'} value={data.common.representativeName} />
-            <ReviewRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={data.common.fatherName} />
+            <ReviewRow label={lang === 'hi' ? 'ईमेल पता' : 'Email'} value={data.common.email} />
             <ReviewRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={data.common.aadhaarNumber} />
-            <ReviewRow label={lang === 'hi' ? 'कार्य का प्रकार' : 'Type of Work'} value={data.common.workPurpose} />
-            <ReviewRow label={lang === 'hi' ? 'अनुभव / उपलब्धि' : 'Experience / Award'} value={data.common.achievementExperience} />
+            {data.common.organisationName && (
+              <ReviewRow label={lang === 'hi' ? 'संस्था / फर्म' : 'Organisation / Firm'} value={data.common.organisationName} />
+            )}
+            {data.common.workPurpose && (
+              <ReviewRow label={lang === 'hi' ? 'कार्य का प्रकार' : 'Type of Work'} value={data.common.workPurpose} />
+            )}
+            {data.common.achievementExperience && (
+              <ReviewRow label={lang === 'hi' ? 'अनुभव / उपलब्धि' : 'Experience / Award'} value={data.common.achievementExperience} />
+            )}
             {data.common.remarks && (
               <ReviewRow label={lang === 'hi' ? 'टिप्पणी' : 'Remarks'} value={data.common.remarks} />
             )}

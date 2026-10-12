@@ -96,7 +96,6 @@ const ApplicationFormOrchestrator = ({
           categorySlug: config.category.slug,
           common: {
             email: 'pending@pending.local',
-            organisationName: 'Pending',
             representativeName: 'Pending',
             fatherName: 'Pending',
             aadhaarNumber: '000000000000',
@@ -104,9 +103,7 @@ const ApplicationFormOrchestrator = ({
             state: 'Pending',
             district: 'Pending',
             pinCode: '000000',
-            mobileNumber: '9999999999',
-            workPurpose: 'Pending',
-            achievementExperience: 'Pending'
+            mobileNumber: '9999999999'
           },
           categoryFields: shopOptionPayload,
           declaration: { informationCorrect: true, agreedToTerms: true }
@@ -188,7 +185,6 @@ const ApplicationFormOrchestrator = ({
         shopOptionId: body.shopOptionId ?? undefined,
         common: {
           email: body.common.email,
-          organisationName: body.common.organisationName,
           representativeName: body.common.representativeName,
           fatherName: body.common.fatherName,
           aadhaarNumber: body.common.aadhaarNumber,
@@ -198,8 +194,6 @@ const ApplicationFormOrchestrator = ({
           pinCode: body.common.pinCode,
           mobileNumber: body.common.mobileNumber,
           alternateMobile: body.common.alternateMobile ?? '',
-          workPurpose: body.common.workPurpose,
-          achievementExperience: body.common.achievementExperience,
           remarks: body.common.remarks ?? ''
         },
         categoryFields: Object.fromEntries(
@@ -553,12 +547,12 @@ const ApplicationFormOrchestrator = ({
                 <div className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
                   <div className='mb-5 border-b border-[#f1f5f9] pb-4'>
                     <h2 className='text-xl sm:text-2xl font-black text-[#0c2847]'>
-                      {lang === 'hi' ? 'आवेदक / संस्था का विवरण' : 'Applicant Details'}
+                      {lang === 'hi' ? 'व्यक्तिगत विवरण' : 'Personal Details'}
                     </h2>
                     <p className='text-xs sm:text-sm text-[#64748b] mt-1'>
                       {lang === 'hi'
-                        ? 'बूथ/स्टॉल आवंटन हेतु आवेदक व्यक्ति अथवा संस्था का विवरण भरें।'
-                        : 'Please enter the details of the person or organisation applying for the booth/stall.'}
+                        ? 'पहचान पत्र के अनुसार अपना नाम, पिता का नाम, संपर्क और आधार संख्या दर्ज करें।'
+                        : 'Enter your name, father’s name, contact details and Aadhaar number as on your ID.'}
                     </p>
                   </div>
                   <ApplicantInfoStep
@@ -582,12 +576,12 @@ const ApplicationFormOrchestrator = ({
                 <div className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
                   <div className='mb-5 border-b border-[#f1f5f9] pb-4'>
                     <h2 className='text-xl sm:text-2xl font-black text-[#0c2847]'>
-                      {lang === 'hi' ? 'संपर्क एवं पता विवरण' : 'Contact & Address'}
+                      {lang === 'hi' ? 'पता विवरण' : 'Address'}
                     </h2>
                     <p className='text-xs sm:text-sm text-[#64748b] mt-1'>
                       {lang === 'hi'
-                        ? 'पत्राचार और सत्यापन हेतु अपना वर्तमान पता व संपर्क सूत्र दर्ज करें।'
-                        : 'Please provide your current correspondence and verification address.'}
+                        ? 'पत्राचार और सत्यापन हेतु अपना वर्तमान पता दर्ज करें।'
+                        : 'Enter your current correspondence and verification address.'}
                     </p>
                   </div>
                   <AddressStep control={form.control} />

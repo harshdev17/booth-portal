@@ -115,6 +115,8 @@ const ApplyPage = async ({
         key: f.field_key,
         label: f.label,
         labelHi: f.label_hi,
+        section: f.section,
+        sectionHi: f.section_hi,
         inputType: f.input_type,
         required: Boolean(f.is_required),
         maxLength: f.max_length,

@@ -9,6 +9,7 @@ import { hasActiveDuplicateApplication, type ValidatedSubmission } from '@/lib/a
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction, type TransactionQuery } from '@/lib/db/client'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
+import { deriveOrganisationName } from '@/lib/applications/organisation-name'
 
 export type CreateDraftResult = {
   applicationId: number
@@ -106,7 +107,7 @@ export async function createDraftApplication(
           validated.category.id,
           validated.shopOption?.id ?? null,
           input.common.email,
-          input.common.organisationName,
+          deriveOrganisationName(input.categoryFields),
           input.common.representativeName,
           input.common.fatherName,
           aadhaarCiphertext,
@@ -118,8 +119,8 @@ export async function createDraftApplication(
           input.common.pinCode,
           input.common.mobileNumber,
           input.common.alternateMobile ?? null,
-          input.common.workPurpose,
-          input.common.achievementExperience,
+          '', // work_purpose / achievement_experience: no longer asked
+          '',
           input.common.remarks ?? null,
           accessTokenHash,
           meta.ipAddress ?? null
@@ -217,7 +218,7 @@ export async function updateDraftApplication(
         validated.category.id,
         validated.shopOption?.id ?? null,
         input.common.email,
-        input.common.organisationName,
+        deriveOrganisationName(input.categoryFields),
         input.common.representativeName,
         input.common.fatherName,
         aadhaarCiphertext,
@@ -229,8 +230,8 @@ export async function updateDraftApplication(
         input.common.pinCode,
         input.common.mobileNumber,
         input.common.alternateMobile ?? null,
-        input.common.workPurpose,
-        input.common.achievementExperience,
+        '', // work_purpose / achievement_experience: no longer asked (category fields cover them)
+        '',
         input.common.remarks ?? null,
         applicationId
       ]

@@ -23,7 +23,6 @@ export const APPLICATION_FORM_DEFAULT_VALUES: ApplicationFormValues = {
   shopOptionId: undefined,
   common: {
     email: '',
-    organisationName: '',
     representativeName: '',
     fatherName: '',
     aadhaarNumber: '',
@@ -33,8 +32,6 @@ export const APPLICATION_FORM_DEFAULT_VALUES: ApplicationFormValues = {
     pinCode: '',
     mobileNumber: '',
     alternateMobile: '',
-    workPurpose: '',
-    achievementExperience: '',
     remarks: ''
   },
   categoryFields: {}

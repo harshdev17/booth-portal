@@ -176,7 +176,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               </span>
             </h1>
             <p className='text-sm text-muted-foreground'>
-              {app.representative_name} · {app.organisation_name} · {app.category_name}
+              {[app.representative_name, app.organisation_name, app.category_name].filter(Boolean).join(' · ')}
             </p>
           </div>
         </div>
@@ -228,14 +228,16 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   canCheck={canVerifyDocuments}
                   initiallyChecked={checkedFieldKeys.has('father_name')}
                 />
-                <ApplicationFieldRow
-                  applicationId={id}
-                  fieldKey='organisation_name'
-                  label='Organisation / Firm Name'
-                  value={app.organisation_name}
-                  canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('organisation_name')}
-                />
+                {app.organisation_name && (
+                  <ApplicationFieldRow
+                    applicationId={id}
+                    fieldKey='organisation_name'
+                    label='Organisation / Firm Name'
+                    value={app.organisation_name}
+                    canCheck={canVerifyDocuments}
+                    initiallyChecked={checkedFieldKeys.has('organisation_name')}
+                  />
+                )}
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='aadhaar_number'
@@ -359,24 +361,28 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                 canCheck={canVerifyDocuments}
                 initiallyChecked={checkedFieldKeys.has('submitted_at')}
               />
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='work_purpose'
-                label='Purpose of Work'
-                value={app.work_purpose}
-                full
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('work_purpose')}
-              />
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='achievement_experience'
-                label='Achievements / Experience'
-                value={app.achievement_experience}
-                full
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('achievement_experience')}
-              />
+              {app.work_purpose && (
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='work_purpose'
+                  label='Purpose of Work'
+                  value={app.work_purpose}
+                  full
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('work_purpose')}
+                />
+              )}
+              {app.achievement_experience && (
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='achievement_experience'
+                  label='Achievements / Experience'
+                  value={app.achievement_experience}
+                  full
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('achievement_experience')}
+                />
+              )}
               {app.remarks && (
                 <ApplicationFieldRow
                   applicationId={id}

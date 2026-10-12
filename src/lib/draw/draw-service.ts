@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { randomBytes, createHash } from 'node:crypto'
+
 import type { PoolConnection } from 'mysql2/promise'
 
 import { getPool } from '@/lib/db/client'
@@ -66,6 +67,7 @@ export class LuckyDrawService {
       `SELECT id, name FROM categories WHERE id = ? LIMIT 1`,
       [params.categoryId]
     )
+
     if (!categoryRows.length) throw new Error('Category not found.')
     const category = categoryRows[0]
 
@@ -100,6 +102,7 @@ export class LuckyDrawService {
       serverSeed,
       params.clientSeed
     )
+
     const shuffledStalls = ProvablyFairRandom.shuffle<StallRow>(
       stalls,
       serverSeed,
@@ -183,6 +186,7 @@ export class LuckyDrawService {
         `SELECT id, name FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
+
       if (!categoryRows.length) throw new Error('Category not found.')
       const category = categoryRows[0]
 
@@ -199,6 +203,7 @@ export class LuckyDrawService {
          ORDER BY a.id ASC FOR UPDATE`,
         [params.categoryId]
       )
+
       if (candidates.length === 0) {
         throw new Error('No eligible candidates found for this draw.')
       }
@@ -211,6 +216,7 @@ export class LuckyDrawService {
          ORDER BY stall_number ASC FOR UPDATE`,
         [params.categoryId]
       )
+
       if (stalls.length === 0) {
         throw new Error('No available stall units in this category.')
       }
@@ -225,6 +231,7 @@ export class LuckyDrawService {
         `SELECT COALESCE(MAX(round_number), 0) + 1 AS nextRound FROM draw_events WHERE category_id = ?`,
         [params.categoryId]
       )
+
       const roundNumber = Number(roundRows[0].nextRound)
       const drawCode = `DRAW-${params.categoryId}-R${roundNumber}-${Date.now().toString(36).toUpperCase()}`
 
@@ -250,6 +257,7 @@ export class LuckyDrawService {
           params.executedByUserId
         ]
       )
+
       const drawEventId = insertEvent.insertId
 
       // 7. Store Candidate Snapshot
@@ -261,6 +269,7 @@ export class LuckyDrawService {
           .update(`${cand.applicationId}:${cand.applicationNumber}:${cand.mobileNumber}`)
           .digest('hex')
       ])
+
       await conn.query(
         `INSERT INTO draw_candidate_snapshots 
          (draw_event_id, application_id, initial_index, candidate_hash) 
@@ -274,6 +283,7 @@ export class LuckyDrawService {
         serverSeed,
         params.clientSeed
       )
+
       const shuffledStalls = ProvablyFairRandom.shuffle<StallRow>(
         stalls,
         serverSeed,
@@ -298,6 +308,7 @@ export class LuckyDrawService {
         if (i < shuffledStalls.length) {
           // Allotted Winner
           const stall = shuffledStalls[i]
+
           allottedCount++
           stallUpdateIds.push(stall.shopUnitId)
           allottedAppIds.push(candidate.applicationId)
@@ -346,6 +357,7 @@ export class LuckyDrawService {
       for (let idx = 0; idx < allottedCount; idx++) {
         const stall = shuffledStalls[idx]
         const candidate = shuffledCandidates[idx]
+
         await conn.query(
           `UPDATE shop_units 
            SET status = 'allotted', allotted_to_application_id = ? 

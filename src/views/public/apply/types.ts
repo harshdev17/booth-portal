@@ -21,6 +21,10 @@ export type CategoryFieldDto = {
   key: string
   label: string
   labelHi: string | null
+
+  /** Sub-heading this field is grouped under in the category step (null = no heading). */
+  section: string | null
+  sectionHi: string | null
   inputType: 'text' | 'textarea' | 'select' | 'radio' | 'multiselect'
   warnOnValue?: { value: string; messageEn: string; messageHi: string }
   required: boolean
