@@ -106,7 +106,10 @@ const ApplyPage = async ({
       auctionDate: category.auction_date,
       auctionVenue: category.auction_venue,
       auctionVenueHi: category.auction_venue_hi,
-      isAcceptingApplications: true
+      isAcceptingApplications: true,
+      showRemarks: Number(category.show_remarks) === 1,
+      formNotice: category.form_notice,
+      formNoticeHi: category.form_notice_hi
     },
     shopOptions: shopOptions.map(o => ({ id: o.id, label: o.label, feePaise: o.fee_paise })),
     fields: fieldDefinitions

@@ -14,9 +14,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import AddressStep from '@/views/public/apply/AddressStep'
+import DeclarationCheckboxes, { type Declarations } from '@/views/public/apply/DeclarationCheckboxes'
 import ApplicantInfoStep from '@/views/public/apply/ApplicantInfoStep'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
-import ApplicationSummaryPanel from '@/views/public/apply/ApplicationSummaryPanel'
 import CategoryFieldsStep from '@/views/public/apply/CategoryFieldsStep'
 import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
 import { applicationFormSchema, APPLICATION_FORM_DEFAULT_VALUES, type ApplicationFormValues } from '@/views/public/apply/form-values'
@@ -55,6 +55,7 @@ const ApplicationFormOrchestrator = ({
   const { lang } = useLanguage()
   const router = useRouter()
   const [draft, setDraft] = useState<DraftState>(null)
+  const [declarations, setDeclarations] = useState<Declarations>({ informationCorrect: false, agreedToTerms: false })
   const [draftError, setDraftError] = useState<string | null>(null)
   const [isCreatingDraft, setIsCreatingDraft] = useState(true)
   const [uploadState, setUploadState] = useState<DocumentUploadState>({})
@@ -296,9 +297,21 @@ const ApplicationFormOrchestrator = ({
     .filter(d => d.required)
     .every(d => uploadState[d.key]?.status === 'uploaded')
 
+  const declarationsAccepted = declarations.informationCorrect && declarations.agreedToTerms
+
   const handleReviewApplication = form.handleSubmit(async values => {
     if (!draft) return
     setSubmitError(null)
+
+    if (!declarationsAccepted) {
+      setSubmitError(
+        lang === 'hi'
+          ? 'आगे बढ़ने से पहले कृपया दोनों घोषणाओं पर सही का निशान लगाएँ।'
+          : 'Please tick both declarations before continuing.'
+      )
+
+      return
+    }
 
     if (hasDuplicateField) {
       setSubmitError(
@@ -448,8 +461,6 @@ const ApplicationFormOrchestrator = ({
               : 'Please review the requirements, fill in your details accurately, and upload the requested documents.'}
           </p>
         </div>
-
-        <ApplicationSummaryPanel config={config} />
 
         {/* Links to this category's own detail page (not the general
             /guidelines page) — that page now shows this exact category's
@@ -610,7 +621,13 @@ const ApplicationFormOrchestrator = ({
                           : `Additional information specifically required for ${config.category.name}.`}
                       </p>
                     </div>
-                    <CategoryFieldsStep control={form.control} fields={config.fields} shopOptions={config.shopOptions} />
+                    <CategoryFieldsStep
+                      control={form.control}
+                      fields={config.fields}
+                      shopOptions={config.shopOptions}
+                      showRemarks={config.category.showRemarks}
+                      notice={lang === 'hi' ? (config.category.formNoticeHi ?? config.category.formNotice) : config.category.formNotice}
+                    />
                   </div>
                 </section>
               )}
@@ -672,6 +689,8 @@ const ApplicationFormOrchestrator = ({
                 </div>
               </section>
 
+              <DeclarationCheckboxes value={declarations} onChange={setDeclarations} />
+
               {/* Form Action Button */}
               <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>
                 <p className='text-xs sm:text-sm text-[#64748b] text-center sm:text-left'>
@@ -682,7 +701,7 @@ const ApplicationFormOrchestrator = ({
                 <Button
                   type='submit'
                   size='lg'
-                  disabled={!draft || isProceeding || isCreatingDraft}
+                  disabled={!draft || isProceeding || isCreatingDraft || !declarationsAccepted}
                   className='w-full sm:w-auto rounded-xl bg-[#0c2847] px-8 py-4 text-sm font-bold text-white shadow-sm hover:bg-[#06192e] transition active:scale-[0.98]'
                 >
                   {isProceeding ? <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' /> : null}

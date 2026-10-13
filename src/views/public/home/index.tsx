@@ -10,14 +10,13 @@ const PublicHome = async () => {
   const rawCategories = await listOpenCategories()
 
   // Available-shop counts per category, from the real inventory
-  // (shop_units — see migration 0016_shop_inventory.sql). A category with
-  // no imported inventory yet simply shows 0 rather than hiding the count,
-  // since "no stalls configured yet" is accurate information, not an error.
+  // (shop_units — see migration 0016_shop_inventory.sql). The card only shows
+  // the count when it is above 0 (see CategoryCard.tsx).
   const availableCounts = await query<Array<{ category_id: number; available_count: number }>>(
     `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
   )
 
-  const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, row.available_count]))
+  const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, Number(row.available_count)]))
 
   const categories = rawCategories.map((category, index) => {
     const fee = getFeeBreakdown(category)

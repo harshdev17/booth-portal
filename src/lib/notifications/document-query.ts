@@ -14,6 +14,7 @@ export async function notifyDocumentQuery(params: {
   applicationId: number
   applicationNumber: string
   mobileNumber: string
+  email?: string | null
   representativeName: string
   documentLabel: string
   remarks: string
@@ -28,6 +29,7 @@ export async function notifyDocumentQuery(params: {
     // text — document label and remarks are combined into {{3}} since the
     // template has no separate slot for the document name.
     templateParams: [params.representativeName, params.applicationNumber, `${params.documentLabel}: ${params.remarks}`],
-    applicationId: params.applicationId
+    applicationId: params.applicationId,
+    email: params.email
   })
 }

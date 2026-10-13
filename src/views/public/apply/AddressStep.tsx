@@ -17,7 +17,7 @@ const AddressStep = ({ control }: { control: Control<ApplicationFormValues> }) =
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid} className='md:col-span-2'>
             <FieldLabel htmlFor={field.name}>
-              {lang === 'hi' ? 'पत्राचार का पता *' : 'Correspondence Address *'}
+              {lang === 'hi' ? 'आवेदक का पता *' : 'Applicant Address *'}
             </FieldLabel>
             <Textarea
               {...field}

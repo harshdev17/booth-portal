@@ -196,7 +196,7 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
     field(lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name', data.representativeName),
     field(lang === 'hi' ? 'पिता का नाम' : "Father's Name", data.fatherName),
     field(lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number', data.aadhaarNumber),
-    field(lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number', data.mobileNumber),
+    field(lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number', data.mobileNumber),
     data.alternateMobile ? field(lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile', data.alternateMobile) : '',
     field(lang === 'hi' ? 'ईमेल' : 'Email', data.email),
     field(lang === 'hi' ? 'पता' : 'Address', data.address, true),

@@ -54,11 +54,12 @@ async function decideDocument(
       document_label: string
       application_number: string
       mobile_number: string
+      email: string
       representative_name: string
     }>
   >(
     `SELECT ad.verification_status, ad.application_id, ad.original_filename, cdd.label AS document_label,
-            a.application_number, a.mobile_number, a.representative_name
+            a.application_number, a.mobile_number, a.email, a.representative_name
      FROM application_documents ad
      JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
      JOIN applications a ON a.id = ad.application_id
@@ -125,6 +126,7 @@ async function decideDocument(
       applicationId: current.application_id,
       applicationNumber: current.application_number,
       mobileNumber: current.mobile_number,
+      email: current.email,
       representativeName: current.representative_name,
       documentLabel: current.document_label,
       remarks: parsed.data.remarks ?? ''

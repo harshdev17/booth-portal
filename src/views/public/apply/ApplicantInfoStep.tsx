@@ -136,7 +136,7 @@ const ApplicantInfoStep = ({
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'पूरा नाम *' : 'Full Name *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आवेदक का नाम *' : 'Name of Applicant *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}
@@ -180,7 +180,7 @@ const ApplicantInfoStep = ({
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.mobileNumber}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'मोबाइल नंबर *' : 'Mobile Number *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'व्हाट्सएप नंबर *' : 'WhatsApp Number *'}</FieldLabel>
             <MobileNumberInput
               id={field.name}
               name={field.name}
@@ -272,7 +272,7 @@ const ApplicantInfoStep = ({
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}>
-            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आधार संख्या *' : 'Aadhaar Number *'}</FieldLabel>
+            <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'आवेदक की आधार संख्या *' : 'Applicant Aadhaar Number *'}</FieldLabel>
             <Input
               {...field}
               id={field.name}

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { query } from '@/lib/db/client'
 import { AiSensyNotificationService } from '@/lib/notifications/aisensy'
+import { buildEmailContent, isEmailConfigured, sendEmail } from '@/lib/notifications/email'
 import type { NotificationService, SendTemplateMessageInput } from '@/lib/notifications/types'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -49,6 +50,32 @@ export async function sendNotification(input: SendTemplateMessageInput): Promise
     )
   } catch (error) {
     logServerError('notifications.log-write', error)
+  }
+
+  // Also email the same message. A separate try so an email problem can never
+  // change the WhatsApp outcome the caller relies on (e.g. the OTP flow).
+  if (input.email && input.category !== 'otp') {
+    try {
+      const content = buildEmailContent(input.category, input.templateParams)
+
+      const emailResult = content
+        ? await sendEmail({ to: input.email, ...content })
+        : ({ ok: false, error: 'No email template for this category.' } as const)
+
+      await query(
+        `INSERT INTO notification_log (channel, provider, category, application_id, destination, campaign_name, status, error_message)
+         VALUES ('email', 'smtp', ?, ?, ?, NULL, ?, ?)`,
+        [
+          input.category,
+          input.applicationId ?? null,
+          input.email.slice(0, 191),
+          emailResult.ok ? 'sent' : 'failed',
+          emailResult.ok ? null : emailResult.error.slice(0, 512)
+        ]
+      )
+    } catch (error) {
+      logServerError('notifications.email', error, { configured: isEmailConfigured() })
+    }
   }
 
   return result.ok

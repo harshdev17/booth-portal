@@ -11,7 +11,6 @@ import { AlertCircleIcon, CheckCircle2Icon, CreditCardIcon, EyeIcon, FileTextIco
 import RecaptchaWidget from '@/components/public/RecaptchaWidget'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
@@ -84,8 +83,6 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   const [data, setData] = useState<ReviewData | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { preview, previewError, isLoadingPreview, open: openPreview, close: closePreview } = usePreviewController()
-  const [informationCorrect, setInformationCorrect] = useState(false)
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -214,7 +211,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   }
 
   const handleSubmit = async () => {
-    if (!access || !informationCorrect || !agreedToTerms || otpPhase !== 'verified') return
+    if (!access || otpPhase !== 'verified') return
     if (recaptchaRequired && !getRecaptchaTokenRef.current) return
 
     setIsSubmitting(true)
@@ -322,7 +319,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   if (!data) return null
 
-  const canSubmit = informationCorrect && agreedToTerms && otpPhase === 'verified' && recaptchaReady
+  const canSubmit = otpPhase === 'verified' && recaptchaReady
 
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -351,7 +348,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             <strong className='text-[#0c2847]'>{data.categoryName}</strong> —{' '}
             {lang === 'hi'
               ? 'कृपया अंतिम रूप से सबमिट करने से पहले सभी विवरणों की जांच करें।'
-              : 'Please double-check all details and confirm your declaration before final submission.'}
+              : 'Please double-check all details before final submission.'}
           </p>
         </div>
 
@@ -369,7 +366,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           >
             <ReviewRow label={lang === 'hi' ? 'पूरा नाम' : 'Full Name'} value={data.common.representativeName} />
             <ReviewRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={data.common.fatherName} />
-            <ReviewRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={data.common.mobileNumber} />
+            <ReviewRow label={lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'} value={data.common.mobileNumber} />
             <ReviewRow label={lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile'} value={data.common.alternateMobile} />
             <ReviewRow label={lang === 'hi' ? 'ईमेल पता' : 'Email'} value={data.common.email} />
             <ReviewRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={data.common.aadhaarNumber} />
@@ -571,33 +568,6 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           </section>
 
           <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-            <h2 className='mb-2 text-xl font-black text-[#0c2847]'>
-              {lang === 'hi' ? 'शपथ पत्र / घोषणा' : 'Declaration'}
-            </h2>
-            <p className='mb-5 text-xs sm:text-sm text-[#64748b]'>
-              {lang === 'hi'
-                ? 'आवेदन जमा करने हेतु निम्नलिखित दोनों घोषणाओं की पुष्टि करना अनिवार्य है।'
-                : 'Please confirm the following declarations to enable application submission.'}
-            </p>
-            <div className='flex flex-col gap-3'>
-              <label className='flex items-start gap-3.5 rounded-xl border border-[#e2e8f0] bg-[#fafbfc] p-4 cursor-pointer hover:bg-[#f8fafc] transition'>
-                <Checkbox checked={informationCorrect} onCheckedChange={v => setInformationCorrect(Boolean(v))} className='mt-0.5' />
-                <span className='text-xs sm:text-sm text-[#334155] leading-relaxed'>
-                  {lang === 'hi'
-                    ? 'मैं पुष्टि करता/करती हूँ कि इस आवेदन में दी गई समस्त जानकारी मेरी सर्वोत्तम जानकारी व विश्वास के अनुसार सत्य एवं सही है।'
-                    : 'I confirm that the information provided in this application is true and correct to the best of my knowledge.'}
-                </span>
-              </label>
-              <label className='flex items-start gap-3.5 rounded-xl border border-[#e2e8f0] bg-[#fafbfc] p-4 cursor-pointer hover:bg-[#f8fafc] transition'>
-                <Checkbox checked={agreedToTerms} onCheckedChange={v => setAgreedToTerms(Boolean(v))} className='mt-0.5' />
-                <span className='text-xs sm:text-sm text-[#334155] leading-relaxed'>
-                  {lang === 'hi'
-                    ? 'मैंने ऊपर दी गई जानकारी एवं दस्तावेजों की समीक्षा कर ली है तथा कुरुक्षेत्र विकास बोर्ड के सभी लागू नियमों एवं शर्तों से पूर्णतः सहमत हूँ।'
-                    : 'I have reviewed the information and documents provided above and agree to the applicable terms and conditions of the Kurukshetra Development Board (KDB).'}
-                </span>
-              </label>
-            </div>
-
             {recaptchaRequired && (
               <RecaptchaWidget
                 onReady={getToken => {

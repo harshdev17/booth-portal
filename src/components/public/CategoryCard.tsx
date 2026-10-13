@@ -111,13 +111,16 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         {title}
       </h3>
 
-      {/* Available shops count */}
-      <div className='mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#eef6f0] px-4 py-1.5'>
-        <span className='text-lg font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
-        <span className='text-sm font-bold text-[#1a7d42]'>
-          {lang === 'hi' ? 'उपलब्ध बूथ/स्टॉल' : 'Available Booths/Stalls'}
-        </span>
-      </div>
+      {/* Available shops count — shown only when the category actually has available
+          stalls, so a category with no inventory loaded yet never advertises "0". */}
+      {category.availableShopsCount > 0 && (
+        <div className='mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#eef6f0] px-4 py-1.5'>
+          <span className='text-lg font-black text-[#1a7d42]'>{category.availableShopsCount}</span>
+          <span className='text-sm font-bold text-[#1a7d42]'>
+            {lang === 'hi' ? 'उपलब्ध बूथ/स्टॉल' : 'Available Booths/Stalls'}
+          </span>
+        </div>
+      )}
 
       {/* Key facts */}
       <dl className='mb-4 flex flex-col gap-3 border-y border-[#f0eae1] py-4 text-sm'>

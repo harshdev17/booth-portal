@@ -13,6 +13,9 @@ export type CategoryDetail = {
   auctionVenue: string | null
   auctionVenueHi: string | null
   isAcceptingApplications: boolean
+  showRemarks: boolean
+  formNotice: string | null
+  formNoticeHi: string | null
 }
 
 export type ShopOptionDto = { id: number; label: string; feePaise: number | null }

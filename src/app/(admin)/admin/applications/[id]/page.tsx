@@ -265,7 +265,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='mobile_number'
-                  label='Mobile Number'
+                  label='WhatsApp Number'
                   value={app.mobile_number}
                   mono
                   canCheck={canVerifyDocuments}

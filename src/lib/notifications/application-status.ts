@@ -29,6 +29,7 @@ export async function notifyApplicationStatusChange(params: {
   applicationId: number
   applicationNumber: string
   mobileNumber: string
+  email?: string | null
   representativeName: string
   newStatus: string
 }): Promise<void> {
@@ -39,6 +40,7 @@ export async function notifyApplicationStatusChange(params: {
     destination: params.mobileNumber.startsWith('+') ? params.mobileNumber : `+91${params.mobileNumber}`,
     userName: params.representativeName,
     templateParams: [params.representativeName, params.applicationNumber, statusLabel],
-    applicationId: params.applicationId
+    applicationId: params.applicationId,
+    email: params.email
   })
 }

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { CheckCircle2Icon, MessageSquareIcon, XCircleIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { isEmailConfigured } from '@/lib/notifications/email'
 import { requirePermission } from '@/lib/rbac/authorize'
 import SendTestNotification from '@/views/admin/settings/SendTestNotification'
 
@@ -32,6 +33,7 @@ const NotificationSettingsPage = async () => {
   await requirePermission('config:manage')
 
   const apiKeyConfigured = !!process.env.AISENSY_API_KEY
+  const emailConfigured = isEmailConfigured()
 
   const rows = CATEGORY_ENV_MAP.map(row => ({
     ...row,
@@ -61,6 +63,24 @@ const NotificationSettingsPage = async () => {
               {apiKeyConfigured
                 ? 'Connected.'
                 : 'Not connected — no WhatsApp message will be sent until the technical team completes the setup.'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardContent className='flex items-center gap-3 pt-6'>
+          {emailConfigured ? (
+            <CheckCircle2Icon className='size-5 text-emerald-600' />
+          ) : (
+            <XCircleIcon className='size-5 text-red-600' />
+          )}
+          <div>
+            <p className='text-sm font-semibold text-slate-800'>Email</p>
+            <p className='text-xs text-muted-foreground'>
+              {emailConfigured
+                ? 'Connected. The same messages sent on WhatsApp are also emailed to applicants.'
+                : 'Not connected — applicants will only receive WhatsApp messages until the technical team completes the email setup.'}
             </p>
           </div>
         </CardContent>

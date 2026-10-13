@@ -20,7 +20,7 @@ const STATIC_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'father_name', label: "Father's Name" },
   { key: 'aadhaar_number', label: 'Aadhaar Number' },
   { key: 'email', label: 'Email' },
-  { key: 'mobile_number', label: 'Mobile Number' },
+  { key: 'mobile_number', label: 'WhatsApp Number' },
   { key: 'alternate_mobile', label: 'Alternate Mobile' },
   { key: 'pin_code', label: 'PIN Code' },
   { key: 'address', label: 'Address' },

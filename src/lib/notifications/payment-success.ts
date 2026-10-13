@@ -16,8 +16,8 @@ import { logServerError } from '@/lib/security/error-log'
  */
 export async function notifyPaymentSuccess(applicationId: number, amountPaise: number): Promise<void> {
   try {
-    const rows = await query<Array<{ application_number: string; mobile_number: string; representative_name: string }>>(
-      'SELECT application_number, mobile_number, representative_name FROM applications WHERE id = ? LIMIT 1',
+    const rows = await query<Array<{ application_number: string; mobile_number: string; representative_name: string; email: string }>>(
+      'SELECT application_number, mobile_number, representative_name, email FROM applications WHERE id = ? LIMIT 1',
       [applicationId]
     )
 
@@ -33,7 +33,8 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
       destination,
       userName,
       templateParams: [userName, application.application_number, String(amountPaise / 100)],
-      applicationId
+      applicationId,
+      email: application.email
     })
 
     await sendNotification({
@@ -41,7 +42,8 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
       destination,
       userName,
       templateParams: [userName, application.application_number],
-      applicationId
+      applicationId,
+      email: application.email
     })
   } catch (error) {
     logServerError('notifications.payment-success', error, { applicationId })

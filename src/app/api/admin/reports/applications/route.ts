@@ -20,7 +20,7 @@ const CSV_COLUMNS: Array<{ key: string; label: string }> = [
   { key: 'representative_name', label: 'Applicant / Representative Name' },
   { key: 'father_name', label: 'Father / Husband Name' },
   { key: 'organisation_name', label: 'Organisation / Business Name' },
-  { key: 'mobile_number', label: 'Mobile Number' },
+  { key: 'mobile_number', label: 'WhatsApp Number' },
   { key: 'alternate_mobile', label: 'Alternate Mobile' },
   { key: 'email', label: 'Email Address' },
   { key: 'aadhaar_last4', label: 'Aadhaar (Last 4)' },

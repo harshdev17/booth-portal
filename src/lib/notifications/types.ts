@@ -24,6 +24,9 @@ export type SendTemplateMessageInput = {
   templateParams: string[]
   applicationId?: number
 
+  /** When set, the same message is also emailed here (not used for OTP codes). */
+  email?: string | null
+
   /**
    * Value for a template's interactive button, when it has one (e.g. an
    * Authentication template's "Copy Code" button). WhatsApp/Meta requires

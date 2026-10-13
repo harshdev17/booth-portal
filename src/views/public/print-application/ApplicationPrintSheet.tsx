@@ -92,7 +92,7 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       <SummaryRow label={lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name'} value={result.representativeName} />
       <SummaryRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={result.fatherName} />
       <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarNumber} />
-      <SummaryRow label={lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} value={result.mobileNumber} />
+      <SummaryRow label={lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'} value={result.mobileNumber} />
       {result.alternateMobile && (
         <SummaryRow label={lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile'} value={result.alternateMobile} />
       )}

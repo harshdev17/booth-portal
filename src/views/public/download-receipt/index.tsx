@@ -95,7 +95,7 @@ const DownloadReceipt = () => {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>{lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'}</FieldLabel>
               <Input
                 {...field}
                 id={field.name}

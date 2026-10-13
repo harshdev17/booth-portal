@@ -45,11 +45,15 @@ function toggleMultiselectValue(value: string | null | undefined, option: string
 const CategoryFieldsStep = ({
   control,
   fields,
-  shopOptions
+  shopOptions,
+  showRemarks,
+  notice
 }: {
   control: Control<ApplicationFormValues>
   fields: CategoryFieldDto[]
   shopOptions: ShopOptionDto[]
+  showRemarks: boolean
+  notice: string | null
 }) => {
   const { lang } = useLanguage()
   const hasShopOptions = shopOptions.length > 0
@@ -66,6 +70,13 @@ const CategoryFieldsStep = ({
 
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
+      {notice && (
+        <div className='flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 md:col-span-2'>
+          <AlertTriangleIcon className='mt-0.5 size-4 shrink-0' />
+          <span>{notice}</span>
+        </div>
+      )}
+
       {hasShopOptions && (
         <Controller
           name='shopOptionId'
@@ -217,6 +228,7 @@ const CategoryFieldsStep = ({
         )
       })}
 
+      {showRemarks && (
       <Controller
         name='common.remarks'
         control={control}
@@ -233,6 +245,7 @@ const CategoryFieldsStep = ({
           </Field>
         )}
       />
+      )}
     </div>
   )
 }
