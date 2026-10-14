@@ -141,13 +141,13 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>Import Booth/Stall Inventory</DialogTitle>
-          <DialogDescription>Bulk-add or update stall numbers from a CSV file.</DialogDescription>
+          <DialogDescription>Bulk-add or update booth/stall numbers from a CSV file.</DialogDescription>
         </DialogHeader>
 
         <div className='flex flex-col gap-5'>
           <div>
             <p className='mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800'>
-              <FileTextIcon className='size-4' /> 1. Download the import template and fill in your stall rows.
+              <FileTextIcon className='size-4' /> 1. Download the import template and fill in your booth/stall rows.
             </p>
             <Button variant='outline' size='sm' render={<a href='/api/admin/inventory/template' />}>
               <DownloadIcon />
@@ -175,7 +175,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               className='block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-semibold'
             />
             <p className='mt-2 text-xs text-muted-foreground'>
-              Supported: .csv · Max 10 MB · Header row required · Stall No., Single/Double, Category, Direction, EMD Amount
+              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, EMD Amount
               (optional)
             </p>
           </div>

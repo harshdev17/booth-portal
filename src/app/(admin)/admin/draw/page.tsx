@@ -9,7 +9,7 @@ import { requirePermission, getCurrentUserPermissions } from '@/lib/rbac/authori
 import DrawDashboardControl from '@/views/admin/draw/DrawDashboardControl'
 
 export const metadata: Metadata = {
-  title: 'Lucky Draw & Stall Allocation — IGM Admin Portal'
+  title: 'Draw & Booth/Stall Allocation — IGM Admin Portal'
 }
 
 export const dynamic = 'force-dynamic'
@@ -79,10 +79,10 @@ export default async function DrawProcessPage() {
         <div>
           <h1 className='text-2xl font-bold tracking-tight text-[#0c2847] flex items-center gap-2.5'>
             <ShuffleIcon className='size-6 text-blue-600' />
-            Lucky Draw & Stall Allocation Engine
+            Draw & Booth/Stall Allocation Engine
           </h1>
           <p className='text-sm text-slate-500 mt-0.5'>
-            Provably fair, deterministic randomization engine for oversubscribed commercial stall allotments.
+            Provably fair, deterministic randomization engine for oversubscribed commercial booth/stall allotments.
           </p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default async function DrawProcessPage() {
                 <tr>
                   <th className='py-3.5 px-4'>Draw Reference</th>
                   <th className='py-3.5 px-4'>Category</th>
-                  <th className='py-3.5 px-4'>Candidates / Stalls</th>
+                  <th className='py-3.5 px-4'>Candidates / Booths/Stalls</th>
                   <th className='py-3.5 px-4'>Outcome</th>
                   <th className='py-3.5 px-4'>Cryptographic Proof</th>
                   <th className='py-3.5 px-4'>Executed By</th>
@@ -138,7 +138,7 @@ export default async function DrawProcessPage() {
                     </td>
                     <td className='py-3.5 px-4 text-xs text-slate-600'>
                       <span className='font-semibold text-slate-900'>{draw.total_eligible_candidates}</span> eligible ·{' '}
-                      <span className='font-semibold text-slate-900'>{draw.total_available_stalls}</span> stalls
+                      <span className='font-semibold text-slate-900'>{draw.total_available_stalls}</span> booths/stalls
                     </td>
                     <td className='py-3.5 px-4'>
                       <div className='flex items-center gap-1.5'>

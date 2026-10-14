@@ -173,7 +173,7 @@ export default async function PoliceApplicationDetailPage({
           {app.stall_number ? (
             <div className='px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-right w-full md:w-auto'>
               <span className='text-[10px] text-blue-600 font-bold uppercase tracking-wider block'>
-                Allotted Booth / Stall
+                Allotted Booth/Stall
               </span>
               <span className='text-lg font-mono font-bold text-blue-950'>
                 Stall #{app.stall_number}
@@ -184,7 +184,7 @@ export default async function PoliceApplicationDetailPage({
             </div>
           ) : (
             <Badge variant='outline' className='text-xs text-amber-700 bg-amber-50 border-amber-300'>
-              Stall Allotment Pending
+              Booth/Stall Allotment Pending
             </Badge>
           )}
 

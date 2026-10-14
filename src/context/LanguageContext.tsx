@@ -26,18 +26,18 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.apply_now': 'आवेदन करें',
 
     // Hero
-    'hero.badge': 'आधिकारिक स्टॉल आवंटन पोर्टल',
+    'hero.badge': 'आधिकारिक बूथ/स्टॉल आवंटन पोर्टल',
     'hero.title_part1': 'हिस्सा बनें',
     'hero.title_part2': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
     'hero.desc': 'ब्रह्मसरोवर, कुरुक्षेत्र पर व्यावसायिक बूथों/स्टॉलों के लिए आवेदन करें। कुरुक्षेत्र विकास बोर्ड द्वारा संचालित आधिकारिक पोर्टल।',
-    'hero.btn_apply': 'स्टॉल देखें और आवेदन करें',
+    'hero.btn_apply': 'बूथ/स्टॉल देखें और आवेदन करें',
     'hero.btn_status': 'आवेदन की स्थिति जांचें',
 
     // Feature strip
     'feature.simple.title': 'सरल',
     'feature.simple.sub': 'ऑनलाइन आवेदन प्रक्रिया',
     'feature.transparent.title': 'पारदर्शी',
-    'feature.transparent.sub': 'लकी ड्रॉ आवंटन',
+    'feature.transparent.sub': 'ड्रॉ आवंटन',
     'feature.secure.title': 'सुरक्षित',
     'feature.secure.sub': 'डिजिटल भुगतान प्रणाली',
     'feature.support.title': 'सहायता',
@@ -45,33 +45,33 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Categories
     'categories.badge': 'गीता जयंती महोत्सव 2026 व्यावसायिक स्थान',
-    'categories.heading': 'स्टॉल श्रेणियां एवं आवंटन',
-    'categories.desc': 'ब्रह्मसरोवर मेला क्षेत्र में अपनी पसंदीदा स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
-    'categories.empty': 'वर्तमान में कोई स्टॉल श्रेणी आवेदन के लिए खुली नहीं है। कृपया शीघ्र जांचें।',
+    'categories.heading': 'बूथ/स्टॉल श्रेणियां एवं आवंटन',
+    'categories.desc': 'ब्रह्मसरोवर मेला क्षेत्र में अपनी पसंदीदा बूथ/स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
+    'categories.empty': 'वर्तमान में कोई बूथ/स्टॉल श्रेणी आवेदन के लिए खुली नहीं है। कृपया शीघ्र जांचें।',
     'categories.apply_now': 'आवेदन करें',
     'categories.view_details': 'विवरण और पात्रता',
     'categories.direct_payment': 'सीधा भुगतान',
 
     // Widgets
-    'status.title': 'स्टॉल आवेदन की स्थिति जांचें',
-    'status.desc': 'अपने आवेदन क्रमांक और एक्सेस कोड के माध्यम से अपने स्टॉल का सत्यापन व आवंटन स्थिति देखें।',
+    'status.title': 'बूथ/स्टॉल आवेदन की स्थिति जांचें',
+    'status.desc': 'अपने आवेदन क्रमांक और एक्सेस कोड के माध्यम से अपने बूथ/स्टॉल का सत्यापन व आवंटन स्थिति देखें।',
     'status.btn': 'स्थिति जांचें →',
-    'notices.title': 'आधिकारिक स्टॉल सूचनाएं',
-    'notices.desc': 'आवेदन अंतिम तिथि, दस्तावेज जांच, लकी ड्रॉ और स्टॉल आवंटन संबंधी आधिकारिक सूचनाएं यहां प्रकाशित होंगी।',
+    'notices.title': 'आधिकारिक बूथ/स्टॉल सूचनाएं',
+    'notices.desc': 'आवेदन अंतिम तिथि, दस्तावेज जांच, ड्रॉ और बूथ/स्टॉल आवंटन संबंधी आधिकारिक सूचनाएं यहां प्रकाशित होंगी।',
 
     // How it works
     'how.badge': 'आवंटन प्रक्रिया',
-    'how.heading': 'स्टॉल आवंटन कैसे कार्य करता है?',
-    'how.desc': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु स्टॉल आवेदन, सत्यापन एवं आवंटन की पारदर्शी डिजिटल प्रक्रिया।',
+    'how.heading': 'बूथ/स्टॉल आवंटन कैसे कार्य करता है?',
+    'how.desc': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु बूथ/स्टॉल आवेदन, सत्यापन एवं आवंटन की पारदर्शी डिजिटल प्रक्रिया।',
     'how.step1.title': 'ऑनलाइन आवेदन',
-    'how.step1.desc': 'स्टॉल श्रेणी चुनें और आवेदन पत्र भरें',
+    'how.step1.desc': 'बूथ/स्टॉल श्रेणी चुनें और आवेदन पत्र भरें',
     'how.step2.title': 'आवेदन शुल्क',
     'how.step2.desc': 'सुरक्षित ऑनलाइन माध्यम से निर्धारित शुल्क जमा करें',
     'how.step3.title': 'दस्तावेज जांच',
     'how.step3.desc': 'केडीबी अधिकारियों द्वारा अपलोड दस्तावेजों की जांच',
-    'how.step4.title': 'चयन / लकी ड्रॉ',
-    'how.step4.desc': 'श्रेणी नियमों के अनुसार पारदर्शी लकी ड्रॉ अथवा ई-नीलामी',
-    'how.step5.title': 'स्टॉल आवंटन',
+    'how.step4.title': 'चयन / ड्रॉ',
+    'how.step4.desc': 'श्रेणी नियमों के अनुसार पारदर्शी ड्रॉ अथवा ई-ड्रॉ',
+    'how.step5.title': 'बूथ/स्टॉल आवंटन',
     'how.step5.desc': 'सत्यापित क्यूआर कोड युक्त आधिकारिक आवंटन पत्र डाउनलोड करें',
 
     // Banner & Trust
@@ -106,8 +106,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'hero.badge': 'Official Allotment Portal',
     'hero.title_part1': 'Be a Part of',
     'hero.title_part2': 'Geeta Jayanti Mahotsav 2026',
-    'hero.desc': 'Apply for commercial booths, stalls, and retail spaces at prime mela locations. Managed by Kurukshetra Development Board.',
-    'hero.btn_apply': 'Explore Stalls & Apply',
+    'hero.desc': 'Apply for commercial booths/stalls and retail spaces at prime mela locations. Managed by Kurukshetra Development Board.',
+    'hero.btn_apply': 'Explore Booths/Stalls & Apply',
     'hero.btn_status': 'Track Application',
 
     // Feature strip
@@ -122,39 +122,39 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Categories
     'categories.badge': 'Geeta Jayanti Mahotsav 2026 Commercial Spaces',
-    'categories.heading': 'Stall Categories & Allotment',
-    'categories.desc': 'Select your preferred commercial stall or booth category at Brahma Sarovar, Kurukshetra and submit your official application.',
-    'categories.empty': 'No stall categories are currently open for application. Official notification will be released soon.',
+    'categories.heading': 'Booth/Stall Categories & Allotment',
+    'categories.desc': 'Select your preferred commercial booth/stall category at Brahma Sarovar, Kurukshetra and submit your official application.',
+    'categories.empty': 'No booth/stall categories are currently open for application. Official notification will be released soon.',
     'categories.apply_now': 'Apply Now',
     'categories.view_details': 'View Details & Criteria',
     'categories.direct_payment': 'Direct Payment',
 
     // Widgets
-    'status.title': 'Track Stall Application Status',
+    'status.title': 'Track Booth/Stall Application Status',
     'status.desc': 'Enter your Application Number and Access Code to check document verification, draw eligibility, and allotment results for your mela booth.',
-    'status.btn': 'Track Stall Status →',
-    'notices.title': 'Official Stall Notices',
-    'notices.desc': 'Official schedule for application deadlines, document scrutiny dates, lucky draw sessions, and allotment notifications for Geeta Jayanti Mahotsav 2026 stalls will be published here.',
+    'status.btn': 'Track Booth/Stall Status →',
+    'notices.title': 'Official Booth/Stall Notices',
+    'notices.desc': 'Official schedule for application deadlines, document scrutiny dates, draw sessions, and allotment notifications for Geeta Jayanti Mahotsav 2026 booths/stalls will be published here.',
 
     // How it works
     'how.badge': 'Allotment Procedure',
-    'how.heading': 'How Stall Allotment Works',
-    'how.desc': 'Transparent, digital procedure for booth application, document verification, and stall allotment for International Geeta Jayanti Mahotsav 2026.',
+    'how.heading': 'How Booth/Stall Allotment Works',
+    'how.desc': 'Transparent, digital procedure for booth application, document verification, and booth/stall allotment for International Geeta Jayanti Mahotsav 2026.',
     'how.step1.title': 'Apply Online',
-    'how.step1.desc': 'Choose your stall category & fill booth application form',
+    'how.step1.desc': 'Choose your booth/stall category & fill booth application form',
     'how.step2.title': 'Application Fee',
     'how.step2.desc': 'Pay the official non-refundable registration fee online',
     'how.step3.title': 'Document Verification',
     'how.step3.desc': 'Submitted documents & KYC verified by KDB officials',
     'how.step4.title': 'Selection / Draw',
-    'how.step4.desc': 'Transparent lucky draw or e-auction as per category rules',
-    'how.step5.title': 'Stall Allotment',
+    'how.step4.desc': 'Transparent draw as per category rules',
+    'how.step5.title': 'Booth/Stall Allotment',
     'how.step5.desc': 'Download official allotment letter with QR verification',
 
     // Banner & Trust
     'banner.badge': 'Kurukshetra Development Board',
     'banner.title': 'International Geeta Jayanti Mahotsav 2026',
-    'banner.desc': 'Prime commercial spaces at Brahma Sarovar for artisans, food vendors, cultural exhibitors, and trade stalls.',
+    'banner.desc': 'Prime commercial spaces at Brahma Sarovar for artisans, food vendors, cultural exhibitors, and trade booths/stalls.',
     'quicklinks.title': 'Quick Links',
     'trust.category': 'Categories',
     'trust.transparent': 'Transparent Process',

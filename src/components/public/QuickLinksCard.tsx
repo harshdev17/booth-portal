@@ -10,7 +10,7 @@ const QuickLinksCard = () => {
   const { lang, t } = useLanguage()
 
   const links = [
-    { label: lang === 'hi' ? 'स्टॉल श्रेणियां' : 'Stall Categories', href: '/#categories', icon: LayoutGridIcon },
+    { label: lang === 'hi' ? 'बूथ/स्टॉल श्रेणियां' : 'Booth/Stall Categories', href: '/#categories', icon: LayoutGridIcon },
     { label: lang === 'hi' ? 'आवेदन की स्थिति जांचें' : 'Check Application Status', href: '/status', icon: SearchCheckIcon },
     { label: lang === 'hi' ? 'सामान्य प्रश्न' : 'Frequently Asked Questions (FAQ)', href: '/#faq', icon: ChevronRightIcon }
   ]

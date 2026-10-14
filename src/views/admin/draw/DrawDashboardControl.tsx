@@ -60,7 +60,7 @@ export default function DrawDashboardControl({
         <Card className='md:col-span-1 shadow-xs border-slate-200'>
           <CardHeader className='pb-3'>
             <CardTitle className='text-sm font-bold text-[#0c2847]'>1. Select Category</CardTitle>
-            <CardDescription className='text-xs'>Choose stall category to run draw for</CardDescription>
+            <CardDescription className='text-xs'>Choose booth/stall category to run draw for</CardDescription>
           </CardHeader>
           <CardContent>
             <select
@@ -103,7 +103,7 @@ export default function DrawDashboardControl({
         <Card className='shadow-xs border-slate-200 bg-emerald-50/40'>
           <CardHeader className='pb-2'>
             <CardTitle className='text-xs font-semibold text-slate-500 uppercase tracking-wider'>
-              Available Physical Stalls
+              Available Physical Booths/Stalls
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -157,7 +157,7 @@ export default function DrawDashboardControl({
               Provably Fair Simulation Test (Safe / Read-Only)
             </CardTitle>
             <CardDescription className='text-xs text-slate-500'>
-              Simulate the deterministic shuffle in-memory. No stalls will be locked, and no applicant status will change.
+              Simulate the deterministic shuffle in-memory. No booths/stalls will be locked, and no applicant status will change.
             </CardDescription>
           </CardHeader>
           <CardContent className='p-6'>
@@ -217,7 +217,7 @@ export default function DrawDashboardControl({
                     <p className='text-[11px] text-slate-500 mt-1'>
                       {allowWaitlist
                         ? 'Eligible applicants who do not win direct allotments will be placed on a provably fair waiting list.'
-                        : 'Admin has disabled waiting list. Applicants beyond available stalls will remain unallotted.'}
+                        : 'Admin has disabled waiting list. Applicants beyond available booths/stalls will remain unallotted.'}
                     </p>
                   </div>
 
@@ -256,7 +256,7 @@ export default function DrawDashboardControl({
                       </select>
                     </div>
                     <span className='text-[11px] text-slate-500'>
-                      If an allotted applicant declines, stall passes sequentially to Waitlist #1, #2, etc.
+                      If an allotted applicant declines, booth/stall passes sequentially to Waitlist #1, #2, etc.
                     </span>
                   </div>
                 ) : (
@@ -299,7 +299,7 @@ export default function DrawDashboardControl({
                         <th className='py-2.5 px-3'>Pos</th>
                         <th className='py-2.5 px-3'>App Number</th>
                         <th className='py-2.5 px-3'>Candidate Name</th>
-                        <th className='py-2.5 px-3'>Assigned Stall</th>
+                        <th className='py-2.5 px-3'>Assigned Booth/Stall</th>
                         <th className='py-2.5 px-3'>Result Type</th>
                       </tr>
                     </thead>
@@ -352,7 +352,7 @@ export default function DrawDashboardControl({
           <CardHeader className='border-b bg-emerald-50/50 py-4 px-6'>
             <CardTitle className='text-base font-bold text-emerald-950 flex items-center gap-2'>
               <ShieldCheckIcon className='size-5 text-emerald-600' />
-              Official Live Lucky Draw Execution
+              Official Live Draw Execution
             </CardTitle>
             <CardDescription className='text-xs text-slate-600'>
               WARNING: Executing the draw will lock physical inventory units, snapshot all candidates, and commit final allotments.
@@ -494,7 +494,7 @@ export default function DrawDashboardControl({
                     ) : (
                       <PlayIcon className='size-4' />
                     )}
-                    Commit & Execute Live Lucky Draw
+                    Commit & Execute Live Draw
                   </Button>
                 </div>
               </form>

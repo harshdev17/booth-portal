@@ -54,11 +54,11 @@ const DEFAULT_CATEGORY_ICON = { Icon: StoreIcon, color: 'bg-[#0d3b66]' }
 // Selection-method display text per language — matches the terminology used
 // in the authoritative per-category content the user supplied (e.g. "ड्रॉ के
 // ज़रिए / कुरुक्षेत्र डेवलपमेंट बोर्ड द्वारा निर्धारित" for manual/draw
-// categories, "नीलामी के ज़रिए" for auction, "प्रतिस्पर्धी निविदा" for tender).
+// categories, "ड्रॉ के ज़रिए" for auction, "प्रतिस्पर्धी निविदा" for tender).
 const SELECTION_METHOD_LABEL: Record<CategoryCardData['selectionMethod'], { hi: string; en: string }> = {
   draw: { hi: 'ड्रॉ के ज़रिए', en: 'Through Draw' },
   manual: { hi: 'कुरुक्षेत्र डेवलपमेंट बोर्ड द्वारा निर्धारित', en: 'As decided by Kurukshetra Development Board' },
-  auction: { hi: 'नीलामी के ज़रिए', en: 'Through Auction' },
+  auction: { hi: 'ड्रॉ के ज़रिए', en: 'Through Draw' },
   tender: { hi: 'प्रतिस्पर्धी निविदा के माध्यम से', en: 'Through Competitive Tender' },
   application_fee: { hi: 'आवेदन शुल्क के आधार पर', en: 'Based on Application Fee' }
 }
@@ -81,8 +81,8 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
     category.allotmentAmountPaise !== null
       ? category.allotmentAmountPaise === 0
         ? lang === 'hi'
-          ? 'निःशुल्क स्टॉल'
-          : 'Free Stall'
+          ? 'निःशुल्क बूथ/स्टॉल'
+          : 'Free Booth/Stall'
         : formatRupees(category.allotmentAmountPaise)
       : (allotmentNote ?? (lang === 'hi' ? 'शीघ्र घोषित की जाएगी' : 'To be announced'))
 

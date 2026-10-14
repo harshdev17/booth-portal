@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { isValidPan, normalizePan, PAN_ERROR_MESSAGE, PAN_FIELD_KEY } from '@/lib/applications/pan'
 import {
   getCategoryBySlug,
   getFieldDefinitionsForCategory,
@@ -128,6 +129,17 @@ export async function validateSubmissionAgainstCategory(
         if (selectedValues.length === 0 || !selectedValues.every(v => validValues.has(v))) {
           throw new SubmissionValidationError(`"${definition.label}" has an invalid value.`, 'field_invalid_option')
         }
+      }
+
+      // PAN: format-checked and stored upper-cased (see lib/applications/pan.ts).
+      if (definition.field_key === PAN_FIELD_KEY) {
+        if (!isValidPan(rawValue)) {
+          throw new SubmissionValidationError(`"${definition.label}": ${PAN_ERROR_MESSAGE}`, 'field_invalid_format')
+        }
+
+        fieldValues.push({ definition, value: normalizePan(rawValue) })
+
+        continue
       }
 
       fieldValues.push({ definition, value: rawValue })

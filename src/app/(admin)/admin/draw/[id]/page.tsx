@@ -118,7 +118,7 @@ export default async function DrawResultsDetailPage({
 
           <div className='flex items-center gap-3'>
             <div className='bg-white border rounded-xl px-4 py-2 text-center shadow-2xs'>
-              <span className='text-[10px] text-slate-400 font-bold uppercase block'>Allotted Stalls</span>
+              <span className='text-[10px] text-slate-400 font-bold uppercase block'>Allotted Booths/Stalls</span>
               <span className='text-xl font-extrabold text-emerald-700'>{draw.total_allotted}</span>
             </div>
             <div className='bg-white border rounded-xl px-4 py-2 text-center shadow-2xs'>
@@ -163,7 +163,7 @@ export default async function DrawResultsDetailPage({
                 <th className='py-3 px-4'>Application No</th>
                 <th className='py-3 px-4'>Applicant Name / Firm</th>
                 <th className='py-3 px-4'>Mobile</th>
-                <th className='py-3 px-4'>Assigned Stall</th>
+                <th className='py-3 px-4'>Assigned Booth/Stall</th>
                 <th className='py-3 px-4'>Result Category</th>
                 <th className='py-3 px-4 text-right'>Verification Token</th>
               </tr>

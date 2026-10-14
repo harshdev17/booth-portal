@@ -18,7 +18,7 @@ export type ApplyInstructions = {
 // reads as broken Hindi with English words sitting unrelated inside it. Per
 // explicit instruction, the Hindi below uses plain, everyday words for
 // translatable terms (e.g. "पंजीकरण प्रमाणपत्र" for Registration Certificate,
-// "लॉटरी निकालना" for Draw of Lots, "वापस नहीं की जाएगी" for Non-Refundable) —
+// "ड्रॉ निकालना" for Draw of Lots, "वापस नहीं की जाएगी" for Non-Refundable) —
 // not literary/शुद्ध Hindi, which would be harder to read than the mixed
 // original. Official acronyms and names with no common Hindi equivalent
 // (KDB, GST, FSSAI, Aadhaar, DD, LPG) are kept as-is in both languages.
@@ -47,20 +47,20 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'दस्तावेजों के सत्यापन के बाद ही पात्र संस्था को आवंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'A Draw of Lots may be held if eligible applications exceed the available stalls.',
-        hi: 'पात्र आवेदन उपलब्ध स्टॉल से अधिक होने पर लॉटरी (ड्रॉ) की जा सकती है।'
+        en: 'A Draw of Lots may be held if eligible applications exceed the available booths/stalls.',
+        hi: 'पात्र आवेदन उपलब्ध बूथ/स्टॉल से अधिक होने पर ड्रॉ की जा सकती है।'
       },
       {
-        en: 'The NGO stall may be used only for social awareness, publicity, and social-service activities.',
-        hi: 'एनजीओ स्टॉल का उपयोग केवल सामाजिक जागरूकता, प्रचार-प्रसार और समाज सेवा संबंधी गतिविधियों के लिए किया जा सकेगा।'
+        en: 'The NGO booth/stall may be used only for social awareness, publicity, and social-service activities.',
+        hi: 'एनजीओ बूथ/स्टॉल का उपयोग केवल सामाजिक जागरूकता, प्रचार-प्रसार और समाज सेवा संबंधी गतिविधियों के लिए किया जा सकेगा।'
       },
       {
         en: 'No commercial activity or product selling is permitted.',
         hi: 'किसी भी प्रकार की व्यावसायिक गतिविधि या उत्पाद बिक्री की अनुमति नहीं होगी।'
       },
       {
-        en: 'If Verified & Eligible Applications exceed the available stalls, allotment will be made through a Draw of Lots. This category is for registered NGOs, and the selected NGO will be given the stall free of cost.',
-        hi: '*यदि सत्यापित एवं पात्र आवेदन उपलब्ध स्टॉल से अधिक होते हैं, तो लॉटरी (ड्रॉ) के माध्यम से आवंटन किया जाएगा। यह श्रेणी पंजीकृत एनजीओ के लिए है और चयनित एनजीओ को स्टॉल निःशुल्क दिया जाएगा।'
+        en: 'If Verified & Eligible Applications exceed the available booths/stalls, allotment will be made through a Draw of Lots. This category is for registered NGOs, and the selected NGO will be given the booth/stall free of cost.',
+        hi: '*यदि सत्यापित एवं पात्र आवेदन उपलब्ध बूथ/स्टॉल से अधिक होते हैं, तो ड्रॉ के माध्यम से आवंटन किया जाएगा। यह श्रेणी पंजीकृत एनजीओ के लिए है और चयनित एनजीओ को बूथ/स्टॉल निःशुल्क दिया जाएगा।'
       }
     ]
   },
@@ -80,8 +80,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन एवं दस्तावेजों का सत्यापन KDB द्वारा किया जाएगा।'
       },
       {
-        en: 'The stall may be used only for government schemes, citizen services, public awareness, and departmental activities.',
-        hi: 'स्टॉल का उपयोग केवल सरकारी योजनाओं, नागरिक सेवाओं, जन-जागरूकता एवं विभागीय गतिविधियों के लिए किया जा सकेगा।'
+        en: 'The booth/stall may be used only for government schemes, citizen services, public awareness, and departmental activities.',
+        hi: 'बूथ/स्टॉल का उपयोग केवल सरकारी योजनाओं, नागरिक सेवाओं, जन-जागरूकता एवं विभागीय गतिविधियों के लिए किया जा सकेगा।'
       },
       {
         en: 'A Bank, Insurance Company, Financial Institution, or other commercial entity may not apply in this category for commercial promotion.',
@@ -92,12 +92,12 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'व्यावसायिक प्रचार के लिए पात्र संस्थाएं ब्रांड प्रमोशन श्रेणी में आवेदन कर सकती हैं।'
       },
       {
-        en: 'The final stall location will be decided by KDB as per the approved layout and availability.',
-        hi: 'अंतिम स्टॉल स्थान KDB द्वारा स्वीकृत लेआउट और उपलब्धता के अनुसार तय किया जाएगा।'
+        en: 'The final booth/stall location will be decided by KDB as per the approved layout and availability.',
+        hi: 'अंतिम बूथ/स्टॉल स्थान KDB द्वारा स्वीकृत लेआउट और उपलब्धता के अनुसार तय किया जाएगा।'
       },
       {
-        en: 'The stall may not be transferred, sublet, or rented to any other person/entity.',
-        hi: 'स्टॉल को किसी अन्य व्यक्ति/संस्था को हस्तांतरित, उप-किराए पर या किराए पर नहीं दिया जा सकेगा।'
+        en: 'The booth/stall may not be transferred, sublet, or rented to any other person/entity.',
+        hi: 'बूथ/स्टॉल को किसी अन्य व्यक्ति/संस्था को हस्तांतरित, उप-किराए पर या किराए पर नहीं दिया जा सकेगा।'
       },
       {
         en: 'The purpose of the Government Department category is solely the publicity of government and public-interest activities.',
@@ -117,16 +117,16 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन शुल्क वापस नहीं की जाएगी।'
       },
       {
-        en: 'Only applicants verified and declared eligible by KDB may take part in the Auction.',
-        hi: 'केवल KDB द्वारा सत्यापित एवं पात्र घोषित आवेदक ही नीलामी (Auction) में भाग ले सकेंगे।'
+        en: 'Only applicants verified and declared eligible by KDB may take part in the Draw.',
+        hi: 'केवल KDB द्वारा सत्यापित एवं पात्र घोषित आवेदक ही ड्रॉ (Draw) में भाग ले सकेंगे।'
       },
       {
-        en: 'An eligible applicant must deposit the ₹50,000 Auction Participation Fee as a Demand Draft.',
-        hi: 'पात्र आवेदक को ₹50,000/- की नीलामी भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के रूप में जमा करनी होगी।'
+        en: 'An eligible applicant must deposit the ₹50,000 Draw Participation Fee as a Demand Draft.',
+        hi: 'पात्र आवेदक को ₹50,000/- की ड्रॉ भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के रूप में जमा करनी होगी।'
       },
       {
         en: 'If the bid is unsuccessful, the ₹50,000 DD will be returned.',
-        hi: 'नीलामी में बोली सफल न होने पर ₹50,000/- की DD वापस कर दी जाएगी।'
+        hi: 'ड्रॉ में बोली सफल न होने पर ₹50,000/- की DD वापस कर दी जाएगी।'
       },
       {
         en: 'The successful bidder’s ₹50,000 Participation Fee itself becomes the Security Deposit.',
@@ -137,12 +137,12 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'सफल बोलीदाता को अंतिम बोली राशि का पूरा भुगतान 4 दिनों के भीतर करना होगा।'
       },
       {
-        en: 'Only pre-packed/ready-to-sell food products may be sold at the stall.',
-        hi: 'स्टॉल पर केवल पहले से पैक/बिक्री हेतु तैयार खाद्य उत्पाद ही बेचे जा सकेंगे।'
+        en: 'Only pre-packed/ready-to-sell food products may be sold at the booth/stall.',
+        hi: 'बूथ/स्टॉल पर केवल पहले से पैक/बिक्री हेतु तैयार खाद्य उत्पाद ही बेचे जा सकेंगे।'
       },
       {
-        en: 'Cooking, frying, roasting, baking, or food preparation is not permitted at the stall.',
-        hi: 'स्टॉल पर खाना पकाने, तलने, भूनने, बेक करने या किसी भी प्रकार की खाद्य तैयारी की अनुमति नहीं होगी।'
+        en: 'Cooking, frying, roasting, baking, or food preparation is not permitted at the booth/stall.',
+        hi: 'बूथ/स्टॉल पर खाना पकाने, तलने, भूनने, बेक करने या किसी भी प्रकार की खाद्य तैयारी की अनुमति नहीं होगी।'
       },
       {
         en: 'Use of LPG, gas stove, coal, wood, furnace, bhatti, or open flame is prohibited.',
@@ -190,16 +190,16 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'केवल सत्यापित एवं पात्र आवेदकों को आवंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'A Draw of Lots will be held if eligible applications exceed the available stalls.',
-        hi: 'उपलब्ध स्टॉल से अधिक पात्र आवेदन होने पर लॉटरी (ड्रॉ) की जाएगी।'
+        en: 'A Draw of Lots will be held if eligible applications exceed the available booths/stalls.',
+        hi: 'उपलब्ध बूथ/स्टॉल से अधिक पात्र आवेदन होने पर ड्रॉ की जाएगी।'
       },
       {
-        en: 'The stall will be used for the display and sale of the applicant’s own Artisan/Handicraft Work.',
-        hi: 'स्टॉल का उपयोग आवेदक के अपने शिल्पकार्य/हस्तशिल्प के प्रदर्शन एवं बिक्री के लिए किया जाएगा।'
+        en: 'The booth/stall will be used for the display and sale of the applicant’s own Artisan/Handicraft Work.',
+        hi: 'बूथ/स्टॉल का उपयोग आवेदक के अपने शिल्पकार्य/हस्तशिल्प के प्रदर्शन एवं बिक्री के लिए किया जाएगा।'
       },
       {
         en: 'Allotment may be Direct or through a Draw, depending on availability and eligible applications.',
-        hi: '*उपलब्धता और पात्र आवेदनों के आधार पर आवंटन सीधे अथवा लॉटरी (ड्रॉ) के माध्यम से हो सकता है।'
+        hi: '*उपलब्धता और पात्र आवेदनों के आधार पर आवंटन सीधे अथवा ड्रॉ के माध्यम से हो सकता है।'
       }
     ]
   },
@@ -271,7 +271,7 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'The standard Draw of Lots does not apply to this category.',
-        hi: 'इस श्रेणी में सामान्य लॉटरी (ड्रॉ) लागू नहीं होगी।'
+        hi: 'इस श्रेणी में सामान्य ड्रॉ लागू नहीं होगी।'
       },
       {
         en: 'The booth may be used only for approved Brand Promotion activities.',
@@ -303,16 +303,16 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन SHG के अधिकृत सदस्य/प्रतिनिधि द्वारा किया जाना चाहिए।'
       },
       {
-        en: 'The stall may mainly display and sell products made by the SHG itself.',
-        hi: 'स्टॉल पर मुख्य रूप से SHG द्वारा स्वयं बनाए गए उत्पाद ही प्रदर्शित एवं बेचे जा सकेंगे।'
+        en: 'The booth/stall may mainly display and sell products made by the SHG itself.',
+        hi: 'बूथ/स्टॉल पर मुख्य रूप से SHG द्वारा स्वयं बनाए गए उत्पाद ही प्रदर्शित एवं बेचे जा सकेंगे।'
       },
       {
         en: 'The ₹236 Application Fee is mandatory for all applicants.',
         hi: 'सभी आवेदकों के लिए ₹236 आवेदन शुल्क अनिवार्य है।'
       },
       {
-        en: 'No Stall/Booth Allotment Fee will be charged.',
-        hi: 'स्टॉल/बूथ आवंटन शुल्क नहीं ली जाएगी।'
+        en: 'No Booth/Stall Allotment Fee will be charged.',
+        hi: 'बूथ/स्टॉल आवंटन शुल्क नहीं ली जाएगी।'
       },
       {
         en: 'All documents and SHG details will first be verified.',
@@ -324,19 +324,19 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'A Transparent Draw of Lots will be held if eligible applications exceed the fixed quota.',
-        hi: 'पात्र आवेदन निर्धारित कोटे से अधिक होने पर पारदर्शी लॉटरी (ड्रॉ) की जाएगी।'
+        hi: 'पात्र आवेदन निर्धारित कोटे से अधिक होने पर पारदर्शी ड्रॉ की जाएगी।'
       },
       {
         en: 'SHG-made Achar, Masale, uncooked Papad, and other permitted products may be sold.',
         hi: 'SHG द्वारा बनाए गए अचार, मसाले, कच्चे पापड़ एवं अन्य अनुमत उत्पाद बेचे जा सकते हैं।'
       },
       {
-        en: 'Cooking, frying, roasting, or refreshment food preparation is not permitted at the stall.',
-        hi: 'स्टॉल पर खाना पकाने, तलने, भूनने या जलपान सामग्री तैयार करने की अनुमति नहीं होगी।'
+        en: 'Cooking, frying, roasting, or refreshment food preparation is not permitted at the booth/stall.',
+        hi: 'बूथ/स्टॉल पर खाना पकाने, तलने, भूनने या जलपान सामग्री तैयार करने की अनुमति नहीं होगी।'
       },
       {
         en: 'Direct/Draw allotment will be made for Haryana and Outside Haryana as per their fixed quotas.',
-        hi: '*हरियाणा और हरियाणा से बाहर के लिए निर्धारित कोटे के अनुसार सीधा/लॉटरी आवंटन किया जाएगा।'
+        hi: '*हरियाणा और हरियाणा से बाहर के लिए निर्धारित कोटे के अनुसार सीधा/ड्रॉ आवंटन किया जाएगा।'
       }
     ]
   },
@@ -368,20 +368,20 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'केवल सत्यापित एवं पात्र आवेदक ही आवंटन प्रक्रिया में शामिल होंगे।'
       },
       {
-        en: 'A Transparent Draw of Lots will be held if eligible applications exceed the available stalls.',
-        hi: 'उपलब्ध स्टॉल से अधिक पात्र आवेदन होने पर पारदर्शी लॉटरी (ड्रॉ) की जाएगी।'
+        en: 'A Transparent Draw of Lots will be held if eligible applications exceed the available booths/stalls.',
+        hi: 'उपलब्ध बूथ/स्टॉल से अधिक पात्र आवेदन होने पर पारदर्शी ड्रॉ की जाएगी।'
       },
       {
-        en: 'A selected applicant must deposit the ₹30,000 Stall/Booth Fee.',
-        hi: 'चयनित आवेदक को ₹30,000/- स्टॉल/बूथ शुल्क जमा करनी होगी।'
+        en: 'A selected applicant must deposit the ₹30,000 Booth/Stall Fee.',
+        hi: 'चयनित आवेदक को ₹30,000/- बूथ/स्टॉल शुल्क जमा करनी होगी।'
       },
       {
-        en: 'The stall may be used only for the display and sale of approved Art & Craft products.',
-        hi: 'स्टॉल का उपयोग केवल स्वीकृत कला एवं शिल्प उत्पादों के प्रदर्शन एवं बिक्री के लिए किया जाएगा।'
+        en: 'The booth/stall may be used only for the display and sale of approved Art & Craft products.',
+        hi: 'बूथ/स्टॉल का उपयोग केवल स्वीकृत कला एवं शिल्प उत्पादों के प्रदर्शन एवं बिक्री के लिए किया जाएगा।'
       },
       {
-        en: 'Direct/Draw allotment will be made based on eligible applications and stall availability.',
-        hi: '*पात्र आवेदनों और स्टॉल उपलब्धता के आधार पर सीधा/लॉटरी आवंटन किया जाएगा।'
+        en: 'Direct/Draw allotment will be made based on eligible applications and booth/stall availability.',
+        hi: '*पात्र आवेदनों और बूथ/स्टॉल उपलब्धता के आधार पर सीधा/ड्रॉ आवंटन किया जाएगा।'
       }
     ]
   },
@@ -413,8 +413,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: '₹236 आवेदन शुल्क वापस नहीं की जाएगी।'
       },
       {
-        en: 'A selected/allotted applicant must deposit the ₹60,000 Large Space Stall/Booth Fee.',
-        hi: 'चयनित/आवंटित आवेदक को ₹60,000/- बड़े स्थान की स्टॉल/बूथ शुल्क जमा करनी होगी।'
+        en: 'A selected/allotted applicant must deposit the ₹60,000 Large Space Booth/Stall Fee.',
+        hi: 'चयनित/आवंटित आवेदक को ₹60,000/- बड़े स्थान की बूथ/स्टॉल शुल्क जमा करनी होगी।'
       },
       {
         en: 'The final space size and location will be decided by KDB as per the approved layout and availability.',

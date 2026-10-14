@@ -7,9 +7,9 @@ import { useLanguage } from '@/context/LanguageContext'
 import { getCategoryGuideline, parseGuidelineBullet } from '@/lib/content/category-guidelines'
 
 const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], { en: string; hi: string }> = {
-  draw: { en: 'Draw', hi: 'लकी ड्रॉ' },
+  draw: { en: 'Draw', hi: 'ड्रॉ' },
   manual: { en: 'Decided by Kurukshetra Development Board', hi: 'कुरुक्षेत्र विकास बोर्ड द्वारा निर्धारित' },
-  auction: { en: 'Auction', hi: 'नीलामी' },
+  auction: { en: 'Auction', hi: 'ड्रॉ' },
   tender: { en: 'Tender', hi: 'निविदा (टेंडर)' },
   application_fee: { en: 'Application Fee', hi: 'आवेदन शुल्क' }
 }
@@ -75,8 +75,8 @@ const CategoryDetail = ({
             {category.allotment_amount_paise !== null
               ? category.allotment_amount_paise === 0
                 ? lang === 'hi'
-                  ? 'निःशुल्क स्टॉल'
-                  : 'Free Stall'
+                  ? 'निःशुल्क बूथ/स्टॉल'
+                  : 'Free Booth/Stall'
                 : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')}`
               : (lang === 'hi' ? category.allotment_amount_note_hi : category.allotment_amount_note) ??
                 (lang === 'hi' ? 'जल्द घोषित' : 'To be confirmed')}

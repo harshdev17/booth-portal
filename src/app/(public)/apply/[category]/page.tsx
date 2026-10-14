@@ -34,9 +34,9 @@ const FIELD_WARNINGS: Record<string, { value: string; messageEn: string; message
   commercial_activity: {
     value: 'yes',
     messageEn:
-      'NGO stalls may not be used for commercial activity. Applications involving commercial use may not be eligible under current guidelines.',
+      'NGO booths/stalls may not be used for commercial activity. Applications involving commercial use may not be eligible under current guidelines.',
     messageHi:
-      'एनजीओ स्टॉल का उपयोग व्यावसायिक गतिविधि हेतु नहीं किया जा सकता। वर्तमान दिशा-निर्देशों के अनुसार व्यावसायिक उपयोग वाले आवेदन पात्र नहीं हो सकते।'
+      'एनजीओ बूथ/स्टॉल का उपयोग व्यावसायिक गतिविधि हेतु नहीं किया जा सकता। वर्तमान दिशा-निर्देशों के अनुसार व्यावसायिक उपयोग वाले आवेदन पात्र नहीं हो सकते।'
   },
   commercial_promotion: {
     value: 'yes',
@@ -48,9 +48,9 @@ const FIELD_WARNINGS: Record<string, { value: string; messageEn: string; message
   lpg_open_flame: {
     value: 'yes',
     messageEn:
-      'LPG, gas, open flame, cooking, frying, roasting, baking, coal, wood and furnace use are not permitted at stalls under current guidelines. Only pre-packed / ready-to-sell products may be sold.',
+      'LPG, gas, open flame, cooking, frying, roasting, baking, coal, wood and furnace use are not permitted at booths/stalls under current guidelines. Only pre-packed / ready-to-sell products may be sold.',
     messageHi:
-      'वर्तमान दिशा-निर्देशों के अनुसार स्टॉल पर एलपीजी, गैस, खुली लौ, खाना पकाना, तलना, भूनना, बेकिंग, कोयला, लकड़ी एवं भट्टी के उपयोग की अनुमति नहीं है। केवल पहले से पैक/बिक्री हेतु तैयार उत्पाद ही बेचे जा सकते हैं।'
+      'वर्तमान दिशा-निर्देशों के अनुसार बूथ/स्टॉल पर एलपीजी, गैस, खुली लौ, खाना पकाना, तलना, भूनना, बेकिंग, कोयला, लकड़ी एवं भट्टी के उपयोग की अनुमति नहीं है। केवल पहले से पैक/बिक्री हेतु तैयार उत्पाद ही बेचे जा सकते हैं।'
   }
 }
 
@@ -109,7 +109,9 @@ const ApplyPage = async ({
       isAcceptingApplications: true,
       showRemarks: Number(category.show_remarks) === 1,
       formNotice: category.form_notice,
-      formNoticeHi: category.form_notice_hi
+      formNoticeHi: category.form_notice_hi,
+      extraDeclaration: category.extra_declaration,
+      extraDeclarationHi: category.extra_declaration_hi
     },
     shopOptions: shopOptions.map(o => ({ id: o.id, label: o.label, feePaise: o.fee_paise })),
     fields: fieldDefinitions

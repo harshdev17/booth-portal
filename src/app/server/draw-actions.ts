@@ -111,7 +111,7 @@ export async function executeDrawAction(
       : ' (No waitlist created)'
 
     return {
-      success: `Draw ${result.drawCode} executed successfully! ${result.allottedCount} stalls allotted${waitlistSummary}.`,
+      success: `Draw ${result.drawCode} executed successfully! ${result.allottedCount} booths/stalls allotted${waitlistSummary}.`,
       data: result
     }
   } catch (err: any) {

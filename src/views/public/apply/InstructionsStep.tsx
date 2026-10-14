@@ -74,7 +74,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
               <span>•</span>
               <span>
-                {lang === 'hi' ? 'नीलामी: ' : 'Auction: '}
+                {lang === 'hi' ? 'ड्रॉ: ' : 'Draw: '}
                 {formatDateTime(category.auctionDate, lang)}
                 {' — '}
                 {auctionVenue}
@@ -131,8 +131,8 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             <span className='font-bold text-[#b8761b]'>3.</span>
             <span>
               {lang === 'hi'
-                ? 'केवल चयनित स्टॉल श्रेणी के लिए निर्धारित आवश्यक दस्तावेजों का ही सत्यापन किया जाएगा।'
-                : 'Only the documents required for your selected stall category will be verified.'}
+                ? 'केवल चयनित बूथ/स्टॉल श्रेणी के लिए निर्धारित आवश्यक दस्तावेजों का ही सत्यापन किया जाएगा।'
+                : 'Only the documents required for your selected booth/stall category will be verified.'}
             </span>
           </li>
           <li className='flex items-baseline gap-2'>

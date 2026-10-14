@@ -97,7 +97,7 @@ export const navItems: NavItem[] = [
     items: [
       {
         icon: 'Store',
-        label: 'Inventory / Booths & Stalls',
+        label: 'Inventory / Booths/Stalls',
         href: '/admin/inventory',
         permission: 'inventory:view'
       },

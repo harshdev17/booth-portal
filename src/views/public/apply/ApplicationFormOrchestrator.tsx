@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import AddressStep from '@/views/public/apply/AddressStep'
+import { isValidPan, PAN_ERROR_MESSAGE, PAN_FIELD_KEY } from '@/lib/applications/pan'
 import DeclarationCheckboxes, { type Declarations } from '@/views/public/apply/DeclarationCheckboxes'
 import ApplicantInfoStep from '@/views/public/apply/ApplicantInfoStep'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
@@ -55,7 +56,13 @@ const ApplicationFormOrchestrator = ({
   const { lang } = useLanguage()
   const router = useRouter()
   const [draft, setDraft] = useState<DraftState>(null)
-  const [declarations, setDeclarations] = useState<Declarations>({ informationCorrect: false, agreedToTerms: false })
+
+  const [declarations, setDeclarations] = useState<Declarations>({
+    informationCorrect: false,
+    agreedToTerms: false,
+    categoryDeclaration: false
+  })
+
   const [draftError, setDraftError] = useState<string | null>(null)
   const [isCreatingDraft, setIsCreatingDraft] = useState(true)
   const [uploadState, setUploadState] = useState<DocumentUploadState>({})
@@ -66,7 +73,13 @@ const ApplicationFormOrchestrator = ({
 
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
-    defaultValues: APPLICATION_FORM_DEFAULT_VALUES,
+
+    // Every category field starts as '' so an untouched OPTIONAL field is an
+    // empty string, not undefined (which the string schema reported as "Required").
+    defaultValues: {
+      ...APPLICATION_FORM_DEFAULT_VALUES,
+      categoryFields: Object.fromEntries(config.fields.map(f => [f.key, '']))
+    },
     mode: 'onBlur'
   })
 
@@ -99,7 +112,7 @@ const ApplicationFormOrchestrator = ({
             email: 'pending@pending.local',
             representativeName: 'Pending',
             fatherName: 'Pending',
-            aadhaarNumber: '000000000000',
+            aadhaarNumber: '222222222227', // placeholder only — checksum-valid so the silent draft passes validation
             address: 'Pending',
             state: 'Pending',
             district: 'Pending',
@@ -197,9 +210,12 @@ const ApplicationFormOrchestrator = ({
           alternateMobile: body.common.alternateMobile ?? '',
           remarks: body.common.remarks ?? ''
         },
-        categoryFields: Object.fromEntries(
-          (body.categoryFields as Array<{ field_key: string; value: string }>).map(f => [f.field_key, f.value])
-        )
+        categoryFields: {
+          ...Object.fromEntries(config.fields.map(f => [f.key, ''])),
+          ...Object.fromEntries(
+            (body.categoryFields as Array<{ field_key: string; value: string }>).map(f => [f.field_key, f.value])
+          )
+        }
       })
 
       setUploadState(
@@ -297,11 +313,26 @@ const ApplicationFormOrchestrator = ({
     .filter(d => d.required)
     .every(d => uploadState[d.key]?.status === 'uploaded')
 
-  const declarationsAccepted = declarations.informationCorrect && declarations.agreedToTerms
+  const categoryDeclarationText = lang === 'hi'
+    ? (config.category.extraDeclarationHi ?? config.category.extraDeclaration)
+    : config.category.extraDeclaration
+
+  const declarationsAccepted =
+    declarations.informationCorrect && declarations.agreedToTerms && (!categoryDeclarationText || declarations.categoryDeclaration)
 
   const handleReviewApplication = form.handleSubmit(async values => {
     if (!draft) return
     setSubmitError(null)
+
+    const badPan = config.fields.some(
+      f => f.key === PAN_FIELD_KEY && !!values.categoryFields[f.key] && !isValidPan(values.categoryFields[f.key])
+    )
+
+    if (badPan) {
+      setSubmitError(PAN_ERROR_MESSAGE)
+
+      return
+    }
 
     if (!declarationsAccepted) {
       setSubmitError(
@@ -436,8 +467,8 @@ const ApplicationFormOrchestrator = ({
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
               {lang === 'hi'
-                ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — स्टॉल आवेदन'
-                : 'International Gita Jayanti Mahotsav 2026 — Stall Application'}
+                ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — बूथ/स्टॉल आवेदन'
+                : 'International Gita Jayanti Mahotsav 2026 — Booth/Stall Application'}
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -450,7 +481,7 @@ const ApplicationFormOrchestrator = ({
             </div>
           </div>
           <h1 className='text-3xl sm:text-4xl font-black text-[#0c2847] tracking-tight mb-2'>
-            {lang === 'hi' ? 'चयनित स्टॉल श्रेणी: ' : 'Selected Category: '}
+            {lang === 'hi' ? 'चयनित बूथ/स्टॉल श्रेणी: ' : 'Selected Category: '}
             <span className='text-[#b8761b]'>
               {lang === 'hi' && config.category.nameHi ? config.category.nameHi : config.category.name}
             </span>
@@ -689,7 +720,11 @@ const ApplicationFormOrchestrator = ({
                 </div>
               </section>
 
-              <DeclarationCheckboxes value={declarations} onChange={setDeclarations} />
+              <DeclarationCheckboxes
+                value={declarations}
+                onChange={setDeclarations}
+                categoryDeclaration={categoryDeclarationText}
+              />
 
               {/* Form Action Button */}
               <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>

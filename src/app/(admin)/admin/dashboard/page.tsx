@@ -145,7 +145,7 @@ const DashboardPage = async () => {
       icon: FileTextIcon,
       color: 'text-[#0c2847]',
       href: '/admin/applications',
-      hint: 'All submitted stall applications'
+      hint: 'All submitted booth/stall applications'
     },
     {
       label: 'Under Review',
@@ -164,12 +164,12 @@ const DashboardPage = async () => {
       hint: 'Winners & approved allotments'
     },
     {
-      label: 'Available Stalls',
+      label: 'Available Booths/Stalls',
       value: availableStalls,
       icon: StoreIcon,
       color: 'text-emerald-600',
       href: '/admin/inventory',
-      hint: 'Physical stalls ready for draw'
+      hint: 'Physical booths/stalls ready for draw'
     },
     {
       label: 'Documents Pending',
@@ -247,7 +247,7 @@ const DashboardPage = async () => {
           {/* Applications by Category Chart */}
           <div className='rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden'>
             <div className='px-4 py-3.5 border-b border-slate-100 bg-slate-50/50'>
-              <h2 className='text-sm font-bold text-[#0c2847]'>Applications by Stall Category</h2>
+              <h2 className='text-sm font-bold text-[#0c2847]'>Applications by Booth/Stall Category</h2>
               <p className='text-xs text-slate-500 mt-0.5'>Applicant demand across categories</p>
             </div>
             <div className='p-4'>
@@ -405,7 +405,7 @@ const DashboardPage = async () => {
                   </div>
                   <div className='min-w-0'>
                     <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
-                      Lucky Draw Panel
+                      Draw Panel
                     </div>
                     <div className='text-[11px] text-slate-500 truncate'>
                       Verified applicant pools ready for allotment
@@ -425,10 +425,10 @@ const DashboardPage = async () => {
               <div>
                 <h2 className='text-xs font-bold text-[#0c2847] uppercase tracking-wider flex items-center gap-1.5'>
                   <StoreIcon className='size-3.5 text-emerald-700' />
-                  Stall Allotment Health
+                  Booth/Stall Allotment Health
                 </h2>
                 <p className='text-[11px] text-slate-500 mt-0.5'>
-                  Physical stalls occupancy and allocation
+                  Physical booths/stalls occupancy and allocation
                 </p>
               </div>
               <Link
@@ -508,7 +508,7 @@ const DashboardPage = async () => {
               <div>
                 <h2 className='text-xs font-bold text-[#0c2847] uppercase tracking-wider flex items-center gap-1.5'>
                   <ShuffleIcon className='size-3.5 text-purple-600' />
-                  Lucky Draw System
+                  Draw System
                 </h2>
                 <p className='text-[11px] text-slate-500 mt-0.5'>
                   Provably fair cryptographic draw rounds
@@ -539,7 +539,7 @@ const DashboardPage = async () => {
                 className='w-full py-2.5 px-3 text-xs font-semibold rounded-lg bg-[#0c2847] hover:bg-[#12365c] text-white flex items-center justify-center gap-1.5 transition shadow-xs'
               >
                 <ShuffleIcon className='size-3.5' />
-                Open Lucky Draw Control Room
+                Open Draw Control Room
               </Link>
             </div>
           </div>

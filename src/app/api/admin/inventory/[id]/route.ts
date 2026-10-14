@@ -61,7 +61,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         : null
 
     if (!stallNumber) {
-      return NextResponse.json({ error: 'Stall number is required.' }, { status: 400 })
+      return NextResponse.json({ error: 'Booth/Stall number is required.' }, { status: 400 })
     }
 
     if (!shopType) {
@@ -95,7 +95,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (existingUnit.status === 'allotted') {
       return NextResponse.json(
-        { error: 'This stall is currently allotted and cannot be edited. Cancel the allotment first.' },
+        { error: 'This booth/stall is currently allotted and cannot be edited. Cancel the allotment first.' },
         { status: 409 }
       )
     }
@@ -119,7 +119,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     )
 
     if (duplicateRows.length > 0) {
-      return NextResponse.json({ error: `Stall number "${stallNumber}" already exists.` }, { status: 409 })
+      return NextResponse.json({ error: `Booth/Stall number "${stallNumber}" already exists.` }, { status: 409 })
     }
 
     const nextStatus = status ?? existingUnit.status
@@ -187,7 +187,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     if (shopUnit.status === 'allotted') {
       return NextResponse.json(
-        { error: 'This stall is currently allotted and cannot be deleted. Cancel the allotment first.' },
+        { error: 'This booth/stall is currently allotted and cannot be deleted. Cancel the allotment first.' },
         { status: 409 }
       )
     }

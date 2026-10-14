@@ -23,8 +23,8 @@ const ImportantNoticeSection = () => {
       hi: 'Application Fee जमा करने मात्र से बूथ/स्टॉल का अधिकार सुनिश्चित नहीं होता।'
     },
     {
-      en: "Allotment will be done as per the respective category's Eligibility, Scrutiny, Draw, Lucky Draw or Auction Process.",
-      hi: 'Allotment संबंधित Category की Eligibility, Scrutiny, Draw, Lucky Draw या Auction Process के अनुसार किया जाएगा।'
+      en: "Allotment will be done as per the respective category's Eligibility, Scrutiny, Draw Process.",
+      hi: 'Allotment संबंधित Category की Eligibility, Scrutiny, Draw या Draw Process के अनुसार किया जाएगा।'
     },
     {
       en: "All applicants must carefully read the respective category's Rules & Regulations, Payment Terms, and Allotment Conditions.",
@@ -62,7 +62,7 @@ const ImportantNoticeSection = () => {
         <p className='mb-3 text-sm sm:text-base text-[#475569] leading-relaxed'>
           <span className='font-bold text-[#0c2847]'>{lang === 'hi' ? 'नोट: ' : 'Note: '}</span>
           {lang === 'hi'
-            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित कैटेगरी के नियमों के अनुसार चयन/बूथ-स्टॉल आवंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित कैटेगरी के अनुसार निर्धारित Booth/Stall Amount या Security/Participation Deposit अलग से जमा करना होगा।'
+            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित कैटेगरी के नियमों के अनुसार चयन/बूथ-बूथ/स्टॉल आवंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित कैटेगरी के अनुसार निर्धारित Booth/Stall Amount या Security/Participation Deposit अलग से जमा करना होगा।'
             : '₹236/- is the application fee for filling the form. After the application fee is paid, the selection/booth-stall allotment process will be carried out as per the rules of the respective category. Upon selection, the Booth/Stall Amount or Security/Participation Deposit fixed for the respective category will have to be paid separately.'}
         </p>
 

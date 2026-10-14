@@ -330,7 +330,7 @@ export default function CategoryFeeSettingsClient({
           </div>
 
           <div>
-            <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>Schedule &amp; Auction</p>
+            <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>Schedule &amp; Draw</p>
             <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
               <div className='flex flex-col gap-1.5'>
                 <label className='text-xs font-semibold text-slate-700'>Application Opens</label>
@@ -351,7 +351,7 @@ export default function CategoryFeeSettingsClient({
                 />
               </div>
               <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Auction Date &amp; Time</label>
+                <label className='text-xs font-semibold text-slate-700'>Draw Date &amp; Time</label>
                 <Input
                   type='datetime-local'
                   value={bulkSchedule.auctionDate}
@@ -360,7 +360,7 @@ export default function CategoryFeeSettingsClient({
                 />
               </div>
               <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Auction Venue (English)</label>
+                <label className='text-xs font-semibold text-slate-700'>Draw Venue (English)</label>
                 <Input
                   value={bulkSchedule.auctionVenue}
                   onChange={e => setBulkSchedule(prev => ({ ...prev, auctionVenue: e.target.value }))}
@@ -369,7 +369,7 @@ export default function CategoryFeeSettingsClient({
                 />
               </div>
               <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Auction Venue (Hindi)</label>
+                <label className='text-xs font-semibold text-slate-700'>Draw Venue (Hindi)</label>
                 <Input
                   value={bulkSchedule.auctionVenueHi}
                   onChange={e => setBulkSchedule(prev => ({ ...prev, auctionVenueHi: e.target.value }))}
@@ -394,9 +394,9 @@ export default function CategoryFeeSettingsClient({
 
       <Card className='shadow-xs'>
         <CardHeader className='border-b bg-muted/40 py-4'>
-          <CardTitle className='text-base font-bold text-[#0c2847]'>Stall Category Fees & GST Rates</CardTitle>
+          <CardTitle className='text-base font-bold text-[#0c2847]'>Booth/Stall Category Fees & GST Rates</CardTitle>
           <CardDescription className='text-xs'>
-            Set the base application fee in Rupees (₹) and the applicable GST percentage for each stall category.
+            Set the base application fee in Rupees (₹) and the applicable GST percentage for each booth/stall category.
             The total payable amount is automatically calculated and shown to applicants on the portal.
           </CardDescription>
         </CardHeader>
@@ -527,7 +527,7 @@ export default function CategoryFeeSettingsClient({
                                 />
                               </div>
                               <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Auction Date &amp; Time</label>
+                                <label className='text-xs font-semibold text-slate-700'>Draw Date &amp; Time</label>
                                 <Input
                                   type='datetime-local'
                                   value={toDatetimeLocalValue(cat.auction_date)}
@@ -536,7 +536,7 @@ export default function CategoryFeeSettingsClient({
                                 />
                               </div>
                               <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Auction Venue (English)</label>
+                                <label className='text-xs font-semibold text-slate-700'>Draw Venue (English)</label>
                                 <Input
                                   value={cat.auction_venue ?? ''}
                                   onChange={e => handleScheduleFieldChange(cat.id, 'auction_venue', e.target.value)}
@@ -545,7 +545,7 @@ export default function CategoryFeeSettingsClient({
                                 />
                               </div>
                               <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Auction Venue (Hindi)</label>
+                                <label className='text-xs font-semibold text-slate-700'>Draw Venue (Hindi)</label>
                                 <Input
                                   value={cat.auction_venue_hi ?? ''}
                                   onChange={e => handleScheduleFieldChange(cat.id, 'auction_venue_hi', e.target.value)}
@@ -571,7 +571,7 @@ export default function CategoryFeeSettingsClient({
                             </div>
                             <p className='mt-3 text-xs text-muted-foreground'>
                               Leave a field blank to hide that instruction point on the public application form. Only
-                              categories with an auction date and venue both set will show the auction instruction.
+                              categories with an draw date and venue both set will show the draw instruction.
                             </p>
                           </td>
                         </tr>

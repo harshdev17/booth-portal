@@ -37,7 +37,7 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
-    { label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' },
+    { label: lang === 'hi' ? 'ड्रॉ भुगतान' : 'Draw Payment', href: '/auction-payment' },
     { label: lang === 'hi' ? 'आवंटन पत्र' : 'Allotment Letter', href: '/allotment-letter' },
     { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/#contact' }
   ].map(item => ({

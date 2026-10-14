@@ -51,8 +51,8 @@ const ReservedCategoriesSection = () => {
           </h2>
           <p className='max-w-2xl text-base sm:text-lg text-[#4b5d73]'>
             {lang === 'hi'
-              ? 'निम्नलिखित संगठन प्रकारों के लिए स्टॉल आरक्षित किए गए हैं।'
-              : 'Stalls reserved for the following organization types at the event.'}
+              ? 'निम्नलिखित संगठन प्रकारों के लिए बूथ/स्टॉल आरक्षित किए गए हैं।'
+              : 'Booths/Stalls reserved for the following organization types at the event.'}
           </p>
         </div>
 

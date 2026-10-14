@@ -218,7 +218,7 @@ export class LuckyDrawService {
       )
 
       if (stalls.length === 0) {
-        throw new Error('No available stall units in this category.')
+        throw new Error('No available booth/stall units in this category.')
       }
 
       // 4. Generate Cryptographic Seeds

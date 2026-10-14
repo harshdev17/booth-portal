@@ -16,6 +16,8 @@ export type CategoryDetail = {
   showRemarks: boolean
   formNotice: string | null
   formNoticeHi: string | null
+  extraDeclaration: string | null
+  extraDeclarationHi: string | null
 }
 
 export type ShopOptionDto = { id: number; label: string; feePaise: number | null }

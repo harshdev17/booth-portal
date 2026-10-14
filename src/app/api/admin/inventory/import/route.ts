@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     // list in an old template, or a typo, must fail clearly per row rather
     // than silently matching the wrong category or inserting a dangling id.
     // Matching is case/whitespace-insensitive against both the display name
-    // and slug, so "refreshment & food stalls" or the slug
+    // and slug, so "refreshment & food booths/stalls" or the slug
     // "refreshment-stalls" both resolve — reduces false "unknown category"
     // failures from minor formatting differences without being lax about
     // genuinely unknown names.

@@ -50,7 +50,7 @@ const PublicFooter = () => {
 
   const quickLinks = [
     { label: lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home', href: '/' },
-    { label: lang === 'hi' ? 'स्टॉल श्रेणियां' : 'Stall Categories', href: '/#categories' },
+    { label: lang === 'hi' ? 'बूथ/स्टॉल श्रेणियां' : 'Booth/Stall Categories', href: '/#categories' },
     { label: lang === 'hi' ? 'आवेदन की स्थिति' : 'Track Application Status', href: '/#status-check' },
     { label: lang === 'hi' ? 'आवंटन प्रक्रिया' : 'Allotment Procedure', href: '/#how-it-works' },
     { label: lang === 'hi' ? 'सामान्य प्रश्न' : 'Frequently Asked Questions', href: '/#faq' }
@@ -109,7 +109,7 @@ const PublicFooter = () => {
             <p className='max-w-sm text-sm leading-relaxed text-white/70 sm:text-base'>
               {lang === 'hi'
                 ? 'ब्रह्मसरोवर के पावन तट पर आयोजित होने वाले अंतर्राष्ट्रीय गीता जयंती महोत्सव में बूथ/स्टॉल के पारदर्शी एवं निष्पक्ष आवंटन हेतु आधिकारिक डिजिटल पोर्टल।'
-                : 'Official digital single-window portal for the transparent, fair, and computerized allotment of commercial stalls at Brahma Sarovar, Kurukshetra.'}
+                : 'Official digital single-window portal for the transparent, fair, and computerized allotment of commercial booths/stalls at Brahma Sarovar, Kurukshetra.'}
             </p>
           </div>
 

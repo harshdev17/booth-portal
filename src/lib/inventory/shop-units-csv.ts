@@ -11,7 +11,7 @@ import 'server-only'
 // Category, Direction, EMD Amount (EMD Amount is optional — a blank cell is
 // valid and means no EMD configured for that stall).
 
-export const CSV_COLUMNS = ['Stall No.', 'Single/Double', 'Category', 'Direction', 'EMD Amount'] as const
+export const CSV_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'EMD Amount'] as const
 
 export type ShopUnitCsvRow = {
   rowNumber: number
@@ -111,7 +111,12 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
 
   const header = parseCsvLine(lines[0]).map(h => h.trim())
   const expectedHeader = CSV_COLUMNS as readonly string[]
-  const headerMatches = expectedHeader.every((col, idx) => header[idx]?.toLowerCase() === col.toLowerCase())
+  // The first column used to be called "Stall No." — files with either name are accepted.
+  const headerMatches = expectedHeader.every((col, idx) => {
+    const got = header[idx]?.toLowerCase()
+
+    return got === col.toLowerCase() || (idx === 0 && got === 'stall no.')
+  })
 
   if (!headerMatches) {
     return {
@@ -150,13 +155,13 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
     const emdAmountText = (emdAmountRaw ?? '').trim()
 
     if (!stallNumber) {
-      errors.push({ rowNumber, message: 'Stall No. is required.' })
+      errors.push({ rowNumber, message: 'Booth/Stall No. is required.' })
 
       return
     }
 
     if (seenStallNumbers.has(stallNumber.toLowerCase())) {
-      errors.push({ rowNumber, message: `Duplicate Stall No. "${stallNumber}" within this file.` })
+      errors.push({ rowNumber, message: `Duplicate Booth/Stall No. "${stallNumber}" within this file.` })
 
       return
     }

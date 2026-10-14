@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         found: true,
         status: 'pending_draw',
-        message: 'Your application is registered. Lucky Draw allocation is either pending or not yet published.',
+        message: 'Your application is registered. Draw allocation is either pending or not yet published.',
         applicationNumber: app.application_number,
         representativeName: app.representative_name,
         categoryName: app.category_name,

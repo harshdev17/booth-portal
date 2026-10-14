@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       emdAmountRaw === null || emdAmountRaw === undefined || emdAmountRaw === '' ? null : Number(emdAmountRaw)
 
     if (!stallNumber) {
-      return NextResponse.json({ error: 'Stall number is required.' }, { status: 400 })
+      return NextResponse.json({ error: 'Booth/Stall number is required.' }, { status: 400 })
     }
 
     if (!shopType) {
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     )
 
     if (existing.length > 0) {
-      return NextResponse.json({ error: `Stall number "${stallNumber}" already exists.` }, { status: 409 })
+      return NextResponse.json({ error: `Booth/Stall number "${stallNumber}" already exists.` }, { status: 409 })
     }
 
     const result = await query<{ insertId: number }>(

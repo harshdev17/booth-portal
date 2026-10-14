@@ -11,7 +11,7 @@ import type { NotificationCategory } from '@/lib/notifications/types'
  * Configured entirely through environment variables so no secret lives in
  * source (see .env.example):
  *   SMTP_HOST, SMTP_PORT (default 587), SMTP_SECURE ("true" for port 465),
- *   SMTP_USER, SMTP_PASSWORD, SMTP_FROM (e.g. "KDB Stall Portal <no-reply@your-domain>").
+ *   SMTP_USER, SMTP_PASSWORD, SMTP_FROM (e.g. "KDB Booth/Stall Portal <no-reply@your-domain>").
  * Until SMTP_HOST / SMTP_USER / SMTP_PASSWORD / SMTP_FROM are all set, email is
  * simply skipped (and recorded as failed in notification_log) — it never
  * blocks the WhatsApp message or the action that triggered it.

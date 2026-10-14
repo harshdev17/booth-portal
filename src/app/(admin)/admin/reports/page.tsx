@@ -89,7 +89,7 @@ const ReportsAdminPage = async () => {
         <Card className='shadow-xs'>
           <CardHeader>
             <CardTitle className='text-base font-bold text-[#0c2847]'>Applications by Category</CardTitle>
-            <CardDescription className='text-xs'>Across all commercial stall categories</CardDescription>
+            <CardDescription className='text-xs'>Across all commercial booth/stall categories</CardDescription>
           </CardHeader>
           <CardContent className='space-y-2'>
             {byCategory.map(row => {

@@ -203,7 +203,7 @@ const InventoryTable = ({
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? 'Could not delete this stall.')
+        setError(body.error ?? 'Could not delete this booth/stall.')
 
         return
       }
@@ -238,7 +238,7 @@ const InventoryTable = ({
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? 'Could not delete the selected stalls.')
+        setError(body.error ?? 'Could not delete the selected booths/stalls.')
 
         return
       }
@@ -269,7 +269,7 @@ const InventoryTable = ({
       const body = await response.json()
 
       if (!response.ok) {
-        setBulkStatusError(body.error ?? 'Could not update status for the selected stalls.')
+        setBulkStatusError(body.error ?? 'Could not update status for the selected booths/stalls.')
 
         return
       }
@@ -300,7 +300,7 @@ const InventoryTable = ({
 
   const handleAddSubmit = async () => {
     if (!addForm.stallNumber.trim() || !addForm.shopType || !addForm.categoryName) {
-      setAddError('Stall number, type, and category are required.')
+      setAddError('Booth/Stall number, type, and category are required.')
 
       return
     }
@@ -324,7 +324,7 @@ const InventoryTable = ({
       const body = await response.json()
 
       if (!response.ok) {
-        setAddError(body.error ?? 'Could not create this stall.')
+        setAddError(body.error ?? 'Could not create this booth/stall.')
 
         return
       }
@@ -355,7 +355,7 @@ const InventoryTable = ({
     if (!editingRow) return
 
     if (!editForm.stallNumber.trim() || !editForm.shopType || !editForm.categoryName) {
-      setEditError('Stall number, type, and category are required.')
+      setEditError('Booth/Stall number, type, and category are required.')
 
       return
     }
@@ -380,7 +380,7 @@ const InventoryTable = ({
       const body = await response.json()
 
       if (!response.ok) {
-        setEditError(body.error ?? 'Could not update this stall.')
+        setEditError(body.error ?? 'Could not update this booth/stall.')
 
         return
       }
@@ -467,7 +467,7 @@ const InventoryTable = ({
                 <DialogContent className='sm:max-w-sm'>
                   <DialogHeader>
                     <DialogTitle>Delete {deletableSelectedIds.length} stall(s)?</DialogTitle>
-                    <DialogDescription>This permanently removes the selected stalls from inventory. This cannot be undone.</DialogDescription>
+                    <DialogDescription>This permanently removes the selected booths/stalls from inventory. This cannot be undone.</DialogDescription>
                   </DialogHeader>
 
                   {error && (
@@ -503,17 +503,17 @@ const InventoryTable = ({
               >
                 <DialogTrigger render={<Button size='sm' />}>
                   <PlusIcon />
-                  Add Stall
+                  Add Booth/Stall
                 </DialogTrigger>
                 <DialogContent className='sm:max-w-md'>
                   <DialogHeader>
                     <DialogTitle>Add Booth/Stall Unit</DialogTitle>
-                    <DialogDescription>Create a single new stall in inventory.</DialogDescription>
+                    <DialogDescription>Create a single new booth/stall in inventory.</DialogDescription>
                   </DialogHeader>
 
                   <div className='grid gap-3'>
                     <div className='grid gap-1.5'>
-                      <Label htmlFor='add-stall-number'>Stall Number</Label>
+                      <Label htmlFor='add-stall-number'>Booth/Stall Number</Label>
                       <Input
                         id='add-stall-number'
                         value={addForm.stallNumber}
@@ -712,7 +712,7 @@ const InventoryTable = ({
                     <Checkbox checked={allSelected} onCheckedChange={checked => toggleAll(checked === true)} aria-label='Select all' />
                   </TableHead>
                 )}
-                <TableHead>Stall No.</TableHead>
+                <TableHead>Booth/Stall No.</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Direction</TableHead>
@@ -731,7 +731,7 @@ const InventoryTable = ({
                         <Checkbox
                           checked={selectedIds.has(row.id)}
                           onCheckedChange={checked => toggleRow(row.id, checked === true)}
-                          aria-label={`Select stall ${row.stallNumber}`}
+                          aria-label={`Select booth/stall ${row.stallNumber}`}
                         />
                       )}
                     </TableCell>
@@ -820,7 +820,7 @@ const InventoryTable = ({
         <DialogContent className='sm:max-w-sm'>
           <DialogHeader>
             <DialogTitle>Delete Stall {deletingSingle?.stallNumber}?</DialogTitle>
-            <DialogDescription>This permanently removes this stall from inventory. This cannot be undone.</DialogDescription>
+            <DialogDescription>This permanently removes this booth/stall from inventory. This cannot be undone.</DialogDescription>
           </DialogHeader>
 
           {error && (
@@ -850,7 +850,7 @@ const InventoryTable = ({
 
           <div className='grid gap-3'>
             <div className='grid gap-1.5'>
-              <Label htmlFor='edit-stall-number'>Stall Number</Label>
+              <Label htmlFor='edit-stall-number'>Booth/Stall Number</Label>
               <Input
                 id='edit-stall-number'
                 value={editForm.stallNumber}

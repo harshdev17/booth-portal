@@ -38,7 +38,7 @@ export default function PoliceFilterBar({
         <div className='relative flex-1'>
           <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400' />
           <Input
-            placeholder='Search Allottee Name, App No, Mobile, Stall No...'
+            placeholder='Search Allottee Name, App No, Mobile, Booth/Stall No...'
             defaultValue={currentQ}
             onChange={e => updateSearch('q', e.target.value)}
             className='pl-9 h-10 border-slate-300 text-sm focus:border-blue-600'

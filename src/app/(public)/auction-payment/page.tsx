@@ -5,7 +5,7 @@ import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
 
 export const metadata: Metadata = {
-  title: 'Auction Payment | International Geeta Jayanti Mahotsav 2026'
+  title: 'Draw Payment | International Geeta Jayanti Mahotsav 2026'
 }
 
 const AuctionPaymentPage = () => {
@@ -13,10 +13,10 @@ const AuctionPaymentPage = () => {
     <>
       <PublicHeader />
       <ComingSoonSection
-        titleEn='Auction Payment'
-        titleHi='नीलामी भुगतान'
-        messageEn='Auction payment will be available after the result is declared.'
-        messageHi='नीलामी भुगतान परिणाम घोषित होने के बाद उपलब्ध होगा।'
+        titleEn='Draw Payment'
+        titleHi='ड्रॉ भुगतान'
+        messageEn='Draw payment will be available after the result is declared.'
+        messageHi='ड्रॉ भुगतान परिणाम घोषित होने के बाद उपलब्ध होगा।'
       />
       <PublicFooter />
     </>

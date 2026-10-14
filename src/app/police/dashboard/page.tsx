@@ -176,7 +176,7 @@ export default async function PoliceDashboardPage({
             <span className='text-xl font-bold text-white'>{totalAllottedCount[0]?.count ?? 0}</span>
           </div>
           <div className='bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-center'>
-            <span className='text-xs text-slate-400 block font-medium'>Allotted Stalls</span>
+            <span className='text-xs text-slate-400 block font-medium'>Allotted Booths/Stalls</span>
             <span className='text-xl font-bold text-blue-400'>{totalUnitsCount[0]?.count ?? 0}</span>
           </div>
         </div>
@@ -211,7 +211,7 @@ export default async function PoliceDashboardPage({
             <table className='w-full text-left text-sm'>
               <thead className='border-b bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider'>
                 <tr>
-                  <th className='py-3.5 px-4'>Stall / Booth</th>
+                  <th className='py-3.5 px-4'>Booth/Stall</th>
                   <th className='py-3.5 px-4'>App Number</th>
                   <th className='py-3.5 px-4'>Allottee / Representative</th>
                   <th className='py-3.5 px-4'>Category</th>

@@ -243,7 +243,7 @@ const ApplicationsAdminPage = async ({
         <div>
           <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Applications Management</h1>
           <p className='text-sm text-muted-foreground'>
-            Review, verify documents, and manage submitted stall applications for International Geeta Jayanti Mahotsav 2026.
+            Review, verify documents, and manage submitted booth/stall applications for International Geeta Jayanti Mahotsav 2026.
           </p>
         </div>
         <div className='flex items-center gap-2'>
@@ -258,7 +258,7 @@ const ApplicationsAdminPage = async ({
           value={totalSubmitted}
           icon={FileTextIcon}
           accentColor='text-[#0c2847]'
-          hint='Submitted across all commercial stall categories'
+          hint='Submitted across all commercial booth/stall categories'
         />
         <KpiCard
           label='Pending Review'
@@ -272,14 +272,14 @@ const ApplicationsAdminPage = async ({
           value={approvedCount}
           icon={ShieldCheckIcon}
           accentColor='text-emerald-600'
-          hint='Scrutinized and eligible for Lucky Draw'
+          hint='Scrutinized and eligible for Draw'
         />
         <KpiCard
           label='Allotted / Selected'
           value={selectedCount}
           icon={CheckCircle2Icon}
           accentColor='text-purple-600'
-          hint='Stalls successfully allotted or drawn'
+          hint='Booths/Stalls successfully allotted or drawn'
         />
       </div>
 

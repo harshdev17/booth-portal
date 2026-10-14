@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 
-import { Controller, type Control } from 'react-hook-form'
+import { Controller, useWatch, type Control } from 'react-hook-form'
 
 import { AlertTriangleIcon } from 'lucide-react'
 
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useLanguage } from '@/context/LanguageContext'
+import { isValidPan, PAN_ERROR_MESSAGE, PAN_FIELD_KEY, panNameMismatch } from '@/lib/applications/pan'
 import type { ApplicationFormValues } from '@/views/public/apply/form-values'
 import type { CategoryFieldDto, ShopOptionDto } from '@/views/public/apply/types'
 
@@ -57,6 +58,7 @@ const CategoryFieldsStep = ({
 }) => {
   const { lang } = useLanguage()
   const hasShopOptions = shopOptions.length > 0
+  const applicantName = useWatch({ control, name: 'common.representativeName' }) ?? ''
 
   if (fields.length === 0 && !hasShopOptions) {
     return (
@@ -208,9 +210,28 @@ const CategoryFieldsStep = ({
                       }
                       min={NUMERIC_FIELD_KEY.test(field.key) ? 0 : undefined}
                       inputMode={NUMERIC_FIELD_KEY.test(field.key) ? 'numeric' : undefined}
-                      maxLength={field.maxLength ?? undefined}
+                      maxLength={field.key === PAN_FIELD_KEY ? 10 : (field.maxLength ?? undefined)}
+                      placeholder={field.key === PAN_FIELD_KEY ? 'ABCPE1234F' : undefined}
+                      autoCapitalize={field.key === PAN_FIELD_KEY ? 'characters' : undefined}
+                      onChange={
+                        field.key === PAN_FIELD_KEY
+                          ? e => rhfField.onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                          : rhfField.onChange
+                      }
                       aria-invalid={fieldState.invalid}
                     />
+                  )}
+
+                  {field.key === PAN_FIELD_KEY && panNameMismatch(String(rhfField.value ?? ''), applicantName) && (
+                    <p className='text-xs font-medium text-amber-700'>
+                      {lang === 'hi'
+                        ? 'सुझाव: व्यक्तिगत (P) PAN का पाँचवाँ अक्षर सामान्यतः धारक के उपनाम (surname) का पहला अक्षर होता है। कृपया PAN और नाम दोबारा जाँच लें।'
+                        : 'Check: the 5th letter of an individual (P) PAN is normally the first letter of the holder’s surname. Please double-check the PAN and the name.'}
+                    </p>
+                  )}
+
+                  {field.key === PAN_FIELD_KEY && !!rhfField.value && !isValidPan(String(rhfField.value)) && (
+                    <p className='text-xs font-medium text-red-600'>{PAN_ERROR_MESSAGE}</p>
                   )}
 
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

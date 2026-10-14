@@ -51,8 +51,8 @@ export default function ContactBannerSection() {
           {/* Subtitle */}
           <p className='mt-3 max-w-2xl text-sm sm:text-base text-[#475569] leading-relaxed'>
             {lang === 'hi'
-              ? 'आवेदन प्रक्रिया, दस्तावेज, भुगतान, स्टॉल आवंटन या किसी अन्य समस्या के लिए हमारी हेल्पडेस्क टीम से संपर्क करें।'
-              : 'Contact our official helpdesk team for any queries regarding application process, documents, payment, or stall allotment.'}
+              ? 'आवेदन प्रक्रिया, दस्तावेज, भुगतान, बूथ/स्टॉल आवंटन या किसी अन्य समस्या के लिए हमारी हेल्पडेस्क टीम से संपर्क करें।'
+              : 'Contact our official helpdesk team for any queries regarding application process, documents, payment, or booth/stall allotment.'}
           </p>
         </div>
 
@@ -139,7 +139,7 @@ export default function ContactBannerSection() {
               </h3>
               <p className='text-sm sm:text-[15px] font-bold text-[#0c2847] mb-1'>{displayAddress}</p>
               <p className='text-xs text-[#64748b]'>
-                {lang === 'hi' ? '(स्टॉल आवंटन हेल्पडेस्क)' : '(Stall Allotment Helpdesk)'}
+                {lang === 'hi' ? '(बूथ/स्टॉल आवंटन हेल्पडेस्क)' : '(Booth/Stall Allotment Helpdesk)'}
               </p>
             </div>
           </div>

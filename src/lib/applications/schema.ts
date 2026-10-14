@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { AADHAAR_ERROR_MESSAGE, isValidAadhaar } from '@/lib/applications/aadhaar'
+
 /**
  * Permanently forbidden field keys. No application form, in any category,
  * may ever collect these — per explicit 2026 requirement (the prior-year
@@ -54,6 +56,7 @@ const aadhaarNumber = z
   .string()
   .trim()
   .regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits')
+  .refine(isValidAadhaar, { message: AADHAAR_ERROR_MESSAGE })
 
 const mobileNumber = z
   .string()

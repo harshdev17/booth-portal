@@ -170,19 +170,19 @@ const SuccessPageView = ({
           <p className='mb-6 text-sm text-[#475569]'>
             {lang === 'hi' ? (
               <>
-                आपका <strong className='text-[#0c2847]'>{details.categoryName}</strong> हेतु स्टॉल आवंटन पंजीकरण कुरुक्षेत्र विकास बोर्ड को प्राप्त हो गया है।
+                आपका <strong className='text-[#0c2847]'>{details.categoryName}</strong> हेतु बूथ/स्टॉल आवंटन पंजीकरण कुरुक्षेत्र विकास बोर्ड को प्राप्त हो गया है।
               </>
             ) : (
               <>
-                Your stall allotment registration for <strong className='text-[#0c2847]'>{details.categoryName}</strong> has been received by Kurukshetra Development Board.
+                Your booth/stall allotment registration for <strong className='text-[#0c2847]'>{details.categoryName}</strong> has been received by Kurukshetra Development Board.
               </>
             )}
           </p>
         ) : (
           <p className='mb-6 text-sm text-[#475569]'>
             {lang === 'hi'
-              ? 'आपका स्टॉल आवंटन पंजीकरण कुरुक्षेत्र विकास बोर्ड को प्राप्त हो गया है।'
-              : 'Your stall allotment registration has been received by Kurukshetra Development Board.'}
+              ? 'आपका बूथ/स्टॉल आवंटन पंजीकरण कुरुक्षेत्र विकास बोर्ड को प्राप्त हो गया है।'
+              : 'Your booth/stall allotment registration has been received by Kurukshetra Development Board.'}
           </p>
         )}
 

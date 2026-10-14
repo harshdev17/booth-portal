@@ -126,7 +126,7 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
                 href='#categories'
                 className='inline-flex items-center gap-2 rounded-xl bg-[#f0af3d] px-6 py-3.5 text-sm font-bold text-[#1f2937] shadow-sm transition hover:bg-[#e49f2b] active:scale-[0.98]'
               >
-                <span>{lang === 'hi' ? 'स्टॉल देखें और आवेदन करें' : 'Explore Stalls & Apply'}</span>
+                <span>{lang === 'hi' ? 'बूथ/स्टॉल देखें और आवेदन करें' : 'Explore Booths/Stalls & Apply'}</span>
                 <span className='text-xs font-black'>→</span>
               </Link>
               <Link

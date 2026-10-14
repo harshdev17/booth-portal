@@ -24,10 +24,13 @@ export type CategoryRow = {
   auction_venue_hi: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
   display_order: number
+
   /** 0 hides the "Other Remarks" box on this category's form. */
   show_remarks: number
   form_notice: string | null
   form_notice_hi: string | null
+  extra_declaration: string | null
+  extra_declaration_hi: string | null
 }
 
 export type ShopOptionRow = {

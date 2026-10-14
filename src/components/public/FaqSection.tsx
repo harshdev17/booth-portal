@@ -31,27 +31,27 @@ const FAQ_ITEMS: FaqItem[] = [
     questionHi: 'कौन-कौन से दस्तावेज़ आवश्यक हैं?',
     questionEn: 'Which documents are required?',
     answerHi:
-      'मुख्य रूप से आधार कार्ड/पैन कार्ड, निवास प्रमाण पत्र, बैंक खाता विवरण/रद्द चेक, पासपोर्ट साइज फोटो, और श्रेणी के अनुसार व्यापार/कलाकार पंजीकरण प्रमाण पत्र या एफएसएसएआई (खाद्य स्टॉल हेतु) लाइसेंस आवश्यक है।',
+      'मुख्य रूप से आधार कार्ड/पैन कार्ड, निवास प्रमाण पत्र, बैंक खाता विवरण/रद्द चेक, पासपोर्ट साइज फोटो, और श्रेणी के अनुसार व्यापार/कलाकार पंजीकरण प्रमाण पत्र या एफएसएसएआई (खाद्य बूथ/स्टॉल हेतु) लाइसेंस आवश्यक है।',
     answerEn:
-      'Primary documents include Aadhaar Card / PAN Card, Address Proof, Bank details / cancelled cheque, passport-size photo, and category-specific trade/artisan certificates or FSSAI license (for food stalls).'
+      'Primary documents include Aadhaar Card / PAN Card, Address Proof, Bank details / cancelled cheque, passport-size photo, and category-specific trade/artisan certificates or FSSAI license (for food booths/stalls).'
   },
   {
     id: 'faq-3',
     questionHi: 'आवेदन शुल्क कितना है?',
     questionEn: 'What is the application fee?',
     answerHi:
-      'आवेदन शुल्क स्टॉल श्रेणी पर निर्भर करता है। सामान्य/हस्तशिल्प स्टॉलों के लिए गैर-वापसी योग्य पंजीकरण शुल्क ₹500 से ₹1,000 के मध्य है, जबकि कुछ विशिष्ट सांस्कृतिक श्रेणियों में आवेदन निःशुल्क है। सटीक विवरण श्रेणी कार्ड में देखें।',
+      'आवेदन शुल्क बूथ/स्टॉल श्रेणी पर निर्भर करता है। सामान्य/हस्तशिल्प बूथों/स्टॉलों के लिए गैर-वापसी योग्य पंजीकरण शुल्क ₹500 से ₹1,000 के मध्य है, जबकि कुछ विशिष्ट सांस्कृतिक श्रेणियों में आवेदन निःशुल्क है। सटीक विवरण श्रेणी कार्ड में देखें।',
     answerEn:
-      'The application fee varies by stall category. For general/handicraft stalls, a non-refundable registration fee ranges between ₹500 to ₹1,000, while certain cultural categories are free. See category cards for details.'
+      'The application fee varies by booth/stall category. For general/handicraft booths/stalls, a non-refundable registration fee ranges between ₹500 to ₹1,000, while certain cultural categories are free. See category cards for details.'
   },
   {
     id: 'faq-4',
-    questionHi: 'स्टॉल का चयन कैसे होगा?',
-    questionEn: 'How will stalls be allotted?',
+    questionHi: 'बूथ/स्टॉल का चयन कैसे होगा?',
+    questionEn: 'How will booths/stalls be allotted?',
     answerHi:
-      'दस्तावेजों की जांच और सत्यापन के पश्चात, निर्धारित नियमों के अनुसार पारदर्शी कम्प्यूटरीकृत लकी ड्रॉ, ई-नीलामी अथवा केडीबी चयन समिति के माध्यम से निष्पक्ष रूप से आवंटन किया जाएगा।',
+      'दस्तावेजों की जांच और सत्यापन के पश्चात, निर्धारित नियमों के अनुसार पारदर्शी कम्प्यूटरीकृत ड्रॉ, ई-ड्रॉ अथवा केडीबी चयन समिति के माध्यम से निष्पक्ष रूप से आवंटन किया जाएगा।',
     answerEn:
-      'Following document scrutiny and verification, stalls are allotted strictly through computerized lucky draws, e-auctions, or KDB screening committees as per specific category rules.'
+      'Following document scrutiny and verification, booths/stalls are allotted strictly through computerized draws, or KDB screening committees as per specific category rules.'
   },
   {
     id: 'faq-5',
@@ -93,8 +93,8 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: 'faq-9',
-    questionHi: 'क्या एक व्यक्ति एक से अधिक स्टॉल के लिए आवेदन कर सकता है?',
-    questionEn: 'Can one person apply for multiple stalls?',
+    questionHi: 'क्या एक व्यक्ति एक से अधिक बूथ/स्टॉल के लिए आवेदन कर सकता है?',
+    questionEn: 'Can one person apply for multiple booths/stalls?',
     answerHi:
       'एक ही आधार/पैन नंबर पर एक श्रेणी में केवल एक ही आवेदन मान्य है। हालांकि, यदि कोई आवेदक अलग-अलग पात्र श्रेणियों (उदा. हस्तशिल्प और फूड) के लिए अर्हता रखता है, तो वह अलग आवेदन पत्र भर सकता है।',
     answerEn:
@@ -102,12 +102,12 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: 'faq-10',
-    questionHi: 'स्टॉल का स्थान (लोकेशन) कब और कैसे पता चलेगा?',
-    questionEn: 'When and how will the stall location be notified?',
+    questionHi: 'बूथ/स्टॉल का स्थान (लोकेशन) कब और कैसे पता चलेगा?',
+    questionEn: 'When and how will the booth/stall location be notified?',
     answerHi:
-      'लकी ड्रॉ और शुल्क भुगतान पूर्ण होने के बाद आधिकारिक स्टॉल नंबर व ब्रह्मसरोवर पर उसका सटीक लेआउट मैप पोर्टल पर आपके आवंटन पत्र में दर्शा दिया जाएगा।',
+      'ड्रॉ और शुल्क भुगतान पूर्ण होने के बाद आधिकारिक बूथ/स्टॉल नंबर व ब्रह्मसरोवर पर उसका सटीक लेआउट मैप पोर्टल पर आपके आवंटन पत्र में दर्शा दिया जाएगा।',
     answerEn:
-      'Upon completion of draw selection and payment, the exact stall number and site layout map at Brahma Sarovar will be generated on your downloadable Allotment Letter via the portal.'
+      'Upon completion of draw selection and payment, the exact booth/stall number and site layout map at Brahma Sarovar will be generated on your downloadable Allotment Letter via the portal.'
   }
 ]
 
@@ -172,8 +172,8 @@ export default function FaqSection() {
           {/* Subtitle description */}
           <p className='mt-3 max-w-2xl text-sm sm:text-base text-[#475569] leading-relaxed'>
             {lang === 'hi'
-              ? 'यहाँ आपको स्टॉल आवेदन, आवेदन प्रक्रिया, शुल्क, पात्रता और अन्य महत्वपूर्ण जानकारियों से संबंधित सामान्य प्रश्नों के उत्तर मिलेंगे।'
-              : 'Here you will find answers to common questions regarding stall applications, procedures, fees, eligibility criteria, and allotment.'}
+              ? 'यहाँ आपको बूथ/स्टॉल आवेदन, आवेदन प्रक्रिया, शुल्क, पात्रता और अन्य महत्वपूर्ण जानकारियों से संबंधित सामान्य प्रश्नों के उत्तर मिलेंगे।'
+              : 'Here you will find answers to common questions regarding booth/stall applications, procedures, fees, eligibility criteria, and allotment.'}
           </p>
         </div>
 

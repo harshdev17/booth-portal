@@ -98,7 +98,7 @@ export default function ExportApplicationsButton({
               Export All Applications (Complete Data)
             </div>
             <div className='text-[11px] text-slate-500'>
-              {totalAll !== undefined ? `All ${totalAll} submitted records` : 'Every application & stall detail'}
+              {totalAll !== undefined ? `All ${totalAll} submitted records` : 'Every application & booth/stall detail'}
             </div>
           </div>
         </DropdownMenuItem>

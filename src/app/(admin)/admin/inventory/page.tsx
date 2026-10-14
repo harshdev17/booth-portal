@@ -57,7 +57,7 @@ const STATUS_CONFIG: Record<ShopUnitRow['status'], { label: string; color: strin
 const LOG_ACTION_LABEL: Record<string, string> = {
   'inventory.imported': 'Bulk Import',
   'inventory.exported': 'Export',
-  'inventory.deleted': 'Deleted Stall'
+  'inventory.deleted': 'Deleted Booth/Stall'
 }
 
 function summarizeLog(log: InventoryLogRow): string {
@@ -76,7 +76,7 @@ function summarizeLog(log: InventoryLogRow): string {
   if (log.action === 'inventory.deleted' && log.previous_value) {
     const data = log.previous_value as { stallNumber: string; status: string }
 
-    return `Stall ${data.stallNumber} (was ${data.status})`
+    return `Booth/Stall ${data.stallNumber} (was ${data.status})`
   }
 
   return '—'
@@ -154,7 +154,7 @@ const InventoryAdminPage = async () => {
     <div className='flex flex-col gap-6'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
-          <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Inventory / Booths & Stalls</h1>
+          <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Inventory / Booths/Stalls</h1>
           <p className='text-sm text-muted-foreground'>
             Physical booth/stall units per category and their current allotment state.
           </p>

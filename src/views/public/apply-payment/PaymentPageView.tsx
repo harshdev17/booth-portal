@@ -308,8 +308,8 @@ const PaymentPageView = ({
         </h1>
         <p className='mb-6 text-xs sm:text-sm text-[#526478]'>
           {lang === 'hi'
-            ? 'कुरुक्षेत्र विकास बोर्ड के सुरक्षित पेमेंट गेटवे द्वारा अपने स्टॉल आवेदन का शुल्क जमा करें।'
-            : 'Complete your stall application payment securely via Kurukshetra Development Board payment gateway.'}
+            ? 'कुरुक्षेत्र विकास बोर्ड के सुरक्षित पेमेंट गेटवे द्वारा अपने बूथ/स्टॉल आवेदन का शुल्क जमा करें।'
+            : 'Complete your booth/stall application payment securely via Kurukshetra Development Board payment gateway.'}
         </p>
 
         {loadError && (
