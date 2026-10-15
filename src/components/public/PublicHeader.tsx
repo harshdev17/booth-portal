@@ -38,13 +38,17 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
+    // Opens the venue layout PDF directly, not a page route — rendered as a
+    // plain <a target="_blank"> below rather than Next's <Link>.
+    { label: lang === 'hi' ? 'मानचित्र' : 'Map', href: '/images/public/map.pdf', external: true },
     { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/#contact' }
   ].map(item => ({
     ...item,
 
     // Active = the page you are on. In-page anchors ("/#categories") share the home
-    // pathname, so they never count as active on their own.
-    active: !item.href.includes('#') && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href))
+    // pathname, so they never count as active on their own; an external link
+    // is never "active" either.
+    active: !item.external && !item.href.includes('#') && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href))
   }))
 
   // Simple text toggle (not a filled pill). Rendered in the top bar on sm+ and,
@@ -145,21 +149,27 @@ const PublicHeader = () => {
         <header className='bg-[var(--kdb-primary)]'>
           <nav className='mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6'>
             <ul className='hidden items-center gap-0 xl:flex'>
-              {navItems.map(item => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    aria-current={item.active ? 'page' : undefined}
-                    className={`relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap transition-colors xl:text-[15px] 2xl:px-3 2xl:text-base after:absolute after:inset-x-2 2xl:after:inset-x-3 after:bottom-0.5 after:h-[3px] after:origin-center after:rounded-full after:bg-[#f0b429] after:transition-transform after:duration-300 hover:text-[#ffd56b] hover:after:scale-x-100 ${
-                      item.active
-                        ? 'bg-white/15 font-extrabold text-white after:scale-x-100'
-                        : 'font-semibold text-white/85 after:scale-x-0'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+              {navItems.map(item => {
+                const className = `relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap transition-colors xl:text-[15px] 2xl:px-3 2xl:text-base after:absolute after:inset-x-2 2xl:after:inset-x-3 after:bottom-0.5 after:h-[3px] after:origin-center after:rounded-full after:bg-[#f0b429] after:transition-transform after:duration-300 hover:text-[#ffd56b] hover:after:scale-x-100 ${
+                  item.active
+                    ? 'bg-white/15 font-extrabold text-white after:scale-x-100'
+                    : 'font-semibold text-white/85 after:scale-x-0'
+                }`
+
+                return (
+                  <li key={item.label}>
+                    {item.external ? (
+                      <a href={item.href} target='_blank' rel='noopener noreferrer' className={className}>
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link href={item.href} aria-current={item.active ? 'page' : undefined} className={className}>
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
 
             <div className='flex items-center gap-4 ml-auto'>
@@ -192,21 +202,31 @@ const PublicHeader = () => {
           <div className='px-7 pb-3'>{languageSwitcher('dark')}</div>
 
           <ul className='flex flex-col gap-1 px-4'>
-            {navItems.map(item => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={
-                    item.active
-                      ? 'block rounded-md px-3 py-2.5 text-sm font-bold text-[#0c2847]'
-                      : 'block rounded-md px-3 py-2.5 text-sm font-medium text-[#4b5563] transition hover:bg-[#f1f5f9] hover:text-[var(--kdb-primary)]'
-                  }
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {navItems.map(item => {
+              const className = item.active
+                ? 'block rounded-md px-3 py-2.5 text-sm font-bold text-[#0c2847]'
+                : 'block rounded-md px-3 py-2.5 text-sm font-medium text-[#4b5563] transition hover:bg-[#f1f5f9] hover:text-[var(--kdb-primary)]'
+
+              return (
+                <li key={item.label}>
+                  {item.external ? (
+                    <a
+                      href={item.href}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className={className}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link href={item.href} onClick={() => setMobileMenuOpen(false)} className={className}>
+                      {item.label}
+                    </Link>
+                  )}
+                </li>
+              )
+            })}
           </ul>
 
           <div className='mt-auto px-4 pb-4'>

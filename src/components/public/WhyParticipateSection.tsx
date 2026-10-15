@@ -49,7 +49,7 @@ const WhyParticipateSection = () => {
         <div className='mb-12 text-left'>
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              {lang === 'hi' ? 'भाग लेने के लाभ' : 'BENEFITS OF PARTICIPATION'}
+              {lang === 'hi' ? 'महोत्सव में हिस्सा लेने के फायदे' : 'Benefits of Participating in the Mahotsav'}
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -62,12 +62,14 @@ const WhyParticipateSection = () => {
           </div>
 
           <h2 className='mb-3 text-3xl sm:text-5xl font-black tracking-tight text-[#0a2c53]'>
-            {lang === 'hi' ? 'भाग क्यों लें?' : 'Why Participate?'}
+            {lang === 'hi'
+              ? 'अंतरराष्ट्रीय गीता जयंती में स्टॉल/बूथ लेने के फायदे'
+              : 'Benefits of Setting Up a Stall/Booth at International Gita Jayanti Mahotsav'}
           </h2>
           <p className='max-w-2xl text-base sm:text-lg text-[#4b5d73]'>
             {lang === 'hi'
-              ? 'अंतरराष्ट्रीय गीता जयंती में स्टॉल/बूथ लेने के लाभ।'
-              : 'Benefits of Setting Up a Stall/Booth at International Gita Jayanti Mahotsav 2026.'}
+              ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल लेने से आपके व्यवसाय को मिलने वाले विभिन्न फायदे इस प्रकार है।'
+              : 'The various benefits your business gains from taking a booth/stall at International Gita Jayanti Mahotsav 2026 are as follows.'}
           </p>
         </div>
 

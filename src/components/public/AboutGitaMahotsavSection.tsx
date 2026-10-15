@@ -51,7 +51,7 @@ const AboutGitaMahotsavSection = () => {
         <div className='grid items-center gap-10 lg:grid-cols-[minmax(0,420px)_1fr] lg:gap-14'>
           <div className='relative mx-auto aspect-[4/3.2] w-full max-w-md overflow-hidden rounded-2xl border border-[#e8dfce] shadow-xs lg:mx-0'>
             <Image
-              src='/images/public/about-gita-mahotsav-chariot2.png'
+              src='/images/public/about-gita-mahotsav-chariot3.jpg'
               alt={
                 lang === 'hi'
                   ? 'श्रीकृष्ण एवं अर्जुन रथ प्रतिमा, ब्रह्मसरोवर'

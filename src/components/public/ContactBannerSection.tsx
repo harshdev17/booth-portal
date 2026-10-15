@@ -134,12 +134,9 @@ export default function ContactBannerSection() {
                   />
                 </div>
               </div>
-              <h3 className='text-base sm:text-lg font-black text-[#0c2847] leading-snug mb-1'>
-                {lang === 'hi' ? 'जिला प्रशासन कार्यालय' : 'District Administration Office'}
-              </h3>
               <p className='text-sm sm:text-[15px] font-bold text-[#0c2847] mb-1'>{displayAddress}</p>
               <p className='text-xs text-[#64748b]'>
-                {lang === 'hi' ? '(बूथ/स्टॉल आवंटन हेल्पडेस्क)' : '(Booth/Stall Allotment Helpdesk)'}
+                {lang === 'hi' ? '(आधिकारिक पता)' : '(Official Address)'}
               </p>
             </div>
           </div>
