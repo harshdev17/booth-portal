@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 
+import AboutGitaMahotsavSection from '@/components/public/AboutGitaMahotsavSection'
 import CategoryCard, { type CategoryCardData } from '@/components/public/CategoryCard'
 import ContactBannerSection from '@/components/public/ContactBannerSection'
 import FaqSection from '@/components/public/FaqSection'
@@ -24,6 +25,9 @@ export default function PublicHomeClient({ categories, eventStartsOn, eventEndsO
   return (
     <>
       <HeroSlider eventStartsOn={eventStartsOn} eventEndsOn={eventEndsOn} />
+
+      {/* About International Gita Mahotsav */}
+      <AboutGitaMahotsavSection />
 
       {/* Important Note (Application Fee / Non-Refundable / Allotment Process) */}
       <ImportantNoticeSection />
