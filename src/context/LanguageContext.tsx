@@ -60,19 +60,27 @@ export const translations: Record<Language, Record<string, string>> = {
     'notices.desc': 'आवेदन अंतिम तिथि, दस्तावेज जांच, ड्रॉ और बूथ/स्टॉल आवंटन संबंधी आधिकारिक सूचनाएं यहां प्रकाशित होंगी।',
 
     // How it works
-    'how.badge': 'आवंटन प्रक्रिया',
-    'how.heading': 'बूथ/स्टॉल आवंटन कैसे कार्य करता है?',
-    'how.desc': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु बूथ/स्टॉल आवेदन, सत्यापन एवं आवंटन की पारदर्शी डिजिटल प्रक्रिया।',
-    'how.step1.title': 'ऑनलाइन आवेदन',
-    'how.step1.desc': 'बूथ/स्टॉल श्रेणी चुनें और आवेदन पत्र भरें',
-    'how.step2.title': 'आवेदन शुल्क',
-    'how.step2.desc': 'सुरक्षित ऑनलाइन माध्यम से निर्धारित शुल्क जमा करें',
-    'how.step3.title': 'दस्तावेज जांच',
-    'how.step3.desc': 'केडीबी अधिकारियों द्वारा अपलोड दस्तावेजों की जांच',
-    'how.step4.title': 'चयन / ड्रॉ',
-    'how.step4.desc': 'श्रेणी नियमों के अनुसार पारदर्शी ड्रॉ अथवा ई-ड्रॉ',
-    'how.step5.title': 'बूथ/स्टॉल आवंटन',
-    'how.step5.desc': 'सत्यापित क्यूआर कोड युक्त आधिकारिक आवंटन पत्र डाउनलोड करें',
+    'how.badge': 'स्टॉल/बूथ आबंटन प्रक्रिया 2026',
+    'how.heading': 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ आबंटन की प्रक्रिया',
+    'how.desc':
+      'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के आबंटन के लिए आवेदन करने से लेकर आवेदन फॉर्म और दस्तावेजों की जाँच, परिणाम जारी होने, आवश्यकतानुसार भुगतान और स्टॉल/बूथ के अंतिम आबंटन तक की प्रक्रिया निम्नलिखित चरणों में पूरी की जाएगी।',
+    'how.step1.title': 'ऑनलाइन आवेदन करें',
+    'how.step1.desc': 'अपनी श्रेणी का चयन करें और ऑनलाइन आवेदन फॉर्म भरें।',
+    'how.step2.title': 'आवेदन शुल्क जमा करें',
+    'how.step2.desc':
+      'यदि आपकी श्रेणी के लिए आवेदन शुल्क निर्धारित है, तो उसे ऑनलाइन जमा करें। जिन श्रेणियों में आवेदन शुल्क नहीं है, उनके आवेदकों को कोई आवेदन शुल्क नहीं देना होगा।',
+    'how.step3.title': 'आवेदन फॉर्म और दस्तावेजों की जाँच',
+    'how.step3.desc':
+      'कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आपके आवेदन फॉर्म और जमा किए गए दस्तावेजों की जाँच की जाएगी। स्वीकार होने, अस्वीकार होने अथवा अतिरिक्त जानकारी/दस्तावेज की आवश्यकता होने पर आपको इसकी सूचना WhatsApp और ईमेल के माध्यम से दी जाएगी।',
+    'how.step4.title': 'परिणाम जारी होगा',
+    'how.step4.desc':
+      'प्रत्येक श्रेणी की गाइडलाइंस में दी गई तारीख को परिणाम जारी किया जाएगा। आवेदक अपना परिणाम पोर्टल पर देख सकते हैं। इसकी जानकारी आवेदन करते समय दिए गए WhatsApp नंबर और ईमेल पते पर भी भेजी जाएगी।',
+    'how.step5.title': 'स्टॉल/बूथ की आबंटन राशि जमा करें',
+    'how.step5.desc':
+      'यदि आपकी श्रेणी के लिए स्टॉल/बूथ की आबंटन राशि निर्धारित है, तो परिणाम जारी होने के बाद संबंधित राशि जमा करें। जिन श्रेणियों में स्टॉल/बूथ निःशुल्क हैं, उनके लिए आबंटन राशि जमा करने की आवश्यकता नहीं होगी। राशि और भुगतान से संबंधित जानकारी अपनी श्रेणी की गाइडलाइंस में देखें।',
+    'how.step6.title': 'स्टॉल/बूथ का आबंटन',
+    'how.step6.desc':
+      'चयन प्रक्रिया और आवश्यक भुगतान पूरा होने के बाद सफल आवेदकों को स्टॉल/बूथ आबंटन की आधिकारिक पुष्टि प्रदान की जाएगी।',
 
     // Banner & Trust
     'banner.badge': 'कुरुक्षेत्र विकास बोर्ड',
@@ -137,19 +145,27 @@ export const translations: Record<Language, Record<string, string>> = {
     'notices.desc': 'Official schedule for application deadlines, document scrutiny dates, draw sessions, and allotment notifications for Geeta Jayanti Mahotsav 2026 booths/stalls will be published here.',
 
     // How it works
-    'how.badge': 'Allotment Procedure',
-    'how.heading': 'How Booth/Stall Allotment Works',
-    'how.desc': 'Transparent, digital procedure for booth application, document verification, and booth/stall allotment for International Geeta Jayanti Mahotsav 2026.',
+    'how.badge': 'Booth/Stall Allotment Process 2026',
+    'how.heading': 'How International Gita Jayanti Mahotsav Booth/Stall Application Allotment Works',
+    'how.desc':
+      'The booth/stall allotment process for International Gita Jayanti Mahotsav 2026 includes online application, application and document verification, result announcement, payment (where required), and final booth/stall allotment. The process is explained below step by step.',
     'how.step1.title': 'Apply Online',
-    'how.step1.desc': 'Choose your booth/stall category & fill booth application form',
-    'how.step2.title': 'Application Fee',
-    'how.step2.desc': 'Pay the official non-refundable registration fee online',
-    'how.step3.title': 'Document Verification',
-    'how.step3.desc': 'Submitted documents & KYC verified by KDB officials',
-    'how.step4.title': 'Selection / Draw',
-    'how.step4.desc': 'Transparent draw as per category rules',
-    'how.step5.title': 'Booth/Stall Allotment',
-    'how.step5.desc': 'Download official allotment letter with QR verification',
+    'how.step1.desc': 'Choose your category and fill out the online application form.',
+    'how.step2.title': 'Pay the Application Fee',
+    'how.step2.desc':
+      'If an application fee applies to your category, pay it online. Applicants in categories with no application fee do not need to pay any fee.',
+    'how.step3.title': 'Application and Document Verification',
+    'how.step3.desc':
+      'Kurukshetra Development Board (KDB) will check your application form and submitted documents. You will be notified via WhatsApp and email if your application is accepted, rejected, or if additional documents or information are required.',
+    'how.step4.title': 'Result Announced',
+    'how.step4.desc':
+      'The result will be announced on the date mentioned in the guidelines for each category. Applicants can check their results on the portal or receive them through WhatsApp and email using the contact details provided in their application.',
+    'how.step5.title': 'Pay the Booth/Stall Allotment Amount',
+    'how.step5.desc':
+      'If an allotment amount applies to your category, pay it after the result is announced. No allotment payment is required for categories where booths/stalls are provided free of charge. Check your category guidelines for payment details.',
+    'how.step6.title': 'Booth/Stall Allotment',
+    'how.step6.desc':
+      'Once the selection process and any required payment are complete, successful applicants will receive official confirmation of their booth/stall allotment.',
 
     // Banner & Trust
     'banner.badge': 'Kurukshetra Development Board',

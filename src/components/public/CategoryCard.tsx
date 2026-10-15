@@ -89,8 +89,16 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         ? lang === 'hi'
           ? 'निःशुल्क बूथ/स्टॉल'
           : 'Free Booth/Stall'
-        : formatRupees(category.allotmentAmountPaise)
+        : `${formatRupees(category.allotmentAmountPaise)}${lang === 'hi' ? ' (जीएसटी सहित)' : ' (including GST)'}`
       : (allotmentNote ?? (lang === 'hi' ? 'शीघ्र घोषित की जाएगी' : 'To be announced'))
+
+  // "(including GST)"/"(Non-Refundable)" are appended to every actual fee
+  // amount shown — the displayed figure already includes GST, and the fee is
+  // never returned regardless of application outcome (see every category's
+  // own guideline text) — but not to "Not Applicable"/"लागू नहीं", since
+  // there is no fee there to qualify.
+  const feeGstSuffix = lang === 'hi' ? ' (जीएसटी सहित)' : ' (including GST)'
+  const feeNonRefundableSuffix = lang === 'hi' ? ' (गैर-वापसी योग्य)' : ' (Non-Refundable)'
 
   const feeText =
     category.feePaise === null || category.feePaise === 0
@@ -98,8 +106,8 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         ? 'लागू नहीं'
         : 'Not Applicable'
       : category.feeBasePaise !== null && category.gstPercent !== null && category.gstPercent > 0
-        ? `${formatRupees(category.feeBasePaise)}/- + ${category.gstPercent}% GST = ${formatRupees(category.feePaise)}/-`
-        : `${formatRupees(category.feePaise)}/-`
+        ? `${formatRupees(category.feeBasePaise)}/- + ${category.gstPercent}% GST = ${formatRupees(category.feePaise)}/-${feeNonRefundableSuffix}`
+        : `${formatRupees(category.feePaise)}/-${feeGstSuffix}${feeNonRefundableSuffix}`
 
   return (
     <div className='group relative flex h-full flex-col rounded-2xl border border-[#ebe4db] bg-white/95 p-6 shadow-xs transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--kdb-primary)]/40 hover:shadow-xl backdrop-blur-xs'>

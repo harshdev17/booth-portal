@@ -6,14 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import {
-  AlertCircleIcon,
-  CheckCircle2Icon,
-  CreditCardIcon,
-  Loader2Icon,
-  LockIcon,
-  ShieldCheckIcon
-} from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, Loader2Icon, LockIcon, ShieldCheckIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -297,9 +290,6 @@ const PaymentPageView = ({
                 priority
               />
             </div>
-          </div>
-          <div className='mt-2 inline-flex size-14 items-center justify-center rounded-full bg-[#fdfbf7] border-2 border-[#e6cca4] text-[#8c5711] shadow-xs'>
-            <CreditCardIcon className='size-7' />
           </div>
         </div>
 

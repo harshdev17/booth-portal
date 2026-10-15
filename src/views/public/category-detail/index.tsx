@@ -66,7 +66,9 @@ const CategoryDetail = ({
                 ? lang === 'hi'
                   ? 'लागू नहीं'
                   : 'Not Applicable'
-                : `₹${(category.fee_paise / 100).toLocaleString('en-IN')}`}
+                : lang === 'hi'
+                  ? `₹${(category.fee_paise / 100).toLocaleString('en-IN')} (जीएसटी सहित) (गैर-वापसी योग्य)`
+                  : `₹${(category.fee_paise / 100).toLocaleString('en-IN')} (including GST) (Non-Refundable)`}
           </dd>
         </div>
         <div>
@@ -79,7 +81,9 @@ const CategoryDetail = ({
                 ? lang === 'hi'
                   ? 'निःशुल्क बूथ/स्टॉल'
                   : 'Free Booth/Stall'
-                : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')}`
+                : lang === 'hi'
+                  ? `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')} (जीएसटी सहित)`
+                  : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')} (including GST)`
               : (lang === 'hi' ? category.allotment_amount_note_hi : category.allotment_amount_note) ??
                 (lang === 'hi' ? 'जल्द घोषित' : 'To be confirmed')}
           </dd>
@@ -131,18 +135,27 @@ const CategoryDetail = ({
         </div>
       )}
 
-      {isAcceptingApplications ? (
+      <div className='flex flex-wrap items-center gap-4'>
+        {isAcceptingApplications ? (
+          <Link
+            href={`/apply/${category.slug}`}
+            className='inline-block rounded-lg border border-[var(--kdb-secondary)] bg-[var(--kdb-secondary)] px-8 py-3.5 text-base font-bold text-white hover:bg-[#a96d0e]'
+          >
+            {lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}
+          </Link>
+        ) : (
+          <p className='text-lg text-[var(--kdb-muted)]'>
+            {lang === 'hi' ? 'यह श्रेणी वर्तमान में आवेदन के लिए स्वीकार नहीं कर रही है।' : 'This category is not currently accepting applications.'}
+          </p>
+        )}
+
         <Link
-          href={`/apply/${category.slug}`}
-          className='inline-block rounded-lg border border-[var(--kdb-secondary)] bg-[var(--kdb-secondary)] px-8 py-3.5 text-base font-bold text-white hover:bg-[#a96d0e]'
+          href='/'
+          className='inline-block rounded-lg border border-[var(--kdb-border)] bg-white px-8 py-3.5 text-base font-bold text-[var(--kdb-primary)] hover:bg-[var(--kdb-light-bg)]'
         >
-          {lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}
+          {lang === 'hi' ? '← मुख्य पृष्ठ पर वापस जाएं' : '← Back to Home'}
         </Link>
-      ) : (
-        <p className='text-lg text-[var(--kdb-muted)]'>
-          {lang === 'hi' ? 'यह श्रेणी वर्तमान में आवेदन के लिए स्वीकार नहीं कर रही है।' : 'This category is not currently accepting applications.'}
-        </p>
-      )}
+      </div>
     </div>
   )
 }

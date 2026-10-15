@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { EyeIcon, FileIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
@@ -113,14 +113,14 @@ const ApplicationDocumentsSection = ({
         )}
       </CardContent>
 
-      <Sheet open={!!previewDoc} onOpenChange={open => !open && setPreviewDoc(null)}>
-        <SheetContent side='right' className='w-full sm:w-1/2 sm:max-w-none'>
-          <SheetHeader className='border-b'>
-            <SheetTitle className='flex items-center gap-2 text-[#0c2847]'>
+      <Dialog open={!!previewDoc} onOpenChange={open => !open && setPreviewDoc(null)}>
+        <DialogContent className='flex h-[85vh] w-[90vw] max-w-4xl flex-col p-0 sm:h-[85vh]'>
+          <DialogHeader className='border-b px-4 py-3'>
+            <DialogTitle className='flex items-center gap-2 text-[#0c2847]'>
               <FileIcon className='size-4' />
               {previewDoc?.label}
-            </SheetTitle>
-          </SheetHeader>
+            </DialogTitle>
+          </DialogHeader>
 
           <div className='min-h-0 flex-1 px-4 pb-4'>
             {previewDoc && (
@@ -131,8 +131,8 @@ const ApplicationDocumentsSection = ({
               />
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

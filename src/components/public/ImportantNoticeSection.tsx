@@ -54,7 +54,7 @@ const ImportantNoticeSection = () => {
         <div className='mb-4 rounded-xl border border-[#eeddb8] bg-white px-4 py-3'>
           <p className='text-sm sm:text-base font-extrabold text-[#0c2847]'>
             {lang === 'hi'
-              ? 'आवेदन शुल्क: ₹200 + 18% GST = ₹236/- | नॉन-रिफंडेबल'
+              ? 'आवेदन शुल्क: ₹200 + 18% GST = ₹236/- | गैर-वापसी योग्य'
               : 'Application Fee: ₹200 + 18% GST = ₹236/- | Non-Refundable'}
           </p>
         </div>
@@ -62,7 +62,7 @@ const ImportantNoticeSection = () => {
         <p className='mb-3 text-sm sm:text-base text-[#475569] leading-relaxed'>
           <span className='font-bold text-[#0c2847]'>{lang === 'hi' ? 'नोट: ' : 'Note: '}</span>
           {lang === 'hi'
-            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित कैटेगरी के नियमों के अनुसार चयन/बूथ-बूथ/स्टॉल आवंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित कैटेगरी के अनुसार निर्धारित Booth/Stall Amount या Security/Participation Deposit अलग से जमा करना होगा।'
+            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित श्रेणी के नियमों के अनुसार चयन/बूथ-स्टॉल आवंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित श्रेणी के अनुसार निर्धारित बूथ/स्टॉल राशि या सुरक्षा/भागीदारी जमा राशि अलग से जमा करनी होगी।'
             : '₹236/- is the application fee for filling the form. After the application fee is paid, the selection/booth-stall allotment process will be carried out as per the rules of the respective category. Upon selection, the Booth/Stall Amount or Security/Participation Deposit fixed for the respective category will have to be paid separately.'}
         </p>
 

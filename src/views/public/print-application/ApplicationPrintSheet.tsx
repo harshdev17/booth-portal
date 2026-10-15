@@ -54,8 +54,20 @@ export const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleStrin
  * why) rather than the site's --kdb-* theme variables.
  */
 const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'en' | 'hi' }) => (
-  <div className='kdb-print-sheet mx-auto w-full max-w-3xl border border-[var(--kdb-border)] bg-white p-8 shadow-sm print:border-0 print:p-0 print:shadow-none'>
-    <div className='mb-6 flex items-center gap-4 border-b-2 border-black pb-4 print:border-b-2 print:border-black'>
+  <div className='kdb-print-sheet relative mx-auto w-full max-w-3xl overflow-hidden border border-[var(--kdb-border)] bg-white p-8 shadow-sm print:border-0 print:p-0 print:shadow-none'>
+    {/* Faint logo watermark — print-only (screen view already shows the
+        logo at full strength in the header above), centered behind the
+        content so it never competes with the printed text. */}
+    <div
+      aria-hidden='true'
+      className='pointer-events-none absolute inset-0 hidden items-center justify-center print:flex'
+    >
+      <div className='relative size-80 opacity-[0.06]'>
+        <Image src='/images/public/logo.webp' alt='' fill className='object-contain' />
+      </div>
+    </div>
+
+    <div className='relative mb-6 flex items-center gap-4 border-b-2 border-black pb-4 print:border-b-2 print:border-black'>
       <div className='relative size-14 shrink-0'>
         <Image src='/images/public/logo.webp' alt='' fill className='object-contain' />
       </div>

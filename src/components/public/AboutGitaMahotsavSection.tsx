@@ -118,6 +118,16 @@ const AboutGitaMahotsavSection = () => {
                 </>
               )}
             </div>
+
+            <a
+              href='https://internationalgitamahotsav.in/'
+              target='_blank'
+              rel='noopener noreferrer'
+              className='mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--kdb-primary)] bg-[var(--kdb-primary)] px-6 py-3 text-sm font-bold text-white shadow-2xs transition hover:bg-[#061e3a] active:scale-[0.98]'
+            >
+              {lang === 'hi' ? 'और पढ़ें' : 'Read more'}
+              <span aria-hidden='true'>↗</span>
+            </a>
           </div>
         </div>
 

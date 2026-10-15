@@ -265,7 +265,7 @@ const StatusLookup = () => {
   return (
     <div className='mx-auto max-w-xl px-4 py-12 sm:px-6'>
       <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>
-        {lang === 'hi' ? 'आवेदन की स्थिति जांचें' : 'Check Application Status'}
+        {lang === 'hi' ? 'अपने स्टॉल/बूथ आवेदन फॉर्म की स्थिति जांचें' : 'Check Your Stall/Booth Application Status'}
       </h1>
       <p className='mb-8 text-[var(--kdb-muted)]'>
         {phase === 'otp'
@@ -273,8 +273,8 @@ const StatusLookup = () => {
             ? `आपके व्हाट्सएप नंबर पर भेजा गया 6-अंकों का कोड दर्ज करें (...${maskedMobile.slice(-4)})।`
             : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
           : lang === 'hi'
-            ? 'अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
-            : "Enter your application number. We'll send a verification code to your registered mobile number."}
+            ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
+            : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
       </p>
 
       {phase === 'lookup' && (

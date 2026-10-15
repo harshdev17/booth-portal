@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react'
 
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, DownloadIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
+import { AlertCircleIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useLanguage } from '@/context/LanguageContext'
-import { downloadBlob } from '@/lib/browser/download-blob'
 import ApplicationPrintSheet, { type PrintResult } from '@/views/public/print-application/ApplicationPrintSheet'
 import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access-session'
 
@@ -28,8 +27,6 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
   const [result, setResult] = useState<PrintResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadResult = async () => {
@@ -72,41 +69,6 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
     void loadResult()
   }, [applicationNumber, lang])
 
-  const downloadPdf = async () => {
-    const access = findAccessTokenForApplicationNumber(applicationNumber)
-
-    if (!access) return
-
-    setDownloadError(null)
-    setIsDownloading(true)
-
-    try {
-      const response = await fetch(`/api/applications/${access.applicationId}/print/pdf?lang=${lang}`, {
-        headers: { Authorization: `Bearer ${access.accessToken}` }
-      })
-
-      if (!response.ok) {
-        setDownloadError(
-          lang === 'hi'
-            ? 'पीडीएफ डाउनलोड नहीं हो सकी। कृपया पुनः प्रयास करें, या इसके बजाय ऊपर दिए गए "प्रिंट करें" बटन का उपयोग करें।'
-            : 'Could not download the PDF. Please try again, or use the "Print" button above instead.'
-        )
-
-        return
-      }
-
-      downloadBlob(await response.blob(), `Application-${applicationNumber}.pdf`)
-    } catch {
-      setDownloadError(
-        lang === 'hi'
-          ? 'पीडीएफ डाउनलोड नहीं हो सकी। कृपया पुनः प्रयास करें, या इसके बजाय "प्रिंट करें" बटन का उपयोग करें।'
-          : 'Could not download the PDF. Please try again, or use the "Print" button instead.'
-      )
-    } finally {
-      setIsDownloading(false)
-    }
-  }
-
   useEffect(() => {
     if (!result) return
 
@@ -144,13 +106,6 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
         </Alert>
       )}
 
-      {!isLoading && downloadError && (
-        <Alert variant='destructive' className='mb-4'>
-          <AlertCircleIcon className='size-4' />
-          <AlertDescription>{downloadError}</AlertDescription>
-        </Alert>
-      )}
-
       {!isLoading && result && (
         <div className='flex flex-col gap-6 print:block print:gap-0'>
           <div className='flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center print:hidden'>
@@ -161,15 +116,6 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
             >
               <PrinterIcon className='size-4' />
               {lang === 'hi' ? 'प्रिंट करें' : 'Print'}
-            </button>
-            <button
-              type='button'
-              onClick={downloadPdf}
-              disabled={isDownloading}
-              className='inline-flex items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-5 py-2.5 text-sm font-semibold text-[#0c2847] transition hover:border-[#0c2847] hover:bg-[#f8fafc] disabled:pointer-events-none disabled:opacity-60'
-            >
-              {isDownloading ? <Loader2Icon className='size-4 animate-spin' /> : <DownloadIcon className='size-4' />}
-              {lang === 'hi' ? 'पीडीएफ डाउनलोड करें' : 'Download PDF'}
             </button>
           </div>
 

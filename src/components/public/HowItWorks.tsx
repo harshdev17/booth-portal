@@ -1,6 +1,6 @@
 'use client'
 
-import { ClipboardCheckIcon, CreditCardIcon, FileTextIcon, SearchIcon, StoreIcon } from 'lucide-react'
+import { ClipboardCheckIcon, CreditCardIcon, FileTextIcon, MegaphoneIcon, StoreIcon, WalletIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -11,20 +11,23 @@ const HowItWorks = () => {
     { title: t('how.step1.title'), description: t('how.step1.desc'), icon: FileTextIcon },
     { title: t('how.step2.title'), description: t('how.step2.desc'), icon: CreditCardIcon },
     { title: t('how.step3.title'), description: t('how.step3.desc'), icon: ClipboardCheckIcon },
-    { title: t('how.step4.title'), description: t('how.step4.desc'), icon: SearchIcon },
-    { title: t('how.step5.title'), description: t('how.step5.desc'), icon: StoreIcon }
+    { title: t('how.step4.title'), description: t('how.step4.desc'), icon: MegaphoneIcon },
+    { title: t('how.step5.title'), description: t('how.step5.desc'), icon: WalletIcon },
+    { title: t('how.step6.title'), description: t('how.step6.desc'), icon: StoreIcon }
   ]
 
   return (
     <div className='relative'>
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-3 relative'>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-6 relative'>
         {steps.map((step, index) => {
           const Icon = step.icon
 
           return (
             <div key={index} className='relative flex flex-col items-center text-center px-2 group'>
-              {/* Connecting Dashed Arrow for Desktop */}
-              {index < steps.length - 1 && (
+              {/* Connecting Dashed Arrow for Desktop — only between steps that
+                  sit in the same row of this 3-column grid (never at the
+                  last column, where the next step wraps to a new row). */}
+              {index < steps.length - 1 && index % 3 !== 2 && (
                 <div className='hidden lg:flex items-center absolute top-7 left-[65%] w-[70%] z-0 pointer-events-none'>
                   <div className='w-full border-t border-dashed border-[#e2a84b]' />
                   <span className='text-[10px] text-[#e2a84b] font-black -ml-0.5'>▶</span>

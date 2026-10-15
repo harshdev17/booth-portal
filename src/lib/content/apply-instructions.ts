@@ -569,50 +569,88 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
   },
   {
     slug: 'self-help-groups',
+    requiredDocuments: [
+      {
+        en: 'Authorized Representative Aadhaar Card',
+        hi: 'अधिकृत प्रतिनिधि का आधार कार्ड'
+      },
+      {
+        en: 'SHG Registration Certificate / Registration Proof',
+        hi: 'स्वयं सहायता समूह (SHG) का पंजीकरण प्रमाणपत्र / पंजीकरण का प्रमाण'
+      },
+      {
+        en: 'Authorization Letter',
+        hi: 'प्राधिकरण पत्र'
+      },
+      {
+        en: 'Product Photographs',
+        hi: 'उत्पादों की तस्वीरें'
+      }
+    ],
+    hideScheduleBox: true,
+    sections: [
+      {
+        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
+        items: [{ en: 'Last Date to Apply: 28 October 2026 at 11:59 PM', hi: 'आवेदन करने की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक' }]
+      }
+    ],
+    bulletsHeading: { en: 'Before You Apply', hi: 'आवेदन करने से पहले' },
     bullets: [
       {
-        en: 'Only Registered SHGs may apply in this category.',
-        hi: 'केवल पंजीकृत स्वयं सहायता समूह (SHG) ही इस श्रेणी में आवेदन कर सकते हैं।'
+        en: 'Only registered Self Help Groups (SHGs) with valid registration proof can apply. The application must be submitted by an authorized member or representative of the SHG.',
+        hi: 'इस श्रेणी में केवल पंजीकृत स्वयं सहायता समूह (SHG) ही आवेदन कर सकते हैं। समूह की ओर से आवेदन किसी अधिकृत सदस्य या प्रतिनिधि द्वारा किया जाना चाहिए।'
       },
       {
-        en: 'The application must be made by the SHG’s Authorized Member/Representative.',
-        hi: 'आवेदन SHG के अधिकृत सदस्य/प्रतिनिधि द्वारा किया जाना चाहिए।'
+        en: 'All applicants must pay a non-refundable application fee of ₹236 (₹200 + 18% GST) online. This fee will not be refunded, whether the application is accepted or rejected.',
+        hi: 'सभी आवेदकों को ₹236 आवेदन शुल्क (₹200 + 18% GST) ऑनलाइन जमा करना अनिवार्य है। यह शुल्क वापस नहीं किया जाएगा, चाहे आवेदन स्वीकार हो या अस्वीकार।'
       },
       {
-        en: 'The booth/stall may mainly display and sell products made by the SHG itself.',
-        hi: 'बूथ/स्टॉल पर मुख्य रूप से SHG द्वारा स्वयं बनाए गए उत्पाद ही प्रदर्शित एवं बेचे जा सकेंगे।'
+        en: 'Fill in all details correctly according to your official documents. Upload clear, complete, and readable documents. Incorrect information or unclear documents may result in rejection.',
+        hi: 'आवेदन फॉर्म में सभी जानकारी सही-सही भरें और आवश्यक दस्तावेज स्पष्ट एवं पढ़ने योग्य अपलोड करें। गलत, अधूरी या भ्रामक जानकारी देने पर आवेदन अस्वीकार किया जा सकता है।'
       },
       {
-        en: 'The ₹236 Application Fee is mandatory for all applicants.',
-        hi: 'सभी आवेदकों के लिए ₹236 आवेदन शुल्क अनिवार्य है।'
+        en: 'Only SHGs verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for stall allotment.',
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित स्वयं सहायता समूहों को ही स्टॉल आवंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'No Booth/Stall Allotment Fee will be charged.',
-        hi: 'बूथ/स्टॉल आवंटन शुल्क नहीं ली जाएगी।'
+        en: 'A total of 60 stalls are reserved for SHGs: 40 for Haryana and 20 for outside Haryana. If eligible applications exceed the available stalls in a region, allotment will be made through a transparent draw. Otherwise, stalls may be allotted directly according to the prescribed process.',
+        hi: 'स्वयं सहायता समूहों के लिए कुल 60 स्टॉल आरक्षित हैं, जिनमें 40 हरियाणा और 20 हरियाणा के बाहर के समूहों के लिए हैं। यदि पात्र आवेदनों की संख्या उपलब्ध स्टॉलों से अधिक होती है, तो पारदर्शी ड्रॉ के माध्यम से आवंटन किया जाएगा। अन्यथा, निर्धारित प्रक्रिया के अनुसार सीधे स्टॉल आवंटित किए जा सकते हैं।'
       },
       {
-        en: 'All documents and SHG details will first be verified.',
-        hi: 'पहले सभी दस्तावेजों एवं SHG विवरण का सत्यापन किया जाएगा।'
+        en: 'The stall will be provided free of cost to the selected SHG. No separate stall allotment fee will be charged.',
+        hi: 'चयनित स्वयं सहायता समूहों को स्टॉल निःशुल्क दिया जाएगा। इसके लिए कोई अलग स्टॉल आवंटन शुल्क नहीं देना होगा।'
       },
       {
-        en: 'Only Verified & Eligible SHGs will be included in the allotment process.',
-        hi: 'केवल सत्यापित एवं पात्र SHG ही आवंटन प्रक्रिया में शामिल होंगे।'
+        en: 'Only products made or manufactured by the SHG itself may be displayed and sold at the stall. Permitted products may include achar, masale, uncooked papad, and other eligible food and non-food products.',
+        hi: 'स्टॉल पर केवल स्वयं सहायता समूह द्वारा बनाए या तैयार किए गए उत्पाद ही प्रदर्शित और बेचे जा सकेंगे। इनमें अचार, मसाले, बिना पके पापड़ तथा अन्य अनुमत खाद्य और गैर-खाद्य उत्पाद शामिल हो सकते हैं।'
       },
       {
-        en: 'A Transparent Draw of Lots will be held if eligible applications exceed the fixed quota.',
-        hi: 'पात्र आवेदन निर्धारित कोटे से अधिक होने पर पारदर्शी ड्रॉ की जाएगी।'
+        en: 'Cooking, frying, roasting, heating food, or preparing and serving ready-to-eat refreshments at the stall is strictly prohibited. All food products must meet applicable food safety, packaging, and labelling requirements.',
+        hi: 'स्टॉल पर खाना पकाने, तलने, भूनने, गर्म करने या तुरंत खाने के लिए तैयार खाद्य पदार्थ और जलपान तैयार करके परोसने की अनुमति नहीं होगी। सभी खाद्य उत्पादों के लिए लागू खाद्य सुरक्षा, पैकेजिंग और लेबलिंग नियमों का पालन करना अनिवार्य है।'
       },
       {
-        en: 'SHG-made Achar, Masale, uncooked Papad, and other permitted products may be sold.',
-        hi: 'SHG द्वारा बनाए गए अचार, मसाले, कच्चे पापड़ एवं अन्य अनुमत उत्पाद बेचे जा सकते हैं।'
+        en: 'The stall cannot be transferred, rented, or sublet to another person or organization without permission from KDB.',
+        hi: 'KDB की अनुमति के बिना आवंटित स्टॉल किसी अन्य व्यक्ति या संस्था को हस्तांतरित, किराए पर या सबलेट नहीं किया जा सकता।'
       },
       {
-        en: 'Cooking, frying, roasting, or refreshment food preparation is not permitted at the booth/stall.',
-        hi: 'बूथ/स्टॉल पर खाना पकाने, तलने, भूनने या जलपान सामग्री तैयार करने की अनुमति नहीं होगी।'
+        en: 'Once submitted, the application cannot be modified. Applications containing incomplete, incorrect, misleading, or false information may be rejected. If such information is discovered after allotment, the stall allotment may be cancelled.',
+        hi: 'आवेदन जमा करने के बाद उसमें बदलाव नहीं किया जा सकेगा। आवेदन में गलत, अधूरी, भ्रामक या झूठी जानकारी पाए जाने पर आवेदन अस्वीकार किया जा सकता है। आवंटन के बाद ऐसी जानकारी सामने आने पर स्टॉल आवंटन रद्द किया जा सकता है।'
       },
       {
-        en: 'Direct/Draw allotment will be made for Haryana and Outside Haryana as per their fixed quotas.',
-        hi: '*हरियाणा और हरियाणा से बाहर के लिए निर्धारित कोटे के अनुसार सीधा/ड्रॉ आवंटन किया जाएगा।'
+        en: 'KDB reserves the right to verify the submitted documents and inspect allotted stalls. All selected SHGs must follow the prescribed rules and guidelines.',
+        hi: 'KDB को जमा किए गए दस्तावेजों की जाँच करने और आवंटित स्टॉल का निरीक्षण करने का अधिकार होगा। सभी चयनित समूहों को KDB द्वारा निर्धारित नियमों और दिशा-निर्देशों का पालन करना होगा।'
+      },
+      {
+        en: 'KDB may change the number of stalls, stall locations, allotment process, or other arrangements for the International Gita Jayanti Mahotsav 2026, if required.',
+        hi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता पड़ने पर KDB स्टॉलों की संख्या, स्थान, आवंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
+      },
+      {
+        en: 'The final decision regarding application acceptance, eligibility, and stall allotment will rest with KDB. Any disputes will be subject to the jurisdiction of the competent courts at Kurukshetra, as applicable.',
+        hi: 'आवेदन स्वीकार करने, पात्रता तय करने और स्टॉल आवंटन से संबंधित अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा। किसी भी विवाद की स्थिति में, जहाँ लागू हो, कुरुक्षेत्र के सक्षम न्यायालयों का क्षेत्राधिकार होगा।'
+      },
+      {
+        en: 'Please regularly check ThanesarInfo.com for the latest updates regarding SHG applications, document verification, eligibility, draw, and stall allotment.',
+        hi: 'कृपया SHG आवेदन, दस्तावेज सत्यापन, पात्रता, ड्रॉ और स्टॉल आवंटन से संबंधित नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखते रहें।'
       }
     ]
   },

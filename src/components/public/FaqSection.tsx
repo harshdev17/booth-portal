@@ -16,98 +16,116 @@ type FaqItem = {
 }
 
 const FAQ_ITEMS: FaqItem[] = [
-  // Left Column (Items 1 - 5)
+  // Left Column (Items 1 - 6)
   {
     id: 'faq-1',
-    questionHi: 'आवेदन कौन कर सकता है?',
-    questionEn: 'Who is eligible to apply?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल के लिए कौन आवेदन कर सकता है?',
+    questionEn: 'Who can apply for a booth/stall at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'कोई भी भारतीय नागरिक, पंजीकृत व्यापारी, कारीगर, स्वयं सहायता समूह, खाद्य व खान-पान विक्रेता अथवा व्यावसायिक प्रतिष्ठान जो केडीबी के पात्रता नियमों और आवश्यक पहचान व व्यापार दस्तावेजों को पूरा करता हो, आवेदन कर सकता है।',
+      'केवल वही व्यक्ति, संस्था, व्यापारी, कारीगर, स्वयं सहायता समूह (SHG) या अन्य आवेदक बूथ/स्टॉल के लिए आवेदन कर सकता है, जो संबंधित श्रेणी की निर्धारित पात्रता शर्तों को पूरा करता हो। जिस श्रेणी के लिए आप आवेदन करना चाहते हैं, उसके दिशानिर्देश ध्यानपूर्वक पढ़ें। यदि आप उस श्रेणी की सभी निर्धारित पात्रता शर्तों को पूरा करते हैं, तो बूथ/स्टॉल के लिए आवेदन कर सकते हैं।',
     answerEn:
-      'Any Indian citizen, registered merchant, artisan, Self Help Group (SHG), food vendor, or commercial enterprise meeting KDB eligibility rules with valid identity and business documents can apply.'
+      'Only an individual, organisation, trader, artisan, Self Help Group (SHG), or other applicant who meets the eligibility conditions prescribed for that category can apply for a booth/stall. Read the guidelines for the category you wish to apply under carefully. If you meet all the prescribed eligibility conditions for that category, you can apply for a booth/stall.'
   },
   {
     id: 'faq-2',
-    questionHi: 'कौन-कौन से दस्तावेज़ आवश्यक हैं?',
-    questionEn: 'Which documents are required?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल आवेदन के लिए कौन-कौन से दस्तावेज़ आवश्यक हैं?',
+    questionEn: 'Which documents are required for a booth/stall application at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'मुख्य रूप से आधार कार्ड/पैन कार्ड, निवास प्रमाण पत्र, बैंक खाता विवरण/रद्द चेक, पासपोर्ट साइज फोटो, और श्रेणी के अनुसार व्यापार/कलाकार पंजीकरण प्रमाण पत्र या एफएसएसएआई (खाद्य बूथ/स्टॉल हेतु) लाइसेंस आवश्यक है।',
+      'आवश्यक दस्तावेज़ संबंधित श्रेणी के अनुसार अलग-अलग हो सकते हैं। इनमें आधार कार्ड या वैध पहचान पत्र, संस्था या व्यवसाय का पंजीकरण प्रमाणपत्र, GST प्रमाणपत्र या PAN कार्ड, उत्पादों की तस्वीरें, उत्पादों का विवरण और अन्य संबंधित दस्तावेज़ शामिल हो सकते हैं। कुछ श्रेणियों में अधिकृत प्रतिनिधि का पहचान पत्र, प्राधिकरण पत्र या अन्य विशेष दस्तावेज़ भी आवश्यक हो सकते हैं। आवेदन करने से पहले संबंधित श्रेणी के दिशानिर्देशों में दी गई दस्तावेज़ सूची ध्यानपूर्वक पढ़ें और सभी आवश्यक दस्तावेज़ तैयार रखें।',
     answerEn:
-      'Primary documents include Aadhaar Card / PAN Card, Address Proof, Bank details / cancelled cheque, passport-size photo, and category-specific trade/artisan certificates or FSSAI license (for food booths/stalls).'
+      'The required documents vary by category. These may include an Aadhaar Card or valid identity proof, the organisation/business registration certificate, GST certificate or PAN card, product photographs, product details, and other related documents. Some categories may also require the authorized representative’s identity proof, an authorization letter, or other special documents. Before applying, read the document list in your category’s guidelines carefully and keep all required documents ready.'
   },
   {
     id: 'faq-3',
-    questionHi: 'आवेदन शुल्क कितना है?',
-    questionEn: 'What is the application fee?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल के लिए आवेदन शुल्क कितना है?',
+    questionEn: 'What is the application fee for a booth/stall at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'आवेदन शुल्क बूथ/स्टॉल श्रेणी पर निर्भर करता है। सामान्य/हस्तशिल्प बूथों/स्टॉलों के लिए गैर-वापसी योग्य पंजीकरण शुल्क ₹500 से ₹1,000 के मध्य है, जबकि कुछ विशिष्ट सांस्कृतिक श्रेणियों में आवेदन निःशुल्क है। सटीक विवरण श्रेणी कार्ड में देखें।',
+      'आवेदन शुल्क संबंधित श्रेणी के अनुसार निर्धारित है। जिन श्रेणियों में ₹236 आवेदन शुल्क लागू है, उसमें ₹200 शुल्क और 18% GST शामिल है। यह शुल्क गैर-वापसी योग्य है। स्टॉल निःशुल्क होने पर भी आवेदन शुल्क देना पड़ सकता है। आवेदन करने से पहले अपनी श्रेणी के दिशानिर्देशों में आवेदन शुल्क की पुष्टि करें।',
     answerEn:
-      'The application fee varies by booth/stall category. For general/handicraft booths/stalls, a non-refundable registration fee ranges between ₹500 to ₹1,000, while certain cultural categories are free. See category cards for details.'
+      'The application fee is fixed category by category. Where a ₹236 application fee applies, it includes a ₹200 fee plus 18% GST. This fee is non-refundable. Even when the stall itself is free, an application fee may still be payable. Before applying, confirm the application fee in your category’s guidelines.'
   },
   {
     id: 'faq-4',
-    questionHi: 'बूथ/स्टॉल का चयन कैसे होगा?',
-    questionEn: 'How will booths/stalls be allotted?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल का चयन और आबंटन कैसे होगा?',
+    questionEn: 'How will booth/stall selection and allotment work at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'दस्तावेजों की जांच और सत्यापन के पश्चात, निर्धारित नियमों के अनुसार पारदर्शी कम्प्यूटरीकृत ड्रॉ, ई-ड्रॉ अथवा केडीबी चयन समिति के माध्यम से निष्पक्ष रूप से आवंटन किया जाएगा।',
+      'बूथ/स्टॉल का चयन और आबंटन संबंधित श्रेणी के नियमों, पात्रता शर्तों, सत्यापन और कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा निर्धारित प्रक्रिया के अनुसार किया जाएगा। यदि सत्यापन के बाद पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की संख्या के भीतर रहती है, तो नियमों के अनुसार सीधे आबंटन किया जा सकता है। यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल से अधिक होती है, तो संबंधित श्रेणी के नियमों के अनुसार ड्रॉ कराया जा सकता है। कुछ श्रेणियों में चयन या आबंटन की अलग प्रक्रिया भी हो सकती है। आवेदन करने मात्र से बूथ/स्टॉल मिलना सुनिश्चित नहीं होता।',
     answerEn:
-      'Following document scrutiny and verification, booths/stalls are allotted strictly through computerized draws, or KDB screening committees as per specific category rules.'
+      'Booth/stall selection and allotment will be carried out according to the respective category’s rules, eligibility conditions, verification, and the process prescribed by the Kurukshetra Development Board (KDB). If, after verification, the number of eligible applications is within the number of available booths/stalls, direct allotment may be made as per the rules. If eligible applications exceed the available booths/stalls, a draw may be held as per that category’s rules. Some categories may follow a different selection or allotment process. Submitting an application alone does not guarantee a booth/stall.'
   },
   {
     id: 'faq-5',
-    questionHi: 'आवेदन की स्थिति कैसे देखें?',
-    questionEn: 'How can I check application status?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के बूथ/स्टॉल आवेदन की स्थिति कैसे देखें?',
+    questionEn: 'How can I check the status of my booth/stall application for International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'पोर्टल के "स्थिति जांचें" पृष्ठ पर जाकर अपना आवेदन क्रमांक और डिजिटल एक्सेस कोड दर्ज करके आप वास्तविक समय में स्थिति, दस्तावेज स्वीकृति एवं आवंटन परिणाम देख सकते हैं।',
+      'आवेदन जमा करने के बाद आधिकारिक पोर्टल पर उपलब्ध आवेदन स्थिति देखने की सुविधा का उपयोग करें। आवेदन की स्थिति देखने के लिए आवेदन संख्या या पोर्टल पर मांगी गई अन्य जानकारी की आवश्यकता हो सकती है। आवेदन के सत्यापन, चयन और बूथ/स्टॉल आबंटन से संबंधित अपडेट के लिए आधिकारिक पोर्टल पर नियमित रूप से जानकारी देखते रहें।',
     answerEn:
-      'Visit the portal’s "Status Check" section and enter your Application Number and digital Access Code to track verification, draw eligibility, and allotment results in real time.'
+      'After submitting your application, use the application status facility available on the official portal. You may need your application number or other details requested by the portal to check your status. Keep checking the official portal regularly for updates on document verification, selection, and booth/stall allotment.'
   },
-
-  // Right Column (Items 6 - 10)
   {
     id: 'faq-6',
-    questionHi: 'चयन के बाद भुगतान कैसे करना होगा?',
-    questionEn: 'How to make payment after selection?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल आबंटित होने के बाद भुगतान कैसे करना होगा?',
+    questionEn: 'How do I make payment after a booth/stall is allotted at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'चयनित आवेदकों को एसएमएस/ईमेल द्वारा सूचित किया जाएगा। वे पोर्टल पर लॉगिन करके निर्धारित समय सीमा के भीतर नेट बैंकिंग, यूपीआई, डेबिट/क्रेडिट कार्ड अथवा आधिकारिक बैंक चालान के माध्यम से आवंटन शुल्क जमा कर सकते हैं।',
+      'बूथ/स्टॉल आबंटित होने के बाद भुगतान की प्रक्रिया संबंधित श्रेणी के दिशा-निर्देशों के अनुसार पूरी करनी होगी। भुगतान की राशि, अंतिम तिथि और तरीका श्रेणी के अनुसार अलग-अलग हो सकते हैं। कुछ श्रेणियों में बूथ/स्टॉल निःशुल्क होते हैं, जबकि कुछ में निर्धारित आबंटन राशि या अन्य शुल्क जमा करना आवश्यक होता है। भुगतान करने से पहले आधिकारिक निर्देश ध्यानपूर्वक पढ़ें और भुगतान का प्रमाण सुरक्षित रखें।',
     answerEn:
-      'Selected applicants will be notified via SMS/Email and can pay the allotment fee via Net Banking, UPI, Cards, or designated bank challan through the portal within the prescribed deadline.'
+      'Once a booth/stall is allotted, the payment process must be completed as per that category’s guidelines. The payment amount, deadline, and method may differ by category. Some categories offer the booth/stall free of cost, while others require the prescribed allotment amount or other charges to be paid. Before making payment, read the official instructions carefully and keep proof of payment safe.'
   },
+
+  // Right Column (Items 7 - 12)
   {
     id: 'faq-7',
-    questionHi: 'क्या आवेदन रद्द किया जा सकता है? और धनवापसी का क्या नियम है?',
-    questionEn: 'Can an application be cancelled? What is the refund policy?',
+    questionHi: 'क्या अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के बूथ/स्टॉल आवेदन को रद्द किया जा सकता है? क्या आवेदन शुल्क वापस मिलेगा?',
+    questionEn: 'Can a booth/stall application for International Gita Jayanti Mahotsav 2026 be cancelled? Will the application fee be refunded?',
     answerHi:
-      'आवेदन जमा करने के बाद पंजीकरण शुल्क अहस्तांतरणीय और गैर-वापसी योग्य होता है। यदि केडीबी द्वारा प्रशासनिक कारणों से कोई श्रेणी निरस्त की जाती है, तो नियमानुसार सिक्योरिटी डिपॉजिट की वापसी प्रक्रिया की जाएगी।',
+      'आवेदन रद्द करने या बूथ/स्टॉल का आबंटन निरस्त करने से संबंधित नियम संबंधित श्रेणी और KDB की निर्धारित शर्तों के अनुसार लागू होंगे। गलत जानकारी देने, आवश्यक दस्तावेज़ उपलब्ध न कराने या निर्धारित नियमों का उल्लंघन करने पर आवेदन या आबंटन रद्द किया जा सकता है। आवेदन शुल्क गैर-वापसी योग्य है, इसलिए आवेदन अस्वीकार होने या बूथ/स्टॉल न मिलने पर भी यह वापस नहीं किया जाएगा। अन्य जमा राशियों की वापसी या समायोजन, जहाँ लागू हो, संबंधित श्रेणी के नियमों के अनुसार होगा।',
     answerEn:
-      'Application registration fee is non-refundable and non-transferable once submitted. In case of category cancellation by KDB for administrative reasons, applicable deposits will be refunded as per board policy.'
+      'Rules regarding cancelling an application or revoking a booth/stall allotment apply as per that category’s and KDB’s prescribed conditions. An application or allotment may be cancelled for providing false information, not furnishing the required documents, or violating the prescribed rules. The application fee is non-refundable, so it will not be returned even if the application is rejected or no booth/stall is allotted. Refund or adjustment of any other amount deposited, where applicable, will follow that category’s rules.'
   },
   {
     id: 'faq-8',
-    questionHi: 'यदि कोई समस्या आए तो किससे संपर्क करें?',
-    questionEn: 'Whom to contact if any issue arises?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के बूथ/स्टॉल आवेदन या आबंटन से संबंधित समस्या होने पर किससे संपर्क करें?',
+    questionEn: 'Who should I contact for a problem with my booth/stall application or allotment for International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'तकनीकी अथवा आवंटन संबंधी सहायता के लिए आप केडीबी हेल्पलाइन नंबर 01744-299xxx पर कार्य दिवसों में प्रातः 9:00 से सायं 5:00 बजे तक संपर्क कर सकते हैं या support@kdb.org.in पर ईमेल भेज सकते हैं।',
+      'आवेदन प्रक्रिया, दस्तावेज़ अपलोड करने, भुगतान, आवेदन की स्थिति या बूथ/स्टॉल आबंटन से संबंधित समस्या होने पर आधिकारिक पोर्टल पर दिए गए संपर्क विवरण के माध्यम से संबंधित प्राधिकरण से संपर्क करें। संपर्क करते समय अपना आवेदन नंबर और समस्या से संबंधित जानकारी तैयार रखें। किसी भी सहायता या जानकारी के लिए आधिकारिक पोर्टल पर उपलब्ध निर्देशों का पालन करें।',
     answerEn:
-      'For technical or allotment queries, contact the KDB helpline at 01744-299xxx during working hours (9 AM - 5 PM) or email support@kdb.org.in.'
+      'For any issue related to the application process, document upload, payment, application status, or booth/stall allotment, contact the concerned authority using the contact details given on the official portal. Keep your application number and details of the issue ready when contacting them. For any help or information, follow the instructions available on the official portal.'
   },
   {
     id: 'faq-9',
-    questionHi: 'क्या एक व्यक्ति एक से अधिक बूथ/स्टॉल के लिए आवेदन कर सकता है?',
-    questionEn: 'Can one person apply for multiple booths/stalls?',
+    questionHi: 'क्या अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में एक व्यक्ति या संस्था एक से अधिक बूथ/स्टॉल के लिए आवेदन कर सकती है?',
+    questionEn: 'Can one person or organisation apply for more than one booth/stall at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'एक ही आधार/पैन नंबर पर एक श्रेणी में केवल एक ही आवेदन मान्य है। हालांकि, यदि कोई आवेदक अलग-अलग पात्र श्रेणियों (उदा. हस्तशिल्प और फूड) के लिए अर्हता रखता है, तो वह अलग आवेदन पत्र भर सकता है।',
+      'एक से अधिक बूथ/स्टॉल के लिए आवेदन करने की अनुमति संबंधित श्रेणी के नियमों और KDB की शर्तों पर निर्भर करती है। आवेदन करने से पहले संबंधित श्रेणी के दिशानिर्देश ध्यानपूर्वक पढ़ें। यदि इस संबंध में स्पष्ट जानकारी उपलब्ध नहीं है, तो एक से अधिक आवेदन जमा करने से पहले संबंधित प्राधिकरण से पुष्टि करें। एक से अधिक आवेदन करने से एक से अधिक बूथ/स्टॉल का आबंटन सुनिश्चित नहीं होता।',
     answerEn:
-      'Only one application per Aadhaar/PAN is permitted within the same category. Applicants eligible for different distinct categories (e.g. Handicrafts and Food) may apply separately for each.'
+      'Whether more than one booth/stall application is permitted depends on that category’s rules and KDB’s conditions. Read the relevant category’s guidelines carefully before applying. If this is not clearly stated, confirm with the concerned authority before submitting more than one application. Submitting more than one application does not guarantee that more than one booth/stall will be allotted.'
   },
   {
     id: 'faq-10',
-    questionHi: 'बूथ/स्टॉल का स्थान (लोकेशन) कब और कैसे पता चलेगा?',
-    questionEn: 'When and how will the booth/stall location be notified?',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल की लोकेशन कहाँ देख सकते हैं?',
+    questionEn: 'Where can I see the booth/stall location for International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'ड्रॉ और शुल्क भुगतान पूर्ण होने के बाद आधिकारिक बूथ/स्टॉल नंबर व ब्रह्मसरोवर पर उसका सटीक लेआउट मैप पोर्टल पर आपके आवंटन पत्र में दर्शा दिया जाएगा।',
+      'बूथ/स्टॉल की लोकेशन देखने के लिए आधिकारिक पोर्टल पर अपलोड किया गया स्टॉल लोकेशन मैप देखें। इस मैप से आयोजन स्थल पर बूथ/स्टॉल के स्थान और संबंधित क्षेत्रों की जानकारी प्राप्त की जा सकती है। हालांकि, किसी विशेष बूथ/स्टॉल का अंतिम स्थान, नंबर और आकार KDB द्वारा निर्धारित प्रक्रिया तथा उपलब्धता के अनुसार तय किया जाएगा। मैप पर किसी स्थान को देख लेने मात्र से उस स्थान का आबंटन सुनिश्चित नहीं होता।',
     answerEn:
-      'Upon completion of draw selection and payment, the exact booth/stall number and site layout map at Brahma Sarovar will be generated on your downloadable Allotment Letter via the portal.'
+      'To see the booth/stall location, refer to the stall location map uploaded on the official portal. This map shows the location of booths/stalls and related areas at the event venue. However, the final location, number, and size of a particular booth/stall will be decided by KDB as per the prescribed process and availability. Viewing a location on the map alone does not guarantee allotment of that location.'
+  },
+  {
+    id: 'faq-11',
+    questionHi: 'क्या अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में आवेदन करने से बूथ/स्टॉल मिलना सुनिश्चित है?',
+    questionEn: 'Does applying guarantee a booth/stall at International Gita Jayanti Mahotsav 2026?',
+    answerHi:
+      'नहीं। आवेदन जमा करने से बूथ/स्टॉल का आबंटन सुनिश्चित नहीं होता। सभी आवेदनों का संबंधित श्रेणी की पात्रता शर्तों और निर्धारित प्रक्रिया के अनुसार सत्यापन किया जाएगा। बूथ/स्टॉल की आबंटन प्रक्रिया के बारें में अधिक जानने के लिए आप दिशा-निर्देश पृष्ठ पढ़ सकते हैं।',
+    answerEn:
+      'No. Submitting an application does not guarantee booth/stall allotment. All applications will be verified according to the relevant category’s eligibility conditions and the prescribed process. To learn more about the booth/stall allotment process, you can read the Guidelines page.'
+  },
+  {
+    id: 'faq-12',
+    questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल के लिए आवेदन करने से पहले किन बातों का ध्यान रखना चाहिए?',
+    questionEn: 'What should I keep in mind before applying for a booth/stall at International Gita Jayanti Mahotsav 2026?',
+    answerHi:
+      'आवेदन करने से पहले अपनी इच्छित श्रेणी के दिशानिर्देश ध्यानपूर्वक पढ़ें। सुनिश्चित करें कि आप उस श्रेणी की पात्रता शर्तों को पूरा करते हैं और आपके पास सभी आवश्यक दस्तावेज़ उपलब्ध हैं। आवेदन फॉर्म में सही जानकारी भरें, निर्धारित आवेदन शुल्क जमा करें और आवेदन की अंतिम तिथि का ध्यान रखें। साथ ही, स्टॉल लोकेशन मैप, आबंटन राशि, भुगतान संबंधी नियमों और अन्य महत्वपूर्ण निर्देशों को भी पढ़ें। आवेदन जमा करने से पहले सभी जानकारी और दस्तावेज़ों की जाँच कर लें।',
+    answerEn:
+      'Before applying, read the guidelines for the category you wish to apply under carefully. Make sure you meet that category’s eligibility conditions and have all the required documents ready. Fill in the application form correctly, pay the prescribed application fee, and keep the application deadline in mind. Also read the stall location map, allotment amount, payment-related rules, and other important instructions. Check all information and documents carefully before submitting your application.'
   }
 ]
 
@@ -119,8 +137,8 @@ export default function FaqSection() {
     setOpenId(prev => (prev === id ? null : id))
   }
 
-  const leftItems = FAQ_ITEMS.slice(0, 5)
-  const rightItems = FAQ_ITEMS.slice(5, 10)
+  const leftItems = FAQ_ITEMS.slice(0, 6)
+  const rightItems = FAQ_ITEMS.slice(6, 12)
 
   return (
     <section id='faq' className='relative overflow-hidden py-20 px-4 sm:px-6 lg:px-8 bg-[#faf8f5]'>

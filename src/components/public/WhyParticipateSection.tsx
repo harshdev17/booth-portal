@@ -2,64 +2,33 @@
 
 import Image from 'next/image'
 
-import {
-  HandshakeIcon,
-  MegaphoneIcon,
-  MessageSquareIcon,
-  TagIcon,
-  TrendingUpIcon,
-  UsersIcon
-} from 'lucide-react'
+import { HandshakeIcon, TrendingUpIcon, UsersIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
 const BENEFITS = [
   {
     icon: UsersIcon,
-    title: { en: 'High Foot Traffic', hi: 'उच्च दर्शक संख्या' },
+    title: { en: 'Reach More People', hi: 'आने वाले अधिक लोगों तक पहुँच' },
     desc: {
-      en: 'Get exposure to thousands of event visitors and promote your brand effectively.',
-      hi: 'हजारों मेला आगंतुकों तक पहुंच पाएं और अपने ब्रांड को प्रभावी ढंग से बढ़ावा दें।'
+      en: 'Reach a wider audience at International Gita Jayanti Mahotsav 2026. Showcase your products, connect with new people, and explore opportunities to grow your business.',
+      hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के माध्यम से अपने उत्पादों को प्रदर्शित करने, नए लोगों से जुड़ने और अपने व्यवसाय को आगे बढ़ाने का अवसर प्राप्त करें।'
     }
   },
   {
     icon: HandshakeIcon,
-    title: { en: 'Networking Opportunities', hi: 'नेटवर्किंग के अवसर' },
+    title: { en: 'Connect with New People', hi: 'नए लोगों से जुड़ने का अवसर' },
     desc: {
-      en: 'Meet other businesses, NGOs, and potential customers to grow your network.',
-      hi: 'अन्य व्यवसायों, एनजीओ और संभावित ग्राहकों से मिलें और अपना नेटवर्क बढ़ाएं।'
+      en: 'Meet other business owners, social organizations, and potential customers. Build new relationships and explore opportunities for future collaboration.',
+      hi: 'अन्य व्यापारियों, सामाजिक संस्थाओं और संभावित ग्राहकों से मिलें। नए संबंध बनाएँ और भविष्य में सहयोग के अवसर तलाशें।'
     }
   },
   {
     icon: TrendingUpIcon,
-    title: { en: 'Direct Sales Boost', hi: 'प्रत्यक्ष बिक्री वृद्धि' },
+    title: { en: 'Grow Your Sales', hi: 'बिक्री बढ़ाने का अवसर' },
     desc: {
-      en: 'Increase your sales with a dedicated booth at the event, reaching targeted customers.',
-      hi: 'मेले में समर्पित बूथ के साथ लक्षित ग्राहकों तक पहुंचकर अपनी बिक्री बढ़ाएं।'
-    }
-  },
-  {
-    icon: MegaphoneIcon,
-    title: { en: 'Marketing Support', hi: 'मार्केटिंग सहायता' },
-    desc: {
-      en: 'Benefit from event marketing campaigns to further promote your booth.',
-      hi: 'अपने बूथ को और बढ़ावा देने के लिए मेले के मार्केटिंग अभियानों का लाभ उठाएं।'
-    }
-  },
-  {
-    icon: TagIcon,
-    title: { en: 'Exclusive Discounts', hi: 'विशेष छूट' },
-    desc: {
-      en: 'Access exclusive discounts and perks as a registered booth partner.',
-      hi: 'पंजीकृत बूथ पार्टनर के रूप में विशेष छूट एवं लाभ प्राप्त करें।'
-    }
-  },
-  {
-    icon: MessageSquareIcon,
-    title: { en: 'Customer Feedback', hi: 'ग्राहक प्रतिक्रिया' },
-    desc: {
-      en: 'Engage directly with customers and receive feedback to improve your offerings.',
-      hi: 'ग्राहकों से सीधे जुड़ें और अपने उत्पाद/सेवाओं को बेहतर बनाने हेतु प्रतिक्रिया प्राप्त करें।'
+      en: 'Showcase your products directly to customers through your stall/booth. Help them learn more about your products and explore opportunities to increase sales.',
+      hi: 'स्टॉल/बूथ के माध्यम से अपने उत्पादों को सीधे ग्राहकों तक पहुँचाएँ, उन्हें अपने उत्पादों की जानकारी दें और बिक्री बढ़ाने का प्रयास करें।'
     }
   }
 ]
@@ -97,8 +66,8 @@ const WhyParticipateSection = () => {
           </h2>
           <p className='max-w-2xl text-base sm:text-lg text-[#4b5d73]'>
             {lang === 'hi'
-              ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल लेने से आपके व्यवसाय को मिलने वाले लाभ।'
-              : 'The advantages your business gains by taking a booth/stall at International Geeta Jayanti Mahotsav 2026.'}
+              ? 'अंतरराष्ट्रीय गीता जयंती में स्टॉल/बूथ लेने के लाभ।'
+              : 'Benefits of Setting Up a Stall/Booth at International Gita Jayanti Mahotsav 2026.'}
           </p>
         </div>
 

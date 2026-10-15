@@ -12,50 +12,20 @@ import { useLanguage } from '@/context/LanguageContext'
 const SLIDE_IMAGES = ['/images/public/hero-slider/1.png', '/images/public/hero-slider/2.png', '/images/public/hero-slider/3.png']
 const AUTOPLAY_MS = 6000
 
-// Hindi month names spelled out explicitly rather than via
-// toLocaleDateString('hi-IN', ...) — that call produced a genuine
-// server/client hydration mismatch (confirmed live: Node's ICU data renders
-// October as "अक्तूबर", Chrome's renders it as "अक्टूबर" — different valid
-// transliterations of the same month, but React treats any text mismatch
-// between server and client render as an error and can abandon/reset state
-// in that subtree). A fixed lookup table renders identically everywhere.
-const HINDI_MONTHS = [
-  'जनवरी',
-  'फ़रवरी',
-  'मार्च',
-  'अप्रैल',
-  'मई',
-  'जून',
-  'जुलाई',
-  'अगस्त',
-  'सितंबर',
-  'अक्टूबर',
-  'नवंबर',
-  'दिसंबर'
-]
-
-function formatEventDate(value: string | null, lang: 'hi' | 'en'): string | null {
-  if (!value) return null
-
-  const date = new Date(value)
-
-  if (lang === 'hi') {
-    return `${date.getDate()} ${HINDI_MONTHS[date.getMonth()]} ${date.getFullYear()}`
-  }
-
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
 /**
  * Hero image carousel — same bilingual text content on every slide (per
- * explicit instruction), only the background image cycles. Event-wide
- * application dates (eventStartsOn/eventEndsOn, from events.starts_on/
- * ends_on — distinct from any single category's own open/close dates) are
- * shown when configured; "to be announced" otherwise, since the source
- * content's "From __________ to __________" was a literal placeholder, not
- * real dates to hardcode.
+ * explicit instruction), only the background image cycles. The application
+ * period line is now the business's own fixed wording ("14 October 2026 to
+ * 28 October 2026"), not derived from events.starts_on/ends_on — kept in
+ * sync with that DB row manually when the window changes, same as every
+ * other piece of static copy on this page.
  */
 const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | null; eventEndsOn: string | null }) => {
+  // eventStartsOn/eventEndsOn are accepted (and threaded through from the DB
+  // by the caller) but no longer rendered directly — see the comment above.
+  void eventStartsOn
+  void eventEndsOn
+
   const { lang } = useLanguage()
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -68,18 +38,6 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
   }, [])
 
   const goTo = (index: number) => setActiveIndex((index + SLIDE_IMAGES.length) % SLIDE_IMAGES.length)
-
-  const startsOnText = formatEventDate(eventStartsOn, lang)
-  const endsOnText = formatEventDate(eventEndsOn, lang)
-
-  const dateRangeText =
-    startsOnText && endsOnText
-      ? lang === 'hi'
-        ? `${startsOnText} से ${endsOnText} तक`
-        : `From ${startsOnText} to ${endsOnText}`
-      : lang === 'hi'
-        ? 'तिथियाँ शीघ्र घोषित की जाएंगी'
-        : 'Dates to be announced'
 
   return (
     <section className='relative w-full overflow-hidden bg-[#0c2847]'>
@@ -102,23 +60,33 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
         <div className='relative z-10 mx-auto flex min-h-[460px] sm:min-h-[520px] lg:min-h-[600px] max-w-7xl items-center px-6 py-16 sm:px-10 lg:px-12'>
           <div className='max-w-2xl text-white'>
             <div className='mb-4 inline-flex items-center gap-2 rounded-full bg-[#d8891d] px-4 py-1.5 text-xs font-extrabold tracking-wide text-white uppercase shadow-sm'>
-              {lang === 'hi' ? 'आवेदन अभी खुले हैं' : 'Applications Now Open'}
+              {lang === 'hi'
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू'
+                : 'Online Applications Open for International Gita Jayanti Mahotsav 2026 Booth/Stall'}
             </div>
 
-            <p className='mb-2 text-base font-extrabold tracking-[0.2em] text-[#f0af3d] uppercase'>IGM 2026</p>
-
             <h1 className='mb-4 text-3xl leading-tight font-black sm:text-4xl lg:text-5xl'>
-              {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Gita Jayanti Mahotsav 2026'}
+              {lang === 'hi'
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 स्टॉल/बूथ ऑनलाइन आवेदन पोर्टल'
+                : 'International Gita Jayanti Mahotsav 2026 Booth/Stall Online Application Portal'}
             </h1>
 
             <p className='mb-6 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg'>
               {lang === 'hi'
-                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू हो गए हैं। सभी इच्छुक आवेदक नीचे दी गई श्रेणियों की पात्रता के अनुसार 14 अक्टूबर से 28 अक्टूबर 2026 की रात 11:59 बजे तक ऑनलाइन आवेदन कर सकते हैं।'
-                : 'Online applications for booths/stalls at International Gita Jayanti Mahotsav 2026 are now open. All interested applicants can apply online, as per the eligibility of the categories listed below, from 14 October to 28 October 2026, by 11:59 PM.'}
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू हो गए हैं। सभी इच्छुक आवेदक अपनी श्रेणी की पात्रता और दिशानिर्देशों को ध्यानपूर्वक पढ़कर ऑनलाइन आवेदन कर सकते हैं।'
+                : 'Online applications are now open for stalls/booths at International Gita Jayanti Mahotsav 2026. Interested applicants can apply online after checking the eligibility criteria and guidelines for their chosen category.'}
             </p>
 
-            <p className='mb-8 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
-              {dateRangeText}
+            <p className='mb-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
+              {lang === 'hi'
+                ? 'ऑनलाइन आवेदन की अवधि: 14 अक्टूबर 2026 से 28 अक्टूबर 2026 तक (रात 11:59 बजे तक)।'
+                : 'Application Period: 14 October 2026 to 28 October 2026 (until 11:59 PM).'}
+            </p>
+
+            <p className='mb-8 max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base'>
+              {lang === 'hi'
+                ? 'आवेदन करने से पहले: अपनी श्रेणी की पात्रता, आवश्यक दस्तावेजों, आवेदन शुल्क और स्टॉल/बूथ आबंटन से संबंधित दिशानिर्देशों को अवश्य पढ़ें।'
+                : 'Before Applying: Please read the guidelines for your category carefully, including eligibility criteria, required documents, application fees, and stall/booth allotment details.'}
             </p>
 
             <div className='flex flex-wrap items-center gap-3.5'>
