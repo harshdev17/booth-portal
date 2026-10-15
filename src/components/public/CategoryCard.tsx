@@ -74,6 +74,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const { Icon, color } = CATEGORY_ICON_MAP[category.slug] ?? DEFAULT_CATEGORY_ICON
 
   const title = lang === 'hi' ? (category.nameHi || category.name) : category.name
+
   const methodLabel =
     getCategoryGuideline(category.slug)?.selectionMethod?.[lang === 'hi' ? 'hi' : 'en'] ??
     SELECTION_METHOD_LABEL[category.selectionMethod][lang === 'hi' ? 'hi' : 'en']
@@ -90,7 +91,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       : (allotmentNote ?? (lang === 'hi' ? 'शीघ्र घोषित की जाएगी' : 'To be announced'))
 
   const feeText =
-    category.feePaise === null
+    category.feePaise === null || category.feePaise === 0
       ? lang === 'hi'
         ? 'लागू नहीं'
         : 'Not Applicable'
