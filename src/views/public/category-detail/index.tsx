@@ -31,9 +31,11 @@ const CategoryDetail = ({
 }) => {
   const { lang } = useLanguage()
   const displayName = lang === 'hi' && category.name_hi ? category.name_hi : category.name
-  const displayDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
-  const methodLabel = SELECTION_METHOD_LABEL[category.selection_method][lang]
+  const baseDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
+  const displayDescription = getCategoryGuideline(category.slug)?.intro?.[lang] ?? baseDescription
   const guideline = getCategoryGuideline(category.slug)
+  const methodLabel = guideline?.selectionMethod?.[lang] ?? SELECTION_METHOD_LABEL[category.selection_method][lang]
+  const docOverride = guideline?.requiredDocuments
 
   return (
     <div className='mx-auto max-w-7xl px-4 py-14 sm:px-6'>
@@ -42,7 +44,7 @@ const CategoryDetail = ({
       </p>
       <h1 className='mb-4 text-4xl font-extrabold text-[var(--kdb-primary)] sm:text-5xl'>{displayName}</h1>
 
-      {displayDescription && <p className='mb-8 max-w-4xl text-lg leading-relaxed text-[var(--kdb-text)] sm:text-xl'>{displayDescription}</p>}
+      {displayDescription && <p className='mb-8 max-w-4xl text-lg leading-relaxed whitespace-pre-line text-[var(--kdb-text)] sm:text-xl'>{displayDescription}</p>}
 
       <dl className='mb-8 grid grid-cols-1 gap-6 rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6 sm:grid-cols-3 sm:p-8'>
         <div>
@@ -84,18 +86,20 @@ const CategoryDetail = ({
         </div>
       </dl>
 
-      {documents.length > 0 && (
+      {(docOverride?.length ?? documents.length) > 0 && (
         <div className='mb-8'>
           <h2 className='mb-3 text-2xl font-extrabold text-[var(--kdb-primary)] sm:text-3xl'>
             {lang === 'hi' ? 'अनिवार्य दस्तावेज' : 'Required Documents'}
           </h2>
           <ul className='list-disc space-y-2 pl-6 text-base text-[var(--kdb-text)] sm:text-lg'>
-            {documents.map(doc => (
-              <li key={doc.document_key}>
-                {lang === 'hi' && doc.label_hi ? doc.label_hi : doc.label}
-                {doc.is_required ? '' : lang === 'hi' ? ' (वैकल्पिक)' : ' (optional)'}
-              </li>
-            ))}
+            {docOverride
+              ? docOverride.map((doc, i) => <li key={i}>{doc[lang]}</li>)
+              : documents.map(doc => (
+                  <li key={doc.document_key}>
+                    {lang === 'hi' && doc.label_hi ? doc.label_hi : doc.label}
+                    {doc.is_required ? '' : lang === 'hi' ? ' (वैकल्पिक)' : ' (optional)'}
+                  </li>
+                ))}
           </ul>
         </div>
       )}
@@ -118,7 +122,7 @@ const CategoryDetail = ({
                     {parsed.title && (
                       <p className='mb-1 text-lg font-bold text-[var(--kdb-primary)] sm:text-xl'>{parsed.title}</p>
                     )}
-                    <p className='text-base leading-relaxed text-[var(--kdb-text)] sm:text-lg'>{parsed.text}</p>
+                    <p className='text-base leading-relaxed whitespace-pre-line text-[var(--kdb-text)] sm:text-lg'>{parsed.text}</p>
                   </div>
                 </li>
               )

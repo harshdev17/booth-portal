@@ -35,8 +35,8 @@ const DeclarationCheckboxes = ({
       key: 'agreedToTerms',
       text:
         lang === 'hi'
-          ? 'मैं समझता/समझती हूँ कि कुरुक्षेत्र विकास बोर्ड (KDB) समय-समय पर नियमों में परिवर्तन कर सकता है, और मैं नवीनतम जानकारी के लिए नियमित रूप से वेबसाइट देखता/देखती रहूँगा/रहूँगी।'
-          : 'I understand that the Kurukshetra Development Board (KDB) may change the rules from time to time, and I will check the website regularly for updates.'
+          ? 'मैं नई जानकारी के लिए इस पोर्टल को नियमित रूप से देखता/देखती रहूँगा/रहूँगी। किसी भी बदलाव की जानकारी रखना मेरी अपनी ज़िम्मेदारी है।'
+          : 'I will regularly check this portal for updates and understand that I am responsible for staying informed about any changes.'
     },
     ...(categoryDeclaration ? [{ key: 'categoryDeclaration' as const, text: categoryDeclaration }] : [])
   ]

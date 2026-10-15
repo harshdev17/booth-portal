@@ -103,7 +103,7 @@ const GuidelinesView = () => {
                             </span>
                             <div>
                               {parsed.title && <p className='mb-1 text-lg font-bold text-[#0c2847] sm:text-xl'>{parsed.title}</p>}
-                              <p className='text-base leading-relaxed text-[#334155] sm:text-lg'>{parsed.text}</p>
+                              <p className='text-base leading-relaxed whitespace-pre-line text-[#334155] sm:text-lg'>{parsed.text}</p>
                             </div>
                           </div>
                         )

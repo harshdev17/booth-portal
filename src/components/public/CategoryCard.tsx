@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { getCategoryGuideline } from '@/lib/content/category-guidelines'
 
 export type CategoryCardData = {
   slug: string
@@ -73,7 +74,9 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const { Icon, color } = CATEGORY_ICON_MAP[category.slug] ?? DEFAULT_CATEGORY_ICON
 
   const title = lang === 'hi' ? (category.nameHi || category.name) : category.name
-  const methodLabel = SELECTION_METHOD_LABEL[category.selectionMethod][lang === 'hi' ? 'hi' : 'en']
+  const methodLabel =
+    getCategoryGuideline(category.slug)?.selectionMethod?.[lang === 'hi' ? 'hi' : 'en'] ??
+    SELECTION_METHOD_LABEL[category.selectionMethod][lang === 'hi' ? 'hi' : 'en']
 
   const allotmentNote = lang === 'hi' ? category.allotmentAmountNoteHi ?? category.allotmentAmountNote : category.allotmentAmountNote
 

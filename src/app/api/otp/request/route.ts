@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
+import { query } from '@/lib/db/client'
 import { requestOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
@@ -44,18 +45,35 @@ export async function POST(request: Request) {
   }
 
   try {
+    // The code is also emailed to the address ON THE APPLICATION (looked up
+    // server-side and only when the mobile matches it) — never an address
+    // supplied by the client, so this cannot be used to mail arbitrary people.
+    let email: string | null = null
+
+    if (parsed.data.applicationId) {
+      const rows = await query<Array<{ email: string }>>(
+        'SELECT email FROM applications WHERE id = ? AND mobile_number = ? LIMIT 1',
+        [parsed.data.applicationId, parsed.data.mobileNumber]
+      )
+
+      email = rows[0]?.email ?? null
+    }
+
     const result = await requestOtp({
       mobileNumber: `+91${parsed.data.mobileNumber}`,
       purpose: 'applicant_mobile_verification',
       applicationId: parsed.data.applicationId,
-      ipAddress
+      ipAddress,
+      email
     })
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 502 })
     }
 
-    return NextResponse.json({ sent: true })
+    const maskedEmail = email ? email.replace(/^(.).*(@.*)$/, (_m, first: string, domain: string) => `${first}•••${domain}`) : null
+
+    return NextResponse.json({ sent: true, maskedEmail })
   } catch (error) {
     logServerError('api.otp.request', error)
 

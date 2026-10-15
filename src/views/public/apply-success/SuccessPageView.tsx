@@ -12,7 +12,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useLanguage } from '@/context/LanguageContext'
 import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access-session'
 
-type StatusResponse = { categoryName: string; submittedAt: string | null }
+type StatusResponse = {
+  categoryName: string
+  categorySlug: string
+  status: string
+  feePaise: number | null
+  submittedAt: string | null
+}
 
 const SuccessPageView = ({
   applicationNumber,
@@ -142,6 +148,12 @@ const SuccessPageView = ({
     }
   }
 
+  // Is there actually a fee, and has it been paid? (Free categories have no payment
+  // step; paid ones must not look "complete" or offer a receipt until it is paid.)
+  const hasFee = (details?.feePaise ?? 0) > 0
+  const awaitingPayment = hasFee && (details?.status === 'payment_pending' || details?.status === 'payment_failed')
+  const canShowReceipt = hasFee && !!details && !awaitingPayment
+
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center'>
       <div className='w-full max-w-xl text-center'>
@@ -164,7 +176,13 @@ const SuccessPageView = ({
         </div>
 
         <h1 className='text-2xl sm:text-3xl font-black text-[#0c2847] tracking-tight mb-2'>
-          {lang === 'hi' ? 'आवेदन सफलतापूर्वक जमा हुआ!' : 'Application Submitted Successfully!'}
+          {awaitingPayment
+            ? lang === 'hi'
+              ? 'आवेदन दर्ज हो गया — भुगतान बाकी है'
+              : 'Application saved — payment pending'
+            : lang === 'hi'
+              ? 'आवेदन सफलतापूर्वक जमा हुआ!'
+              : 'Application Submitted Successfully!'}
         </h1>
         {details?.categoryName ? (
           <p className='mb-6 text-sm text-[#475569]'>
@@ -227,9 +245,35 @@ const SuccessPageView = ({
             </div>
           )}
 
+          {awaitingPayment && details && (
+            <div className='border-t border-[#f1f5f9] pt-4'>
+              <p className='mb-3 text-sm text-[#475569]'>
+                {lang === 'hi'
+                  ? 'आपका आवेदन तभी पूरा माना जाएगा जब आवेदन शुल्क का भुगतान हो जाएगा।'
+                  : 'Your application is complete only after the application fee is paid.'}
+              </p>
+              <Link
+                href={`/apply/${details.categorySlug}/payment/${applicationNumber}`}
+                className='inline-flex w-full items-center justify-center rounded-xl bg-[#d8891d] px-7 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-[#b8741a] sm:w-auto'
+              >
+                {lang === 'hi'
+                  ? `शुल्क का भुगतान करें (₹${((details.feePaise ?? 0) / 100).toLocaleString('en-IN')})`
+                  : `Pay Application Fee (₹${((details.feePaise ?? 0) / 100).toLocaleString('en-IN')})`}
+              </Link>
+            </div>
+          )}
+
+          {details && !hasFee && (
+            <div className='border-t border-[#f1f5f9] pt-4 text-sm text-[#475569]'>
+              {lang === 'hi'
+                ? 'इस श्रेणी के लिए कोई आवेदन शुल्क नहीं है, इसलिए भुगतान की आवश्यकता नहीं है।'
+                : 'No application fee is charged for this category, so no payment is needed.'}
+            </div>
+          )}
+
           {/* Actions live inside the card, not as separate floating rows. */}
           <div className='border-t border-[#f1f5f9] pt-4 flex flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:items-center'>
-            {access && (
+            {access && canShowReceipt && (
               <button
                 type='button'
                 onClick={goToReceipt}
@@ -240,7 +284,7 @@ const SuccessPageView = ({
                 <span>{lang === 'hi' ? 'भुगतान रसीद डाउनलोड करें' : 'Download Payment Receipt'}</span>
               </button>
             )}
-            {access && (
+            {access && !awaitingPayment && (
               <button
                 type='button'
                 onClick={goToPrint}

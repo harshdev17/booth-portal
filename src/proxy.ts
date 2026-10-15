@@ -72,7 +72,7 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
     // Razorpay origin above it, a bare 'self' CSP silently blocks the
     // widget's script and its frame with no visible error beyond the
     // submission never getting a token.
-    `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/`,
+    `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com`,
 
     // github.io: the floating chatbot widget (FloatingChatbot.tsx) embeds a
     // third-party-hosted chat page in an iframe — without this, the iframe
@@ -92,8 +92,10 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
     // document via <img src="blob:...">  — reported live as a broken-image
     // icon with no console error, since a CSP img-src block on a blob: URL
     // fails silently rather than throwing.
-    "img-src 'self' data: blob: https://cdn.razorpay.com",
-    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com",
+    // Google Analytics (gtag.js, see app/layout.tsx): its collect beacons are fetch/img
+    // requests to these hosts and were blocked, so no page views were recorded.
+    "img-src 'self' data: blob: https://cdn.razorpay.com https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com",
+    "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
 
     // 'self' only for the document-preview route (see isDocumentPreview in
     // proxy()): the admin/applicant preview dialog frames

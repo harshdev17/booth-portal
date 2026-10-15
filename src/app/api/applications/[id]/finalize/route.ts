@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
+
 import { z } from 'zod'
+
+import { notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 
 import { ApplicationStateError, DuplicateApplicationError, finalizeApplication } from '@/lib/applications/create-application'
 import { logServerError } from '@/lib/security/error-log'
@@ -58,6 +61,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const result = await finalizeApplication(applicationId, parsed.data.accessToken, { ipAddress })
+
+    // No fee -> no payment step, so the applicant gets their confirmation now.
+    if (!result.feePaise) void notifyPaymentSuccess(applicationId, 0)
 
     return NextResponse.json({
       applicationNumber: result.applicationNumber,

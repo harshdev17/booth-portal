@@ -6,11 +6,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, CreditCardIcon, EyeIcon, FileTextIcon, Loader2Icon, PencilIcon, ShieldCheckIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, CreditCardIcon, EyeIcon, FileTextIcon, Loader2Icon, PencilIcon } from 'lucide-react'
 
 import RecaptchaWidget from '@/components/public/RecaptchaWidget'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
@@ -91,6 +92,8 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   const [otpPhase, setOtpPhase] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle')
   const [otpCode, setOtpCode] = useState('')
   const [otpError, setOtpError] = useState<string | null>(null)
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false)
+  const [maskedEmail, setMaskedEmail] = useState<string | null>(null)
 
   // Only required once NEXT_PUBLIC_RECAPTCHA_SITE_KEY is actually configured
   // (RecaptchaWidget renders nothing until then) — see .ai/OPEN_QUESTIONS.md.
@@ -166,6 +169,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
       }
 
       setOtpCode('')
+      setMaskedEmail(typeof body.maskedEmail === 'string' ? body.maskedEmail : null)
       setOtpPhase('sent')
     } catch {
       setOtpError(
@@ -200,6 +204,10 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
       }
 
       setOtpPhase('verified')
+      setOtpDialogOpen(false)
+
+      // Verified: carry straight on to submission / payment.
+      void handleSubmit()
     } catch {
       setOtpError(
         lang === 'hi'
@@ -211,7 +219,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   }
 
   const handleSubmit = async () => {
-    if (!access || otpPhase !== 'verified') return
+    if (!access) return
     if (recaptchaRequired && !getRecaptchaTokenRef.current) return
 
     setIsSubmitting(true)
@@ -257,8 +265,8 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           setOtpPhase('idle')
           setSubmitError(
             lang === 'hi'
-              ? 'सत्यापन का समय समाप्त हो गया है। कृपया अपने मोबाइल नंबर को दोबारा सत्यापित करें और फिर सबमिट करें।'
-              : 'Your verification has expired. Please verify your mobile number again, then submit.'
+              ? 'सत्यापन का समय समाप्त हो गया है। कृपया अपने व्हाट्सएप नंबर को दोबारा सत्यापित करें और फिर सबमिट करें।'
+              : 'Your verification has expired. Please verify your WhatsApp number again, then submit.'
           )
         } else {
           setSubmitError(
@@ -292,6 +300,18 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
     }
   }
 
+  const handleProceed = () => {
+    if (otpPhase === 'verified') {
+      void handleSubmit()
+
+      return
+    }
+
+    setOtpError(null)
+    setOtpDialogOpen(true)
+    void sendMobileOtp()
+  }
+
   if (access && !data && !loadError) {
     return (
       <div className='mx-auto flex max-w-[1240px] items-center justify-center px-6 py-24 sm:px-8'>
@@ -319,7 +339,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
   if (!data) return null
 
-  const canSubmit = otpPhase === 'verified' && recaptchaReady
+  const canSubmit = recaptchaReady
 
   return (
     <div className='min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -385,7 +405,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           </SectionCard>
 
           <SectionCard
-            title={lang === 'hi' ? 'संपर्क एवं पता विवरण' : 'Contact & Address'}
+            title={lang === 'hi' ? 'पता विवरण' : 'Address'}
             editHref={`/apply/${categorySlug}?edit=${applicationId}`}
           >
             <ReviewRow label={lang === 'hi' ? 'पत्राचार पता' : 'Address'} value={data.common.address} />
@@ -492,91 +512,14 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             </div>
           </section>
 
-          {/* Mobile OTP Verification — required before submission */}
-          <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-            <div className='mb-4 flex items-center gap-2 border-b border-[#f1f5f9] pb-3'>
-              <ShieldCheckIcon className='size-5 text-[#0c2847]' />
-              <h2 className='text-xl font-black text-[#0c2847]'>
-                {lang === 'hi' ? 'मोबाइल नंबर सत्यापन' : 'Mobile Number Verification'}
-              </h2>
-            </div>
-
-            {otpPhase === 'verified' ? (
-              <div className='flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800'>
-                <CheckCircle2Icon className='size-4.5 shrink-0' />
-                {lang === 'hi'
-                  ? `मोबाइल नंबर ${data.common.mobileNumber} सत्यापित हो गया है।`
-                  : `Mobile number ${data.common.mobileNumber} has been verified.`}
-              </div>
-            ) : (
-              <div className='flex flex-col gap-3'>
-                <p className='text-xs sm:text-sm text-[#64748b]'>
-                  {lang === 'hi'
-                    ? `आवेदन सबमिट करने से पहले आपको अपने मोबाइल नंबर (${data.common.mobileNumber}) को OTP द्वारा सत्यापित करना होगा।`
-                    : `You must verify your mobile number (${data.common.mobileNumber}) with an OTP before you can submit.`}
-                </p>
-
-                {otpError && (
-                  <Alert variant='destructive'>
-                    <AlertCircleIcon className='size-4' />
-                    <AlertDescription>{otpError}</AlertDescription>
-                  </Alert>
-                )}
-
-                {otpPhase === 'idle' || otpPhase === 'sending' ? (
-                  <Button
-                    type='button'
-                    variant='outline'
-                    disabled={otpPhase === 'sending'}
-                    onClick={sendMobileOtp}
-                    className='w-fit rounded-xl border-[#0c2847]/30 text-[#0c2847] font-bold'
-                  >
-                    {otpPhase === 'sending' && <Loader2Icon className='mr-2 size-4 animate-spin' />}
-                    {lang === 'hi' ? 'OTP भेजें' : 'Send OTP'}
-                  </Button>
-                ) : (
-                  <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
-                    <Input
-                      value={otpCode}
-                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      inputMode='numeric'
-                      placeholder='••••••'
-                      maxLength={6}
-                      className='sm:w-40'
-                    />
-                    <Button
-                      type='button'
-                      disabled={otpPhase === 'verifying' || otpCode.length !== 6}
-                      onClick={verifyMobileOtp}
-                      className='rounded-xl bg-[#0c2847] font-bold text-white hover:bg-[#06192e]'
-                    >
-                      {otpPhase === 'verifying' && <Loader2Icon className='mr-2 size-4 animate-spin' />}
-                      {lang === 'hi' ? 'सत्यापित करें' : 'Verify'}
-                    </Button>
-                    <button
-                      type='button'
-                      onClick={sendMobileOtp}
-                      disabled={otpPhase === 'verifying'}
-                      className='text-xs font-semibold text-[#64748b] underline underline-offset-2 hover:text-[#0c2847]'
-                    >
-                      {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          <section className='rounded-2xl border border-[#e2e8f0] bg-white p-7 sm:p-9 shadow-xs'>
-            {recaptchaRequired && (
-              <RecaptchaWidget
-                onReady={getToken => {
-                  getRecaptchaTokenRef.current = getToken
-                  setRecaptchaReady(true)
-                }}
-              />
-            )}
-          </section>
+          {recaptchaRequired && (
+            <RecaptchaWidget
+              onReady={getToken => {
+                getRecaptchaTokenRef.current = getToken
+                setRecaptchaReady(true)
+              }}
+            />
+          )}
 
           {/* Bottom Action Buttons */}
           <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>
@@ -588,8 +531,8 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
             </Link>
             <Button
               type='button'
-              onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting}
+              onClick={handleProceed}
+              disabled={!canSubmit || isSubmitting || otpPhase === 'sending'}
               className='w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-xl bg-[#0c2847] px-8 text-sm font-bold text-white shadow-sm hover:bg-[#06192e] transition active:scale-[0.98]'
             >
               {isSubmitting && <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' />}
@@ -611,6 +554,68 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           </div>
         </div>
       </div>
+
+      <Dialog open={otpDialogOpen} onOpenChange={open => !isSubmitting && setOtpDialogOpen(open)}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='text-xl font-black text-[#0c2847]'>
+              {lang === 'hi' ? 'अपना विवरण सत्यापित करें' : 'Verify your details'}
+            </DialogTitle>
+            <DialogDescription>
+              {otpPhase === 'sending'
+                ? lang === 'hi'
+                  ? 'कोड भेजा जा रहा है...'
+                  : 'Sending the code...'
+                : lang === 'hi'
+                  ? `हमने 6 अंकों का कोड आपके व्हाट्सएप (${data.common.mobileNumber})${maskedEmail ? ` और ईमेल (${maskedEmail})` : ''} पर भेजा है। नीचे दर्ज करें।`
+                  : `We sent a 6-digit code to your WhatsApp (${data.common.mobileNumber})${maskedEmail ? ` and your email (${maskedEmail})` : ''}. Enter it below.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {otpError && (
+            <Alert variant='destructive'>
+              <AlertCircleIcon className='size-4' />
+              <AlertDescription>{otpError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className='flex flex-col gap-3'>
+            <Input
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode='numeric'
+              autoComplete='one-time-code'
+              placeholder='••••••'
+              maxLength={6}
+              className='h-12 text-center text-xl tracking-[0.5em]'
+              disabled={otpPhase === 'sending' || otpPhase === 'verifying' || isSubmitting}
+            />
+            <Button
+              type='button'
+              disabled={otpPhase !== 'sent' || otpCode.length !== 6 || isSubmitting}
+              onClick={verifyMobileOtp}
+              className='h-11 rounded-xl bg-[#0c2847] font-bold text-white hover:bg-[#06192e]'
+            >
+              {(otpPhase === 'verifying' || isSubmitting) && <Loader2Icon className='mr-2 size-4 animate-spin' />}
+              {data.feePaise && data.feePaise > 0
+                ? lang === 'hi'
+                  ? 'सत्यापित करें और भुगतान पर जाएं'
+                  : 'Verify & continue to payment'
+                : lang === 'hi'
+                  ? 'सत्यापित करें और सबमिट करें'
+                  : 'Verify & submit'}
+            </Button>
+            <button
+              type='button'
+              onClick={() => void sendMobileOtp()}
+              disabled={otpPhase === 'sending' || otpPhase === 'verifying' || isSubmitting}
+              className='text-xs font-semibold text-[#64748b] underline underline-offset-2 hover:text-[#0c2847] disabled:opacity-50'
+            >
+              {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <DocumentPreviewDialog
         preview={preview}

@@ -40,8 +40,32 @@ export function isBannedFieldKey(key: string): boolean {
 // Length caps are deliberately strict (defense in depth against oversized
 // payloads/DB pressure), independent of any UI-level maxlength.
 
-const email = z.string().trim().min(1).max(191).email()
-const shortText = (max: number) => z.string().trim().min(1).max(max)
+// A personal name: letters (any script, incl. Devanagari and its vowel signs),
+// spaces and . ' - only — no digits or symbols.
+const personName = z
+  .string()
+  .trim()
+  .min(2, 'Enter at least 2 letters.')
+  .max(100, 'Too long (maximum 100 characters).')
+  .regex(/^[\p{L}\p{M}][\p{L}\p{M} .'’-]*$/u, 'Use letters only — no numbers or symbols.')
+
+const placeName = z
+  .string()
+  .trim()
+  .min(2, 'Enter at least 2 letters.')
+  .max(100, 'Too long (maximum 100 characters).')
+  .regex(/^[\p{L}\p{M}][\p{L}\p{M} .'’()-]*$/u, 'Use letters only — no numbers or symbols.')
+
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
+
+const email = z
+  .string()
+  .trim()
+  .min(1, 'Email address is required.')
+  .max(191, 'Too long (maximum 191 characters).')
+  .regex(EMAIL_PATTERN, 'Enter a valid email address, for example name@example.com.')
+  .refine(v => !v.includes('..'), { message: 'Enter a valid email address, for example name@example.com.' })
+  .transform(v => v.toLowerCase())
 
 const optionalShortText = (max: number) =>
   z
@@ -58,35 +82,53 @@ const aadhaarNumber = z
   .regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits')
   .refine(isValidAadhaar, { message: AADHAAR_ERROR_MESSAGE })
 
+const notRepeatedDigit = (v: string) => !/^(\d)\1{9}$/.test(v)
+
 const mobileNumber = z
   .string()
   .trim()
   .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
+  .refine(notRepeatedDigit, { message: 'Enter a real mobile number (not the same digit repeated).' })
 
 const pinCode = z
   .string()
   .trim()
-  .regex(/^\d{6}$/, 'PIN code must be exactly 6 digits')
+  .regex(/^[1-9]\d{5}$/, 'Enter a valid 6-digit PIN code (it cannot start with 0).')
 
-export const applicationCommonFieldsSchema = z.object({
-  email,
-  representativeName: shortText(191),
-  fatherName: shortText(191),
-  aadhaarNumber,
-  address: shortText(512),
-  state: shortText(100),
-  district: shortText(100),
-  pinCode,
-  mobileNumber,
-  alternateMobile: z
-    .string()
-    .trim()
-    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number')
-    .optional()
-    .or(z.literal(''))
-    .transform(v => (v ? v : undefined)),
-  remarks: optionalShortText(1024)
-})
+export const applicationCommonFieldsSchema = z
+  .object({
+    email,
+    representativeName: personName,
+    fatherName: personName,
+    aadhaarNumber,
+    address: z
+      .string()
+      .trim()
+      .min(10, 'Enter your full address (at least 10 characters).')
+      .max(512, 'Too long (maximum 512 characters).'),
+    state: placeName,
+    district: placeName,
+    pinCode,
+    mobileNumber,
+    alternateMobile: z
+      .string()
+      .trim()
+      .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number')
+      .refine(notRepeatedDigit, { message: 'Enter a real mobile number (not the same digit repeated).' })
+      .optional()
+      .or(z.literal(''))
+      .transform(v => (v ? v : undefined)),
+    remarks: optionalShortText(1024)
+  })
+  .superRefine((value, ctx) => {
+    if (value.alternateMobile && value.alternateMobile === value.mobileNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['alternateMobile'],
+        message: 'Alternate number must be different from your WhatsApp number.'
+      })
+    }
+  })
 
 export type ApplicationCommonFields = z.infer<typeof applicationCommonFieldsSchema>
 

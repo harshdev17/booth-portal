@@ -2,6 +2,7 @@ import 'server-only'
 
 import { query } from '@/lib/db/client'
 import { AiSensyNotificationService } from '@/lib/notifications/aisensy'
+import { getContactSettings } from '@/lib/settings/contact-settings'
 import { buildEmailContent, isEmailConfigured, sendEmail } from '@/lib/notifications/email'
 import type { NotificationService, SendTemplateMessageInput } from '@/lib/notifications/types'
 import { logServerError } from '@/lib/security/error-log'
@@ -30,7 +31,34 @@ function getService(): NotificationService {
  * change) can safely ignore it, since a notification failure must never
  * block the business action that triggered it.
  */
-export async function sendNotification(input: SendTemplateMessageInput): Promise<boolean> {
+/**
+ * TEST MODE (development / staging only). When NOTIFICATION_TEST_MODE=true,
+ * every WhatsApp message, OTP and email is redirected to the one test mobile
+ * number and email address below instead of the applicant's own — so the whole
+ * apply flow can be exercised from the front end with real data shapes and
+ * nobody else gets messaged. Never set this in production.
+ *   NOTIFICATION_TEST_MOBILE  10-digit number (or with +91)
+ *   NOTIFICATION_TEST_EMAIL   email address
+ */
+function applyTestRedirect(input: SendTemplateMessageInput): { input: SendTemplateMessageInput; redirected: boolean } {
+  if (process.env.NOTIFICATION_TEST_MODE !== 'true') return { input, redirected: false }
+
+  const mobile = process.env.NOTIFICATION_TEST_MOBILE?.replace(/\D/g, '').slice(-10)
+  const email = process.env.NOTIFICATION_TEST_EMAIL?.trim()
+
+  return {
+    redirected: true,
+    input: {
+      ...input,
+      destination: mobile ? `+91${mobile}` : input.destination,
+      email: input.email ? (email ?? input.email) : input.email
+    }
+  }
+}
+
+export async function sendNotification(original: SendTemplateMessageInput): Promise<boolean> {
+  const { input, redirected } = applyTestRedirect(original)
+
   const result = await getService()
     .sendTemplateMessage(input)
     .catch(error => ({ ok: false as const, error: error instanceof Error ? error.message : 'Unknown provider error.' }))
@@ -54,9 +82,14 @@ export async function sendNotification(input: SendTemplateMessageInput): Promise
 
   // Also email the same message. A separate try so an email problem can never
   // change the WhatsApp outcome the caller relies on (e.g. the OTP flow).
-  if (input.email && input.category !== 'otp') {
+  if (input.email) {
     try {
-      const content = buildEmailContent(input.category, input.templateParams)
+      const contact = await getContactSettings()
+      const content = buildEmailContent(input.category, input.templateParams, contact)
+
+      if (content && redirected) {
+        content.subject = `[TEST] ${content.subject}`
+      }
 
       const emailResult = content
         ? await sendEmail({ to: input.email, ...content })

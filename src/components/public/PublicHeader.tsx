@@ -145,13 +145,13 @@ const PublicHeader = () => {
         {/* Navigation bar — nav links, language switcher, Apply CTA, social icons */}
         <header className='bg-[var(--kdb-primary)]'>
           <nav className='mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6'>
-            <ul className='hidden items-center gap-0.5 xl:flex'>
+            <ul className='hidden items-center gap-0 xl:flex'>
               {navItems.map(item => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
                     aria-current={item.active ? 'page' : undefined}
-                    className={`relative block rounded-md px-2.5 py-2 text-base transition-colors 2xl:px-3.5 2xl:text-lg after:absolute after:inset-x-2.5 2xl:after:inset-x-3.5 after:bottom-0.5 after:h-[3px] after:origin-center after:rounded-full after:bg-[#f0b429] after:transition-transform after:duration-300 hover:text-[#ffd56b] hover:after:scale-x-100 ${
+                    className={`relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap transition-colors xl:text-[15px] 2xl:px-3 2xl:text-base after:absolute after:inset-x-2 2xl:after:inset-x-3 after:bottom-0.5 after:h-[3px] after:origin-center after:rounded-full after:bg-[#f0b429] after:transition-transform after:duration-300 hover:text-[#ffd56b] hover:after:scale-x-100 ${
                       item.active
                         ? 'bg-white/15 font-extrabold text-white after:scale-x-100'
                         : 'font-semibold text-white/85 after:scale-x-0'

@@ -1,21 +1,10 @@
 'use client'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { formatDateTime } from '@/lib/format-date'
 import { getApplyInstructions } from '@/lib/content/apply-instructions'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 
-const formatDateTime = (value: string, lang: 'hi' | 'en') => {
-  const date = new Date(value)
-
-  return date.toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
-}
 
 /**
  * Compact "Before You Start" panel — short bullet points, not paragraphs.
@@ -28,8 +17,13 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
   const { lang } = useLanguage()
   const { documents, category } = config
   const auctionVenue = lang === 'hi' && category.auctionVenueHi ? category.auctionVenueHi : category.auctionVenue
-  const hasAuctionDetails = !!(category.applicationClosesAt || (category.auctionDate && auctionVenue))
-  const categoryInstructions = getApplyInstructions(category.slug)?.bullets
+  const hasAuctionDetails =
+    !getApplyInstructions(category.slug)?.hideScheduleBox &&
+    !!(category.applicationClosesAt || (category.auctionDate && auctionVenue))
+  const applyInstructions = getApplyInstructions(category.slug)
+  const categoryInstructions = applyInstructions?.bullets
+  const docOverride = applyInstructions?.requiredDocuments
+  const importantOverride = applyInstructions?.importantInstructions
 
   return (
     <div className='flex flex-col gap-4'>
@@ -39,7 +33,18 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
           : 'Please keep the following documents ready before starting your application.'}
       </p>
 
-      {documents.length > 0 && (
+      {docOverride && docOverride.length > 0 && (
+        <ol className='flex flex-col gap-2 pl-1'>
+          {docOverride.map((doc, idx) => (
+            <li key={idx} className='flex items-baseline gap-2.5 text-base font-semibold text-[#0c2847]'>
+              <span className='font-bold text-[#b8761b]'>{idx + 1}.</span>
+              <span>{lang === 'hi' ? doc.hi : doc.en}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {!docOverride && documents.length > 0 && (
         <ol className='flex flex-col gap-2 pl-1'>
           {documents.map((doc, idx) => {
             const displayName = lang === 'hi' && doc.labelHi ? doc.labelHi : doc.label
@@ -59,6 +64,28 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
         </ol>
       )}
 
+      {applyInstructions?.sections?.map((section, sIdx) => (
+        <div key={sIdx} className='pt-2'>
+          <p className='mb-2 text-base sm:text-lg font-extrabold text-[#0c2847]'>{section.title[lang === 'hi' ? 'hi' : 'en']}</p>
+          {section.intro && (
+            <p className='mb-2 text-sm sm:text-base text-[#475569] leading-relaxed'>{section.intro[lang === 'hi' ? 'hi' : 'en']}</p>
+          )}
+          {section.items && (
+            <ul className='mb-2 space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
+              {section.items.map((item, i) => (
+                <li key={i} className='flex items-baseline gap-2'>
+                  <span className='font-bold text-[#b8761b]'>•</span>
+                  <span>{item[lang === 'hi' ? 'hi' : 'en']}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {section.note && (
+            <p className='text-sm sm:text-base text-[#475569] leading-relaxed'>{section.note[lang === 'hi' ? 'hi' : 'en']}</p>
+          )}
+        </div>
+      ))}
+
       {hasAuctionDetails && (
         <ul className='flex flex-col gap-2 rounded-xl border border-[#fbd38d] bg-[#fffaf0] p-4'>
           {category.applicationClosesAt && (
@@ -74,9 +101,16 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
               <span>•</span>
               <span>
-                {lang === 'hi' ? 'ड्रॉ: ' : 'Draw: '}
+                {category.selectionMethod === 'auction'
+                  ? lang === 'hi'
+                    ? 'नीलामी की तिथि: '
+                    : 'Auction Date: '
+                  : lang === 'hi'
+                    ? 'ड्रॉ: '
+                    : 'Draw: '}
                 {formatDateTime(category.auctionDate, lang)}
                 {' — '}
+                {category.selectionMethod === 'auction' ? (lang === 'hi' ? 'नीलामी का स्थान: ' : 'Auction Venue: ') : ''}
                 {auctionVenue}
               </span>
             </li>
@@ -92,7 +126,8 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
       {categoryInstructions && categoryInstructions.length > 0 && (
         <div className='pt-2'>
           <p className='mb-2 text-base sm:text-lg font-extrabold text-[#0c2847]'>
-            {lang === 'hi' ? 'आवेदन से पूर्व निर्देश' : 'Before You Apply'}
+            {applyInstructions?.bulletsHeading?.[lang === 'hi' ? 'hi' : 'en'] ??
+              (lang === 'hi' ? 'आवेदन से पूर्व निर्देश' : 'Before You Apply')}
           </p>
           <ol className='space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
             {categoryInstructions.map((bullet, idx) => (
@@ -110,6 +145,16 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
         <p className='mb-2 text-base sm:text-lg font-extrabold text-[#0c2847]'>
           {lang === 'hi' ? 'महत्वपूर्ण निर्देश' : 'Important Instructions'}
         </p>
+        {importantOverride ? (
+          <ol className='space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
+            {importantOverride.map((item, idx) => (
+              <li key={idx} className='flex items-baseline gap-2'>
+                <span className='font-bold text-[#b8761b]'>{idx + 1}.</span>
+                <span>{lang === 'hi' ? item.hi : item.en}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
         <ol className='space-y-1.5 text-sm sm:text-base text-[#475569] leading-relaxed'>
           <li className='flex items-baseline gap-2'>
             <span className='font-bold text-[#b8761b]'>1.</span>
@@ -168,6 +213,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
             </span>
           </li>
         </ol>
+        )}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import 'server-only'
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 
 import { query } from '@/lib/db/client'
+import { OTP_VALID_MINUTES } from '@/lib/notifications/email'
 import { sendNotification } from '@/lib/notifications/service'
 
 // WhatsApp OTP verification via AiSensy, per .ai/NOTIFICATIONS.md and the
@@ -12,7 +13,7 @@ import { sendNotification } from '@/lib/notifications/service'
 // a SHA-256 hash of the 6-digit code is ever persisted.
 
 const OTP_LENGTH = 6
-const OTP_TTL_MINUTES = 10
+const OTP_TTL_MINUTES = OTP_VALID_MINUTES
 const MAX_VERIFY_ATTEMPTS = 5
 
 export type OtpPurpose = 'applicant_mobile_verification' | 'status_lookup' | 'print_application'
@@ -32,6 +33,9 @@ export async function requestOtp(params: {
   purpose: OtpPurpose
   applicationId?: number
   ipAddress?: string | null
+
+  /** Also email the code here (the applicant's own address on their application). */
+  email?: string | null
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const code = generateCode()
   const codeHash = hashCode(code, params.mobileNumber)
@@ -53,7 +57,8 @@ export async function requestOtp(params: {
     // button parameter, separate from templateParams — see buttonParam's
     // doc comment in notifications/types.ts.
     buttonParam: code,
-    applicationId: params.applicationId
+    applicationId: params.applicationId,
+    email: params.email
   })
 
   if (!sent) {

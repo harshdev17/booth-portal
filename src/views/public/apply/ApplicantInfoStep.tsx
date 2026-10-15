@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { Controller, useWatch, type Control } from 'react-hook-form'
 
@@ -6,6 +6,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { useLanguage } from '@/context/LanguageContext'
+import { suggestEmail } from '@/lib/applications/email-typo'
 import type { ApplicationFormValues } from '@/views/public/apply/form-values'
 
 type DuplicateCheckField = 'mobileNumber' | 'aadhaarNumber' | 'email'
@@ -43,17 +44,13 @@ const MobileNumberInput = ({
   invalid: boolean
   autoComplete: string
 
-  // The section-*/new-password autocomplete tricks (see the comment above)
-  // reduce but don't reliably eliminate Chrome re-using one saved phone
-  // value across two tel inputs on the same page (confirmed live: still
-  // happened with both tricks applied). `readOnly` is the one mechanism
-  // Chrome genuinely never autofills into — it only ever fills an editable
-  // input — so the Alternate Mobile field renders readOnly until the
-  // applicant actually clicks/tabs into it, at which point it becomes a
-  // normal editable field for manual typing.
+  // Stops Chrome from re-using the main number in this second phone box.
+  // The earlier approach (readOnly until focus) left the box impossible to
+  // type into in some browsers, so it is gone: the box is always editable and
+  // simply is not presented as a phone field (type="text" + numeric keypad,
+  // no tel autocomplete), which is what Chrome's phone autofill keys on.
   blockAutofillUntilFocus?: boolean
 }) => {
-  const [locked, setLocked] = useState(!!blockAutofillUntilFocus)
 
   return (
     <InputGroup>
@@ -63,13 +60,11 @@ const MobileNumberInput = ({
       <InputGroupInput
         id={id}
         name={name}
-        type='tel'
+        type={blockAutofillUntilFocus ? 'text' : 'tel'}
         inputMode='numeric'
-        autoComplete={autoComplete}
+        autoComplete={blockAutofillUntilFocus ? 'off' : autoComplete}
         maxLength={10}
         value={value}
-        readOnly={locked}
-        onFocus={() => locked && setLocked(false)}
         onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
         onBlur={onBlur}
         aria-invalid={invalid}
@@ -262,6 +257,19 @@ const ApplicantInfoStep = ({
                 : 'We will use this to send you updates about your application.'}
             </FieldDescription>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {!fieldState.invalid && suggestEmail(field.value ?? '') && (
+              <p className='text-xs font-medium text-amber-700'>
+                {lang === 'hi' ? 'क्या आपका मतलब यह है: ' : 'Did you mean '}
+                <button
+                  type='button'
+                  className='font-bold underline'
+                  onClick={() => field.onChange(suggestEmail(field.value ?? ''))}
+                >
+                  {suggestEmail(field.value ?? '')}
+                </button>
+                ?
+              </p>
+            )}
             {!fieldState.invalid && duplicateFields.email && <FieldError>{duplicateFields.email}</FieldError>}
           </Field>
         )}
@@ -280,6 +288,7 @@ const ApplicantInfoStep = ({
               maxLength={12}
               autoComplete='off'
               placeholder='123456789012'
+              onChange={e => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 12))}
               aria-invalid={fieldState.invalid || !!duplicateFields.aadhaarNumber}
               onBlur={e => {
                 field.onBlur()

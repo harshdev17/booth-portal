@@ -333,11 +333,15 @@ export async function finalizeApplication(
     throw new ApplicationStateError(`Required document missing: ${missingDocument}`)
   }
 
+  // A category with no application fee has no payment step: it goes straight
+  // to review. Otherwise the application waits for the fee ('payment_pending').
+  const requiresPayment = (category.fee_paise ?? 0) > 0
+
   await withTransaction(async txQuery => {
     await txQuery(
-      `UPDATE applications SET status = 'payment_pending', declaration_accepted_at = NOW(), submitted_at = NOW()
+      `UPDATE applications SET status = ?, declaration_accepted_at = NOW(), submitted_at = NOW()
        WHERE id = ? AND status = 'draft'`,
-      [applicationId]
+      [requiresPayment ? 'payment_pending' : 'under_review', applicationId]
     )
 
     await txQuery(

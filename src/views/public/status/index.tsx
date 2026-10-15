@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
+import { formatDate } from '@/lib/format-date'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 
 const lookupSchema = z.object({
@@ -398,11 +399,7 @@ const StatusLookup = () => {
                 <div className='flex items-start justify-between gap-4 px-5 py-3'>
                   <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'जमा करने की तिथि' : 'Submitted on'}</dt>
                   <dd className='text-right font-medium text-[var(--kdb-text)]'>
-                    {new Date(result.submittedAt).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
+                    {formatDate(result.submittedAt, lang)}
                   </dd>
                 </div>
               )}

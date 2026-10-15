@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { emailDomainCanReceiveMail } from '@/lib/applications/email-domain'
 import { isValidPan, normalizePan, PAN_ERROR_MESSAGE, PAN_FIELD_KEY } from '@/lib/applications/pan'
 import {
   getCategoryBySlug,
@@ -52,6 +53,15 @@ export async function validateSubmissionAgainstCategory(
     throw new SubmissionValidationError(
       'This category is not currently accepting applications.',
       'category_closed'
+    )
+  }
+
+  if (!options.skipCategoryFieldRequiredCheck && !(await emailDomainCanReceiveMail(input.common.email))) {
+    const domain = input.common.email.split('@')[1]
+
+    throw new SubmissionValidationError(
+      `The email domain "${domain}" cannot receive email. Please check the email address.`,
+      'email_domain_invalid'
     )
   }
 

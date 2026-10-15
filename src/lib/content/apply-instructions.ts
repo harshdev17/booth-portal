@@ -1,6 +1,25 @@
 export type ApplyInstructions = {
   slug: string
   bullets: Array<{ en: string; hi: string }>
+
+  // Optional verbatim overrides for the "Before You Start" panel: when set
+  // they replace the document list built from the upload slots and the
+  // generic "Important Instructions" list for this category.
+  requiredDocuments?: Array<{ en: string; hi: string }>
+  /** Heading for `bullets` when it should differ from the default "Before You Apply". */
+  bulletsHeading?: { en: string; hi: string }
+  importantInstructions?: Array<{ en: string; hi: string }>
+
+  /** Hide the DB-driven "last date / auction" box when the dates are given in `sections` instead. */
+  hideScheduleBox?: boolean
+
+  /** Extra titled blocks (e.g. "Eligibility Criteria"), shown after the document list. */
+  sections?: Array<{
+    title: { en: string; hi: string }
+    intro?: { en: string; hi: string }
+    items?: Array<{ en: string; hi: string }>
+    note?: { en: string; hi: string }
+  }>
 }
 
 // Category-specific "Before You Start" instruction bullets, shown on the
@@ -25,181 +44,372 @@ export type ApplyInstructions = {
 export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
   {
     slug: 'ngos-social-organizations',
+    requiredDocuments: [
+      {
+        en: 'Applicant / Authorized Representative Aadhaar Card',
+        hi: 'आवेदक / अधिकृत प्रतिनिधि का आधार कार्ड'
+      },
+      {
+        en: 'Valid NGO Registration Certificate',
+        hi: 'वैध NGO पंजीकरण प्रमाणपत्र'
+      },
+      {
+        en: 'Authorization Letter',
+        hi: 'प्राधिकरण पत्र'
+      }
+    ],
     bullets: [
       {
-        en: 'The organisation must hold a valid Registration Certificate.',
-        hi: 'संस्था के पास वैध पंजीकरण प्रमाणपत्र होना आवश्यक है।'
+        en: 'The organisation must have a valid NGO Registration Certificate.',
+        hi: 'संगठन के पास वैध NGO पंजीकरण प्रमाणपत्र होना अनिवार्य है।'
       },
       {
-        en: 'The application must be made by the organisation’s authorized representative.',
-        hi: 'आवेदन संस्था के अधिकृत प्रतिनिधि द्वारा किया जाना चाहिए।'
+        en: 'The application must be submitted by the organisation\'s authorized representative.',
+        hi: 'आवेदन संगठन के अधिकृत प्रतिनिधि द्वारा किया जाना चाहिए।'
       },
       {
-        en: 'All documents must be clear and legible.',
-        hi: 'सभी दस्तावेज स्पष्ट और पढ़ने योग्य होने चाहिए।'
+        en: 'Enter all details exactly as they appear on your government-issued identity documents.',
+        hi: 'अपनी सभी जानकारी सरकारी पहचान दस्तावेज़ों में दर्ज जानकारी के अनुसार ही भरें।'
       },
       {
-        en: 'The ₹236 application fee is mandatory for all applicants and is Non-Refundable.',
-        hi: '₹236 आवेदन शुल्क सभी आवेदकों के लिए अनिवार्य है और यह वापस नहीं की जाएगी।'
+        en: 'Upload clear, complete, and readable documents. Unclear or incomplete documents may result in rejection.',
+        hi: 'सभी दस्तावेज़ स्पष्ट, पूर्ण और पढ़ने योग्य अपलोड करें। अस्पष्ट या अधूरे दस्तावेज़ के कारण आवेदन अस्वीकार किया जा सकता है।'
       },
       {
-        en: 'Only after document verification will an eligible organisation be included in the allotment process.',
-        hi: 'दस्तावेजों के सत्यापन के बाद ही पात्र संस्था को आवंटन प्रक्रिया में शामिल किया जाएगा।'
+        en: 'The ₹236 application fee (₹200 + 18% GST) is mandatory for all applicants and is Non-Refundable, whether the application is accepted, rejected, or a Booth/Stall is allotted.',
+        hi: '₹236 आवेदन शुल्क (₹200 + 18% GST) सभी आवेदकों के लिए अनिवार्य है और यह गैर-वापसी योग्य है। आवेदन स्वीकार हो, अस्वीकार हो या बूथ/स्टॉल आवंटित हो, किसी भी स्थिति में यह शुल्क वापस नहीं किया जाएगा।'
       },
       {
-        en: 'A Draw of Lots may be held if eligible applications exceed the available booths/stalls.',
-        hi: 'पात्र आवेदन उपलब्ध बूथ/स्टॉल से अधिक होने पर ड्रॉ की जा सकती है।'
+        en: 'Only the documents required for the selected Booth/Stall category will be verified.',
+        hi: 'केवल चयनित बूथ/स्टॉल श्रेणी के लिए आवश्यक दस्तावेज़ों का सत्यापन किया जाएगा।'
       },
       {
-        en: 'The NGO booth/stall may be used only for social awareness, publicity, and social-service activities.',
-        hi: 'एनजीओ बूथ/स्टॉल का उपयोग केवल सामाजिक जागरूकता, प्रचार-प्रसार और समाज सेवा संबंधी गतिविधियों के लिए किया जा सकेगा।'
+        en: 'Only verified and eligible organisations will be included in the Booth/Stall allotment process.',
+        hi: 'केवल सत्यापित और पात्र संगठनों को बूथ/स्टॉल आवंटन प्रक्रिया में शामिल किया जाएगा।'
+      },
+      {
+        en: 'If eligible applications are within the available Booth/Stall limit, Booths/Stalls will be allotted directly.',
+        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा के भीतर रहती है, तो बूथ/स्टॉल सीधे आवंटित किए जाएंगे।'
+      },
+      {
+        en: 'If eligible applications exceed the available Booth/Stall limit, allotment will be made through a Draw.',
+        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा से अधिक होती है, तो बूथ/स्टॉल का आवंटन ड्रॉ के माध्यम से किया जाएगा।'
+      },
+      {
+        en: 'The NGO Booth/Stall will be provided free of cost to the selected organisation.',
+        hi: 'चयनित संगठन को NGO बूथ/स्टॉल निःशुल्क प्रदान किया जाएगा।'
+      },
+      {
+        en: 'The Booth/Stall may be used only for social awareness, publicity, and social-service activities.',
+        hi: 'बूथ/स्टॉल का उपयोग केवल सामाजिक जागरूकता, प्रचार-प्रसार और सामाजिक सेवा संबंधी गतिविधियों के लिए किया जा सकेगा।'
       },
       {
         en: 'No commercial activity or product selling is permitted.',
-        hi: 'किसी भी प्रकार की व्यावसायिक गतिविधि या उत्पाद बिक्री की अनुमति नहीं होगी।'
+        hi: 'किसी भी प्रकार की व्यावसायिक गतिविधि या उत्पाद की बिक्री की अनुमति नहीं होगी।'
       },
       {
-        en: 'If Verified & Eligible Applications exceed the available booths/stalls, allotment will be made through a Draw of Lots. This category is for registered NGOs, and the selected NGO will be given the booth/stall free of cost.',
-        hi: '*यदि सत्यापित एवं पात्र आवेदन उपलब्ध बूथ/स्टॉल से अधिक होते हैं, तो ड्रॉ के माध्यम से आवंटन किया जाएगा। यह श्रेणी पंजीकृत एनजीओ के लिए है और चयनित एनजीओ को बूथ/स्टॉल निःशुल्क दिया जाएगा।'
+        en: 'Once submitted, the application cannot be modified.',
+        hi: 'आवेदन जमा करने के बाद उसमें कोई बदलाव नहीं किया जा सकेगा।'
+      },
+      {
+        en: 'Applications containing incomplete, incorrect, or misleading information may be rejected.',
+        hi: 'अधूरी, गलत या भ्रामक जानकारी वाले आवेदन अस्वीकार किए जा सकते हैं।'
+      }
+    ],
+    importantInstructions: [
+      {
+        en: 'The final decision to accept or reject any application rests with the Kurukshetra Development Board (KDB).',
+        hi: 'किसी भी आवेदन को स्वीकार या अस्वीकार करने का अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा।'
+      },
+      {
+        en: 'The Board reserves the right to verify the submitted documents and application form based on the organisation\'s eligibility.',
+        hi: 'बोर्ड को संगठन की पात्रता के अनुसार जमा किए गए दस्तावेज़ों और आवेदन फॉर्म का सत्यापन करने का अधिकार है।'
+      },
+      {
+        en: 'The allotment process will be carried out as per the prescribed rules and guidelines.',
+        hi: 'बूथ/स्टॉल आवंटन प्रक्रिया निर्धारित नियमों और दिशानिर्देशों के अनुसार की जाएगी।'
+      },
+      {
+        en: 'KDB has the right to change the number of available Booths/Stalls, Booth/Stall locations, allotment process, or other arrangements if required for the International Gita Jayanti Mahotsav 2026.',
+        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता अनुसार KDB उपलब्ध बूथ/स्टॉलों की संख्या, बूथ/स्टॉल के स्थान, आवंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
+      },
+      {
+        en: 'Please regularly check ThanesarInfo.com for the latest updates and announcements related to the International Gita Jayanti Mahotsav 2026, Booth/Stall application, and allotment process.',
+        hi: 'बूथ/स्टॉल आवेदन और आवंटन प्रक्रिया से संबंधित नवीनतम अपडेट और घोषणाओं के लिए ThanesarInfo.com को नियमित रूप से चेक करते रहें।'
       }
     ]
   },
   {
     slug: 'govt-departments',
+    requiredDocuments: [
+      {
+        en: 'Valid Government ID of the authorized officer or representative.',
+        hi: 'अधिकृत अधिकारी या प्रतिनिधि का वैध सरकारी पहचान पत्र।'
+      },
+      {
+        en: 'Authorization Letter issued by the concerned government department.',
+        hi: 'संबंधित सरकारी विभाग द्वारा जारी प्राधिकरण पत्र (Department Authorization Letter)।'
+      }
+    ],
+    sections: [
+      {
+        title: { en: 'Eligibility Criteria', hi: 'पात्रता' },
+        intro: { en: 'The following departments may apply, subject to verification and approval by KDB:', hi: 'नीचे दिए गए विभाग KDB द्वारा दस्तावेजों की जांच और स्वीकृति के अधीन आवेदन कर सकते हैं:' },
+        items: [
+          {
+            en: 'Police Department',
+            hi: 'पुलिस विभाग'
+          },
+          {
+            en: 'Health Department',
+            hi: 'स्वास्थ्य विभाग'
+          },
+          {
+            en: 'Education Department',
+            hi: 'शिक्षा विभाग'
+          },
+          {
+            en: 'Women and Child Development Department',
+            hi: 'महिला एवं बाल विकास विभाग'
+          },
+          {
+            en: 'Agriculture Department',
+            hi: 'कृषि विभाग'
+          },
+          {
+            en: 'Other eligible Central Government, Haryana Government, or State Government departments working for public services, citizen guidance, government schemes, or public awareness.',
+            hi: 'अन्य पात्र केंद्र सरकार, हरियाणा सरकार या राज्य सरकार के विभाग, जो सरकारी योजनाओं, नागरिक सेवाओं, जनहित या जन जागरूकता से जुड़े कार्य करते हैं।'
+          }
+        ],
+        note: { en: 'The application must be submitted by an authorized officer or representative of the concerned department. A valid Government ID and an official Department Authorization Letter are required.', hi: 'आवेदन संबंधित विभाग के अधिकृत अधिकारी या प्रतिनिधि द्वारा ही किया जाना चाहिए। इसके लिए वैध सरकारी पहचान पत्र और विभाग द्वारा जारी प्राधिकरण पत्र जमा करना अनिवार्य है।' }
+      },
+      {
+        title: { en: 'Who Cannot Apply Under This Category?', hi: 'कौन इस श्रेणी में आवेदन नहीं कर सकता?' },
+        intro: { en: 'Private companies, commercial banks, insurance companies, financial institutions, and other commercial businesses cannot apply under this category to promote their products, policies, or commercial services. Eligible commercial organizations may apply under the Brand Promotion category, subject to its separate eligibility criteria, fees, and rules.', hi: 'निजी कंपनियां, वाणिज्यिक बैंक, बीमा कंपनियां, वित्तीय संस्थान और अन्य व्यावसायिक संस्थाएं अपने उत्पादों, पॉलिसियों या व्यावसायिक सेवाओं के प्रचार के लिए इस श्रेणी में आवेदन नहीं कर सकतीं। पात्र व्यावसायिक संस्थाएं अपनी अलग पात्रता, शुल्क और नियमों के अनुसार Brand Promotion श्रेणी में आवेदन कर सकती हैं।' }
+      }
+    ],
     bullets: [
       {
-        en: 'The application must be made by the concerned government department’s authorized officer/representative.',
-        hi: 'आवेदन संबंधित सरकारी विभाग के अधिकृत अधिकारी/प्रतिनिधि द्वारा किया जाना चाहिए।'
+        en: 'Apply only on behalf of an eligible government department.',
+        hi: 'आवेदन केवल किसी पात्र सरकारी विभाग की ओर से करें।'
       },
       {
-        en: 'The required departmental documents must be uploaded.',
-        hi: 'आवश्यक विभागीय दस्तावेज अपलोड करना अनिवार्य है।'
+        en: 'Upload the required Government ID and Department Authorization Letter.',
+        hi: 'अधिकृत अधिकारी या प्रतिनिधि का सरकारी पहचान पत्र और विभाग का प्राधिकरण पत्र अपलोड करें।'
       },
       {
-        en: 'The application and documents will be verified by KDB.',
-        hi: 'आवेदन एवं दस्तावेजों का सत्यापन KDB द्वारा किया जाएगा।'
+        en: 'Use the booth/stall only for government schemes, citizen services, public information, public awareness, and departmental activities related to public interest.',
+        hi: 'बूथ/स्टॉल का उपयोग केवल सरकारी योजनाओं, नागरिक सेवाओं, सरकारी जानकारी, जन जागरूकता और जनहित से जुड़ी विभागीय गतिविधियों के लिए करें।'
       },
       {
-        en: 'The booth/stall may be used only for government schemes, citizen services, public awareness, and departmental activities.',
-        hi: 'बूथ/स्टॉल का उपयोग केवल सरकारी योजनाओं, नागरिक सेवाओं, जन-जागरूकता एवं विभागीय गतिविधियों के लिए किया जा सकेगा।'
+        en: 'KDB will verify the submitted documents and the proposed activities.',
+        hi: 'जमा किए गए दस्तावेजों और प्रस्तावित गतिविधियों की जांच KDB द्वारा की जाएगी।'
       },
       {
-        en: 'A Bank, Insurance Company, Financial Institution, or other commercial entity may not apply in this category for commercial promotion.',
-        hi: 'बैंक, बीमा कंपनी, वित्तीय संस्था या अन्य व्यावसायिक संस्था इस श्रेणी में व्यावसायिक प्रचार के लिए आवेदन नहीं कर सकती।'
+        en: 'The final booth/stall location will be decided by KDB according to the approved layout and available space. A preferred location is not guaranteed.',
+        hi: 'बूथ/स्टॉल का अंतिम स्थान KDB द्वारा स्वीकृत लेआउट और उपलब्ध जगह के अनुसार तय किया जाएगा। पसंद का स्थान मिलना सुनिश्चित नहीं है।'
       },
       {
-        en: 'Entities eligible for commercial promotion may instead apply under the Brand Promotion category.',
-        hi: 'व्यावसायिक प्रचार के लिए पात्र संस्थाएं ब्रांड प्रमोशन श्रेणी में आवेदन कर सकती हैं।'
+        en: 'The booth/stall cannot be transferred, rented out, or sublet to another person or organization without KDB\'s permission.',
+        hi: 'KDB की अनुमति के बिना बूथ/स्टॉल किसी अन्य व्यक्ति या संस्था को हस्तांतरित, किराए पर या सबलेट नहीं किया जा सकता।'
+      }
+    ],
+    importantInstructions: [
+      {
+        en: 'Enter correct details and upload clear, complete, and readable documents.',
+        hi: 'आवेदन में सही जानकारी भरें और सभी दस्तावेज स्पष्ट, पूर्ण तथा पढ़ने योग्य अपलोड करें।'
       },
       {
-        en: 'The final booth/stall location will be decided by KDB as per the approved layout and availability.',
-        hi: 'अंतिम बूथ/स्टॉल स्थान KDB द्वारा स्वीकृत लेआउट और उपलब्धता के अनुसार तय किया जाएगा।'
+        en: 'Once submitted, the application cannot be modified.',
+        hi: 'आवेदन जमा करने के बाद उसमें बदलाव नहीं किया जा सकेगा।'
       },
       {
-        en: 'The booth/stall may not be transferred, sublet, or rented to any other person/entity.',
-        hi: 'बूथ/स्टॉल को किसी अन्य व्यक्ति/संस्था को हस्तांतरित, उप-किराए पर या किराए पर नहीं दिया जा सकेगा।'
+        en: 'Applications containing incomplete, incorrect, misleading, or false information may be rejected or cancelled.',
+        hi: 'अधूरी, गलत, भ्रामक या झूठी जानकारी देने पर आवेदन अस्वीकार किया जा सकता है या आवंटन रद्द किया जा सकता है।'
       },
       {
-        en: 'The purpose of the Government Department category is solely the publicity of government and public-interest activities.',
-        hi: 'सरकारी विभाग श्रेणी का उद्देश्य केवल सरकारी एवं जनहित गतिविधियों का प्रचार-प्रसार है।'
+        en: 'KDB may ask for additional documents or information if required.',
+        hi: 'आवश्यकता पड़ने पर KDB अतिरिक्त दस्तावेज या जानकारी मांग सकता है।'
+      },
+      {
+        en: 'Follow all rules related to cleanliness, safety, public movement, and booth/stall operations.',
+        hi: 'बूथ/स्टॉल के संचालन, साफ-सफाई, सुरक्षा और सार्वजनिक आवागमन से जुड़े सभी नियमों का पालन करें।'
+      },
+      {
+        en: 'Violation of the applicable rules may result in cancellation of the booth/stall allotment.',
+        hi: 'नियमों का उल्लंघन करने पर बूथ/स्टॉल का आवंटन रद्द किया जा सकता है।'
+      },
+      {
+        en: 'The final decision regarding eligibility, verification, and booth/stall allotment will rest with KDB.',
+        hi: 'पात्रता, दस्तावेज सत्यापन और बूथ/स्टॉल आवंटन से संबंधित अंतिम निर्णय KDB का होगा।'
+      },
+      {
+        en: 'For updates about the application, verification, and allotment process, regularly visit ThanesarInfo.com.',
+        hi: 'आवेदन, दस्तावेज सत्यापन और आवंटन से जुड़े नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखें।'
+      },
+      {
+        en: 'Any dispute will be subject to the jurisdiction of courts at Kurukshetra, as applicable.',
+        hi: 'सभी विवादों पर लागू कानून के अनुसार कुरुक्षेत्र स्थित न्यायालयों का क्षेत्राधिकार होगा।'
       }
     ]
   },
   {
     slug: 'refreshment-stalls',
+    requiredDocuments: [
+      {
+        en: 'Aadhaar Card or valid identity proof of the applicant/authorized representative',
+        hi: 'आवेदक / अधिकृत प्रतिनिधि का आधार कार्ड या वैध पहचान पत्र'
+      },
+      {
+        en: 'Business/Firm Registration Certificate, GST Certificate, or PAN Card',
+        hi: 'व्यवसाय / फर्म पंजीकरण प्रमाणपत्र / GST प्रमाणपत्र या PAN कार्ड'
+      },
+      {
+        en: 'Valid FSSAI License',
+        hi: 'वैध FSSAI लाइसेंस'
+      }
+    ],
+    bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले' },
     bullets: [
       {
-        en: 'Depositing the ₹236 Application Fee online is mandatory.',
-        hi: '₹236 आवेदन शुल्क ऑनलाइन जमा करना अनिवार्य है।'
+        en: 'Applicants must have an active WhatsApp mobile number and email ID to apply.',
+        hi: 'आवेदन करने के लिए आवेदक के पास एक WhatsApp मोबाइल नंबर और ईमेल आईडी होना अनिवार्य है।'
       },
       {
-        en: 'The Application Fee is Non-Refundable.',
-        hi: 'आवेदन शुल्क वापस नहीं की जाएगी।'
+        en: 'All applicants must pay a non-refundable application fee of ₹236 (₹200 + 18% GST) online. This fee will not be refunded, whether the application is accepted or rejected.',
+        hi: 'सभी आवेदकों को ₹236 आवेदन शुल्क (₹200 + 18% GST) ऑनलाइन जमा करना होगा। यह शुल्क गैर-वापसी योग्य है। आवेदन स्वीकार हो या अस्वीकार, किसी भी स्थिति में आवेदन शुल्क वापस नहीं किया जाएगा।'
       },
       {
-        en: 'Only applicants verified and declared eligible by KDB may take part in the Draw.',
-        hi: 'केवल KDB द्वारा सत्यापित एवं पात्र घोषित आवेदक ही ड्रॉ (Draw) में भाग ले सकेंगे।'
+        en: 'The application fee is separate from the booth/stall allotment and auction-related charges.',
+        hi: 'आवेदन शुल्क बूथ/स्टॉल आबंटन और नीलामी से संबंधित अन्य शुल्कों से अलग है।'
       },
       {
-        en: 'An eligible applicant must deposit the ₹50,000 Draw Participation Fee as a Demand Draft.',
-        hi: 'पात्र आवेदक को ₹50,000/- की ड्रॉ भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के रूप में जमा करनी होगी।'
+        en: 'Fill in all application details correctly according to your government-issued identity proof and official business documents. Applications containing incorrect, incomplete, or misleading information may be rejected.',
+        hi: 'आवेदन फॉर्म में सभी जानकारी सरकारी पहचान पत्रों और आधिकारिक व्यवसाय दस्तावेजों के अनुसार सही-सही भरें। गलत, अधूरी या भ्रामक जानकारी मिलने पर आवेदन अस्वीकार किया जा सकता है।'
       },
       {
-        en: 'If the bid is unsuccessful, the ₹50,000 DD will be returned.',
-        hi: 'ड्रॉ में बोली सफल न होने पर ₹50,000/- की DD वापस कर दी जाएगी।'
+        en: 'Upload all required documents clearly and ensure they are complete and readable so that the information provided in the application can be verified.',
+        hi: 'सभी आवश्यक दस्तावेज स्पष्ट और पढ़ने योग्य अपलोड करें, ताकि आवेदन में दी गई जानकारी का सत्यापन किया जा सके।'
       },
       {
-        en: 'The successful bidder’s ₹50,000 Participation Fee itself becomes the Security Deposit.',
-        hi: 'सफल बोलीदाता की ₹50,000/- भागीदारी शुल्क ही सुरक्षा जमा राशि बन जाएगी।'
+        en: 'After verification of the application and documents, applicants will receive an acceptance or rejection message on their registered WhatsApp number. If you do not receive a message due to technical issues, check your application status on the website 48 hours after submitting your application.',
+        hi: 'आवेदन और दस्तावेजों का सत्यापन होने के बाद आवेदन स्वीकार या अस्वीकार होने की सूचना आपके दिए गए WhatsApp नंबर पर भेजी जाएगी। यदि तकनीकी कारण से आपको सूचना नहीं मिलती है, तो आवेदन जमा करने के 48 घंटे बाद वेबसाइट पर अपने आवेदन की स्थिति चेक करें।'
       },
       {
-        en: 'The successful bidder must pay the full Final Bid Amount within 4 days.',
-        hi: 'सफल बोलीदाता को अंतिम बोली राशि का पूरा भुगतान 4 दिनों के भीतर करना होगा।'
+        en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be allowed to participate in the physical auction. Eligible applicants must submit an auction participation fee of ₹50,000 through a Demand Draft (DD). This amount will be refunded according to the prescribed procedure to applicants who are not allotted a booth/stall.',
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदक ही प्रत्यक्ष नीलामी में भाग ले सकेंगे। पात्र आवेदकों को ₹50,000 नीलामी भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के माध्यम से जमा करना होगा। जिन आवेदकों को बूथ/स्टॉल आवंटित नहीं होगा, उन्हें यह राशि निर्धारित प्रक्रिया के अनुसार वापस कर दी जाएगी।'
       },
       {
-        en: 'Only pre-packed/ready-to-sell food products may be sold at the booth/stall.',
-        hi: 'बूथ/स्टॉल पर केवल पहले से पैक/बिक्री हेतु तैयार खाद्य उत्पाद ही बेचे जा सकेंगे।'
+        en: 'For the successful bidder, the ₹50,000 participation fee will serve as the security deposit. No additional security deposit of ₹50,000 will be required.',
+        hi: 'सफल बोलीदाता के लिए ₹50,000 की भागीदारी राशि ही सिक्योरिटी डिपॉजिट मानी जाएगी। इसके लिए अलग से ₹50,000 जमा नहीं करने होंगे।'
       },
       {
-        en: 'Cooking, frying, roasting, baking, or food preparation is not permitted at the booth/stall.',
-        hi: 'बूथ/स्टॉल पर खाना पकाने, तलने, भूनने, बेक करने या किसी भी प्रकार की खाद्य तैयारी की अनुमति नहीं होगी।'
+        en: 'The base bid for each booth/stall is ₹2,00,000 (Rupees Two Lakh only). The final bid amount will be determined during the auction.',
+        hi: 'बूथ/स्टॉल की बेस बिड ₹2,00,000 (दो लाख रुपये) निर्धारित की गई है। अंतिम बोली राशि नीलामी में तय होगी।'
       },
       {
-        en: 'Use of LPG, gas stove, coal, wood, furnace, bhatti, or open flame is prohibited.',
-        hi: 'LPG, गैस स्टोव, कोयला, लकड़ी, भट्टी या खुली लौ का उपयोग प्रतिबंधित है।'
+        en: 'The successful bidder must pay the full final bid amount online within 4 days of the auction. Failure to make the payment within the prescribed time may result in cancellation of the booth/stall allotment.',
+        hi: 'सफल बोलीदाता को नीलामी में तय हुई पूरी अंतिम बोली राशि नीलामी के 4 दिनों के भीतर ऑनलाइन जमा करनी होगी। निर्धारित समय में भुगतान नहीं करने पर बूथ/स्टॉल आबंटन रद्द किया जा सकता है।'
       },
       {
-        en: 'Sale of alcohol, tobacco, narcotics, or other prohibited items is completely prohibited.',
-        hi: 'शराब, तंबाकू, नशीले पदार्थ या अन्य प्रतिबंधित वस्तुओं की बिक्री पूर्णतः प्रतिबंधित है।'
+        en: 'Only permitted, pre-packaged food products that are ready for sale and packaged beverages may be sold at the booth/stall. Cooking, frying, heating, or preparing food in any form at the booth/stall is not allowed.',
+        hi: 'बूथ/स्टॉल पर केवल अनुमति प्राप्त, पहले से पैक किए गए और बिक्री के लिए तैयार खाद्य पदार्थ तथा पैक किए हुए पेय पदार्थ ही बेचे जा सकेंगे। बूथ/स्टॉल पर खाना पकाने, तलने, गर्म करने या किसी भी प्रकार से खाद्य पदार्थ तैयार करने की अनुमति नहीं होगी।'
+      },
+      {
+        en: 'The use of LPG cylinders, gas stoves, burners, coal, wood, open flames, or any other cooking equipment is strictly prohibited.',
+        hi: 'LPG सिलेंडर, गैस चूल्हे, बर्नर, कोयला, लकड़ी, खुली आग और खाना पकाने वाले अन्य उपकरणों का उपयोग पूरी तरह प्रतिबंधित है।'
+      },
+      {
+        en: 'All booth/stall operators must follow the food safety, cleanliness, waste disposal, and other rules issued by KDB.',
+        hi: 'सभी बूथ/स्टॉल संचालकों को KDB द्वारा निर्धारित खाद्य सुरक्षा, साफ-सफाई, कचरा निपटान और अन्य नियमों का पालन करना अनिवार्य होगा।'
       }
     ]
   },
   {
     slug: 'artisan-card-holders',
+    requiredDocuments: [
+      {
+        en: 'Aadhaar Card or valid identity proof of the applicant',
+        hi: 'आवेदक का आधार कार्ड या वैध पहचान पत्र'
+      },
+      {
+        en: 'Valid Artisan Card, Artisan Registration Card, or Artisan Certificate',
+        hi: 'वैध आर्टिजन कार्ड, आर्टिजन रजिस्ट्रेशन कार्ड या आर्टिजन प्रमाणपत्र'
+      },
+      {
+        en: 'Passport-size photograph of the applicant',
+        hi: 'आवेदक का पासपोर्ट साइज फोटो'
+      },
+      {
+        en: 'Clear photographs of the applicant\'s own handicraft products or artwork',
+        hi: 'आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की स्पष्ट तस्वीरें'
+      }
+    ],
+    hideScheduleBox: true,
+    sections: [
+      {
+        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
+        items: [
+          {
+            en: 'Application Start Date: 14 October 2026',
+            hi: 'आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026'
+          },
+          {
+            en: 'Last Date to Apply: 28 October 2026, by 11:59 PM',
+            hi: 'आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक'
+          },
+          {
+            en: 'Draw / Result Date: 5 November 2026',
+            hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026'
+          },
+          {
+            en: 'Payment Deadline: 10 November 2026',
+            hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026'
+          }
+        ]
+      }
+    ],
+    bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
     bullets: [
       {
-        en: 'The applicant must genuinely be engaged in Artisan/Handicraft Work.',
-        hi: 'आवेदक का वास्तविक रूप से शिल्पकला/हस्तशिल्प कार्य से जुड़ा होना आवश्यक है।'
+        en: 'Please read all the guidelines for this category carefully before applying.',
+        hi: 'आवेदन करने से पहले इस श्रेणी के सभी दिशानिर्देशों को ध्यानपूर्वक पढ़ें।'
       },
       {
-        en: 'A valid Artisan Card is mandatory.',
-        hi: 'वैध शिल्पकार कार्ड होना अनिवार्य है।'
+        en: 'Applicants must have an active WhatsApp mobile number and email ID.',
+        hi: 'आवेदन करने के लिए सक्रिय WhatsApp मोबाइल नंबर और ईमेल आईडी होना अनिवार्य है।'
       },
       {
-        en: 'The Artisan Card must be valid through the last date of application.',
-        hi: 'शिल्पकार कार्ड आवेदन की अंतिम तिथि तक वैध होना चाहिए।'
+        en: 'Enter all details correctly as they appear on your government-issued identity proof and Artisan Card.',
+        hi: 'आवेदन फॉर्म में सभी जानकारी अपने सरकारी पहचान पत्र और आर्टिजन कार्ड के अनुसार सही-सही भरें।'
       },
       {
-        en: 'A description of one’s actual Artisan Work must be given.',
-        hi: 'अपने वास्तविक शिल्पकार्य का विवरण देना होगा।'
+        en: 'Upload all required documents clearly and make sure they are complete and readable.',
+        hi: 'सभी आवश्यक दस्तावेज़ स्पष्ट और पढ़ने योग्य अपलोड करें।'
       },
       {
-        en: 'Clear photographs of one’s own products/artwork must be uploaded.',
-        hi: 'अपने बनाए हुए उत्पादों/कलाकृतियों की स्पष्ट तस्वीरें अपलोड करनी होंगी।'
+        en: 'Applicants must be genuinely engaged in artisan or handicraft work.',
+        hi: 'आवेदक का वास्तव में आर्टिजन या हस्तशिल्प कार्य से जुड़ा होना अनिवार्य है।'
       },
       {
-        en: 'Photos of another person’s work, or images taken from the internet, will not be accepted.',
-        hi: 'किसी अन्य व्यक्ति के कार्य की तस्वीरें या इंटरनेट से ली गई तस्वीरें स्वीकार नहीं की जाएंगी।'
+        en: 'Upload photographs of your own handicraft products or artwork only. Images taken from the internet or photographs of another person\'s work will not be accepted.',
+        hi: 'केवल आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की तस्वीरें ही अपलोड करें। इंटरनेट से ली गई या किसी अन्य व्यक्ति के काम की तस्वीरें स्वीकार नहीं की जाएंगी।'
       },
       {
-        en: 'Documents, the Artisan Card, and the work will first be verified.',
-        hi: 'पहले दस्तावेजों, शिल्पकार कार्ड और कार्य का सत्यापन किया जाएगा।'
+        en: 'Review all details and documents carefully before submitting your application, as changes cannot be made after submission.',
+        hi: 'आवेदन जमा करने से पहले सभी जानकारी और दस्तावेज़ों की अच्छी तरह जाँच कर लें। आवेदन जमा होने के बाद उसमें बदलाव नहीं किया जा सकेगा।'
       },
       {
-        en: 'Only Verified & Eligible Applicants will be included in the allotment process.',
-        hi: 'केवल सत्यापित एवं पात्र आवेदकों को आवंटन प्रक्रिया में शामिल किया जाएगा।'
+        en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for allotment.',
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदकों को ही आवंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'A Draw of Lots will be held if eligible applications exceed the available booths/stalls.',
-        hi: 'उपलब्ध बूथ/स्टॉल से अधिक पात्र आवेदन होने पर ड्रॉ की जाएगी।'
+        en: 'Booths/stalls will be allotted directly or through a Draw, depending on availability and the number of eligible applications.',
+        hi: 'उपलब्ध बूथ / बूथ/स्टॉल की संख्या और पात्र आवेदनों के आधार पर सीधे आवंटन या ड्रॉ के माध्यम से आवंटन किया जाएगा।'
       },
       {
-        en: 'The booth/stall will be used for the display and sale of the applicant’s own Artisan/Handicraft Work.',
-        hi: 'बूथ/स्टॉल का उपयोग आवेदक के अपने शिल्पकार्य/हस्तशिल्प के प्रदर्शन एवं बिक्री के लिए किया जाएगा।'
-      },
-      {
-        en: 'Allotment may be Direct or through a Draw, depending on availability and eligible applications.',
-        hi: '*उपलब्धता और पात्र आवेदनों के आधार पर आवंटन सीधे अथवा ड्रॉ के माध्यम से हो सकता है।'
+        en: 'The Kurukshetra Development Board (KDB) will have the final authority to accept or reject applications and approve booth/stall allotments.',
+        hi: 'आवेदन स्वीकार या अस्वीकार करने तथा बूथ / बूथ/स्टॉल आवंटन का अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा।'
       }
     ]
   },
@@ -387,46 +597,86 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
   },
   {
     slug: 'wooden-craft-carpets',
+    requiredDocuments: [
+      {
+        en: 'Aadhaar Card / Valid Government-Issued ID Proof',
+        hi: 'आधार कार्ड / सरकार द्वारा जारी वैध पहचान पत्र'
+      },
+      {
+        en: 'Firm/Business Registration Certificate, GST Certificate, or PAN Card, as applicable',
+        hi: 'व्यवसाय या फर्म का पंजीकरण प्रमाणपत्र, GST प्रमाणपत्र या PAN कार्ड, जो लागू हो'
+      },
+      {
+        en: 'Clear and recent photographs of your products',
+        hi: 'उत्पादों की साफ और हाल की तस्वीरें'
+      },
+      {
+        en: 'Product details and estimated space requirement',
+        hi: 'उत्पादों का विवरण और आवश्यक जगह की अनुमानित जानकारी'
+      },
+      {
+        en: 'Any additional documents required by Kurukshetra Development Board (KDB)',
+        hi: 'कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा मांगे जाने पर अन्य आवश्यक दस्तावेज'
+      }
+    ],
     bullets: [
       {
-        en: 'This category is only for applicants who need Large Space for their products.',
-        hi: 'यह श्रेणी केवल उन आवेदकों के लिए है जिन्हें अपने उत्पादों के लिए बड़े स्थान की आवश्यकता है।'
+        en: 'Make sure your products are suitable for the Wooden Craft & Carpets (Large Space) category.',
+        hi: 'सुनिश्चित करें कि आपके उत्पाद लकड़ी के हस्तशिल्प एवं कालीन (बड़े स्थान वाले बूथ/स्टॉल) श्रेणी के लिए उपयुक्त हैं।'
       },
       {
-        en: 'It is suitable for Heavy Wooden Craft, Furniture, Handmade Carpets, Rugs, and large Handcrafted Products.',
-        hi: 'यह भारी काष्ठ शिल्प, फर्नीचर, हस्तनिर्मित कालीन, दरी एवं बड़े हस्तशिल्प उत्पादों के लिए उपयुक्त है।'
+        en: 'Apply under this category only if your products genuinely require a larger display area than a regular booth/stall.',
+        hi: 'इस श्रेणी में तभी आवेदन करें, जब आपके उत्पादों को सामान्य बूथ/स्टॉल से अधिक जगह की वास्तव में आवश्यकता हो।'
       },
       {
-        en: 'Applicants who do not need Large Space should apply under another suitable category instead.',
-        hi: 'जिन्हें बड़े स्थान की आवश्यकता नहीं है, उन्हें अपनी आवश्यकता के अनुसार किसी अन्य उपयुक्त श्रेणी में आवेदन करना चाहिए।'
+        en: 'Provide accurate product details, photographs, and information about the space you need.',
+        hi: 'उत्पादों का सही विवरण, तस्वीरें और आवश्यक जगह की जानकारी दें।'
       },
       {
-        en: 'The application must clearly describe the products and the space required.',
-        hi: 'आवेदन में उत्पादों और आवश्यक स्थान का स्पष्ट विवरण देना होगा।'
+        en: 'Check all documents carefully before uploading them.',
+        hi: 'दस्तावेज अपलोड करने से पहले उनकी जाँच कर लें।'
       },
       {
-        en: 'Clear and recent photographs of the products must be uploaded.',
-        hi: 'उत्पादों की स्पष्ट एवं हाल की तस्वीरें अपलोड करनी होंगी।'
+        en: 'The application fee is ₹236 (including 18% GST) and is non-refundable.',
+        hi: 'आवेदन शुल्क ₹236 है, जिसमें 18% GST शामिल है। यह शुल्क वापस नहीं किया जाएगा।'
       },
       {
-        en: 'The ₹236 Application Fee is Non-Refundable.',
-        hi: '₹236 आवेदन शुल्क वापस नहीं की जाएगी।'
+        en: 'The booth/stall allotment amount is ₹60,000.',
+        hi: 'बूथ/स्टॉल आवंटन राशि ₹60,000 है।'
       },
       {
-        en: 'A selected/allotted applicant must deposit the ₹60,000 Large Space Booth/Stall Fee.',
-        hi: 'चयनित/आवंटित आवेदक को ₹60,000/- बड़े स्थान की बूथ/स्टॉल शुल्क जमा करनी होगी।'
+        en: 'Allotment will be through Direct Allotment / Draw, based on verified and eligible applications and the availability of suitable spaces.',
+        hi: 'सत्यापित और पात्र आवेदनों की संख्या तथा उपलब्ध स्थानों के आधार पर सीधे आवंटन / ड्रॉ के माध्यम से बूथ/स्टॉल आवंटित किए जाएँगे।'
       },
       {
-        en: 'The final space size and location will be decided by KDB as per the approved layout and availability.',
-        hi: 'अंतिम स्थान का आकार एवं स्थिति KDB द्वारा स्वीकृत लेआउट और उपलब्धता के अनुसार तय की जाएगी।'
+        en: 'The final booth/stall size and location will be decided by KDB according to availability and the approved layout.',
+        hi: 'बूथ/स्टॉल का अंतिम आकार और स्थान उपलब्धता तथा स्वीकृत लेआउट के अनुसार KDB द्वारा तय किया जाएगा।'
+      }
+    ],
+    importantInstructions: [
+      {
+        en: 'Submit correct and complete information in the application form.',
+        hi: 'आवेदन फॉर्म में सही और पूरी जानकारी भरें।'
       },
       {
-        en: 'The exact space or location requested by the applicant is not guaranteed.',
-        hi: 'आवेदक द्वारा मांगा गया ठीक वही स्थान या स्थिति मिलना आवश्यक नहीं है।'
+        en: 'Upload all mandatory documents before the application deadline.',
+        hi: 'आवेदन की अंतिम तिथि से पहले सभी अनिवार्य दस्तावेज अपलोड करें।'
       },
       {
-        en: 'Keeping products outside the allotted space’s limit, or obstructing public movement, is prohibited.',
-        hi: 'आवंटित स्थान की सीमा से बाहर उत्पाद रखना या सार्वजनिक आवागमन में बाधा डालना प्रतिबंधित होगा।'
+        en: 'Keep your application details and payment receipt for future reference.',
+        hi: 'भविष्य के लिए आवेदन का विवरण और भुगतान की रसीद सुरक्षित रखें।'
+      },
+      {
+        en: 'Payment of the application fee does not guarantee booth/stall allotment.',
+        hi: 'केवल आवेदन शुल्क जमा करने से बूथ/स्टॉल मिलना सुनिश्चित नहीं होता।'
+      },
+      {
+        en: 'Follow all guidelines and instructions issued by KDB.',
+        hi: 'KDB द्वारा जारी सभी दिशानिर्देशों और निर्देशों का पालन करें।'
+      },
+      {
+        en: 'Review your application carefully before submitting it.',
+        hi: 'आवेदन जमा करने से पहले सभी जानकारी ध्यान से जाँच लें।'
       }
     ]
   }

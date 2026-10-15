@@ -28,14 +28,17 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
     const destination = `+91${application.mobile_number}`
     const userName = application.representative_name
 
-    await sendNotification({
-      category: 'payment_confirmation',
-      destination,
-      userName,
-      templateParams: [userName, application.application_number, String(amountPaise / 100)],
-      applicationId,
-      email: application.email
-    })
+    // A free category has no payment to confirm — only the application confirmation.
+    if (amountPaise > 0) {
+      await sendNotification({
+        category: 'payment_confirmation',
+        destination,
+        userName,
+        templateParams: [userName, application.application_number, String(amountPaise / 100)],
+        applicationId,
+        email: application.email
+      })
+    }
 
     await sendNotification({
       category: 'application_confirmation',

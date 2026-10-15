@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircleIcon, BookOpenIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
@@ -20,7 +19,7 @@ import ApplicantInfoStep from '@/views/public/apply/ApplicantInfoStep'
 import { readApplicationAccess, storeApplicationAccess } from '@/views/public/apply/access-session'
 import CategoryFieldsStep from '@/views/public/apply/CategoryFieldsStep'
 import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
-import { applicationFormSchema, APPLICATION_FORM_DEFAULT_VALUES, type ApplicationFormValues } from '@/views/public/apply/form-values'
+import { buildFormResolver, APPLICATION_FORM_DEFAULT_VALUES, type ApplicationFormValues } from '@/views/public/apply/form-values'
 import { useLanguage } from '@/context/LanguageContext'
 import InstructionsStep from '@/views/public/apply/InstructionsStep'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
@@ -72,7 +71,7 @@ const ApplicationFormOrchestrator = ({
   const draftRequested = useRef(false)
 
   const form = useForm<ApplicationFormValues>({
-    resolver: zodResolver(applicationFormSchema),
+    resolver: buildFormResolver(config.fields),
 
     // Every category field starts as '' so an untouched OPTIONAL field is an
     // empty string, not undefined (which the string schema reported as "Required").
@@ -113,11 +112,11 @@ const ApplicationFormOrchestrator = ({
             representativeName: 'Pending',
             fatherName: 'Pending',
             aadhaarNumber: '222222222227', // placeholder only — checksum-valid so the silent draft passes validation
-            address: 'Pending',
+            address: 'Pending - not yet filled in',
             state: 'Pending',
             district: 'Pending',
-            pinCode: '000000',
-            mobileNumber: '9999999999'
+            pinCode: '110001',
+            mobileNumber: '9123456780'
           },
           categoryFields: shopOptionPayload,
           declaration: { informationCorrect: true, agreedToTerms: true }

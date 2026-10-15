@@ -5,6 +5,7 @@ import { CheckCircle2Icon, MessageSquareIcon, XCircleIcon } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { isEmailConfigured } from '@/lib/notifications/email'
 import { requirePermission } from '@/lib/rbac/authorize'
+import SendTestEmail from '@/views/admin/settings/SendTestEmail'
 import SendTestNotification from '@/views/admin/settings/SendTestNotification'
 
 export const metadata: Metadata = {
@@ -121,6 +122,8 @@ const NotificationSettingsPage = async () => {
       </p>
 
       <SendTestNotification />
+
+      <SendTestEmail />
     </div>
   )
 }
