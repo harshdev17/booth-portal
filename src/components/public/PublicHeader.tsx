@@ -30,7 +30,7 @@ const PublicHeader = () => {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const navItems = [
+  const navItemDefs: Array<{ label: string; href: string; external?: boolean }> = [
     { label: t('nav.home'), href: '/' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
@@ -38,11 +38,13 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
-    // Opens the venue layout PDF directly, not a page route — rendered as a
-    // plain <a target="_blank"> below rather than Next's <Link>.
-    { label: lang === 'hi' ? 'मानचित्र' : 'Map', href: '/images/public/map.pdf', external: true },
+    // Links to the Stall/Booth Locations page (Full Map + category-wise
+    // maps), not directly to a PDF — a normal in-app route.
+    { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },
     { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/#contact' }
-  ].map(item => ({
+  ]
+
+  const navItems = navItemDefs.map(item => ({
     ...item,
 
     // Active = the page you are on. In-page anchors ("/#categories") share the home

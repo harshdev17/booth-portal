@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 
-import { ChevronDownIcon } from 'lucide-react'
+import { ChevronDownIcon, MapIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 import { CATEGORY_GUIDELINES, parseGuidelineBullet } from '@/lib/content/category-guidelines'
@@ -43,7 +43,7 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   }
 ]
 
-const GuidelinesView = () => {
+const GuidelinesView = ({ mapPdfBySlug }: { mapPdfBySlug: Record<string, string> }) => {
   const { lang } = useLanguage()
   const [openSlug, setOpenSlug] = useState<string | null>(CATEGORY_GUIDELINES[0]?.slug ?? null)
 
@@ -92,6 +92,17 @@ const GuidelinesView = () => {
 
                 {isOpen && (
                   <div className='border-t border-[#eaddc0] p-6 sm:p-8'>
+                    {mapPdfBySlug[cat.slug] && (
+                      <a
+                        href={mapPdfBySlug[cat.slug]}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='mb-4 inline-flex items-center gap-1.5 rounded-lg border border-[#c88718] px-4 py-2 text-sm font-bold text-[#8c5711] transition hover:bg-[#c88718] hover:text-white'
+                      >
+                        <MapIcon className='size-4' />
+                        {lang === 'hi' ? 'मानचित्र देखें' : 'View Map'}
+                      </a>
+                    )}
                     <div className='flex flex-col'>
                       {cat.body.map((line, i) => {
                         const parsed = parseGuidelineBullet(lang === 'hi' ? line.hi : line.en)

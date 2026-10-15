@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
 import { getCategoryBySlug, getDocumentDefinitionsForCategory, isCategoryAcceptingApplications } from '@/lib/applications/categories'
+import { getCategoryMapBySlug } from '@/lib/settings/category-maps'
 import CategoryDetail from '@/views/public/category-detail'
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ const CategoryDetailPage = async ({ params }: { params: Promise<{ slug: string }
   }
 
   const documents = await getDocumentDefinitionsForCategory(category.id)
+  const mapRow = await getCategoryMapBySlug(category.slug)
 
   return (
     <>
@@ -28,6 +30,7 @@ const CategoryDetailPage = async ({ params }: { params: Promise<{ slug: string }
         category={category}
         documents={documents}
         isAcceptingApplications={isCategoryAcceptingApplications(category)}
+        mapPdfPath={mapRow?.pdfPath ?? null}
       />
       <PublicFooter />
     </>

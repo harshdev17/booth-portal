@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 
+import { MapIcon } from 'lucide-react'
+
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
 import { useLanguage } from '@/context/LanguageContext'
 import { getCategoryGuideline, parseGuidelineBullet } from '@/lib/content/category-guidelines'
@@ -23,11 +25,13 @@ const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], { en: stri
 const CategoryDetail = ({
   category,
   documents,
-  isAcceptingApplications
+  isAcceptingApplications,
+  mapPdfPath
 }: {
   category: CategoryRow
   documents: DocumentDefinitionRow[]
   isAcceptingApplications: boolean
+  mapPdfPath: string | null
 }) => {
   const { lang } = useLanguage()
   const displayName = lang === 'hi' && category.name_hi ? category.name_hi : category.name
@@ -147,6 +151,18 @@ const CategoryDetail = ({
           <p className='text-lg text-[var(--kdb-muted)]'>
             {lang === 'hi' ? 'यह श्रेणी वर्तमान में आवेदन के लिए स्वीकार नहीं कर रही है।' : 'This category is not currently accepting applications.'}
           </p>
+        )}
+
+        {mapPdfPath && (
+          <a
+            href={mapPdfPath}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex items-center gap-1.5 rounded-lg border border-[var(--kdb-secondary)] px-8 py-3.5 text-base font-bold text-[var(--kdb-secondary)] transition hover:bg-[var(--kdb-secondary)] hover:text-white'
+          >
+            <MapIcon className='size-4' />
+            {lang === 'hi' ? 'मानचित्र देखें' : 'View Map'}
+          </a>
         )}
 
         <Link

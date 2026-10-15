@@ -158,6 +158,7 @@ export const navItems: NavItem[] = [
           { label: 'Homepage Notices', href: '/admin/settings/notices' },
           { label: 'reCAPTCHA', href: '/admin/settings/recaptcha' },
           { label: 'Contact & Social', href: '/admin/settings/contact' },
+          { label: 'Stall/Booth Location Maps', href: '/admin/settings/maps' },
           { label: 'Coming Soon Mode', href: '/admin/settings/coming-soon' }
         ]
       }

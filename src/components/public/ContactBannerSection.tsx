@@ -22,7 +22,7 @@ export default function ContactBannerSection() {
           {/* Saffron Label with Official Gold Ornamental Divider Image */}
           <div className='mb-3 inline-flex items-center gap-3'>
             <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
-              {lang === 'hi' ? 'संपर्क एवं सहायता केंद्र' : 'CONTACT & HELPDESK'}
+              {lang === 'hi' ? 'गीता जयंती महोत्सव स्टॉल/बूथ आवेदन पोर्टल सहायता केंद्र' : 'Gita Jayanti Mahotsav Stall/Booth Application Portal Help Center'}
             </span>
             <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
               <Image
@@ -39,11 +39,11 @@ export default function ContactBannerSection() {
           <h2 className='text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#0c2847]'>
             {lang === 'hi' ? (
               <>
-                सहायता की <span className='text-[#d8891d]'>आवश्यकता है?</span>
+                क्या आपको स्टॉल/बूथ आवेदन से जुड़ी <span className='text-[#d8891d]'>सहायता चाहिए?</span>
               </>
             ) : (
               <>
-                Need Any <span className='text-[#d8891d]'>Assistance?</span>
+                Need Help with <span className='text-[#d8891d]'>Your Stall/Booth Application?</span>
               </>
             )}
           </h2>
@@ -51,8 +51,8 @@ export default function ContactBannerSection() {
           {/* Subtitle */}
           <p className='mt-3 max-w-2xl text-sm sm:text-base text-[#475569] leading-relaxed'>
             {lang === 'hi'
-              ? 'आवेदन प्रक्रिया, दस्तावेज, भुगतान, बूथ/स्टॉल आवंटन या किसी अन्य समस्या के लिए हमारी हेल्पडेस्क टीम से संपर्क करें।'
-              : 'Contact our official helpdesk team for any queries regarding application process, documents, payment, or booth/stall allotment.'}
+              ? 'गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के लिए आवेदन, दस्तावेज़ जमा करने, भुगतान या स्टॉल/बूथ आबंटन से जुड़ी किसी भी जानकारी या समस्या के लिए हमारी सहायता टीम से संपर्क करें।'
+              : 'If you have any questions or problems related to applying for a stall/booth at Gita Jayanti Mahotsav 2026, submitting documents, making payments, or stall/booth allotment, please contact our support team.'}
           </p>
         </div>
 

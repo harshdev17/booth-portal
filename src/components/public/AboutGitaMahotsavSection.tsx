@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 
-import { BookOpenIcon, LandmarkIcon, TargetIcon } from 'lucide-react'
+import { BookOpenIcon, ShipWheelIcon, TargetIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -24,7 +24,10 @@ const INFO_CARDS = [
     }
   },
   {
-    icon: LandmarkIcon,
+    // Dharma Chakra (spoked wheel) — the closest icon available in this
+    // icon set, used as a stand-in since lucide has no dedicated
+    // dharma-chakra glyph.
+    icon: ShipWheelIcon,
     title: { en: 'About Kurukshetra', hi: 'कुरुक्षेत्र के बारे में' },
     desc: {
       en: 'Kurukshetra is the birthplace of Vedic civilization and ancient texts.',
