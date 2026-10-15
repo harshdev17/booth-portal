@@ -113,8 +113,8 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
 
             <p className='mb-6 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg'>
               {lang === 'hi'
-                ? 'बूथ/स्टॉल हेतु ऑनलाइन आवेदन आमंत्रित हैं।'
-                : 'Online applications are invited for booths/stalls.'}
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू हो गए हैं। सभी इच्छुक आवेदक नीचे दी गई श्रेणियों की पात्रता के अनुसार 14 अक्टूबर से 28 अक्टूबर 2026 की रात 11:59 बजे तक ऑनलाइन आवेदन कर सकते हैं।'
+                : 'Online applications for booths/stalls at International Gita Jayanti Mahotsav 2026 are now open. All interested applicants can apply online, as per the eligibility of the categories listed below, from 14 October to 28 October 2026, by 11:59 PM.'}
             </p>
 
             <p className='mb-8 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>

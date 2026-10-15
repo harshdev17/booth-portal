@@ -46,13 +46,17 @@ const AboutGitaMahotsavSection = () => {
   const { lang } = useLanguage()
 
   return (
-    <section className='px-4 py-20 sm:px-6 border-t border-[#ede5db]/60 bg-[#faf8f5]'>
+    <section className='border-t border-[#ede5db]/60 bg-[#faf8f5] px-4 py-20 sm:px-6'>
       <div className='mx-auto max-w-7xl'>
         <div className='grid items-center gap-10 lg:grid-cols-[minmax(0,420px)_1fr] lg:gap-14'>
           <div className='relative mx-auto aspect-[4/3.2] w-full max-w-md overflow-hidden rounded-2xl border border-[#e8dfce] shadow-xs lg:mx-0'>
             <Image
-              src='/images/public/about-gita-mahotsav-chariot.png'
-              alt={lang === 'hi' ? 'श्रीकृष्ण एवं अर्जुन रथ प्रतिमा, ब्रह्मसरोवर' : 'Krishna-Arjuna chariot statue, Brahma Sarovar'}
+              src='/images/public/about-gita-mahotsav-chariot2.png'
+              alt={
+                lang === 'hi'
+                  ? 'श्रीकृष्ण एवं अर्जुन रथ प्रतिमा, ब्रह्मसरोवर'
+                  : 'Krishna-Arjuna chariot statue, Brahma Sarovar'
+              }
               fill
               className='object-cover'
             />
@@ -60,10 +64,10 @@ const AboutGitaMahotsavSection = () => {
 
           <div>
             <div className='mb-3 inline-flex items-center gap-3'>
-              <span className='text-xs sm:text-sm font-extrabold tracking-wider text-[#d8891d] uppercase shrink-0'>
+              <span className='shrink-0 text-xs font-extrabold tracking-wider text-[#d8891d] uppercase sm:text-sm'>
                 {lang === 'hi' ? 'महोत्सव के बारे में' : 'ABOUT THE MAHOTSAV'}
               </span>
-              <div className='relative h-3.5 w-32 sm:w-44 shrink-0'>
+              <div className='relative h-3.5 w-32 shrink-0 sm:w-44'>
                 <Image
                   src='/images/public/gita-mahotsav-gold-ornamental-divider.png'
                   alt=''
@@ -73,7 +77,7 @@ const AboutGitaMahotsavSection = () => {
               </div>
             </div>
 
-            <h2 className='mb-5 text-3xl sm:text-5xl font-black tracking-tight text-[#0a2c53]'>
+            <h2 className='mb-5 text-3xl font-black tracking-tight text-[#0a2c53] sm:text-5xl'>
               {lang === 'hi' ? 'अंतर्राष्ट्रीय गीता महोत्सव के बारे में' : 'About International Gita Mahotsav'}
             </h2>
 
@@ -81,35 +85,35 @@ const AboutGitaMahotsavSection = () => {
               {lang === 'hi' ? (
                 <>
                   <p>
-                    गीता महोत्सव का आयोजन लोगों में नैतिक एवं सांस्कृतिक पुनर्जागरण लाता है। आज के चुनौतीपूर्ण समय में यह
-                    और भी प्रासंगिक हो गया है। गीता जयंती महोत्सव मनाने का मुख्य उद्देश्य श्रीमद्भगवद्गीता — साक्षात् गीत
-                    — की अमर एवं अमूर्त विरासत से लोगों को प्रबुद्ध करना है।
+                    गीता महोत्सव का आयोजन लोगों में नैतिक एवं सांस्कृतिक पुनर्जागरण लाता है। आज के चुनौतीपूर्ण समय में
+                    यह और भी प्रासंगिक हो गया है। गीता जयंती महोत्सव मनाने का मुख्य उद्देश्य श्रीमद्भगवद्गीता — साक्षात्
+                    गीत — की अमर एवं अमूर्त विरासत से लोगों को प्रबुद्ध करना है।
                   </p>
                   <p>
                     हरियाणा सरकार वर्ष 1989 से कुरुक्षेत्र विकास बोर्ड के सहयोग से कुरुक्षेत्र नगर में गीता महोत्सव का
                     आयोजन कर रही है। प्रारंभ में केवल धार्मिक एवं सांस्कृतिक कार्यक्रम धार्मिक संस्थाओं और कुरुक्षेत्र
-                    विकास बोर्ड द्वारा आयोजित किए जाते थे, परंतु बाद में सामाजिक, सांस्कृतिक एवं शैक्षणिक कार्यक्रमों की एक
-                    विस्तृत श्रृंखला इस महोत्सव से जुड़ गई। इस अवसर पर सामाजिक संस्थाओं द्वारा रक्तदान शिविर, दंत चिकित्सा
-                    एवं नेत्र शिविर आदि आयोजित किए गए। इसके अतिरिक्त, निर्धन युवाओं के विवाह, अनाथ बच्चों को गोद लेना और
-                    अन्य जनकल्याणकारी कार्यक्रम भी महोत्सव के आरंभिक वर्षों में आयोजित किए गए।
+                    विकास बोर्ड द्वारा आयोजित किए जाते थे, परंतु बाद में सामाजिक, सांस्कृतिक एवं शैक्षणिक कार्यक्रमों की
+                    एक विस्तृत श्रृंखला इस महोत्सव से जुड़ गई। इस अवसर पर सामाजिक संस्थाओं द्वारा रक्तदान शिविर, दंत
+                    चिकित्सा एवं नेत्र शिविर आदि आयोजित किए गए। इसके अतिरिक्त, निर्धन युवाओं के विवाह, अनाथ बच्चों को
+                    गोद लेना और अन्य जनकल्याणकारी कार्यक्रम भी महोत्सव के आरंभिक वर्षों में आयोजित किए गए।
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    The celebration of Gita Mahotsav brings a moral and cultural resurgence among the people. It
-                    becomes even more relevant today as we are living in challenging times. The prime objective of
-                    celebrating the festival of Gita Jayanti is to enlighten people with the immortal and intangible
-                    heritage of the Bhagavad Gita — the song celestial.
+                    The celebration of Gita Mahotsav brings a moral and cultural resurgence among the people. It becomes
+                    even more relevant today as we are living in challenging times. The prime objective of celebrating
+                    the festival of Gita Jayanti is to enlighten people with the immortal and intangible heritage of the
+                    Bhagavad Gita — the song celestial.
                   </p>
                   <p>
-                    The Government of Haryana has been celebrating the Gita Mahotsav festival in collaboration with
-                    the Kurukshetra Development Board in the city of Kurukshetra since the year 1989. In the
-                    beginning, only religious and cultural programs were organized by religious organizations and the
-                    Kurukshetra Development Board, but later a wide range of social, cultural and academic programs
-                    got incorporated into the festival. On this occasion, social organizations organized blood
-                    donation camps, dental care and eye camps, etc. Besides, the marriages of poor youth, adoption of
-                    orphans and other welfare programs were also organized during the early years of the celebration.
+                    The Government of Haryana has been celebrating the Gita Mahotsav festival in collaboration with the
+                    Kurukshetra Development Board in the city of Kurukshetra since the year 1989. In the beginning, only
+                    religious and cultural programs were organized by religious organizations and the Kurukshetra
+                    Development Board, but later a wide range of social, cultural and academic programs got incorporated
+                    into the festival. On this occasion, social organizations organized blood donation camps, dental
+                    care and eye camps, etc. Besides, the marriages of poor youth, adoption of orphans and other welfare
+                    programs were also organized during the early years of the celebration.
                   </p>
                 </>
               )}
@@ -121,7 +125,7 @@ const AboutGitaMahotsavSection = () => {
           {INFO_CARDS.map(card => (
             <div
               key={card.title.en}
-              className='rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-7 text-center shadow-2xs transition hover:shadow-xs'
+              className='rounded-2xl border border-[#e2e8f0] bg-white p-6 text-center shadow-2xs transition hover:shadow-xs sm:p-7'
             >
               <div className='mx-auto mb-4 flex size-12 items-center justify-center rounded-full border border-[#fbd38d]/80 bg-[#fffaf0] text-[#0c2847]'>
                 <card.icon className='size-5.5 stroke-[1.8]' />

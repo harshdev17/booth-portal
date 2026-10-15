@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+
 import Link from 'next/link'
 
 import {
@@ -148,11 +150,18 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         </div>
       </dl>
 
-      {/* Description */}
+      {/* Description — clamped to 3 lines. A "Read more" link to the category
+          detail page (which always shows the full text) appears only when
+          the text actually overflows those 3 lines — a fixed character
+          count can't predict that, since the same character count wraps to
+          2 lines for some categories and 4+ for others depending on word
+          lengths and script. */}
       {category.description && (
-        <p className='mb-5 line-clamp-3 text-sm leading-relaxed text-[#556980]'>
-          {lang === 'hi' && category.descriptionHi ? category.descriptionHi : category.description}
-        </p>
+        <CategoryCardDescription
+          slug={category.slug}
+          text={lang === 'hi' && category.descriptionHi ? category.descriptionHi : category.description}
+          readMoreLabel={lang === 'hi' ? 'और पढ़ें' : 'Read more'}
+        />
       )}
 
       {/* Action Buttons */}
@@ -171,6 +180,44 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
           <span>{lang === 'hi' ? 'विवरण देखें' : 'View Details'}</span>
         </Link>
       </div>
+    </div>
+  )
+}
+
+// Measures whether the clamped paragraph actually overflows its 3-line box
+// (scrollHeight > clientHeight) and only then renders the "Read more" link.
+// Re-checked on resize, since a card's width (and so how many lines the same
+// text wraps to) changes across breakpoints.
+const CategoryCardDescription = ({ slug, text, readMoreLabel }: { slug: string; text: string; readMoreLabel: string }) => {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [isTruncated, setIsTruncated] = useState(false)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+
+    if (!el) return
+
+    const check = () => setIsTruncated(el.scrollHeight > el.clientHeight + 1)
+
+    check()
+
+    const observer = new ResizeObserver(check)
+
+    observer.observe(el)
+
+    return () => observer.disconnect()
+  }, [text])
+
+  return (
+    <div className='mb-5'>
+      <p ref={ref} className='line-clamp-3 text-sm leading-relaxed text-[#556980]'>
+        {text}
+      </p>
+      {isTruncated && (
+        <Link href={`/categories/${slug}`} className='mt-1 inline-block text-sm font-bold text-[var(--kdb-primary)] hover:underline'>
+          {readMoreLabel}
+        </Link>
+      )}
     </div>
   )
 }
