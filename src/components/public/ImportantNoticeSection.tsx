@@ -62,14 +62,14 @@ const ImportantNoticeSection = () => {
         <p className='mb-3 text-sm sm:text-base text-[#475569] leading-relaxed'>
           <span className='font-bold text-[#0c2847]'>{lang === 'hi' ? 'नोट: ' : 'Note: '}</span>
           {lang === 'hi'
-            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित श्रेणी के नियमों के अनुसार चयन/बूथ-स्टॉल आवंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित श्रेणी के अनुसार निर्धारित बूथ/स्टॉल राशि या सुरक्षा/भागीदारी जमा राशि अलग से जमा करनी होगी।'
+            ? '₹236/- फॉर्म भरने का आवेदन शुल्क है। आवेदन शुल्क जमा करने के बाद संबंधित श्रेणी के नियमों के अनुसार चयन/बूथ-स्टॉल आबंटन प्रक्रिया की जाएगी। चयन होने पर संबंधित श्रेणी के अनुसार निर्धारित बूथ/स्टॉल राशि या सुरक्षा/भागीदारी जमा राशि अलग से जमा करनी होगी।'
             : '₹236/- is the application fee for filling the form. After the application fee is paid, the selection/booth-stall allotment process will be carried out as per the rules of the respective category. Upon selection, the Booth/Stall Amount or Security/Participation Deposit fixed for the respective category will have to be paid separately.'}
         </p>
 
         <p className='mb-5 text-sm sm:text-base font-bold text-[#b91c1c] leading-relaxed'>
           <span>{lang === 'hi' ? 'महत्वपूर्ण: ' : 'Important: '}</span>
           {lang === 'hi'
-            ? '₹236/- केवल आवेदन शुल्क है और यह किसी भी स्थिति में वापस नहीं किया जाएगा, चाहे आवेदक का चयन हो या न हो अथवा बूथ/स्टॉल आवंटित हो या नहीं।'
+            ? '₹236/- केवल आवेदन शुल्क है और यह किसी भी स्थिति में वापस नहीं किया जाएगा, चाहे आवेदक का चयन हो या न हो अथवा बूथ/स्टॉल आबंटित हो या नहीं।'
             : '₹236/- is only the application fee and will not be refunded under any circumstances, whether or not the applicant is selected or a booth/stall is allotted.'}
         </p>
 

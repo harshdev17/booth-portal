@@ -53,7 +53,7 @@ const CategoryDetail = ({
       <dl className='mb-8 grid grid-cols-1 gap-6 rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6 sm:grid-cols-3 sm:p-8'>
         <div>
           <dt className='mb-1 text-sm font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
-            {lang === 'hi' ? 'चयन विधि' : 'Selection Method'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आबंटन का तरीका' : 'Allotment Method'}
           </dt>
           <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>{methodLabel}</dd>
         </div>
@@ -77,7 +77,7 @@ const CategoryDetail = ({
         </div>
         <div>
           <dt className='mb-1 text-sm font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
-            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन राशि' : 'Booth/Stall Allotment Amount'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आबंटन राशि' : 'Booth/Stall Allotment Amount'}
           </dt>
           <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>
             {category.allotment_amount_paise !== null

@@ -58,7 +58,7 @@ export function useAvailabilityCheck(lang: 'hi' | 'en', applicationId?: number) 
         return next
       })
 
-      return
+      return true
     }
 
     const requestId = ++requestIdRef.current[field]
@@ -70,17 +70,19 @@ export function useAvailabilityCheck(lang: 'hi' | 'en', applicationId?: number) 
         body: JSON.stringify({ field, value, applicationId })
       })
 
-      if (requestId !== requestIdRef.current[field]) return // superseded by a newer check
+      if (requestId !== requestIdRef.current[field]) return true // superseded by a newer check
 
-      if (!response.ok) return // fail open — the authoritative server-side check still applies at submit
+      if (!response.ok) return true // fail open — the authoritative server-side check still applies at submit
 
       const body = await response.json()
 
-      setDuplicateFields(prev => {
-        if (body.available === false) {
-          return { ...prev, [field]: DUPLICATE_MESSAGE[field][lang] }
-        }
+      if (body.available === false) {
+        setDuplicateFields(prev => ({ ...prev, [field]: DUPLICATE_MESSAGE[field][lang] }))
 
+        return false
+      }
+
+      setDuplicateFields(prev => {
         if (!(field in prev)) return prev
 
         const next = { ...prev }
@@ -89,8 +91,10 @@ export function useAvailabilityCheck(lang: 'hi' | 'en', applicationId?: number) 
 
         return next
       })
+
+      return true
     } catch {
-      // Network failure — fail open, same reasoning as a non-OK response.
+      return true
     }
   }
 

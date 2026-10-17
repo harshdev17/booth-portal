@@ -126,6 +126,18 @@ const ApplicationsAdminPage = async ({
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
+  // KPI and quick-filter totals follow the selected category, but not a
+  // free-text or current-status filter, so they show the whole category workload.
+  const statsConditions = ["a.status NOT IN ('draft', 'payment_pending', 'payment_failed')"]
+  const statsParams: unknown[] = []
+
+  if (category && category !== 'all') {
+    statsConditions.push('c.slug = ?')
+    statsParams.push(category)
+  }
+
+  const statsWhereClause = `WHERE ${statsConditions.join(' AND ')}`
+
   // Validate sort parameters safely against whitelist
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'a.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
@@ -150,7 +162,12 @@ const ApplicationsAdminPage = async ({
       `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
     ),
     query<Array<{ status: string; count: number }>>(
-      `SELECT status, COUNT(*) AS count FROM applications WHERE status NOT IN ('draft', 'payment_pending', 'payment_failed') GROUP BY status`
+      `SELECT a.status, COUNT(*) AS count
+       FROM applications a
+       JOIN categories c ON c.id = a.category_id
+       ${statsWhereClause}
+       GROUP BY a.status`,
+      statsParams
     ),
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
@@ -159,11 +176,17 @@ const ApplicationsAdminPage = async ({
   ])
 
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
-  const pendingCount = statsRows.find(r => r.status === 'under_review' || r.status === 'payment_success')?.count ?? 0
-  const approvedCount = statsRows.find(r => r.status === 'approved')?.count ?? 0
-  const selectedCount = statsRows.find(r => r.status === 'selected' || r.status === 'allotted')?.count ?? 0
+  const getStatusCount = (statuses: string[]) =>
+    statsRows.filter(row => statuses.includes(row.status)).reduce((total, row) => total + Number(row.count), 0)
+  const pendingCount = getStatusCount(['under_review', 'payment_success'])
+  const approvedCount = getStatusCount(['approved'])
+  const selectedCount = getStatusCount(['selected', 'allotted', 're_allotted'])
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
+  const selectedCategory = categories.find(item => item.slug === category)
+  const statsScopeHint = selectedCategory
+    ? `Within ${selectedCategory.name}`
+    : 'Submitted across all commercial booth/stall categories'
 
   // Helper to construct sorting links with current search/filter state preserved
   const getSortUrl = (columnKey: string) => {
@@ -258,7 +281,7 @@ const ApplicationsAdminPage = async ({
           value={totalSubmitted}
           icon={FileTextIcon}
           accentColor='text-[#0c2847]'
-          hint='Submitted across all commercial booth/stall categories'
+          hint={statsScopeHint}
         />
         <KpiCard
           label='Pending Review'

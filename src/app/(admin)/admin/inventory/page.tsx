@@ -29,8 +29,9 @@ type ShopUnitRow = {
   category_name: string
   direction: string | null
   emd_amount_paise: number | null
-  status: 'available' | 'reserved' | 'allotted' | 'cancelled'
+  status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
   application_number: string | null
+  is_direct_allotment: number | boolean
 }
 
 type InventoryLogRow = {
@@ -51,7 +52,8 @@ const STATUS_CONFIG: Record<ShopUnitRow['status'], { label: string; color: strin
   available: { label: 'Available', color: 'bg-emerald-100 text-emerald-800' },
   reserved: { label: 'Reserved', color: 'bg-amber-100 text-amber-800' },
   allotted: { label: 'Allotted', color: 'bg-purple-100 text-purple-800' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' }
+  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
+  rejected: { label: 'Rejected', color: 'bg-rose-100 text-rose-800' }
 }
 
 const LOG_ACTION_LABEL: Record<string, string> = {
@@ -92,10 +94,12 @@ const InventoryAdminPage = async () => {
   const [rows, categories, logs] = await Promise.all([
     query<ShopUnitRow[]>(
       `SELECT su.id, su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise,
-              su.status, a.application_number
+              su.status, COALESCE(a.application_number, da.allottee_name) AS application_number,
+              (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
+       LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
        ORDER BY su.stall_number ASC`
     ),
     query<Array<{ name: string }>>(`SELECT name FROM categories WHERE status != 'archived' ORDER BY display_order ASC`),
@@ -104,7 +108,7 @@ const InventoryAdminPage = async () => {
           `SELECT al.id, al.action, u.full_name AS actor_name, al.new_value, al.previous_value, al.created_at
            FROM audit_logs al
            LEFT JOIN users u ON u.id = al.actor_user_id
-           WHERE al.module = 'inventory'
+           WHERE al.module = 'inventory' OR al.action IN ('direct_allotment.created', 'direct_allotment.interchanged')
            ORDER BY al.created_at DESC
            LIMIT 200`
         )
@@ -120,6 +124,11 @@ const InventoryAdminPage = async () => {
     {} as Record<string, number>
   )
 
+  const totalStalls = rows.length
+  const availableCount = counts.available ?? 0
+  const directAllottedCount = rows.filter(r => Boolean(r.is_direct_allotment)).length
+  const reservedCount = counts.reserved ?? 0
+
   // Category-wise and direction-wise breakdowns, per explicit request
   // ("kis cat ki kitni shops hai, kis direction mai ye count bhi show
   // karo") — counted against the full unfiltered inventory, not whatever
@@ -127,6 +136,10 @@ const InventoryAdminPage = async () => {
   // regardless of what the admin is filtering the table to.
   const byCategory = new Map<string, number>()
   const byDirection = new Map<string, number>()
+
+  for (const cat of categories) {
+    byCategory.set(cat.name, 0)
+  }
 
   for (const row of rows) {
     byCategory.set(row.category_name, (byCategory.get(row.category_name) ?? 0) + 1)
@@ -147,7 +160,8 @@ const InventoryAdminPage = async () => {
     direction: row.direction,
     emdAmountPaise: row.emd_amount_paise,
     status: row.status,
-    applicationNumber: row.application_number
+    applicationNumber: row.application_number,
+    isDirectAllotment: Boolean(row.is_direct_allotment)
   }))
 
   return (
@@ -172,16 +186,53 @@ const InventoryAdminPage = async () => {
       </div>
 
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-        {(Object.keys(STATUS_CONFIG) as Array<ShopUnitRow['status']>).map(status => (
-          <Card key={status} className='shadow-xs'>
-            <CardContent className='pt-6'>
-              <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
-                {STATUS_CONFIG[status].label}
-              </p>
-              <p className='text-2xl font-black text-[#0c2847]'>{counts[status] ?? 0}</p>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className='shadow-xs border-slate-200/80'>
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
+              Total Units
+            </p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-[#0c2847]'>{totalStalls}</p>
+              <span className='text-[11px] text-muted-foreground'>All Booths/Stalls</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='shadow-xs border-emerald-200/60 bg-emerald-50/20'>
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-emerald-800'>
+              Available Units
+            </p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-emerald-700'>{availableCount}</p>
+              <span className='text-[11px] text-emerald-700/80'>Draw / Open</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='shadow-xs border-purple-200/70 bg-purple-50/30'>
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-purple-800'>
+              Direct Allotment
+            </p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-purple-700'>{directAllottedCount}</p>
+              <span className='text-[11px] text-purple-700/80 font-medium'>Admin Allotted</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='shadow-xs border-amber-200/60 bg-amber-50/20'>
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-amber-800'>
+              Reserved
+            </p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-amber-700'>{reservedCount}</p>
+              <span className='text-[11px] text-amber-700/80'>On Hold</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>

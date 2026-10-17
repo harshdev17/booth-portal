@@ -39,9 +39,9 @@ export const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   selected: { en: 'Selected', hi: 'चयनित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
-  allotted: { en: 'Allotted', hi: 'आवंटित' },
+  allotted: { en: 'Allotted', hi: 'आबंटित' },
   cancelled: { en: 'Cancelled', hi: 'रद्द' },
-  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आवंटित' }
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आबंटित' }
 }
 
 export const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
@@ -77,7 +77,7 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
         </h2>
         <p className='text-xs text-black'>
           {lang === 'hi'
-            ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आवंटन पोर्टल'
+            ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आबंटन पोर्टल'
             : 'Kurukshetra Development Board — Booth/Stall Allotment Portal'}
         </p>
       </div>
@@ -141,7 +141,16 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       )}
     </dl>
 
-    <div className='mt-10 flex items-end justify-between border-t border-black pt-4 text-xs text-black'>
+    <div className='mt-8 border-t border-black/30 pt-4 text-xs text-black'>
+      <p className='font-bold mb-1'>{lang === 'hi' ? 'घोषणा / Declaration:' : 'Declaration:'}</p>
+      <p className='leading-relaxed text-black/80'>
+        {lang === 'hi'
+          ? '• किसी भी आवेदन को किसी भी समय स्वीकार व निरस्त करने का अधिकार कुरुक्षेत्र विकास बोर्ड के पास सुरक्षित है। मैं इस बारें में भविष्य में कोई भी क्लेम नहीं करूँगा।'
+          : '• The Kurukshetra Development Board reserves the right to accept or reject any application at any time. I will not make any claim in this regard in the future.'}
+      </p>
+    </div>
+
+    <div className='mt-6 flex items-end justify-between border-t border-black pt-4 text-xs text-black'>
       <p>
         {lang === 'hi'
           ? 'यह एक कंप्यूटर-जनित दस्तावेज़ है और इसके लिए हस्ताक्षर की आवश्यकता नहीं है।'

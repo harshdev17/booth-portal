@@ -61,9 +61,9 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   selected: { en: 'Approved', hi: 'स्वीकृत' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
-  allotted: { en: 'Allotted', hi: 'आवंटित' },
+  allotted: { en: 'Allotted', hi: 'आबंटित' },
   cancelled: { en: 'Cancelled', hi: 'रद्द' },
-  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आवंटित' }
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आबंटित' }
 }
 
 const DOCUMENT_STATUS_HI: Record<string, string> = {

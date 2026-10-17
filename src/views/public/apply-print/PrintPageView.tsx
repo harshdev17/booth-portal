@@ -21,7 +21,7 @@ import { findAccessTokenForApplicationNumber } from '@/views/public/apply/access
  * verify OTP again seconds after submitting was pure friction since
  * ownership is already proven by the token this page already holds).
  */
-const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => {
+const PrintPageView = ({ applicationNumber, token }: { applicationNumber: string; token?: string }) => {
   const router = useRouter()
   const { lang } = useLanguage()
   const [result, setResult] = useState<PrintResult | null>(null)
@@ -32,7 +32,7 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
     const loadResult = async () => {
       const access = findAccessTokenForApplicationNumber(applicationNumber)
 
-      if (!access) {
+      if (!access && !token) {
         setError(
           lang === 'hi'
             ? 'यह प्रिंट दृश्य केवल उसी ब्राउज़र टैब में उपलब्ध है जहां आवेदन जमा किया गया था।'
@@ -44,9 +44,16 @@ const PrintPageView = ({ applicationNumber }: { applicationNumber: string }) => 
       }
 
       try {
-        const response = await fetch(`/api/applications/${access.applicationId}/print`, {
-          headers: { Authorization: `Bearer ${access.accessToken}` }
-        })
+        const headers: Record<string, string> = {}
+
+        if (access?.accessToken) headers.Authorization = `Bearer ${access.accessToken}`
+        if (token) headers['x-application-token'] = token
+
+        const endpoint = access
+          ? `/api/applications/${access.applicationId}/print`
+          : `/api/applications/${applicationNumber}/print`
+
+        const response = await fetch(endpoint, { headers })
 
         const body = await response.json()
 

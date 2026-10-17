@@ -20,7 +20,7 @@ const ReceiptPage = async ({ params }: { params: Promise<{ token: string }> }) =
   return (
     <>
       <PublicHeader />
-      <ReceiptPageView applicationNumber={applicationNumber} />
+      <ReceiptPageView applicationNumber={applicationNumber} token={token} />
       <PublicFooter />
     </>
   )

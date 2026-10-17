@@ -157,7 +157,12 @@ export const declarationSchema = z.object({
   }),
   agreedToTerms: z.literal(true, {
     errorMap: () => ({ message: 'You must agree to the terms and conditions.' })
-  })
+  }),
+  kdbRights: z
+    .literal(true, {
+      errorMap: () => ({ message: 'You must accept the Kurukshetra Development Board rights declaration.' })
+    })
+    .optional()
 })
 
 /**

@@ -80,7 +80,7 @@ const ApplicantInfoStep = ({
 }: {
   control: Control<ApplicationFormValues>
   duplicateFields: Partial<Record<DuplicateCheckField, string>>
-  checkAvailability: (field: DuplicateCheckField, value: string) => Promise<void>
+  checkAvailability: (field: DuplicateCheckField, value: string) => Promise<unknown>
 }) => {
   const { lang } = useLanguage()
 

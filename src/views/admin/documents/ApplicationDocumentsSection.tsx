@@ -1,11 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-
-import { EyeIcon, FileIcon } from 'lucide-react'
+import { EyeIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
@@ -29,12 +26,6 @@ export type ApplicationDocumentRow = {
 // "Owner/Authorized Representative Aadhaar Card" are both aadhaar_card).
 const PERSONAL_DOCUMENT_KEYS = new Set(['aadhaar_card', 'passport_photo', 'representative_id'])
 
-/**
- * Previously opened each document's preview in a new browser tab. Moved to
- * an in-page slide-over so an admin can check a document against the
- * verify/reject/query buttons right next to it without losing their place
- * on the application page (reported live: tabs kept scattering).
- */
 const ApplicationDocumentsSection = ({
   documents,
   canVerifyDocuments
@@ -42,8 +33,6 @@ const ApplicationDocumentsSection = ({
   documents: ApplicationDocumentRow[]
   canVerifyDocuments: boolean
 }) => {
-  const [previewDoc, setPreviewDoc] = useState<ApplicationDocumentRow | null>(null)
-
   const personalDocs = documents.filter(d => PERSONAL_DOCUMENT_KEYS.has(d.document_key))
   const applicationDocs = documents.filter(d => !PERSONAL_DOCUMENT_KEYS.has(d.document_key))
 
@@ -76,13 +65,14 @@ const ApplicationDocumentsSection = ({
               </div>
 
               <div className='flex shrink-0 items-center gap-2'>
-                <button
-                  type='button'
-                  onClick={() => setPreviewDoc(doc)}
+                <a
+                  href={`/api/documents/${doc.id}/preview`}
+                  target='_blank'
+                  rel='noopener noreferrer'
                   className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
                 >
                   <EyeIcon className='size-3.5' /> Preview
-                </button>
+                </a>
                 {canVerifyDocuments && (
                   <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status} />
                 )}
@@ -112,27 +102,6 @@ const ApplicationDocumentsSection = ({
           </Tabs>
         )}
       </CardContent>
-
-      <Dialog open={!!previewDoc} onOpenChange={open => !open && setPreviewDoc(null)}>
-        <DialogContent className='flex h-[85vh] w-[90vw] max-w-4xl flex-col p-0 sm:h-[85vh]'>
-          <DialogHeader className='border-b px-4 py-3'>
-            <DialogTitle className='flex items-center gap-2 text-[#0c2847]'>
-              <FileIcon className='size-4' />
-              {previewDoc?.label}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className='min-h-0 flex-1 px-4 pb-4'>
-            {previewDoc && (
-              <iframe
-                src={`/api/documents/${previewDoc.id}/preview`}
-                title={previewDoc.label}
-                className='size-full rounded-md border border-border/60'
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   )
 }

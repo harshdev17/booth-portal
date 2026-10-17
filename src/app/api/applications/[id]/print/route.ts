@@ -4,6 +4,7 @@ import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { query } from '@/lib/db/client'
 import { logServerError } from '@/lib/security/error-log'
+import { decodeApplicationNumber } from '@/lib/security/opaque-id'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
 
@@ -35,13 +36,8 @@ type PrintRow = {
 
 /**
  * No-OTP application print summary, for an applicant printing/downloading
- * their own just-submitted application from the Success page within the
- * SAME browser tab. Same bearer-access-token ownership model as
- * /api/applications/[id]/receipt — the OTP-gated /print-application flow
- * exists for a LATER return visit where no access token is available, not
- * for this immediate post-submission moment (reported live: having to
- * verify OTP again here, seconds after submitting, was pure friction since
- * ownership is already proven by the token this page already holds).
+ * their own just-submitted application from the Success page. Supports
+ * bearer access token and encrypted token authorization.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ipAddress } = getRequestMeta(request)
@@ -51,16 +47,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params
+  const isAppNumber = /^(?:IGM|KDB)-\d{4}-\d{6}$/.test(id)
   const applicationId = Number(id)
 
-  if (!Number.isInteger(applicationId) || applicationId <= 0) {
+  if (!isAppNumber && (!Number.isInteger(applicationId) || applicationId <= 0)) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 })
   }
 
   const authHeader = request.headers.get('authorization')
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
+  const tokenHeader = request.headers.get('x-application-token')
 
-  if (!accessToken) {
+  if (!accessToken && !tokenHeader) {
     return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
   }
 
@@ -75,14 +73,32 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN category_shop_options cso ON cso.id = a.shop_option_id
-       WHERE a.id = ?
+       WHERE ${isAppNumber ? 'a.application_number = ?' : 'a.id = ?'}
        LIMIT 1`,
-      [applicationId]
+      [isAppNumber ? id : applicationId]
     )
 
     const application = rows[0]
 
-    if (!application || !verifyAccessToken(accessToken, application.access_token_hash)) {
+    if (!application) {
+      return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    }
+
+    let isAuthorized = false
+
+    if (tokenHeader) {
+      const decodedNumber = decodeApplicationNumber(tokenHeader)
+
+      if (decodedNumber && decodedNumber === application.application_number) {
+        isAuthorized = true
+      }
+    }
+
+    if (!isAuthorized && accessToken) {
+      isAuthorized = verifyAccessToken(accessToken, application.access_token_hash)
+    }
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 

@@ -19,15 +19,15 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   },
   {
     en: 'The Application Fee of ₹236 (₹200 + 18% GST) applies to every category that charges one, and is non-refundable under any circumstances — whether the application is rejected, the applicant is found ineligible, or a booth/stall is not allotted.',
-    hi: '₹236 (₹200 + 18% GST) का Application Fee जिन Categories में लागू है, वह हर आवेदक के लिए अनिवार्य है तथा किसी भी परिस्थिति में वापस नहीं किया जाएगा — चाहे आवेदन अस्वीकृत हो, आवेदक अपात्र पाया जाए, या Booth/Stall आवंटित न हो।'
+    hi: '₹236 (₹200 + 18% GST) का Application Fee जिन Categories में लागू है, वह हर आवेदक के लिए अनिवार्य है तथा किसी भी परिस्थिति में वापस नहीं किया जाएगा — चाहे आवेदन अस्वीकृत हो, आवेदक अपात्र पाया जाए, या Booth/Stall आबंटित न हो।'
   },
   {
     en: 'An allotted booth/stall may never be transferred, sublet, or rented to any other person or entity, in any category.',
-    hi: 'किसी भी Category में आवंटित Booth/Stall को किसी अन्य व्यक्ति/संस्था को Transfer, Sublet अथवा Rent नहीं किया जा सकेगा।'
+    hi: 'किसी भी Category में आबंटित Booth/Stall को किसी अन्य व्यक्ति/संस्था को Transfer, Sublet अथवा Rent नहीं किया जा सकेगा।'
   },
   {
     en: 'KDB or an authorized officer may inspect any booth/stall at any time. False information, forged documents, or misrepresentation of eligibility can lead to cancellation of the application or allotment at any stage.',
-    hi: 'KDB अथवा अधिकृत अधिकारी द्वारा समय-समय पर Booth/Stall की जाँच/Inspection की जा सकती है। गलत जानकारी, फर्जी दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आवंटन को किसी भी चरण पर निरस्त किया जा सकता है।'
+    hi: 'KDB अथवा अधिकृत अधिकारी द्वारा समय-समय पर Booth/Stall की जाँच/Inspection की जा सकती है। गलत जानकारी, फर्जी दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आबंटन को किसी भी चरण पर निरस्त किया जा सकता है।'
   },
   {
     en: 'For the Refreshment Food Booth/Stall category: the last date to apply is 6 November 2026 (11:59 PM), the draw is on 7 and 8 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',

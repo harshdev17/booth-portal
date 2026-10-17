@@ -1,10 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { EyeIcon } from 'lucide-react'
 
-import { EyeIcon, FileIcon } from 'lucide-react'
-
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
@@ -21,10 +18,8 @@ export type PersonalDocumentRow = {
  * Shows the Aadhaar Card (and other identity-proof documents) directly on
  * the Personal tab, right next to the Identity fields they correspond to,
  * instead of requiring a separate click into the Documents tab — per
- * explicit request. Same preview-sheet mechanism as
- * ApplicationDocumentsSection.tsx (an in-page slide-over, not a new browser
- * tab), kept as its own small component rather than duplicated inline since
- * both places need the identical sheet + verify/reject/query UI.
+ * explicit request. Its Preview action opens the same secure document
+ * endpoint in a new browser tab, consistent with the Documents tab.
  */
 const PersonalDocumentCard = ({
   document,
@@ -33,7 +28,6 @@ const PersonalDocumentCard = ({
   document: PersonalDocumentRow
   canVerifyDocuments: boolean
 }) => {
-  const [previewOpen, setPreviewOpen] = useState(false)
   const docCfg = getDocumentStatusConfig(document.verification_status)
 
   return (
@@ -58,37 +52,19 @@ const PersonalDocumentCard = ({
         </div>
 
         <div className='flex shrink-0 items-center gap-2'>
-          <button
-            type='button'
-            onClick={() => setPreviewOpen(true)}
+          <a
+            href={`/api/documents/${document.id}/preview`}
+            target='_blank'
+            rel='noopener noreferrer'
             className='inline-flex items-center gap-1.5 rounded-md border border-input bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
           >
             <EyeIcon className='size-3.5' /> Preview
-          </button>
+          </a>
           {canVerifyDocuments && (
             <DocumentDecisionActions documentId={document.id} currentStatus={document.verification_status} />
           )}
         </div>
       </div>
-
-      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side='right' className='w-full sm:w-1/2 sm:max-w-none'>
-          <SheetHeader className='border-b'>
-            <SheetTitle className='flex items-center gap-2 text-[#0c2847]'>
-              <FileIcon className='size-4' />
-              {document.label}
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className='min-h-0 flex-1 px-4 pb-4'>
-            <iframe
-              src={`/api/documents/${document.id}/preview`}
-              title={document.label}
-              className='size-full rounded-md border border-border/60'
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }

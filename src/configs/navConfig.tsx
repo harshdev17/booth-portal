@@ -72,12 +72,6 @@ export const navItems: NavItem[] = [
         label: 'All Applications',
         href: '/admin/applications',
         permission: 'application:view'
-      },
-      {
-        icon: 'FileCheck2',
-        label: 'Document Verification',
-        href: '/admin/documents',
-        permission: 'document:view'
       }
     ]
   },

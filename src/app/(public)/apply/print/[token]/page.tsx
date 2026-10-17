@@ -20,7 +20,7 @@ const PrintPage = async ({ params }: { params: Promise<{ token: string }> }) => 
   return (
     <>
       <PublicHeader />
-      <PrintPageView applicationNumber={applicationNumber} />
+      <PrintPageView applicationNumber={applicationNumber} token={token} />
       <PublicFooter />
     </>
   )

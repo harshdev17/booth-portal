@@ -77,9 +77,10 @@ const DashboardPage = async () => {
          SUM(CASE WHEN su.status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
          SUM(CASE WHEN su.status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls
        FROM categories c
-       JOIN shop_units su ON su.category_id = c.id
+       LEFT JOIN shop_units su ON su.category_id = c.id
+       WHERE c.status != 'archived'
        GROUP BY c.id, c.name, c.selection_method
-       ORDER BY total_stalls DESC`
+       ORDER BY total_stalls DESC, c.display_order ASC`
     ),
     query<Array<{ total_draws: number; total_allotted: number; total_waitlisted: number }>>(
       `SELECT 

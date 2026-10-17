@@ -140,13 +140,13 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
       <dl className='mb-4 flex flex-col gap-3 border-y border-[#f0eae1] py-4 text-sm'>
         <div>
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
-            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन का तरीका' : 'Allotment Method'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आबंटन का तरीका' : 'Allotment Method'}
           </dt>
           <dd className='text-base font-bold text-[#072448]'>{methodLabel}</dd>
         </div>
         <div>
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
-            {lang === 'hi' ? 'बूथ/स्टॉल आवंटन राशि' : 'Allotment Amount'}
+            {lang === 'hi' ? 'बूथ/स्टॉल आबंटन राशि' : 'Allotment Amount'}
           </dt>
           <dd className='text-base font-bold text-[#072448]'>{allotmentText}</dd>
         </div>

@@ -37,7 +37,7 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
-    { label: lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
+    { label: lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
     // Links to the Stall/Booth Locations page (Full Map + category-wise
     // maps), not directly to a PDF — a normal in-app route.
     { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },

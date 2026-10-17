@@ -21,7 +21,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 export type ShopUnitRowData = {
   id: string // opaque-encoded id, for API calls
@@ -30,15 +32,17 @@ export type ShopUnitRowData = {
   categoryName: string
   direction: string | null
   emdAmountPaise: number | null
-  status: 'available' | 'reserved' | 'allotted' | 'cancelled'
+  status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
   applicationNumber: string | null
+  isDirectAllotment?: boolean
 }
 
 const STATUS_CONFIG: Record<ShopUnitRowData['status'], { label: string; color: string }> = {
   available: { label: 'Available', color: 'bg-emerald-100 text-emerald-800' },
   reserved: { label: 'Reserved', color: 'bg-amber-100 text-amber-800' },
   allotted: { label: 'Allotted', color: 'bg-purple-100 text-purple-800' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' }
+  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
+  rejected: { label: 'Rejected', color: 'bg-rose-100 text-rose-800' }
 }
 
 const ALL = '__all__'
@@ -62,6 +66,36 @@ const EMPTY_FORM: StallFormState = {
   status: 'available'
 }
 
+type AddStallFormState = {
+  stallNumber: string
+  shopType: 'single' | 'double' | ''
+  categoryMode: 'existing' | 'new'
+  categoryName: string
+  newCategoryName: string
+  direction: string
+  emdAmount: string
+  isDirectAllotment: boolean
+  allotteeName: string
+  contactPerson: string
+  mobileNumber: string
+  notes: string
+}
+
+const EMPTY_ADD_FORM: AddStallFormState = {
+  stallNumber: '',
+  shopType: '',
+  categoryMode: 'existing',
+  categoryName: '',
+  newCategoryName: '',
+  direction: '',
+  emdAmount: '',
+  isDirectAllotment: false,
+  allotteeName: '',
+  contactPerson: '',
+  mobileNumber: '',
+  notes: ''
+}
+
 // Status is only ever shown/settable while editing an existing unit — a
 // brand-new stall always starts 'available' (see the create API route) and
 // 'allotted' is never admin-settable here, same reasoning as the DELETE
@@ -69,7 +103,7 @@ const EMPTY_FORM: StallFormState = {
 // was dropped from this editable set per explicit request ("cancelled ki
 // need nahi hai, bas 2 hi rakho") — only Available/Reserved remain settable
 // from the UI; the enum value itself is untouched in the DB/schema.
-const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved']
+const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved', 'rejected']
 
 /**
  * Owns the shop-unit row list client-side so delete (single or bulk)
@@ -92,6 +126,7 @@ const InventoryTable = ({
   directions: string[]
 }) => {
   const [rows, setRows] = useState(initialRows)
+  const [availableCategories, setAvailableCategories] = useState<string[]>(categoryNames)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deletingSingle, setDeletingSingle] = useState<ShopUnitRowData | null>(null)
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
@@ -103,14 +138,23 @@ const InventoryTable = ({
   const [bulkStatusError, setBulkStatusError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
+  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'public' | 'direct'>('all')
   const [categoryFilter, setCategoryFilter] = useState(ALL)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
   const [directionFilter, setDirectionFilter] = useState(ALL)
   const [page, setPage] = useState(1)
 
+  const tabCounts = useMemo(() => {
+    const total = rows.length
+    const direct = rows.filter(r => Boolean(r.isDirectAllotment)).length
+    const publicStalls = rows.filter(r => !r.isDirectAllotment).length
+
+    return { total, direct, public: publicStalls }
+  }, [rows])
+
   const [addOpen, setAddOpen] = useState(false)
-  const [addForm, setAddForm] = useState<StallFormState>(EMPTY_FORM)
+  const [addForm, setAddForm] = useState<AddStallFormState>(EMPTY_ADD_FORM)
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
@@ -123,12 +167,18 @@ const InventoryTable = ({
     const searchLower = search.trim().toLowerCase()
 
     return rows.filter(row => {
-      // Search matches stall number, category, direction, or allotted
-      // application number — not stall number alone (reported live:
-      // "search mein sab kuch search kar paaye", search should find
-      // everything, not just one field).
+      // Tab filter: all vs public/draw vs direct entry
+      if (stallCategoryTab === 'direct' && !row.isDirectAllotment) return false
+      if (stallCategoryTab === 'public' && row.isDirectAllotment) return false
+
       if (searchLower) {
-        const haystack = [row.stallNumber, row.categoryName, row.direction, row.applicationNumber]
+        const haystack = [
+          row.stallNumber,
+          row.categoryName,
+          row.direction,
+          row.applicationNumber,
+          row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
+        ]
           .filter((v): v is string => v !== null)
           .join(' ')
           .toLowerCase()
@@ -143,7 +193,7 @@ const InventoryTable = ({
 
       return true
     })
-  }, [rows, search, categoryFilter, statusFilter, typeFilter, directionFilter])
+  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, directionFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
 
@@ -299,8 +349,16 @@ const InventoryTable = ({
   }
 
   const handleAddSubmit = async () => {
-    if (!addForm.stallNumber.trim() || !addForm.shopType || !addForm.categoryName) {
+    const finalCategory = (addForm.categoryMode === 'new' ? addForm.newCategoryName.trim() : addForm.categoryName).trim()
+
+    if (!addForm.stallNumber.trim() || !addForm.shopType || !finalCategory) {
       setAddError('Booth/Stall number, type, and category are required.')
+
+      return
+    }
+
+    if (addForm.isDirectAllotment && !addForm.allotteeName.trim()) {
+      setAddError('Organisation / Allottee name is required for direct allotment.')
 
       return
     }
@@ -315,9 +373,15 @@ const InventoryTable = ({
         body: JSON.stringify({
           stallNumber: addForm.stallNumber.trim(),
           shopType: addForm.shopType,
-          categoryName: addForm.categoryName,
+          categoryName: finalCategory,
+          isNewCategory: addForm.categoryMode === 'new',
           direction: addForm.direction.trim() || null,
-          emdAmountPaise: addForm.emdAmount.trim() ? Math.round(Number(addForm.emdAmount) * 100) : null
+          emdAmountPaise: addForm.emdAmount.trim() ? Math.round(Number(addForm.emdAmount) * 100) : null,
+          isDirectAllotment: addForm.isDirectAllotment,
+          allotteeName: addForm.isDirectAllotment ? addForm.allotteeName.trim() : null,
+          contactPerson: addForm.isDirectAllotment ? addForm.contactPerson.trim() || null : null,
+          mobileNumber: addForm.isDirectAllotment ? addForm.mobileNumber.trim() || null : null,
+          notes: addForm.isDirectAllotment ? addForm.notes.trim() || null : null
         })
       })
 
@@ -335,14 +399,20 @@ const InventoryTable = ({
           id: body.id,
           stallNumber: addForm.stallNumber.trim(),
           shopType: addForm.shopType as 'single' | 'double',
-          categoryName: addForm.categoryName,
+          categoryName: finalCategory,
           direction: addForm.direction.trim() || null,
           emdAmountPaise: addForm.emdAmount.trim() ? Math.round(Number(addForm.emdAmount) * 100) : null,
-          status: 'available',
-          applicationNumber: null
+          status: body.status || (addForm.isDirectAllotment ? 'allotted' : 'available'),
+          applicationNumber: body.applicationNumber || (addForm.isDirectAllotment ? addForm.allotteeName.trim() : null),
+          isDirectAllotment: addForm.isDirectAllotment
         }
       ])
-      setAddForm(EMPTY_FORM)
+
+      if (!availableCategories.includes(finalCategory)) {
+        setAvailableCategories(prev => [...prev, finalCategory].sort())
+      }
+
+      setAddForm(EMPTY_ADD_FORM)
       setAddOpen(false)
     } catch {
       setAddError('Could not reach the server. Please try again.')
@@ -415,9 +485,15 @@ const InventoryTable = ({
   const allSelected = pageSelectableCount > 0 && pageSelectedCount === pageSelectableCount
 
   const hasActiveFilters =
-    search.trim() !== '' || categoryFilter !== ALL || statusFilter !== ALL || typeFilter !== ALL || directionFilter !== ALL
+    stallCategoryTab !== 'all' ||
+    search.trim() !== '' ||
+    categoryFilter !== ALL ||
+    statusFilter !== ALL ||
+    typeFilter !== ALL ||
+    directionFilter !== ALL
 
   const clearFilters = () => {
+    setStallCategoryTab('all')
     setSearch('')
     setCategoryFilter(ALL)
     setStatusFilter(ALL)
@@ -427,12 +503,67 @@ const InventoryTable = ({
 
   return (
     <Card className='shadow-xs'>
+      {/* 3 Navigation Tabs with Live Counts */}
+      <div className='border-b bg-muted/20 px-4 pt-2.5 pb-0'>
+        <div className='flex gap-2 sm:gap-6 overflow-x-auto'>
+          <button
+            type='button'
+            onClick={() => { setStallCategoryTab('all'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              stallCategoryTab === 'all'
+                ? 'border-[#0c2847] text-[#0c2847]'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            All Booths/Stalls
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'all' ? 'bg-[#0c2847] text-white' : 'bg-muted text-muted-foreground'
+            }`}>
+              {tabCounts.total}
+            </span>
+          </button>
+
+          <button
+            type='button'
+            onClick={() => { setStallCategoryTab('public'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              stallCategoryTab === 'public'
+                ? 'border-[#0c2847] text-[#0c2847]'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Public / Draw Stalls
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'public' ? 'bg-[#0c2847] text-white' : 'bg-muted text-muted-foreground'
+            }`}>
+              {tabCounts.public}
+            </span>
+          </button>
+
+          <button
+            type='button'
+            onClick={() => { setStallCategoryTab('direct'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              stallCategoryTab === 'direct'
+                ? 'border-purple-600 text-purple-700 font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Direct Allotment
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'direct' ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
+            }`}>
+              {tabCounts.direct}
+            </span>
+          </button>
+        </div>
+      </div>
       <CardHeader className='border-b bg-muted/40 py-4'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div>
             <CardTitle className='text-base font-bold text-[#0c2847]'>Booth/Stall Units</CardTitle>
             <CardDescription className='text-xs'>
-              {filteredRows.length} of {rows.length} units{hasActiveFilters ? ' (filtered)' : ''}.
+              {filteredRows.length} of {rows.length} units
             </CardDescription>
           </div>
 
@@ -496,7 +627,7 @@ const InventoryTable = ({
                   setAddOpen(open)
 
                   if (!open) {
-                    setAddForm(EMPTY_FORM)
+                    setAddForm(EMPTY_ADD_FORM)
                     setAddError(null)
                   }
                 }}
@@ -505,78 +636,181 @@ const InventoryTable = ({
                   <PlusIcon />
                   Add Booth/Stall
                 </DialogTrigger>
-                <DialogContent className='sm:max-w-md'>
+                <DialogContent className='sm:max-w-lg max-h-[90vh] overflow-y-auto'>
                   <DialogHeader>
                     <DialogTitle>Add Booth/Stall Unit</DialogTitle>
-                    <DialogDescription>Create a single new booth/stall in inventory.</DialogDescription>
+                    <DialogDescription>
+                      Create a booth/stall unit in inventory. Optionally assign directly to an allottee.
+                    </DialogDescription>
                   </DialogHeader>
 
-                  <div className='grid gap-3'>
-                    <div className='grid gap-1.5'>
-                      <Label htmlFor='add-stall-number'>Booth/Stall Number</Label>
-                      <Input
-                        id='add-stall-number'
-                        value={addForm.stallNumber}
-                        onChange={e => setAddForm(prev => ({ ...prev, stallNumber: e.target.value }))}
-                        placeholder='e.g. A-101'
-                      />
+                  <div className='grid gap-4 py-1'>
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='add-stall-number'>Booth/Stall Number <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='add-stall-number'
+                          value={addForm.stallNumber}
+                          onChange={e => setAddForm(prev => ({ ...prev, stallNumber: e.target.value }))}
+                          placeholder='e.g. A-101'
+                        />
+                      </div>
+
+                      <div className='grid gap-1.5'>
+                        <Label>Type <span className='text-destructive'>*</span></Label>
+                        <Select
+                          value={addForm.shopType || undefined}
+                          onValueChange={value => setAddForm(prev => ({ ...prev, shopType: (value as 'single' | 'double') ?? '' }))}
+                        >
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='Select type' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='single'>Single</SelectItem>
+                            <SelectItem value='double'>Double</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div className='grid gap-1.5'>
-                      <Label>Type</Label>
-                      <Select
-                        value={addForm.shopType || undefined}
-                        onValueChange={value => setAddForm(prev => ({ ...prev, shopType: (value as 'single' | 'double') ?? '' }))}
-                      >
-                        <SelectTrigger className='w-full'>
-                          <SelectValue placeholder='Select type' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value='single'>Single</SelectItem>
-                          <SelectItem value='double'>Double</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className='flex items-center justify-between'>
+                        <Label>Category <span className='text-destructive'>*</span></Label>
+                        <button
+                          type='button'
+                          onClick={() => setAddForm(prev => ({
+                            ...prev,
+                            categoryMode: prev.categoryMode === 'existing' ? 'new' : 'existing',
+                            categoryName: '',
+                            newCategoryName: ''
+                          }))}
+                          className='text-xs text-primary font-medium hover:underline'
+                        >
+                          {addForm.categoryMode === 'existing' ? '+ Create New Category' : '← Select Existing'}
+                        </button>
+                      </div>
+                      {addForm.categoryMode === 'existing' ? (
+                        <Select
+                          value={addForm.categoryName || undefined}
+                          onValueChange={value => setAddForm(prev => ({ ...prev, categoryName: value ?? '' }))}
+                        >
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder='Select category' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCategories.map(name => (
+                              <SelectItem key={name} value={name}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={addForm.newCategoryName}
+                          onChange={e => setAddForm(prev => ({ ...prev, newCategoryName: e.target.value }))}
+                          placeholder='e.g. VIP Enclosure / Govt Pavilions'
+                          autoFocus
+                        />
+                      )}
                     </div>
 
-                    <div className='grid gap-1.5'>
-                      <Label>Category</Label>
-                      <Select
-                        value={addForm.categoryName || undefined}
-                        onValueChange={value => setAddForm(prev => ({ ...prev, categoryName: value ?? '' }))}
-                      >
-                        <SelectTrigger className='w-full'>
-                          <SelectValue placeholder='Select category' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categoryNames.map(name => (
-                            <SelectItem key={name} value={name}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='add-direction'>Direction (optional)</Label>
+                        <Input
+                          id='add-direction'
+                          value={addForm.direction}
+                          onChange={e => setAddForm(prev => ({ ...prev, direction: e.target.value }))}
+                          placeholder='e.g. North'
+                        />
+                      </div>
+
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='add-emd'>EMD in ₹ (optional)</Label>
+                        <Input
+                          id='add-emd'
+                          type='number'
+                          min='0'
+                          value={addForm.emdAmount}
+                          onChange={e => setAddForm(prev => ({ ...prev, emdAmount: e.target.value }))}
+                          placeholder='e.g. 5000'
+                        />
+                      </div>
                     </div>
 
-                    <div className='grid gap-1.5'>
-                      <Label htmlFor='add-direction'>Direction (optional)</Label>
-                      <Input
-                        id='add-direction'
-                        value={addForm.direction}
-                        onChange={e => setAddForm(prev => ({ ...prev, direction: e.target.value }))}
-                        placeholder='e.g. North'
-                      />
-                    </div>
+                    <div className='rounded-lg border p-3.5 bg-slate-50/80 dark:bg-slate-900/40 space-y-3'>
+                      <div className='flex items-center justify-between gap-3'>
+                        <div className='space-y-0.5'>
+                          <div className='flex items-center gap-2'>
+                            <Label htmlFor='direct-allotment-toggle' className='font-semibold text-sm cursor-pointer text-[#0c2847] dark:text-slate-100'>
+                              Direct Allotment
+                            </Label>
+                            {addForm.isDirectAllotment && (
+                              <Badge className='bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200 text-[10px] py-0 px-1.5'>
+                                Admin Only
+                              </Badge>
+                            )}
+                          </div>
+                          <p className='text-xs text-muted-foreground'>
+                            Directly assign this stall to an organisation / VIP without public application
+                          </p>
+                        </div>
+                        <Switch
+                          id='direct-allotment-toggle'
+                          checked={addForm.isDirectAllotment}
+                          onCheckedChange={checked => setAddForm(prev => ({ ...prev, isDirectAllotment: checked }))}
+                        />
+                      </div>
 
-                    <div className='grid gap-1.5'>
-                      <Label htmlFor='add-emd'>EMD Amount in ₹ (optional)</Label>
-                      <Input
-                        id='add-emd'
-                        type='number'
-                        min='0'
-                        value={addForm.emdAmount}
-                        onChange={e => setAddForm(prev => ({ ...prev, emdAmount: e.target.value }))}
-                        placeholder='e.g. 5000'
-                      />
+                      {addForm.isDirectAllotment && (
+                        <div className='grid gap-3 pt-2.5 border-t border-slate-200 dark:border-slate-800'>
+                          <div className='grid gap-1.5'>
+                            <Label htmlFor='add-allottee-name' className='text-xs font-semibold'>
+                              Organisation / Allottee Name <span className='text-destructive'>*</span>
+                            </Label>
+                            <Input
+                              id='add-allottee-name'
+                              value={addForm.allotteeName}
+                              onChange={e => setAddForm(prev => ({ ...prev, allotteeName: e.target.value }))}
+                              placeholder='e.g. Haryana Tourism / Dept of Forest'
+                            />
+                          </div>
+
+                          <div className='grid grid-cols-2 gap-3'>
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-contact-person' className='text-xs font-semibold'>Contact Person</Label>
+                              <Input
+                                id='add-contact-person'
+                                value={addForm.contactPerson}
+                                onChange={e => setAddForm(prev => ({ ...prev, contactPerson: e.target.value }))}
+                                placeholder='e.g. Ramesh Kumar'
+                              />
+                            </div>
+
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-mobile' className='text-xs font-semibold'>Mobile Number</Label>
+                              <Input
+                                id='add-mobile'
+                                value={addForm.mobileNumber}
+                                onChange={e => setAddForm(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                                placeholder='e.g. 9876543210'
+                              />
+                            </div>
+                          </div>
+
+                          <div className='grid gap-1.5'>
+                            <Label htmlFor='add-notes' className='text-xs font-semibold'>Allotment Note / Memo Ref (optional)</Label>
+                            <Textarea
+                              id='add-notes'
+                              rows={2}
+                              value={addForm.notes}
+                              onChange={e => setAddForm(prev => ({ ...prev, notes: e.target.value }))}
+                              placeholder='e.g. Allotted as per DC Office Order #412'
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -592,7 +826,7 @@ const InventoryTable = ({
                     </Button>
                     <Button type='button' onClick={handleAddSubmit} disabled={addSubmitting}>
                       {addSubmitting && <Loader2Icon className='animate-spin' />}
-                      Create
+                      {addForm.isDirectAllotment ? 'Create & Allot Stall' : 'Create Booth/Stall'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -628,7 +862,7 @@ const InventoryTable = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All Categories</SelectItem>
-                {categoryNames.map(name => (
+                {availableCategories.map(name => (
                   <SelectItem key={name} value={name}>
                     {name}
                   </SelectItem>
@@ -744,9 +978,29 @@ const InventoryTable = ({
                     {row.emdAmountPaise !== null ? `₹${(row.emdAmountPaise / 100).toLocaleString('en-IN')}` : '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge className={STATUS_CONFIG[row.status].color}>{STATUS_CONFIG[row.status].label}</Badge>
+                    <div className='flex flex-wrap items-center gap-1.5'>
+                      <Badge className={STATUS_CONFIG[row.status].color}>{STATUS_CONFIG[row.status].label}</Badge>
+                      {row.isDirectAllotment && (
+                        <Badge variant='outline' className='bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-bold py-0 px-1.5 shadow-2xs'>
+                          Direct Allotment
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell className='font-mono text-xs'>{row.applicationNumber ?? '—'}</TableCell>
+                  <TableCell className='text-xs'>
+                    {row.applicationNumber ? (
+                      <div className='flex flex-col gap-0.5'>
+                        <span className='font-mono font-medium text-slate-800 dark:text-slate-200'>{row.applicationNumber}</span>
+                        {row.isDirectAllotment && (
+                          <span className='inline-flex items-center gap-1 text-[10px] text-purple-700 font-semibold'>
+                            <span className='size-1.5 rounded-full bg-purple-600'></span> Direct Allotment
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   {canManage && (
                     <TableCell>
                       {row.status !== 'allotted' && (
@@ -884,7 +1138,7 @@ const InventoryTable = ({
                   <SelectValue placeholder='Select category' />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryNames.map(name => (
+                  {availableCategories.map(name => (
                     <SelectItem key={name} value={name}>
                       {name}
                     </SelectItem>

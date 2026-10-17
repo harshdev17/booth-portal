@@ -26,7 +26,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.apply_now': 'आवेदन करें',
 
     // Hero
-    'hero.badge': 'आधिकारिक बूथ/स्टॉल आवंटन पोर्टल',
+    'hero.badge': 'आधिकारिक बूथ/स्टॉल आबंटन पोर्टल',
     'hero.title_part1': 'हिस्सा बनें',
     'hero.title_part2': 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026',
     'hero.desc': 'ब्रह्मसरोवर, कुरुक्षेत्र पर व्यावसायिक बूथों/स्टॉलों के लिए आवेदन करें। कुरुक्षेत्र विकास बोर्ड द्वारा संचालित आधिकारिक पोर्टल।',
@@ -37,7 +37,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'feature.simple.title': 'सरल',
     'feature.simple.sub': 'ऑनलाइन आवेदन प्रक्रिया',
     'feature.transparent.title': 'पारदर्शी',
-    'feature.transparent.sub': 'ड्रॉ आवंटन',
+    'feature.transparent.sub': 'ड्रॉ आबंटन',
     'feature.secure.title': 'सुरक्षित',
     'feature.secure.sub': 'डिजिटल भुगतान प्रणाली',
     'feature.support.title': 'सहायता',
@@ -45,7 +45,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Categories
     'categories.badge': 'गीता जयंती महोत्सव 2026 व्यावसायिक स्थान',
-    'categories.heading': 'बूथ/स्टॉल श्रेणियां एवं आवंटन',
+    'categories.heading': 'बूथ/स्टॉल श्रेणियां एवं आबंटन',
     'categories.desc': 'ब्रह्मसरोवर मेला क्षेत्र में अपनी पसंदीदा बूथ/स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
     'categories.empty': 'वर्तमान में कोई बूथ/स्टॉल श्रेणी आवेदन के लिए खुली नहीं है। कृपया शीघ्र जांचें।',
     'categories.apply_now': 'आवेदन करें',
@@ -54,10 +54,10 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Widgets
     'status.title': 'बूथ/स्टॉल आवेदन की स्थिति जांचें',
-    'status.desc': 'अपने आवेदन क्रमांक और एक्सेस कोड के माध्यम से अपने बूथ/स्टॉल का सत्यापन व आवंटन स्थिति देखें।',
+    'status.desc': 'अपने आवेदन क्रमांक और एक्सेस कोड के माध्यम से अपने बूथ/स्टॉल का सत्यापन व आबंटन स्थिति देखें।',
     'status.btn': 'स्थिति जांचें →',
     'notices.title': 'आधिकारिक बूथ/स्टॉल सूचनाएं',
-    'notices.desc': 'आवेदन अंतिम तिथि, दस्तावेज जांच, ड्रॉ और बूथ/स्टॉल आवंटन संबंधी आधिकारिक सूचनाएं यहां प्रकाशित होंगी।',
+    'notices.desc': 'आवेदन अंतिम तिथि, दस्तावेज जांच, ड्रॉ और बूथ/स्टॉल आबंटन संबंधी आधिकारिक सूचनाएं यहां प्रकाशित होंगी।',
 
     // How it works
     'how.badge': 'स्टॉल/बूथ आबंटन प्रक्रिया 2026',

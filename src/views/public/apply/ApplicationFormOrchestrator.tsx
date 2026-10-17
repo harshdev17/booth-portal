@@ -6,12 +6,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, BookOpenIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { AlertCircleIcon, BookOpenIcon, CreditCardIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
+import { useForm, type FieldErrors } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import RecaptchaWidget from '@/components/public/RecaptchaWidget'
 import AddressStep from '@/views/public/apply/AddressStep'
 import { isValidPan, PAN_ERROR_MESSAGE, PAN_FIELD_KEY } from '@/lib/applications/pan'
 import DeclarationCheckboxes, { type Declarations } from '@/views/public/apply/DeclarationCheckboxes'
@@ -24,6 +26,208 @@ import { useLanguage } from '@/context/LanguageContext'
 import InstructionsStep from '@/views/public/apply/InstructionsStep'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
 import { useAvailabilityCheck } from '@/views/public/apply/useAvailabilityCheck'
+
+type RazorpayCheckoutResponse = {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
+type RazorpayCheckoutOptions = {
+  key: string
+  amount: number
+  currency: string
+  order_id: string
+  name: string
+  description: string
+  theme: { color: string }
+  handler: (response: RazorpayCheckoutResponse) => void
+  modal?: { ondismiss?: () => void }
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayCheckoutOptions) => { open: () => void }
+  }
+}
+
+const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
+
+function loadRazorpayCheckoutScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (typeof window === 'undefined') {
+      resolve(false)
+      return
+    }
+
+    if (window.Razorpay) {
+      resolve(true)
+      return
+    }
+
+    const existing = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_SCRIPT_SRC}"]`)
+
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true))
+      existing.addEventListener('error', () => resolve(false))
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = RAZORPAY_CHECKOUT_SCRIPT_SRC
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
+
+function highlightElement(el: HTMLElement) {
+  const container = (el.closest('[data-invalid="true"], [data-slot="field"]') as HTMLElement | null)
+  const targets = container && container !== el ? [el, container] : [el]
+
+  for (const t of targets) {
+    t.classList.add(
+      'ring-4',
+      'ring-red-500',
+      'border-red-500',
+      'bg-red-50/70',
+      'transition-all',
+      'duration-300',
+      'shadow-lg'
+    )
+  }
+
+  setTimeout(() => {
+    for (const t of targets) {
+      t.classList.remove('ring-4', 'ring-red-500', 'border-red-500', 'bg-red-50/70', 'shadow-lg')
+    }
+  }, 4500)
+}
+
+function scrollToFirstError(
+  errors: FieldErrors<ApplicationFormValues>,
+  hasDuplicateField: boolean,
+  duplicateFields: Partial<Record<string, string>>,
+  requiredDocsUploaded: boolean,
+  declarationsAccepted: boolean
+) {
+  if (errors.shopOptionId) {
+    const el = document.getElementById('shopOptionId')
+
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => el.focus?.(), 250)
+      highlightElement(el)
+
+      return
+    }
+  }
+
+  const commonOrder = [
+    'representativeName',
+    'fatherName',
+    'mobileNumber',
+    'alternateMobile',
+    'email',
+    'aadhaarNumber',
+    'address',
+    'state',
+    'district',
+    'pinCode'
+  ]
+
+  if (errors.common) {
+    for (const key of commonOrder) {
+      if ((errors.common as Record<string, unknown>)[key]) {
+        const el = document.getElementById(`common.${key}`)
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setTimeout(() => el.focus?.(), 250)
+          highlightElement(el)
+
+          return
+        }
+      }
+    }
+
+    const anyKey = Object.keys(errors.common)[0]
+
+    if (anyKey) {
+      const el = document.getElementById(`common.${anyKey}`)
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => el.focus?.(), 250)
+        highlightElement(el)
+
+        return
+      }
+    }
+  }
+
+  if (hasDuplicateField) {
+    const dupKey = Object.keys(duplicateFields)[0]
+
+    if (dupKey) {
+      const el = document.getElementById(`common.${dupKey}`)
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => el.focus?.(), 250)
+        highlightElement(el)
+
+        return
+      }
+    }
+  }
+
+  if (errors.categoryFields) {
+    const firstCatKey = Object.keys(errors.categoryFields)[0]
+
+    if (firstCatKey) {
+      const el = document.getElementById(`categoryFields.${firstCatKey}`)
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => el.focus?.(), 250)
+        highlightElement(el)
+
+        return
+      }
+    }
+  }
+
+  if (!requiredDocsUploaded) {
+    const el = document.getElementById('documents-section')
+
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightElement(el)
+
+      return
+    }
+  }
+
+  if (!declarationsAccepted) {
+    const el = document.getElementById('declarations-section')
+
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightElement(el)
+
+      return
+    }
+  }
+
+  const invalidEl = document.querySelector('[aria-invalid="true"], [data-invalid="true"]')
+
+  if (invalidEl instanceof HTMLElement) {
+    invalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setTimeout(() => invalidEl.focus?.(), 250)
+    highlightElement(invalidEl)
+  }
+}
 
 type DraftState = { applicationId: number; applicationNumber: string; accessToken: string } | null
 
@@ -59,6 +263,7 @@ const ApplicationFormOrchestrator = ({
   const [declarations, setDeclarations] = useState<Declarations>({
     informationCorrect: false,
     agreedToTerms: false,
+    kdbRights: false,
     categoryDeclaration: false
   })
 
@@ -69,6 +274,18 @@ const ApplicationFormOrchestrator = ({
   const [isProceeding, setIsProceeding] = useState(false)
   const [guidelinesConfirmed, setGuidelinesConfirmed] = useState(false)
   const draftRequested = useRef(false)
+
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false)
+  const [otpPhase, setOtpPhase] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [maskedEmail, setMaskedEmail] = useState<string | null>(null)
+  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false)
+  const [submittedMobile, setSubmittedMobile] = useState<string>('')
+
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+  const recaptchaRequired = !!recaptchaSiteKey
+  const getRecaptchaTokenRef = useRef<(() => Promise<string | null>) | null>(null)
 
   const form = useForm<ApplicationFormValues>({
     resolver: buildFormResolver(config.fields),
@@ -119,7 +336,7 @@ const ApplicationFormOrchestrator = ({
             mobileNumber: '9123456780'
           },
           categoryFields: shopOptionPayload,
-          declaration: { informationCorrect: true, agreedToTerms: true }
+          declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true }
         })
       })
 
@@ -317,101 +534,406 @@ const ApplicationFormOrchestrator = ({
     : config.category.extraDeclaration
 
   const declarationsAccepted =
-    declarations.informationCorrect && declarations.agreedToTerms && (!categoryDeclarationText || declarations.categoryDeclaration)
+    declarations.informationCorrect &&
+    declarations.agreedToTerms &&
+    declarations.kdbRights &&
+    (!categoryDeclarationText || declarations.categoryDeclaration)
 
-  const handleReviewApplication = form.handleSubmit(async values => {
-    if (!draft) return
-    setSubmitError(null)
-
-    const badPan = config.fields.some(
-      f => f.key === PAN_FIELD_KEY && !!values.categoryFields[f.key] && !isValidPan(values.categoryFields[f.key])
-    )
-
-    if (badPan) {
-      setSubmitError(PAN_ERROR_MESSAGE)
-
-      return
-    }
-
-    if (!declarationsAccepted) {
-      setSubmitError(
-        lang === 'hi'
-          ? 'आगे बढ़ने से पहले कृपया दोनों घोषणाओं पर सही का निशान लगाएँ।'
-          : 'Please tick both declarations before continuing.'
-      )
-
-      return
-    }
-
-    if (hasDuplicateField) {
-      setSubmitError(
-        lang === 'hi'
-          ? 'आगे बढ़ने से पहले कृपया हाइलाइट किए गए डुप्लिकेट फ़ील्ड्स ठीक करें।'
-          : 'Please fix the highlighted duplicate fields before continuing.'
-      )
-
-      return
-    }
-
-    if (!requiredDocsUploaded) {
-      setSubmitError(
-        lang === 'hi'
-          ? 'आगे बढ़ने से पहले कृपया सभी अनिवार्य दस्तावेज अपलोड करें।'
-          : 'Please upload all required documents before continuing.'
-      )
-
-      return
-    }
-
-    setIsProceeding(true)
+  const sendMobileOtp = async (mobileNumber: string, applicationId: number) => {
+    setOtpError(null)
+    setOtpPhase('sending')
 
     try {
-      // Save the applicant's real data onto the draft now (the initial draft
-      // created on page load used placeholder values purely to obtain an
-      // application id for document uploads).
-      const updateResponse = await fetch(`/api/applications/${draft.applicationId}`, {
-        method: 'PATCH',
+      const response = await fetch('/api/otp/request', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessToken: draft.accessToken,
-          categorySlug: config.category.slug,
-          shopOptionId: values.shopOptionId,
-          common: values.common,
-          categoryFields: values.categoryFields
-        })
+        body: JSON.stringify({ mobileNumber, applicationId })
       })
 
-      if (!updateResponse.ok) {
-        const body = await updateResponse.json()
+      const body = await response.json()
 
-        setSubmitError(
+      if (!response.ok) {
+        setOtpError(
           body.error ??
-            (lang === 'hi'
-              ? 'कुछ गड़बड़ हुई। कृपया पुनः प्रयास करें।'
-              : 'Something went wrong. Please try again.')
+            (lang === 'hi' ? 'सत्यापन कोड नहीं भेजा जा सका। पुनः प्रयास करें।' : 'Could not send the code. Please try again.')
         )
-        setIsProceeding(false)
+        setOtpPhase('idle')
+
+        return false
+      }
+
+      setOtpCode('')
+      setMaskedEmail(typeof body.maskedEmail === 'string' ? body.maskedEmail : null)
+      setOtpPhase('sent')
+
+      return true
+    } catch {
+      setOtpError(
+        lang === 'hi'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
+          : 'Could not reach the server. Please check your connection and try again.'
+      )
+      setOtpPhase('idle')
+
+      return false
+    }
+  }
+
+  const verifyAndFinalize = async () => {
+    const mobile = submittedMobile
+
+    if (!mobile || otpCode.length !== 6 || !draft) return
+
+    setOtpError(null)
+    setOtpPhase('verifying')
+
+    try {
+      const verifyRes = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobileNumber: mobile, code: otpCode })
+      })
+
+      const verifyBody = await verifyRes.json()
+
+      if (!verifyRes.ok) {
+        setOtpError(
+          verifyBody.error ?? (lang === 'hi' ? 'गलत कोड। पुनः प्रयास करें।' : 'Incorrect code. Please try again.')
+        )
+        setOtpPhase('sent')
 
         return
       }
 
-      storeApplicationAccess(draft.applicationId, draft.accessToken, draft.applicationNumber)
-      router.push(`/apply/${config.category.slug}/review/${draft.applicationId}`)
+      setOtpPhase('verified')
+      setIsSubmittingFinal(true)
+
+      const recaptchaToken =
+        recaptchaRequired && getRecaptchaTokenRef.current ? await getRecaptchaTokenRef.current() : null
+
+      if (recaptchaRequired && !recaptchaToken) {
+        setOtpError(
+          lang === 'hi'
+            ? 'CAPTCHA सत्यापन विफल रहा। कृपया पुनः प्रयास करें।'
+            : 'CAPTCHA verification failed. Please try again.'
+        )
+        setIsSubmittingFinal(false)
+        setOtpPhase('sent')
+
+        return
+      }
+
+      const finalizeRes = await fetch(`/api/applications/${draft.applicationId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: draft.accessToken,
+          declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true },
+          recaptchaToken
+        })
+      })
+
+      const finalizeBody = await finalizeRes.json()
+
+      if (!finalizeRes.ok) {
+        const isStaleOtp =
+          typeof finalizeBody.error === 'string' && finalizeBody.error.toLowerCase().includes('verify your mobile number')
+
+        if (isStaleOtp) {
+          setOtpPhase('idle')
+          setOtpError(
+            lang === 'hi'
+              ? 'सत्यापन का समय समाप्त हो गया है। कृपया अपने नंबर को दोबारा सत्यापित करें।'
+              : 'Your verification has expired. Please verify your number again.'
+          )
+        } else {
+          setOtpError(
+            finalizeBody.error ??
+              (lang === 'hi'
+                ? 'वर्तमान में आवेदन सबमिट नहीं किया जा सका। कृपया पुनः प्रयास करें।'
+                : "We couldn't submit your application right now. Please try again.")
+          )
+          setOtpPhase('sent')
+        }
+
+        setIsSubmittingFinal(false)
+
+        return
+      }
+
+      storeApplicationAccess(draft.applicationId, draft.accessToken, finalizeBody.applicationNumber)
+      setOtpDialogOpen(false)
+
+      if (finalizeBody.feePaise && finalizeBody.feePaise > 0) {
+        try {
+          const scriptLoaded = await loadRazorpayCheckoutScript()
+
+          if (!scriptLoaded) {
+            router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+
+            return
+          }
+
+          const orderResponse = await fetch(`/api/applications/${draft.applicationId}/payment/order`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${draft.accessToken}` }
+          })
+
+          const orderBody = await orderResponse.json()
+
+          if (!orderResponse.ok) {
+            router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+
+            return
+          }
+
+          const razorpay = new window.Razorpay({
+            key: orderBody.keyId,
+            amount: orderBody.amountPaise,
+            currency: orderBody.currency,
+            order_id: orderBody.orderId,
+            name: 'Kurukshetra Development Board',
+            description:
+              lang === 'hi'
+                ? `आवेदन शुल्क — ${orderBody.applicationNumber}`
+                : `Application Fee — ${orderBody.applicationNumber}`,
+            theme: { color: '#0c2847' },
+            handler: async response => {
+              try {
+                const verifyResponse = await fetch(`/api/applications/${draft.applicationId}/payment/verify`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${draft.accessToken}` },
+                  body: JSON.stringify({
+                    razorpayOrderId: response.razorpay_order_id,
+                    razorpayPaymentId: response.razorpay_payment_id,
+                    razorpaySignature: response.razorpay_signature
+                  })
+                })
+
+                if (verifyResponse.ok) {
+                  router.push(`/apply/${config.category.slug}/success/${finalizeBody.applicationNumber}`)
+                } else {
+                  router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+                }
+              } catch {
+                router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+              }
+            },
+            modal: {
+              ondismiss: () => {
+                setIsSubmittingFinal(false)
+                router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+              }
+            }
+          })
+
+          razorpay.open()
+        } catch {
+          router.push(`/apply/${config.category.slug}/payment/${finalizeBody.applicationNumber}`)
+        }
+      } else {
+        router.push(`/apply/${config.category.slug}/success/${finalizeBody.applicationNumber}`)
+      }
     } catch {
-      setSubmitError(
+      setOtpError(
         lang === 'hi'
           ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
           : 'Could not reach the server. Please check your connection and try again.'
       )
-      setIsProceeding(false)
+      setIsSubmittingFinal(false)
+      setOtpPhase('sent')
     }
-  }, () => {
-    setSubmitError(
-      lang === 'hi'
-        ? 'कृपया आगे बढ़ने से पहले हाइलाइट किए गए फ़ील्ड्स की समीक्षा करें।'
-        : 'Please review the highlighted fields before continuing.'
-    )
-  })
+  }
+
+  const handleReviewApplication = form.handleSubmit(
+    async values => {
+      setSubmitError(null)
+
+      const badPan = config.fields.some(
+        f => f.key === PAN_FIELD_KEY && !!values.categoryFields[f.key] && !isValidPan(values.categoryFields[f.key])
+      )
+
+      if (badPan) {
+        setSubmitError(PAN_ERROR_MESSAGE)
+        const el = document.getElementById(`categoryFields.${PAN_FIELD_KEY}`)
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setTimeout(() => el.focus?.(), 250)
+          highlightElement(el)
+        }
+
+        return
+      }
+
+      // Proactively check Aadhaar availability before submitting
+      if (values.common.aadhaarNumber) {
+        const isAadhaarAvailable = await checkAvailability('aadhaarNumber', values.common.aadhaarNumber.trim())
+
+        if (!isAadhaarAvailable) {
+          setSubmitError(
+            lang === 'hi'
+              ? 'इस आधार संख्या से पहले ही एक आवेदन मौजूद है।'
+              : 'An application already exists with this Aadhaar number.'
+          )
+          const el = document.getElementById('common.aadhaarNumber')
+
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            setTimeout(() => el.focus?.(), 250)
+            highlightElement(el)
+          }
+
+          return
+        }
+      }
+
+      // Proactively check Mobile availability before submitting
+      if (values.common.mobileNumber) {
+        const isMobileAvailable = await checkAvailability('mobileNumber', values.common.mobileNumber.trim())
+
+        if (!isMobileAvailable) {
+          setSubmitError(
+            lang === 'hi'
+              ? 'इस मोबाइल नंबर से पहले ही एक आवेदन मौजूद है।'
+              : 'An application already exists with this mobile number.'
+          )
+          const el = document.getElementById('common.mobileNumber')
+
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            setTimeout(() => el.focus?.(), 250)
+            highlightElement(el)
+          }
+
+          return
+        }
+      }
+
+      if (hasDuplicateField) {
+        setSubmitError(
+          lang === 'hi'
+            ? 'आगे बढ़ने से पहले कृपया हाइलाइट किए गए डुप्लिकेट फ़ील्ड्स ठीक करें।'
+            : 'Please fix the highlighted duplicate fields before continuing.'
+        )
+        const firstDupKey = Object.keys(duplicateFields)[0]
+        const el = document.getElementById(`common.${firstDupKey}`)
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setTimeout(() => el.focus?.(), 250)
+          highlightElement(el)
+        }
+
+        return
+      }
+
+      if (!requiredDocsUploaded) {
+        setSubmitError(
+          lang === 'hi'
+            ? 'आगे बढ़ने से पहले कृपया सभी अनिवार्य दस्तावेज अपलोड करें।'
+            : 'Please upload all required documents before continuing.'
+        )
+        const el = document.getElementById('documents-section')
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          highlightElement(el)
+        }
+
+        return
+      }
+
+      if (!declarationsAccepted) {
+        setSubmitError(
+          lang === 'hi'
+            ? 'आगे बढ़ने से पहले कृपया सभी घोषणाओं पर सही का निशान लगाएँ।'
+            : 'Please tick all declarations before continuing.'
+        )
+        const el = document.getElementById('declarations-section')
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          highlightElement(el)
+        }
+
+        return
+      }
+
+      if (!draft) {
+        setSubmitError(
+          lang === 'hi'
+            ? 'आवेदन प्रारंभ नहीं हो सका। कृपया पृष्ठ को रीफ्रेश करें।'
+            : 'Could not start application. Please refresh the page.'
+        )
+
+        return
+      }
+
+      setIsProceeding(true)
+      setSubmittedMobile(values.common.mobileNumber)
+
+      try {
+        const updateResponse = await fetch(`/api/applications/${draft.applicationId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: draft.accessToken,
+            categorySlug: config.category.slug,
+            shopOptionId: values.shopOptionId,
+            common: values.common,
+            categoryFields: values.categoryFields
+          })
+        })
+
+        if (!updateResponse.ok) {
+          const body = await updateResponse.json()
+
+          setSubmitError(
+            body.error ??
+              (lang === 'hi'
+                ? 'कुछ गड़बड़ हुई। कृपया पुनः प्रयास करें।'
+                : 'Something went wrong. Please try again.')
+          )
+          setIsProceeding(false)
+
+          if (body.field) {
+            const el = document.getElementById(`common.${body.field}`)
+
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setTimeout(() => el.focus?.(), 250)
+              highlightElement(el)
+            }
+          }
+
+          return
+        }
+
+        storeApplicationAccess(draft.applicationId, draft.accessToken, draft.applicationNumber)
+
+        // Open OTP verification popup directly on this page
+        setOtpDialogOpen(true)
+        void sendMobileOtp(values.common.mobileNumber, draft.applicationId)
+      } catch {
+        setSubmitError(
+          lang === 'hi'
+            ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+            : 'Could not reach the server. Please check your connection and try again.'
+        )
+      } finally {
+        setIsProceeding(false)
+      }
+    },
+    errors => {
+      scrollToFirstError(errors, hasDuplicateField, duplicateFields, requiredDocsUploaded, declarationsAccepted)
+      setSubmitError(
+        lang === 'hi'
+          ? 'कृपया आगे बढ़ने से पहले फॉर्म में छूटे हुए या गलत विवरण ठीक करें।'
+          : 'Please review and fill all required fields correctly before continuing.'
+      )
+    }
+  )
 
   return (
     <div className='kdb-apply-form min-h-screen bg-[#faf8f5] py-12 px-4 sm:px-6 lg:px-8'>
@@ -663,7 +1185,7 @@ const ApplicationFormOrchestrator = ({
               )}
 
               {/* 5. Required Documents (Final Section with terminating line) */}
-              <section className='relative pl-12 sm:pl-16'>
+              <section id='documents-section' className='relative pl-12 sm:pl-16'>
                 {/* Clean end terminal for the timeline */}
                 <div className='absolute left-4 sm:left-5 top-10 h-10 w-0.5 bg-gradient-to-b from-[#e2e8f0] to-transparent' />
 
@@ -725,28 +1247,129 @@ const ApplicationFormOrchestrator = ({
                 categoryDeclaration={categoryDeclarationText}
               />
 
+              {recaptchaRequired && (
+                <RecaptchaWidget
+                  onReady={getToken => {
+                    getRecaptchaTokenRef.current = getToken
+                  }}
+                />
+              )}
+
               {/* Form Action Button */}
               <div className='flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xs'>
-                <p className='text-xs sm:text-sm text-[#64748b] text-center sm:text-left'>
-                  {lang === 'hi'
-                    ? 'समीक्षा स्क्रीन पर जाने से पहले सुनिश्चित करें कि सभी जानकारी सही है।'
-                    : 'Please ensure all details are verified before proceeding to the review screen.'}
-                </p>
+                <div className='text-center sm:text-left'>
+                  <p className='text-xs sm:text-sm text-[#64748b]'>
+                    {config.category.feePaise && config.category.feePaise > 0
+                      ? lang === 'hi'
+                        ? `आवेदन शुल्क ₹${(config.category.feePaise / 100).toLocaleString('en-IN')} (जीएसटी सहित)। सत्यापन के बाद भुगतान पृष्ठ खुलेगा।`
+                        : `Application fee ₹${(config.category.feePaise / 100).toLocaleString('en-IN')} (including GST). You will proceed to payment after verification.`
+                      : lang === 'hi'
+                        ? 'सबमिट करने से पहले सुनिश्चित करें कि सभी जानकारी सही है। मोबाइल ओटीपी सत्यापन आवश्यक है।'
+                        : 'Ensure all details are correct before submitting. Mobile OTP verification is required.'}
+                  </p>
+                  {submitError && (
+                    <p className='mt-2 text-xs font-semibold text-red-600'>
+                      {submitError}
+                    </p>
+                  )}
+                </div>
                 <Button
                   type='submit'
                   size='lg'
-                  disabled={!draft || isProceeding || isCreatingDraft || !declarationsAccepted}
+                  disabled={isProceeding || isSubmittingFinal || isCreatingDraft}
                   className='w-full sm:w-auto rounded-xl bg-[#0c2847] px-8 py-4 text-sm font-bold text-white shadow-sm hover:bg-[#06192e] transition active:scale-[0.98]'
                 >
-                  {isProceeding ? <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' /> : null}
-                  <span>{lang === 'hi' ? 'आवेदन की समीक्षा करें' : 'Review Application'}</span>
-                  <span className='ml-2 text-base font-bold'>→</span>
+                  {isProceeding || isSubmittingFinal ? (
+                    <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' />
+                  ) : null}
+                  <span>
+                    {config.category.feePaise && config.category.feePaise > 0
+                      ? lang === 'hi'
+                        ? `ओटीपी सत्यापित करें व भुगतान पर जाएं (₹${(config.category.feePaise / 100).toLocaleString('en-IN')})`
+                        : `Verify OTP & Proceed to Pay (₹${(config.category.feePaise / 100).toLocaleString('en-IN')})`
+                      : lang === 'hi'
+                        ? 'ओटीपी सत्यापित करें व सबमिट करें'
+                        : 'Verify OTP & Submit Application'}
+                  </span>
+                  {config.category.feePaise && config.category.feePaise > 0 ? (
+                    <CreditCardIcon className='ml-2 size-4' />
+                  ) : (
+                    <span className='ml-2 text-base font-bold'>→</span>
+                  )}
                 </Button>
               </div>
             </form>
           </>
         )}
       </div>
+
+      <Dialog open={otpDialogOpen} onOpenChange={open => !isSubmittingFinal && setOtpDialogOpen(open)}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='text-xl font-black text-[#0c2847]'>
+              {lang === 'hi' ? 'अपना मोबाइल नंबर सत्यापित करें' : 'Verify your Mobile Number'}
+            </DialogTitle>
+            <DialogDescription>
+              {otpPhase === 'sending'
+                ? lang === 'hi'
+                  ? 'सत्यापन कोड भेजा जा रहा है...'
+                  : 'Sending the verification code...'
+                : lang === 'hi'
+                  ? `हमने 6 अंकों का कोड आपके व्हाट्सएप (${submittedMobile})${maskedEmail ? ` और ईमेल (${maskedEmail})` : ''} पर भेजा है। नीचे दर्ज करें।`
+                  : `We sent a 6-digit code to your WhatsApp (${submittedMobile})${maskedEmail ? ` and your email (${maskedEmail})` : ''}. Enter it below.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {otpError && (
+            <Alert variant='destructive'>
+              <AlertCircleIcon className='size-4' />
+              <AlertDescription>{otpError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className='flex flex-col gap-3'>
+            <Input
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode='numeric'
+              autoComplete='one-time-code'
+              placeholder='••••••'
+              maxLength={6}
+              className='h-12 text-center text-xl tracking-[0.5em]'
+              disabled={otpPhase === 'sending' || otpPhase === 'verifying' || isSubmittingFinal}
+            />
+            <Button
+              type='button'
+              disabled={otpPhase !== 'sent' || otpCode.length !== 6 || isSubmittingFinal}
+              onClick={verifyAndFinalize}
+              className='h-11 rounded-xl bg-[#0c2847] font-bold text-white hover:bg-[#06192e]'
+            >
+              {(otpPhase === 'verifying' || isSubmittingFinal) && (
+                <Loader2Icon className='mr-2 size-4 animate-spin text-[#d8891d]' />
+              )}
+              {config.category.feePaise && config.category.feePaise > 0
+                ? lang === 'hi'
+                  ? 'सत्यापित करें और भुगतान पर जाएं'
+                  : 'Verify & continue to payment'
+                : lang === 'hi'
+                  ? 'सत्यापित करें और सबमिट करें'
+                  : 'Verify & submit'}
+            </Button>
+            <button
+              type='button'
+              onClick={() => {
+                if (submittedMobile && draft) {
+                  void sendMobileOtp(submittedMobile, draft.applicationId)
+                }
+              }}
+              disabled={otpPhase === 'sending' || otpPhase === 'verifying' || isSubmittingFinal}
+              className='text-xs font-semibold text-[#64748b] underline underline-offset-2 hover:text-[#0c2847] disabled:opacity-50'
+            >
+              {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

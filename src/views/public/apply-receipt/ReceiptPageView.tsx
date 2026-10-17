@@ -36,7 +36,7 @@ const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-I
  * payment confirmation and can use Print Application for a later copy of
  * their application details).
  */
-const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) => {
+const ReceiptPageView = ({ applicationNumber, token }: { applicationNumber: string; token?: string }) => {
   const router = useRouter()
   const { lang } = useLanguage()
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
@@ -47,7 +47,7 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
     const loadReceipt = async () => {
       const access = findAccessTokenForApplicationNumber(applicationNumber)
 
-      if (!access) {
+      if (!access && !token) {
         setError(
           lang === 'hi'
             ? 'यह रसीद केवल उसी ब्राउज़र टैब में उपलब्ध है जहां आवेदन जमा किया गया था।'
@@ -59,9 +59,16 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
       }
 
       try {
-        const response = await fetch(`/api/applications/${access.applicationId}/receipt`, {
-          headers: { Authorization: `Bearer ${access.accessToken}` }
-        })
+        const headers: Record<string, string> = {}
+
+        if (access?.accessToken) headers.Authorization = `Bearer ${access.accessToken}`
+        if (token) headers['x-application-token'] = token
+
+        const endpoint = access
+          ? `/api/applications/${access.applicationId}/receipt`
+          : `/api/applications/${applicationNumber}/receipt`
+
+        const response = await fetch(endpoint, { headers })
 
         const body = await response.json()
 
@@ -154,7 +161,7 @@ const ReceiptPageView = ({ applicationNumber }: { applicationNumber: string }) =
                 </h2>
                 <p className='text-xs text-black'>
                   {lang === 'hi'
-                    ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आवंटन पोर्टल'
+                    ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आबंटन पोर्टल'
                     : 'Kurukshetra Development Board — Booth/Stall Allotment Portal'}
                 </p>
               </div>

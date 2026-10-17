@@ -1,7 +1,7 @@
 'use client'
 
 // Next Imports
-import { Fragment } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 
 import { usePathname } from 'next/navigation'
 
@@ -22,8 +22,33 @@ type HeaderUser = { fullName: string; email: string; roleName: string }
 
 const Header = ({ user }: { user: HeaderUser }) => {
   const pathname = usePathname()
+  const [applicationNumber, setApplicationNumber] = useState<string | null>(null)
 
   const segments = pathname.split('/').filter(Boolean)
+
+  useEffect(() => {
+    const applicationToken = /^\/admin\/applications\/([^/]+)$/.exec(pathname)?.[1]
+
+    if (!applicationToken) {
+      setApplicationNumber(null)
+      return
+    }
+
+    let cancelled = false
+
+    fetch(`/api/admin/applications/${encodeURIComponent(applicationToken)}/breadcrumb`)
+      .then(response => (response.ok ? response.json() : null))
+      .then((data: { applicationNumber?: string } | null) => {
+        if (!cancelled) setApplicationNumber(data?.applicationNumber ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setApplicationNumber(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pathname])
 
   return (
     <header className='bg-card sticky top-0 z-50 border-b'>
@@ -35,7 +60,7 @@ const Header = ({ user }: { user: HeaderUser }) => {
             <BreadcrumbList>
               {segments.map((segment, index) => {
                 const isLast = index === segments.length - 1
-                const label = segment.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                const label = isLast && applicationNumber ? applicationNumber : segment.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                 const href = '/' + segments.slice(0, index + 1).join('/')
 
                 return (

@@ -2,6 +2,92 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.3.0 (2026-10-17)
+
+### Added
+- **Section-Wise Application View on Admin Portal (`src/app/(admin)/admin/applications/[id]/page.tsx`)**:
+  - Organized application details and category-specific dynamic fields into clear, structured sections matching the public application form.
+  - Grouped category attributes under respective section labels (`Organisation Details`, `Booth/Stall Details`, `Department Details`, `Service Details`, `Company & Brand Details`, `Promotion`, etc.).
+  - Textarea and multiselect fields now span full width across the two-column grid for clear readability by verification officers.
+- **Database Migration 0050 (`0050_form_fields_update.sql`)**:
+  - **Social Organizations (`ngos-social-organizations`)**: Removed `NGO` from `Type of Organization` options; configured options to `Society`, `Trust`, `Registered under Companies Act`, and `Others`.
+  - **Government Departments (`govt-departments`)**: Deactivated redundant columns (`Government / Department Type`, `Government Employee Designation`, `Government ID Number of the Officer`); renamed `Service Requirement` to `Public Service Details` within the `Service Details` section alongside Department Name.
+  - **Brand Promotion & Corporate (`brand-promotions`)**: Deactivated redundant category Contact section columns (`Business Email`, `Business Mobile Number`, `Representative Designation`) to streamline form entry.
+- **Redesigned Government-Grade Digital Acknowledgment & Success Page (`src/views/public/apply-success/SuccessPageView.tsx`)**:
+  - Rebuilt the post-submission and post-payment success screen with an authoritative, modern e-governance receipt layout matching KDB festival branding (gold ornamental crest, celebratory animated emerald success indicator, high-contrast typography).
+  - Prominent **Application Reference Callout** with 1-click clipboard copy, verified timestamp (IST), and live status pill badge (`Submitted / Payment Pending`).
+  - Integrated dedicated **Quick Action Buttons**:
+    - **Print Application Form ("आवेदन पत्र प्रिंट करें")**: Instant one-click PDF print view.
+    - **Download Payment Receipt ("भुगतान रसीद डाउनलोड करें")**: Official GST tax invoice payment receipt.
+    - **Track Application Status ("आवेदन स्थिति ट्रैक करें")**: Direct lookup link.
+  - **Structured Particulars Grid**: Key-value tiles displaying Applicant Name, Selected Category, Verified Registered Mobile, Submission Timestamp, Application Fee with Paid/Due status, and Razorpay Transaction Reference ID.
+  - **Interactive 4-Step Progress Roadmap ("आगे की प्रक्रिया")**: Clearly communicates the full lifecycle from Application Received ➔ Document Scrutiny ➔ Allotment / Draw ➔ Allotment Letter & Possession.
+  - **Official Helpdesk & Advisory Card**: Direct contact helpline (`01744-259503`), official email (`kdb.allotment@gmail.com`), office address, and anti-fraud advisory.
+- **Universal Cryptographic Token Access for Receipt & Print (`/apply/receipt/[token]`, `/apply/print/[token]`)**:
+  - Enhanced `/api/applications/summary`, `/api/applications/[id]/receipt`, and `/api/applications/[id]/print` to accept either bearer session tokens or encrypted `token` parameters (`x-application-token`).
+  - Applicants and testers can now preview or reopen the success page, payment receipt, and application print sheet directly in any browser tab or window without losing access when closing the original session.
+- **Single-Step Form OTP Verification & Direct In-Form Payment (`src/views/public/apply/ApplicationFormOrchestrator.tsx`)**:
+  - Integrated mobile OTP verification dialog directly on the main application form page, completely removing any reliance on a separate Review page.
+  - For paid categories, successful OTP verification immediately initializes and opens the Razorpay checkout modal directly on the form. Upon payment completion, the applicant is navigated directly to `/apply/[category]/success/[applicationNumber]`.
+  - For free categories, OTP verification finalizes the application and navigates straight to `/apply/[category]/success/[applicationNumber]`.
+- **Prominent Error Highlighting, Auto-Scroll & Focus on Form Validation (`src/views/public/apply/ApplicationFormOrchestrator.tsx`)**:
+  - Clicking Submit immediately validates all required fields, dynamic category inputs, documents, and declarations.
+  - If any mandatory field is missing or invalid, the form automatically scrolls to center the field in the viewport, sets cursor focus, and applies high-visibility red ring & background glow highlighting (`highlightElement`).
+  - Added visual error highlight targets to `#documents-section` and `#declarations-section` when submissions lack documents or unchecked declarations.
+- **Strict Portal-Wide Aadhaar Number Uniqueness**:
+  - Added pre-submission and blur availability checking for Aadhaar numbers in `useAvailabilityCheck.ts` and `ApplicantInfoStep.tsx`.
+  - Hardened `PATCH /api/applications/[id]` and `create-application.ts` with strict uniqueness validation against active applications (`status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected')`).
+  - If an existing Aadhaar is submitted, the form catches the duplicate, immediately highlights and focuses the Aadhaar field, and displays a localized error message without proceeding to OTP.
+- **Universal KDB Rights Declaration for All Categories (`src/views/public/apply/DeclarationCheckboxes.tsx`)**:
+  - Added mandatory declaration checkbox across all categories:
+    - Hindi: *किसी भी आवेदन को किसी भी समय स्वीकार व निरस्त करने का अधिकार कुरुक्षेत्र विकास बोर्ड के पास सुरक्षित है। मैं इस बारें में भविष्य में कोई भी क्लेम नहीं करूँगा।*
+    - English: *The Kurukshetra Development Board reserves the right to accept or reject any application at any time. I will not make any claim in this regard in the future.*
+  - Enforced in `DeclarationCheckboxes.tsx`, `ApplicationFormOrchestrator.tsx`, `ReviewPageView.tsx`, and `src/lib/applications/schema.ts`.
+- **Database Migration 0049 (`0049_refreshment_declaration_and_art_craft_fee.sql`)**:
+  - Updated Refreshment Stall (`refreshment-stalls`) category declaration in both English and Hindi.
+  - Updated Art & Craft (`special-art-craft`) allotment amount to ₹50,000 (`allotment_amount_paise = 5000000`).
+- **High-Traffic Rate Limiting Configuration (`src/lib/security/rate-limit.ts`)**:
+  - Introduced dedicated `applicationDraft` rate limit bucket granting 200 requests / 1 minute (resolved production 429 errors on form load caused by the previous 10/hour submission cap).
+  - Scaled global rate limits across endpoints to support high crowd traffic: `applicationSubmit` (200/min), `documentUpload` (200/min), `statusLookup` (200/min), `receiptLookup` (200/min), and `categoryRead` (500/min).
+  - Enhanced reverse proxy / CDN client IP discovery in `src/lib/security/request-meta.ts` to inspect `cf-connecting-ip`, `x-forwarded-for`, `x-real-ip`, and `x-client-ip`, preventing shared proxy IP collisions.
+- **Database Migration 0048 (`0048_standardize_aabantan_spelling.sql`)**:
+  - Created automated migration script to standardize existing category and notice descriptions in the database from `आवंटन` / `आवंटित` to `आबंटन` / `आबंटित`.
+
+### Changed
+- **Refreshment Stall Category Declaration (`refreshment-stalls`)**:
+  - Updated category-specific declaration in both Hindi and English:
+    - Hindi: *मैं केवल पैकेज्ड (पैक की हुई) खाद्य सामग्री ही बेचूँगा/बेचूँगी। मैं समझता/समझती हूँ कि इससे अलग प्रोडक्ट बेचते पाए जाने पर कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा उचित कार्रवाई की जाएगी और मेरा बूथ/स्टॉल रद्द कर दिया जाएगा। और इसके लिए मैं कोई क्लेम नहीं करूँगा/करुँगी।*
+    - English: *I will sell only packaged food items. I understand that if found selling any products other than this, appropriate action will be taken by the Kurukshetra Development Board (KDB) and my booth/stall will be cancelled, and I will not make any claim for this.*
+- **Art & Craft Category Allotment Amount & Wording (`special-art-craft`)**:
+  - Updated allotment amount from ₹30,000 to **₹50,000 (जीएसटी सहित) / ₹50,000 (including GST)** across database, `src/lib/content/category-guidelines.ts`, and `src/lib/content/apply-instructions.ts`.
+  - Replaced legacy `आवंटन शुल्क` / `आबंटन शुल्क` with standardized **`बूथ/स्टॉल आबंटन राशि`**.
+- **FAQ-9 Single Application Restriction Update (`src/components/public/FaqSection.tsx`)**:
+  - Updated FAQ-9 in both Hindi and English to state strictly that only one application is permitted per individual, organisation, or trader in their eligible category.
+  - Added warning that applying under concealed or altered identities will result in cancellation of stall allotment by Kurukshetra Development Board and regulatory action.
+- **Category Cards Allotment Method Standard Wording (`src/lib/content/category-guidelines.ts`)**:
+  - Updated `Allotment Method` (`selectionMethod`) across 6 key categories:
+    - *Social Organizations (Registered)*
+    - *Self Help Groups (SHG)*
+    - *Artisan Card Holders*
+    - *National Awardees*
+    - *Art & Craft*
+    - *Wooden Craft & Carpets (Large Space)*
+  - Standardized bilingual label to:
+    - English: `Direct Allotment / Draw (Please read all the guidelines carefully before applying online.)`
+    - Hindi: `सीधा आबंटन / ड्रॉ के माध्यम से (ऑनलाइन आवेदन करने से पहले कृपया सभी दिशा-निर्देश ध्यानपूर्वक पढ़ें।)`
+- **Portal-Wide Hindi Spelling Standardization (`आवंटन` / `आवंटित` -> `आबंटन` / `आबंटित`)**:
+  - Standardized spelling across all UI cards, headers, footers, guideline documents, print views, and status sheets:
+    - `src/components/public/CategoryCard.tsx`: "बूथ/स्टॉल आबंटन का तरीका", "बूथ/स्टॉल आबंटन राशि"
+    - `src/components/public/PublicHeader.tsx`: "आबंटन पत्र डाउनलोड करें"
+    - `src/components/public/PublicFooter.tsx`: "आबंटन प्रक्रिया" & portal summary
+    - `src/app/(public)/allotment-letter/page.tsx`: "आबंटन पत्र"
+    - `src/context/LanguageContext.tsx`: Translations for hero badge, features, category headings, and notices
+    - `src/views/public/category-detail/index.tsx`: "बूथ/स्टॉल आबंटन राशि"
+    - `src/views/public/guidelines/index.tsx`: Rule and procedure guidelines
+    - `src/components/public/ImportantNoticeSection.tsx`: Allotment and eligibility notices
+    - `src/views/public/apply-receipt/ReceiptPageView.tsx`, `SuccessPageView.tsx`, `ApplicationPrintSheet.tsx`, `status/index.tsx`, `templates.ts`: Application status badges (`आबंटित`, `पुनः आबंटित`) and official letterheads
+    - `src/lib/content/apply-instructions.ts` & `category-guidelines.ts`: Full Hindi textual guidelines and instructions
+
 ## v1.2.0 (2026-10-11)
 
 ### Added

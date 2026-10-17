@@ -244,7 +244,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accessToken: access.accessToken,
-          declaration: { informationCorrect: true, agreedToTerms: true },
+          declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true },
           recaptchaToken
         })
       })

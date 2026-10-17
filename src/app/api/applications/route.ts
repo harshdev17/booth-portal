@@ -23,9 +23,9 @@ const MAX_BODY_BYTES = 64 * 1024
  */
 export async function POST(request: Request) {
   const { ipAddress, userAgent } = getRequestMeta(request)
-  const rateLimitKey = ipAddress ?? 'unknown'
+  const rateLimitKey = ipAddress ?? (userAgent ? `ua:${userAgent.slice(0, 50)}` : 'unknown')
 
-  if (isRateLimited('applications.draft', rateLimitKey, RATE_LIMITS.applicationSubmit)) {
+  if (isRateLimited('applications.draft', rateLimitKey, RATE_LIMITS.applicationDraft)) {
     return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 })
   }
 

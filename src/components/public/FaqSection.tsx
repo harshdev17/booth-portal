@@ -94,11 +94,11 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     id: 'faq-9',
     questionHi: 'क्या अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में एक व्यक्ति या संस्था एक से अधिक बूथ/स्टॉल के लिए आवेदन कर सकती है?',
-    questionEn: 'Can one person or organisation apply for more than one booth/stall at International Gita Jayanti Mahotsav 2026?',
+    questionEn: 'Can an individual or organisation apply for more than one booth/stall at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'एक से अधिक बूथ/स्टॉल के लिए आवेदन करने की अनुमति संबंधित श्रेणी के नियमों और KDB की शर्तों पर निर्भर करती है। आवेदन करने से पहले संबंधित श्रेणी के दिशानिर्देश ध्यानपूर्वक पढ़ें। यदि इस संबंध में स्पष्ट जानकारी उपलब्ध नहीं है, तो एक से अधिक आवेदन जमा करने से पहले संबंधित प्राधिकरण से पुष्टि करें। एक से अधिक आवेदन करने से एक से अधिक बूथ/स्टॉल का आबंटन सुनिश्चित नहीं होता।',
+      'नहीं, एक व्यक्ति, संस्था या व्यापारी अपनी पात्र श्रेणी में केवल एक ही आवेदन कर सकता है। यदि कोई व्यक्ति या संस्था अपनी पहचान छिपाकर या बदलकर एक से अधिक बूथ/स्टॉल के लिए आवेदन करती पाई जाती है, तो कुरुक्षेत्र विकास बोर्ड द्वारा उसका बूथ/स्टॉल आबंटन निरस्त किया जाएगा तथा नियमानुसार उचित कार्रवाई की जाएगी।',
     answerEn:
-      'Whether more than one booth/stall application is permitted depends on that category’s rules and KDB’s conditions. Read the relevant category’s guidelines carefully before applying. If this is not clearly stated, confirm with the concerned authority before submitting more than one application. Submitting more than one application does not guarantee that more than one booth/stall will be allotted.'
+      'No, an individual, organisation, or trader can submit only one application under their eligible category. If any individual or organisation is found applying for more than one booth/stall by concealing or altering their identity, their booth/stall allotment will be cancelled by the Kurukshetra Development Board and appropriate action will be taken as per rules.'
   },
   {
     id: 'faq-10',

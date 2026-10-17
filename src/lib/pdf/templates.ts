@@ -62,7 +62,7 @@ const letterhead = (lang: 'hi' | 'en') => `
       <h1>${lang === 'hi' ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026' : 'International Geeta Jayanti Mahotsav 2026'}</h1>
       <p>${
         lang === 'hi'
-          ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आवंटन पोर्टल'
+          ? 'कुरुक्षेत्र विकास बोर्ड — बूथ/स्टॉल आबंटन पोर्टल'
           : 'Kurukshetra Development Board — Booth/Stall Allotment Portal'
       }</p>
     </div>
@@ -182,9 +182,9 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   selected: { en: 'Selected', hi: 'चयनित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
-  allotted: { en: 'Allotted', hi: 'आवंटित' },
+  allotted: { en: 'Allotted', hi: 'आबंटित' },
   cancelled: { en: 'Cancelled', hi: 'रद्द' },
-  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आवंटित' }
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आबंटित' }
 }
 
 // Mirrors print-application/index.tsx's result-phase layout field-for-field.

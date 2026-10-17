@@ -14,9 +14,9 @@ const AllotmentLetterPage = () => {
       <PublicHeader />
       <ComingSoonSection
         titleEn='Allotment Letter'
-        titleHi='आवंटन पत्र'
+        titleHi='आबंटन पत्र'
         messageEn='Allotment letters will be available to download here once booth/stall allotment is complete.'
-        messageHi='बूथ/स्टॉल आवंटन पूर्ण होने के बाद आवंटन पत्र यहाँ डाउनलोड के लिए उपलब्ध होगा।'
+        messageHi='बूथ/स्टॉल आबंटन पूर्ण होने के बाद आबंटन पत्र यहाँ डाउनलोड के लिए उपलब्ध होगा।'
       />
       <PublicFooter />
     </>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { maskAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { hashAadhaar, maskAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { assertOwnsEditableDraft, ApplicationStateError, updateDraftApplication } from '@/lib/applications/create-application'
 import { applicationSubmissionSchema } from '@/lib/applications/schema'
@@ -145,6 +145,56 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // unauthenticated or out-of-state request must never cause business
     // logic to execute first (see CLAUDE.md Section 15, .ai/SECURITY.md).
     await assertOwnsEditableDraft(applicationId, parsed.data.accessToken)
+
+    // Strictly enforce uniqueness for Aadhaar Number, WhatsApp Mobile Number, and Email
+    const aadhaarHash = hashAadhaar(parsed.data.common.aadhaarNumber)
+    const mobileNumber = parsed.data.common.mobileNumber.replace(/\D/g, '').slice(-10)
+    const email = parsed.data.common.email.trim().toLowerCase()
+
+    const aadhaarDup = await query<Array<{ id: number }>>(
+      `SELECT id FROM applications WHERE aadhaar_hash = ? AND id != ? AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected') LIMIT 1`,
+      [aadhaarHash, applicationId]
+    )
+
+    if (aadhaarDup.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'An application already exists with this Aadhaar number.',
+          field: 'aadhaarNumber'
+        },
+        { status: 400 }
+      )
+    }
+
+    const mobileDup = await query<Array<{ id: number }>>(
+      `SELECT id FROM applications WHERE mobile_number = ? AND id != ? AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected') LIMIT 1`,
+      [mobileNumber, applicationId]
+    )
+
+    if (mobileDup.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'An application already exists with this mobile number.',
+          field: 'mobileNumber'
+        },
+        { status: 400 }
+      )
+    }
+
+    const emailDup = await query<Array<{ id: number }>>(
+      `SELECT id FROM applications WHERE LOWER(email) = ? AND id != ? AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected') LIMIT 1`,
+      [email, applicationId]
+    )
+
+    if (emailDup.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'An application already exists with this email address.',
+          field: 'email'
+        },
+        { status: 400 }
+      )
+    }
 
     const fullInput = { ...parsed.data, declaration: { informationCorrect: true as const, agreedToTerms: true as const } }
     const validated = await validateSubmissionAgainstCategory(fullInput)

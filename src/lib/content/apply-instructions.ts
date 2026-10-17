@@ -77,7 +77,7 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'The ₹236 application fee (₹200 + 18% GST) is mandatory for all applicants and is Non-Refundable, whether the application is accepted, rejected, or a Booth/Stall is allotted.',
-        hi: '₹236 आवेदन शुल्क (₹200 + 18% GST) सभी आवेदकों के लिए अनिवार्य है और यह गैर-वापसी योग्य है। आवेदन स्वीकार हो, अस्वीकार हो या बूथ/स्टॉल आवंटित हो, किसी भी स्थिति में यह शुल्क वापस नहीं किया जाएगा।'
+        hi: '₹236 आवेदन शुल्क (₹200 + 18% GST) सभी आवेदकों के लिए अनिवार्य है और यह गैर-वापसी योग्य है। आवेदन स्वीकार हो, अस्वीकार हो या बूथ/स्टॉल आबंटित हो, किसी भी स्थिति में यह शुल्क वापस नहीं किया जाएगा।'
       },
       {
         en: 'Only the documents required for the selected Booth/Stall category will be verified.',
@@ -85,15 +85,15 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Only verified and eligible organisations will be included in the Booth/Stall allotment process.',
-        hi: 'केवल सत्यापित और पात्र संगठनों को बूथ/स्टॉल आवंटन प्रक्रिया में शामिल किया जाएगा।'
+        hi: 'केवल सत्यापित और पात्र संगठनों को बूथ/स्टॉल आबंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
         en: 'If eligible applications are within the available Booth/Stall limit, Booths/Stalls will be allotted directly.',
-        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा के भीतर रहती है, तो बूथ/स्टॉल सीधे आवंटित किए जाएंगे।'
+        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा के भीतर रहती है, तो बूथ/स्टॉल सीधे आबंटित किए जाएंगे।'
       },
       {
         en: 'If eligible applications exceed the available Booth/Stall limit, allotment will be made through a Draw.',
-        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा से अधिक होती है, तो बूथ/स्टॉल का आवंटन ड्रॉ के माध्यम से किया जाएगा।'
+        hi: 'यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा से अधिक होती है, तो बूथ/स्टॉल का आबंटन ड्रॉ के माध्यम से किया जाएगा।'
       },
       {
         en: 'The NGO Booth/Stall will be provided free of cost to the selected organisation.',
@@ -127,15 +127,15 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'The allotment process will be carried out as per the prescribed rules and guidelines.',
-        hi: 'बूथ/स्टॉल आवंटन प्रक्रिया निर्धारित नियमों और दिशानिर्देशों के अनुसार की जाएगी।'
+        hi: 'बूथ/स्टॉल आबंटन प्रक्रिया निर्धारित नियमों और दिशानिर्देशों के अनुसार की जाएगी।'
       },
       {
         en: 'KDB has the right to change the number of available Booths/Stalls, Booth/Stall locations, allotment process, or other arrangements if required for the International Gita Jayanti Mahotsav 2026.',
-        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता अनुसार KDB उपलब्ध बूथ/स्टॉलों की संख्या, बूथ/स्टॉल के स्थान, आवंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
+        hi: 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता अनुसार KDB उपलब्ध बूथ/स्टॉलों की संख्या, बूथ/स्टॉल के स्थान, आबंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
       },
       {
         en: 'Please regularly check ThanesarInfo.com for the latest updates and announcements related to the International Gita Jayanti Mahotsav 2026, Booth/Stall application, and allotment process.',
-        hi: 'बूथ/स्टॉल आवेदन और आवंटन प्रक्रिया से संबंधित नवीनतम अपडेट और घोषणाओं के लिए ThanesarInfo.com को नियमित रूप से चेक करते रहें।'
+        hi: 'बूथ/स्टॉल आवेदन और आबंटन प्रक्रिया से संबंधित नवीनतम अपडेट और घोषणाओं के लिए ThanesarInfo.com को नियमित रूप से चेक करते रहें।'
       }
     ]
   },
@@ -225,7 +225,7 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Applications containing incomplete, incorrect, misleading, or false information may be rejected or cancelled.',
-        hi: 'अधूरी, गलत, भ्रामक या झूठी जानकारी देने पर आवेदन अस्वीकार किया जा सकता है या आवंटन रद्द किया जा सकता है।'
+        hi: 'अधूरी, गलत, भ्रामक या झूठी जानकारी देने पर आवेदन अस्वीकार किया जा सकता है या आबंटन रद्द किया जा सकता है।'
       },
       {
         en: 'KDB may ask for additional documents or information if required.',
@@ -237,15 +237,15 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Violation of the applicable rules may result in cancellation of the booth/stall allotment.',
-        hi: 'नियमों का उल्लंघन करने पर बूथ/स्टॉल का आवंटन रद्द किया जा सकता है।'
+        hi: 'नियमों का उल्लंघन करने पर बूथ/स्टॉल का आबंटन रद्द किया जा सकता है।'
       },
       {
         en: 'The final decision regarding eligibility, verification, and booth/stall allotment will rest with KDB.',
-        hi: 'पात्रता, दस्तावेज सत्यापन और बूथ/स्टॉल आवंटन से संबंधित अंतिम निर्णय KDB का होगा।'
+        hi: 'पात्रता, दस्तावेज सत्यापन और बूथ/स्टॉल आबंटन से संबंधित अंतिम निर्णय KDB का होगा।'
       },
       {
         en: 'For updates about the application, verification, and allotment process, regularly visit ThanesarInfo.com.',
-        hi: 'आवेदन, दस्तावेज सत्यापन और आवंटन से जुड़े नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखें।'
+        hi: 'आवेदन, दस्तावेज सत्यापन और आबंटन से जुड़े नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखें।'
       },
       {
         en: 'Any dispute will be subject to the jurisdiction of courts at Kurukshetra, as applicable.',
@@ -297,7 +297,7 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be allowed to participate in the physical auction. Eligible applicants must submit an auction participation fee of ₹50,000 through a Demand Draft (DD). This amount will be refunded according to the prescribed procedure to applicants who are not allotted a booth/stall.',
-        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदक ही प्रत्यक्ष नीलामी में भाग ले सकेंगे। पात्र आवेदकों को ₹50,000 नीलामी भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के माध्यम से जमा करना होगा। जिन आवेदकों को बूथ/स्टॉल आवंटित नहीं होगा, उन्हें यह राशि निर्धारित प्रक्रिया के अनुसार वापस कर दी जाएगी।'
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदक ही प्रत्यक्ष नीलामी में भाग ले सकेंगे। पात्र आवेदकों को ₹50,000 नीलामी भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के माध्यम से जमा करना होगा। जिन आवेदकों को बूथ/स्टॉल आबंटित नहीं होगा, उन्हें यह राशि निर्धारित प्रक्रिया के अनुसार वापस कर दी जाएगी।'
       },
       {
         en: 'For the successful bidder, the ₹50,000 participation fee will serve as the security deposit. No additional security deposit of ₹50,000 will be required.',
@@ -401,15 +401,15 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for allotment.',
-        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदकों को ही आवंटन प्रक्रिया में शामिल किया जाएगा।'
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदकों को ही आबंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
         en: 'Booths/stalls will be allotted directly or through a Draw, depending on availability and the number of eligible applications.',
-        hi: 'उपलब्ध बूथ / बूथ/स्टॉल की संख्या और पात्र आवेदनों के आधार पर सीधे आवंटन या ड्रॉ के माध्यम से आवंटन किया जाएगा।'
+        hi: 'उपलब्ध बूथ / बूथ/स्टॉल की संख्या और पात्र आवेदनों के आधार पर सीधे आबंटन या ड्रॉ के माध्यम से आबंटन किया जाएगा।'
       },
       {
         en: 'The Kurukshetra Development Board (KDB) will have the final authority to accept or reject applications and approve booth/stall allotments.',
-        hi: 'आवेदन स्वीकार या अस्वीकार करने तथा बूथ / बूथ/स्टॉल आवंटन का अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा।'
+        hi: 'आवेदन स्वीकार या अस्वीकार करने तथा बूथ / बूथ/स्टॉल आबंटन का अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा।'
       }
     ]
   },
@@ -610,15 +610,15 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'Only SHGs verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for stall allotment.',
-        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित स्वयं सहायता समूहों को ही स्टॉल आवंटन प्रक्रिया में शामिल किया जाएगा।'
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित स्वयं सहायता समूहों को ही स्टॉल आबंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
         en: 'A total of 60 stalls are reserved for SHGs: 40 for Haryana and 20 for outside Haryana. If eligible applications exceed the available stalls in a region, allotment will be made through a transparent draw. Otherwise, stalls may be allotted directly according to the prescribed process.',
-        hi: 'स्वयं सहायता समूहों के लिए कुल 60 स्टॉल आरक्षित हैं, जिनमें 40 हरियाणा और 20 हरियाणा के बाहर के समूहों के लिए हैं। यदि पात्र आवेदनों की संख्या उपलब्ध स्टॉलों से अधिक होती है, तो पारदर्शी ड्रॉ के माध्यम से आवंटन किया जाएगा। अन्यथा, निर्धारित प्रक्रिया के अनुसार सीधे स्टॉल आवंटित किए जा सकते हैं।'
+        hi: 'स्वयं सहायता समूहों के लिए कुल 60 स्टॉल आरक्षित हैं, जिनमें 40 हरियाणा और 20 हरियाणा के बाहर के समूहों के लिए हैं। यदि पात्र आवेदनों की संख्या उपलब्ध स्टॉलों से अधिक होती है, तो पारदर्शी ड्रॉ के माध्यम से आबंटन किया जाएगा। अन्यथा, निर्धारित प्रक्रिया के अनुसार सीधे स्टॉल आबंटित किए जा सकते हैं।'
       },
       {
         en: 'The stall will be provided free of cost to the selected SHG. No separate stall allotment fee will be charged.',
-        hi: 'चयनित स्वयं सहायता समूहों को स्टॉल निःशुल्क दिया जाएगा। इसके लिए कोई अलग स्टॉल आवंटन शुल्क नहीं देना होगा।'
+        hi: 'चयनित स्वयं सहायता समूहों को स्टॉल निःशुल्क दिया जाएगा। इसके लिए कोई अलग स्टॉल आबंटन शुल्क नहीं देना होगा।'
       },
       {
         en: 'Only products made or manufactured by the SHG itself may be displayed and sold at the stall. Permitted products may include achar, masale, uncooked papad, and other eligible food and non-food products.',
@@ -630,27 +630,27 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'The stall cannot be transferred, rented, or sublet to another person or organization without permission from KDB.',
-        hi: 'KDB की अनुमति के बिना आवंटित स्टॉल किसी अन्य व्यक्ति या संस्था को हस्तांतरित, किराए पर या सबलेट नहीं किया जा सकता।'
+        hi: 'KDB की अनुमति के बिना आबंटित स्टॉल किसी अन्य व्यक्ति या संस्था को हस्तांतरित, किराए पर या सबलेट नहीं किया जा सकता।'
       },
       {
         en: 'Once submitted, the application cannot be modified. Applications containing incomplete, incorrect, misleading, or false information may be rejected. If such information is discovered after allotment, the stall allotment may be cancelled.',
-        hi: 'आवेदन जमा करने के बाद उसमें बदलाव नहीं किया जा सकेगा। आवेदन में गलत, अधूरी, भ्रामक या झूठी जानकारी पाए जाने पर आवेदन अस्वीकार किया जा सकता है। आवंटन के बाद ऐसी जानकारी सामने आने पर स्टॉल आवंटन रद्द किया जा सकता है।'
+        hi: 'आवेदन जमा करने के बाद उसमें बदलाव नहीं किया जा सकेगा। आवेदन में गलत, अधूरी, भ्रामक या झूठी जानकारी पाए जाने पर आवेदन अस्वीकार किया जा सकता है। आबंटन के बाद ऐसी जानकारी सामने आने पर स्टॉल आबंटन रद्द किया जा सकता है।'
       },
       {
         en: 'KDB reserves the right to verify the submitted documents and inspect allotted stalls. All selected SHGs must follow the prescribed rules and guidelines.',
-        hi: 'KDB को जमा किए गए दस्तावेजों की जाँच करने और आवंटित स्टॉल का निरीक्षण करने का अधिकार होगा। सभी चयनित समूहों को KDB द्वारा निर्धारित नियमों और दिशा-निर्देशों का पालन करना होगा।'
+        hi: 'KDB को जमा किए गए दस्तावेजों की जाँच करने और आबंटित स्टॉल का निरीक्षण करने का अधिकार होगा। सभी चयनित समूहों को KDB द्वारा निर्धारित नियमों और दिशा-निर्देशों का पालन करना होगा।'
       },
       {
         en: 'KDB may change the number of stalls, stall locations, allotment process, or other arrangements for the International Gita Jayanti Mahotsav 2026, if required.',
-        hi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता पड़ने पर KDB स्टॉलों की संख्या, स्थान, आवंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
+        hi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आवश्यकता पड़ने पर KDB स्टॉलों की संख्या, स्थान, आबंटन प्रक्रिया या अन्य व्यवस्थाओं में बदलाव कर सकता है।'
       },
       {
         en: 'The final decision regarding application acceptance, eligibility, and stall allotment will rest with KDB. Any disputes will be subject to the jurisdiction of the competent courts at Kurukshetra, as applicable.',
-        hi: 'आवेदन स्वीकार करने, पात्रता तय करने और स्टॉल आवंटन से संबंधित अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा। किसी भी विवाद की स्थिति में, जहाँ लागू हो, कुरुक्षेत्र के सक्षम न्यायालयों का क्षेत्राधिकार होगा।'
+        hi: 'आवेदन स्वीकार करने, पात्रता तय करने और स्टॉल आबंटन से संबंधित अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा। किसी भी विवाद की स्थिति में, जहाँ लागू हो, कुरुक्षेत्र के सक्षम न्यायालयों का क्षेत्राधिकार होगा।'
       },
       {
         en: 'Please regularly check ThanesarInfo.com for the latest updates regarding SHG applications, document verification, eligibility, draw, and stall allotment.',
-        hi: 'कृपया SHG आवेदन, दस्तावेज सत्यापन, पात्रता, ड्रॉ और स्टॉल आवंटन से संबंधित नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखते रहें।'
+        hi: 'कृपया SHG आवेदन, दस्तावेज सत्यापन, पात्रता, ड्रॉ और स्टॉल आबंटन से संबंधित नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखते रहें।'
       }
     ]
   },
@@ -741,8 +741,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन शुल्क ₹236 है और यह गैर-वापसी योग्य है।'
       },
       {
-        en: 'The booth/stall allotment amount is ₹30,000.',
-        hi: 'स्टॉल/बूथ आबंटन राशि ₹30,000 है।'
+        en: 'The booth/stall allotment amount is ₹50,000 (including GST).',
+        hi: 'बूथ/स्टॉल आबंटन राशि ₹50,000 (जीएसटी सहित) है।'
       },
       {
         en: 'Paying the application fee does not guarantee selection or booth/stall allotment.',
@@ -801,11 +801,11 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       },
       {
         en: 'The booth/stall allotment amount is ₹60,000.',
-        hi: 'बूथ/स्टॉल आवंटन राशि ₹60,000 है।'
+        hi: 'बूथ/स्टॉल आबंटन राशि ₹60,000 है।'
       },
       {
         en: 'Allotment will be through Direct Allotment / Draw, based on verified and eligible applications and the availability of suitable spaces.',
-        hi: 'सत्यापित और पात्र आवेदनों की संख्या तथा उपलब्ध स्थानों के आधार पर सीधे आवंटन / ड्रॉ के माध्यम से बूथ/स्टॉल आवंटित किए जाएँगे।'
+        hi: 'सत्यापित और पात्र आवेदनों की संख्या तथा उपलब्ध स्थानों के आधार पर सीधे आबंटन / ड्रॉ के माध्यम से बूथ/स्टॉल आबंटित किए जाएँगे।'
       },
       {
         en: 'The final booth/stall size and location will be decided by KDB according to availability and the approved layout.',

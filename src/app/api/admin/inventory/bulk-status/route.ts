@@ -7,7 +7,7 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
 
-const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled'] as const
+const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled', 'rejected'] as const
 
 const bulkStatusSchema = z.object({
   ids: z.array(z.string()).min(1).max(500),

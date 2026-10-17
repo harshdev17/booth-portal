@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { query } from '@/lib/db/client'
 import { logServerError } from '@/lib/security/error-log'
+import { decodeApplicationNumber } from '@/lib/security/opaque-id'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
 
@@ -38,16 +39,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params
+  const isAppNumber = /^(?:IGM|KDB)-\d{4}-\d{6}$/.test(id)
   const applicationId = Number(id)
 
-  if (!Number.isInteger(applicationId) || applicationId <= 0) {
+  if (!isAppNumber && (!Number.isInteger(applicationId) || applicationId <= 0)) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 })
   }
 
   const authHeader = request.headers.get('authorization')
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
+  const tokenHeader = request.headers.get('x-application-token')
 
-  if (!accessToken) {
+  if (!accessToken && !tokenHeader) {
     return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
   }
 
@@ -66,14 +69,32 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'registration'
-       WHERE a.id = ?
+       WHERE ${isAppNumber ? 'a.application_number = ?' : 'a.id = ?'}
        LIMIT 1`,
-      [applicationId]
+      [isAppNumber ? id : applicationId]
     )
 
     const application = rows[0]
 
-    if (!application || !verifyAccessToken(accessToken, application.access_token_hash)) {
+    if (!application) {
+      return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    }
+
+    let isAuthorized = false
+
+    if (tokenHeader) {
+      const decodedNumber = decodeApplicationNumber(tokenHeader)
+
+      if (decodedNumber && decodedNumber === application.application_number) {
+        isAuthorized = true
+      }
+    }
+
+    if (!isAuthorized && accessToken) {
+      isAuthorized = verifyAccessToken(accessToken, application.access_token_hash)
+    }
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 

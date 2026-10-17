@@ -6,7 +6,7 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
 
-const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled'] as const
+const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled', 'rejected'] as const
 
 type EditableStatus = (typeof EDITABLE_STATUSES)[number]
 

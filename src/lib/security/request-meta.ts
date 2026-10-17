@@ -8,9 +8,20 @@ import 'server-only'
  * src/app/server/auth-actions.ts for the equivalent used in server actions).
  */
 export function getRequestMeta(request: Request): { ipAddress?: string; userAgent?: string } {
+  const cfConnectingIp = request.headers.get('cf-connecting-ip')
   const forwardedFor = request.headers.get('x-forwarded-for')
-  const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : (request.headers.get('x-real-ip') ?? undefined)
+  const realIp = request.headers.get('x-real-ip')
+  const clientIp = request.headers.get('x-client-ip')
+
+  const ipAddress =
+    cfConnectingIp?.trim() ||
+    (forwardedFor ? forwardedFor.split(',')[0].trim() : undefined) ||
+    realIp?.trim() ||
+    clientIp?.trim() ||
+    undefined
+
   const userAgent = request.headers.get('user-agent') ?? undefined
 
   return { ipAddress, userAgent }
 }
+

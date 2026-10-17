@@ -76,8 +76,19 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
        WHERE a.id = ?`,
       [applicationId]
     ),
-    query<Array<{ field_definition_id: number; label: string; label_hi: string | null; value: string }>>(
-      `SELECT cfd.id AS field_definition_id, cfd.label, cfd.label_hi, afv.value
+    query<
+      Array<{
+        field_definition_id: number
+        label: string
+        label_hi: string | null
+        value: string
+        section: string | null
+        section_hi: string | null
+        input_type: string
+        display_order: number
+      }>
+    >(
+      `SELECT cfd.id AS field_definition_id, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
        FROM application_field_values afv
        JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
        WHERE afv.application_id = ?
@@ -156,6 +167,16 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   const approvalBlockedByDocs =
     isReviewStage && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
+
+  // Group category dynamic field values by section while preserving display order
+  const categorySectionsMap = new Map<string, typeof fieldValues>()
+  for (const fv of fieldValues) {
+    const sectionName = fv.section?.trim() || 'Category Details'
+    const list = categorySectionsMap.get(sectionName) ?? []
+    list.push(fv)
+    categorySectionsMap.set(sectionName, list)
+  }
+  const categorySections = Array.from(categorySectionsMap.entries())
 
   return (
     <div className='flex flex-col gap-6'>
@@ -324,91 +345,104 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             <CardHeader>
               <CardTitle className='text-base'>Application Details</CardTitle>
             </CardHeader>
-            <CardContent className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='category'
-                label='Category'
-                value={app.category_name}
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('category')}
-              />
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='selection_method'
-                label='Selection Method'
-                value={app.selection_method}
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('selection_method')}
-              />
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='shop_option'
-                label='Booth/Stall Option'
-                value={app.shop_option_label ?? '—'}
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('shop_option')}
-              />
-              <ApplicationFieldRow
-                applicationId={id}
-                fieldKey='submitted_at'
-                label='Submitted At'
-                value={
-                  app.submitted_at
-                    ? new Date(app.submitted_at).toLocaleString('en-IN')
-                    : `Draft (created ${new Date(app.created_at).toLocaleDateString('en-IN')})`
-                }
-                canCheck={canVerifyDocuments}
-                initiallyChecked={checkedFieldKeys.has('submitted_at')}
-              />
-              {app.work_purpose && (
+            <CardContent>
+              <SectionLabel>Application Information</SectionLabel>
+              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
                 <ApplicationFieldRow
                   applicationId={id}
-                  fieldKey='work_purpose'
-                  label='Purpose of Work'
-                  value={app.work_purpose}
-                  full
+                  fieldKey='category'
+                  label='Category'
+                  value={app.category_name}
                   canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('work_purpose')}
+                  initiallyChecked={checkedFieldKeys.has('category')}
                 />
-              )}
-              {app.achievement_experience && (
                 <ApplicationFieldRow
                   applicationId={id}
-                  fieldKey='achievement_experience'
-                  label='Achievements / Experience'
-                  value={app.achievement_experience}
-                  full
+                  fieldKey='selection_method'
+                  label='Selection Method'
+                  value={app.selection_method}
                   canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('achievement_experience')}
+                  initiallyChecked={checkedFieldKeys.has('selection_method')}
                 />
-              )}
-              {app.remarks && (
                 <ApplicationFieldRow
                   applicationId={id}
-                  fieldKey='remarks'
-                  label='Applicant Remarks'
-                  value={app.remarks}
-                  full
+                  fieldKey='shop_option'
+                  label='Booth/Stall Option'
+                  value={app.shop_option_label ?? '—'}
                   canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('remarks')}
+                  initiallyChecked={checkedFieldKeys.has('shop_option')}
                 />
-              )}
-              {fieldValues.map(fv => {
-                const fieldKey = `dynamic:${fv.field_definition_id}`
-
-                return (
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='submitted_at'
+                  label='Submitted At'
+                  value={
+                    app.submitted_at
+                      ? new Date(app.submitted_at).toLocaleString('en-IN')
+                      : `Draft (created ${new Date(app.created_at).toLocaleDateString('en-IN')})`
+                  }
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('submitted_at')}
+                />
+                {app.work_purpose && (
                   <ApplicationFieldRow
-                    key={fieldKey}
                     applicationId={id}
-                    fieldKey={fieldKey}
-                    label={fv.label}
-                    value={fv.value}
+                    fieldKey='work_purpose'
+                    label='Purpose of Work'
+                    value={app.work_purpose}
+                    full
                     canCheck={canVerifyDocuments}
-                    initiallyChecked={checkedFieldKeys.has(fieldKey)}
+                    initiallyChecked={checkedFieldKeys.has('work_purpose')}
                   />
-                )
-              })}
+                )}
+                {app.achievement_experience && (
+                  <ApplicationFieldRow
+                    applicationId={id}
+                    fieldKey='achievement_experience'
+                    label='Achievements / Experience'
+                    value={app.achievement_experience}
+                    full
+                    canCheck={canVerifyDocuments}
+                    initiallyChecked={checkedFieldKeys.has('achievement_experience')}
+                  />
+                )}
+                {app.remarks && (
+                  <ApplicationFieldRow
+                    applicationId={id}
+                    fieldKey='remarks'
+                    label='Applicant Remarks'
+                    value={app.remarks}
+                    full
+                    canCheck={canVerifyDocuments}
+                    initiallyChecked={checkedFieldKeys.has('remarks')}
+                  />
+                )}
+              </div>
+
+              {categorySections.map(([sectionName, sectionFields]) => (
+                <div key={sectionName} className='mt-6'>
+                  <SectionLabel>{sectionName}</SectionLabel>
+                  <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+                    {sectionFields.map(fv => {
+                      const fieldKey = `dynamic:${fv.field_definition_id}`
+                      const isFull = fv.input_type === 'textarea' || fv.input_type === 'multiselect'
+
+                      return (
+                        <ApplicationFieldRow
+                          key={fieldKey}
+                          applicationId={id}
+                          fieldKey={fieldKey}
+                          label={fv.label}
+                          value={fv.value}
+                          full={isFull}
+                          canCheck={canVerifyDocuments}
+                          initiallyChecked={checkedFieldKeys.has(fieldKey)}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
