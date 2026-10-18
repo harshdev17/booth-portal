@@ -159,6 +159,23 @@ function FieldSeparator({
   )
 }
 
+const HINDI_ERROR_TRANSLATIONS: Record<string, string> = {
+  'Enter at least 2 letters.': 'कम से कम 2 अक्षर दर्ज करें।',
+  'Too long (maximum 100 characters).': 'अत्यधिक लंबा (अधिकतम 100 अक्षर)।',
+  'Use letters only — no numbers or symbols.': 'केवल अक्षरों का उपयोग करें — अंक या प्रतीक मान्य नहीं हैं।',
+  'Email address is required.': 'ईमेल पता आवश्यक है।',
+  'Enter a valid email address, for example name@example.com.': 'मान्य ईमेल पता दर्ज करें (उदा. name@example.com)।',
+  'Aadhaar number must be exactly 12 digits': 'आधार संख्या ठीक 12 अंकों की होनी चाहिए।',
+  'Enter a valid 12-digit Aadhaar number.': 'मान्य 12-अंकों का आधार नंबर दर्ज करें।',
+  'PIN code must be a 6-digit number': 'पिन कोड 6 अंकों का होना चाहिए।',
+  'Enter a valid 6-digit PIN code.': 'मान्य 6 अंकों का पिन कोड दर्ज करें।',
+  'Enter a valid 10-digit mobile number.': 'मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।',
+  'Mobile number cannot be all the same digits.': 'मोबाइल नंबर के सभी अंक समान नहीं हो सकते।',
+  'This field is required.': 'यह फ़ील्ड अनिवार्य है।',
+  'Please select an option': 'कृपया एक विकल्प चुनें।',
+  'Alternate number must be different from your WhatsApp number.': 'वैकल्पिक नंबर आपके व्हाट्सएप नंबर से अलग होना चाहिए।'
+}
+
 function FieldError({
   className,
   children,
@@ -179,12 +196,16 @@ function FieldError({
     const uniqueErrors = [...new Map(errors.map(error => [error?.message, error])).values()]
 
     if (uniqueErrors?.length == 1) {
-      return uniqueErrors[0]?.message
+      const msg = uniqueErrors[0]?.message
+      return msg ? (HINDI_ERROR_TRANSLATIONS[msg] ?? msg) : null
     }
 
     return (
       <ul className='ml-4 flex list-disc flex-col gap-1'>
-        {uniqueErrors.map((error, index) => error?.message && <li key={index}>{error.message}</li>)}
+        {uniqueErrors.map(
+          (error, index) =>
+            error?.message && <li key={index}>{HINDI_ERROR_TRANSLATIONS[error.message] ?? error.message}</li>
+        )}
       </ul>
     )
   }, [children, errors])

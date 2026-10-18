@@ -12,6 +12,7 @@ import {
   getShopOptionsForCategory,
   isCategoryAcceptingApplications
 } from '@/lib/applications/categories'
+import { getCategoryMapBySlug } from '@/lib/settings/category-maps'
 import ApplicationFormOrchestrator from '@/views/public/apply/ApplicationFormOrchestrator'
 import ApplicationsClosedNotice from '@/views/public/apply/ApplicationsClosedNotice'
 import type { CategoryConfigResponse } from '@/views/public/apply/types'
@@ -83,10 +84,11 @@ const ApplyPage = async ({
     )
   }
 
-  const [shopOptions, fieldDefinitions, documentDefinitions] = await Promise.all([
+  const [shopOptions, fieldDefinitions, documentDefinitions, mapRow] = await Promise.all([
     getShopOptionsForCategory(category.id),
     getFieldDefinitionsForCategory(category.id),
-    getDocumentDefinitionsForCategory(category.id)
+    getDocumentDefinitionsForCategory(category.id),
+    getCategoryMapBySlug(category.slug)
   ])
 
   const fee = getFeeBreakdown(category)
@@ -145,7 +147,8 @@ const ApplyPage = async ({
       required: Boolean(d.is_required),
       allowedMimeTypes: d.allowed_mime_types.split(','),
       maxSizeBytes: d.max_size_bytes
-    }))
+    })),
+    mapPdfPath: mapRow?.pdfPath ?? null
   }
 
   return (

@@ -51,6 +51,7 @@ export type CategoryConfigResponse = {
   shopOptions: ShopOptionDto[]
   fields: CategoryFieldDto[]
   documents: CategoryDocumentDto[]
+  mapPdfPath?: string | null
 }
 
 export type SubmissionResult = {

@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, BookOpenIcon, CreditCardIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react'
+import { AlertCircleIcon, BookOpenIcon, CreditCardIcon, Loader2Icon, MapIcon, MapPinIcon, TriangleAlertIcon } from 'lucide-react'
 import { useForm, type FieldErrors } from 'react-hook-form'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -82,26 +82,21 @@ function loadRazorpayCheckoutScript(): Promise<boolean> {
 }
 
 function highlightElement(el: HTMLElement) {
-  const container = (el.closest('[data-invalid="true"], [data-slot="field"]') as HTMLElement | null)
-  const targets = container && container !== el ? [el, container] : [el]
-
-  for (const t of targets) {
-    t.classList.add(
-      'ring-4',
-      'ring-red-500',
-      'border-red-500',
-      'bg-red-50/70',
-      'transition-all',
-      'duration-300',
-      'shadow-lg'
-    )
+  // If it's a section card container (like documents-section or declarations-section):
+  if (el.id === 'documents-section' || el.id === 'declarations-section') {
+    const card = (el.querySelector('.rounded-2xl') as HTMLElement | null) ?? el
+    card.classList.add('ring-2', 'ring-red-400', 'border-red-400', 'transition-all', 'duration-300')
+    setTimeout(() => {
+      card.classList.remove('ring-2', 'ring-red-400', 'border-red-400')
+    }, 3500)
+    return
   }
 
+  // Highlight ONLY the control itself (e.g. input, select) — never the outer field container!
+  el.classList.add('ring-2', 'ring-red-400', 'border-red-500', 'transition-all', 'duration-200')
   setTimeout(() => {
-    for (const t of targets) {
-      t.classList.remove('ring-4', 'ring-red-500', 'border-red-500', 'bg-red-50/70', 'shadow-lg')
-    }
-  }, 4500)
+    el.classList.remove('ring-2', 'ring-red-400', 'border-red-500')
+  }, 3500)
 }
 
 function scrollToFirstError(
@@ -271,6 +266,8 @@ const ApplicationFormOrchestrator = ({
   const [isCreatingDraft, setIsCreatingDraft] = useState(true)
   const [uploadState, setUploadState] = useState<DocumentUploadState>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showMissingDocErrors, setShowMissingDocErrors] = useState(false)
+  const [showMissingDeclarationErrors, setShowMissingDeclarationErrors] = useState(false)
   const [isProceeding, setIsProceeding] = useState(false)
   const [guidelinesConfirmed, setGuidelinesConfirmed] = useState(false)
   const draftRequested = useRef(false)
@@ -506,14 +503,23 @@ const ApplicationFormOrchestrator = ({
         return
       }
 
-      setUploadState(prev => ({
-        ...prev,
-        [documentKey]: {
-          status: 'uploaded',
-          fileName: body.originalFilename ?? file.name,
-          documentId: body.documentId
+      setUploadState(prev => {
+        const next = {
+          ...prev,
+          [documentKey]: {
+            status: 'uploaded' as const,
+            fileName: body.originalFilename ?? file.name,
+            documentId: body.documentId
+          }
         }
-      }))
+        const allUploaded = config.documents
+          .filter(d => d.required)
+          .every(d => next[d.key]?.status === 'uploaded')
+
+        if (allUploaded) setShowMissingDocErrors(false)
+
+        return next
+      })
     } catch {
       setUploadState(prev => ({
         ...prev,
@@ -829,6 +835,7 @@ const ApplicationFormOrchestrator = ({
       }
 
       if (!requiredDocsUploaded) {
+        setShowMissingDocErrors(true)
         setSubmitError(
           lang === 'hi'
             ? 'आगे बढ़ने से पहले कृपया सभी अनिवार्य दस्तावेज अपलोड करें।'
@@ -845,6 +852,7 @@ const ApplicationFormOrchestrator = ({
       }
 
       if (!declarationsAccepted) {
+        setShowMissingDeclarationErrors(true)
         setSubmitError(
           lang === 'hi'
             ? 'आगे बढ़ने से पहले कृपया सभी घोषणाओं पर सही का निशान लगाएँ।'
@@ -926,6 +934,12 @@ const ApplicationFormOrchestrator = ({
       }
     },
     errors => {
+      if (!requiredDocsUploaded) {
+        setShowMissingDocErrors(true)
+      }
+      if (!declarationsAccepted) {
+        setShowMissingDeclarationErrors(true)
+      }
       scrollToFirstError(errors, hasDuplicateField, duplicateFields, requiredDocsUploaded, declarationsAccepted)
       setSubmitError(
         lang === 'hi'
@@ -1019,7 +1033,7 @@ const ApplicationFormOrchestrator = ({
             guideline bullets inline (see category-detail/index.tsx), so
             an applicant mid-form lands on the specific rules that apply to
             them rather than scrolling through all 9 categories. */}
-        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4 sm:flex-row sm:items-center'>
+        <div className='mb-3 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4 sm:flex-row sm:items-center'>
           <div className='flex items-start gap-2.5'>
             <TriangleAlertIcon className='mt-0.5 size-5 shrink-0 text-[#dc2626]' />
             <div>
@@ -1041,6 +1055,32 @@ const ApplicationFormOrchestrator = ({
             <BookOpenIcon className='size-4' />
             {lang === 'hi' ? 'दिशा-निर्देश देखें' : 'View Guidelines'}
           </Link>
+        </div>
+
+        {/* Links directly to this category's map PDF (or stall-booth-locations if not uploaded) */}
+        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
+          <div className='flex items-start gap-2.5'>
+            <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
+            <div>
+              <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
+                {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
+              </p>
+              <p className='text-xs sm:text-sm text-[#9a3412]/80'>
+                {lang === 'hi'
+                  ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
+                  : 'Check the stall/booth layout and location map for this category at Brahma Sarovar before applying.'}
+              </p>
+            </div>
+          </div>
+          <a
+            href={config.mapPdfPath || '/stall-booth-locations'}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
+          >
+            <MapIcon className='size-4' />
+            {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
+          </a>
         </div>
 
         {draftError ? (
@@ -1220,6 +1260,7 @@ const ApplicationFormOrchestrator = ({
                       uploadState={uploadState}
                       onUpload={handleUpload}
                       accessToken={draft?.accessToken ?? null}
+                      highlightMissing={showMissingDocErrors}
                     />
                   ) : (
                     <div className='flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/70 p-4 text-sm text-red-700'>
@@ -1243,8 +1284,18 @@ const ApplicationFormOrchestrator = ({
 
               <DeclarationCheckboxes
                 value={declarations}
-                onChange={setDeclarations}
+                onChange={next => {
+                  setDeclarations(next)
+                  const allAccepted =
+                    next.informationCorrect &&
+                    next.agreedToTerms &&
+                    next.kdbRights &&
+                    (!categoryDeclarationText || next.categoryDeclaration)
+
+                  if (allAccepted) setShowMissingDeclarationErrors(false)
+                }}
                 categoryDeclaration={categoryDeclarationText}
+                highlightMissing={showMissingDeclarationErrors}
               />
 
               {recaptchaRequired && (

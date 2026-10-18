@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 
-import { MapIcon } from 'lucide-react'
+import { MapIcon, MapPinIcon } from 'lucide-react'
 
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
 import { useLanguage } from '@/context/LanguageContext'
@@ -94,6 +94,32 @@ const CategoryDetail = ({
         </div>
       </dl>
 
+      {/* Links directly to this category's map PDF (or stall-booth-locations if not uploaded) */}
+      <div className='mb-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
+        <div className='flex items-start gap-2.5'>
+          <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
+          <div>
+            <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
+              {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
+            </p>
+            <p className='text-xs sm:text-sm text-[#9a3412]/80'>
+              {lang === 'hi'
+                ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
+                : 'Check the stall/booth layout and location map for this category at Brahma Sarovar.'}
+            </p>
+          </div>
+        </div>
+        <a
+          href={mapPdfPath || '/stall-booth-locations'}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
+        >
+          <MapIcon className='size-4' />
+          {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
+        </a>
+      </div>
+
       {(docOverride?.length ?? documents.length) > 0 && (
         <div className='mb-8'>
           <h2 className='mb-3 text-2xl font-extrabold text-[var(--kdb-primary)] sm:text-3xl'>
@@ -139,7 +165,15 @@ const CategoryDetail = ({
         </div>
       )}
 
-      <div className='flex flex-wrap items-center gap-4'>
+
+      <div className='flex flex-wrap items-center justify-between gap-4'>
+        <Link
+          href='/'
+          className='inline-block rounded-lg border border-[var(--kdb-border)] bg-white px-8 py-3.5 text-base font-bold text-[var(--kdb-primary)] hover:bg-[var(--kdb-light-bg)]'
+        >
+          {lang === 'hi' ? '← मुख्य पृष्ठ पर वापस जाएं' : '← Back to Home'}
+        </Link>
+
         {isAcceptingApplications ? (
           <Link
             href={`/apply/${category.slug}`}
@@ -152,25 +186,6 @@ const CategoryDetail = ({
             {lang === 'hi' ? 'यह श्रेणी वर्तमान में आवेदन के लिए स्वीकार नहीं कर रही है।' : 'This category is not currently accepting applications.'}
           </p>
         )}
-
-        {mapPdfPath && (
-          <a
-            href={mapPdfPath}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='inline-flex items-center gap-1.5 rounded-lg border border-[var(--kdb-secondary)] px-8 py-3.5 text-base font-bold text-[var(--kdb-secondary)] transition hover:bg-[var(--kdb-secondary)] hover:text-white'
-          >
-            <MapIcon className='size-4' />
-            {lang === 'hi' ? 'मानचित्र देखें' : 'View Map'}
-          </a>
-        )}
-
-        <Link
-          href='/'
-          className='inline-block rounded-lg border border-[var(--kdb-border)] bg-white px-8 py-3.5 text-base font-bold text-[var(--kdb-primary)] hover:bg-[var(--kdb-light-bg)]'
-        >
-          {lang === 'hi' ? '← मुख्य पृष्ठ पर वापस जाएं' : '← Back to Home'}
-        </Link>
       </div>
     </div>
   )
