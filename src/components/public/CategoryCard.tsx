@@ -54,6 +54,23 @@ const CATEGORY_ICON_MAP: Record<string, { Icon: LucideIcon; color: string }> = {
 
 const DEFAULT_CATEGORY_ICON = { Icon: StoreIcon, color: 'bg-[#0d3b66]' }
 
+// These six categories use the same public-facing wording supplied by KDB.
+// Their internal selection_method may differ, but the card must accurately
+// communicate that direct allotment or a draw can be used after review.
+const DIRECT_OR_DRAW_CATEGORY_SLUGS = new Set([
+  'ngos-social-organizations',
+  'self-help-groups',
+  'artisan-card-holders',
+  'national-awardees',
+  'special-art-craft',
+  'wooden-craft-carpets'
+])
+
+const DIRECT_OR_DRAW_LABEL = {
+  en: 'Direct Allotment / Draw (Please read all the guidelines carefully before applying online.)',
+  hi: 'सीधा आबंटन / ड्रॉ के माध्यम से (ऑनलाइन आवेदन करने से पहले कृपया सभी दिशा-निर्देश ध्यानपूर्वक पढ़ें।)'
+}
+
 // Selection-method display text per language — matches the terminology used
 // in the authoritative per-category content the user supplied (e.g. "ड्रॉ के
 // ज़रिए / कुरुक्षेत्र डेवलपमेंट बोर्ड द्वारा निर्धारित" for manual/draw
@@ -77,9 +94,11 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
 
   const title = lang === 'hi' ? (category.nameHi || category.name) : category.name
 
-  const methodLabel =
-    getCategoryGuideline(category.slug)?.selectionMethod?.[lang === 'hi' ? 'hi' : 'en'] ??
-    SELECTION_METHOD_LABEL[category.selectionMethod][lang === 'hi' ? 'hi' : 'en']
+  const languageKey = lang === 'hi' ? 'hi' : 'en'
+  const methodLabel = DIRECT_OR_DRAW_CATEGORY_SLUGS.has(category.slug)
+    ? DIRECT_OR_DRAW_LABEL[languageKey]
+    : (getCategoryGuideline(category.slug)?.selectionMethod?.[languageKey] ??
+      SELECTION_METHOD_LABEL[category.selectionMethod][languageKey])
 
   const allotmentNote = lang === 'hi' ? category.allotmentAmountNoteHi ?? category.allotmentAmountNote : category.allotmentAmountNote
 
