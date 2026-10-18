@@ -47,6 +47,34 @@ const GuidelinesView = ({ mapPdfBySlug }: { mapPdfBySlug: Record<string, string>
   const { lang } = useLanguage()
   const [openSlug, setOpenSlug] = useState<string | null>(CATEGORY_GUIDELINES[0]?.slug ?? null)
 
+  const handleToggle = (slug: string) => {
+    if (openSlug === slug) {
+      setOpenSlug(null)
+      return
+    }
+
+    setOpenSlug(slug)
+
+    // Wait for the previous accordion to collapse and the DOM height to settle,
+    // then smoothly scroll the newly opened accordion item into comfortable view below sticky header
+    setTimeout(() => {
+      const el = document.getElementById(`guideline-${slug}`)
+      if (el) {
+        const stickyHeader = document.querySelector('.sticky.top-0') as HTMLElement | null
+        const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 64
+        const topOffset = headerHeight + 16
+
+        const elementPosition = el.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - topOffset
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth'
+        })
+      }
+    }, 80)
+  }
+
   return (
     <div className='bg-[#fdf8ef]'>
       <div className='mx-auto max-w-7xl px-4 py-12 sm:px-6'>
@@ -67,10 +95,14 @@ const GuidelinesView = ({ mapPdfBySlug }: { mapPdfBySlug: Record<string, string>
             const number = String(idx + 1).padStart(2, '0')
 
             return (
-              <div key={cat.slug} className='overflow-hidden rounded-2xl border border-[#eaddc0] bg-[#fffbf2]'>
+              <div
+                id={`guideline-${cat.slug}`}
+                key={cat.slug}
+                className='scroll-mt-24 overflow-hidden rounded-2xl border border-[#eaddc0] bg-[#fffbf2] transition-colors duration-200'
+              >
                 <button
                   type='button'
-                  onClick={() => setOpenSlug(isOpen ? null : cat.slug)}
+                  onClick={() => handleToggle(cat.slug)}
                   aria-expanded={isOpen}
                   className='flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6'
                 >
