@@ -230,3 +230,91 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
 
   return documentShell(`Application-${data.applicationNumber}`, body)
 }
+
+export type AllotmentLetterPdfData = {
+  applicationNumber: string
+  representativeName: string
+  fatherName?: string | null
+  organisationName?: string | null
+  categoryName: string
+  categoryNameHi?: string | null
+  stallNumber: string
+  mobileNumber?: string | null
+  email?: string | null
+  address?: string | null
+  allotmentAmountPaise?: number | null
+  allotmentPaidAt?: string | null
+  submittedAt?: string | null
+}
+
+export function allotmentLetterHtml(data: AllotmentLetterPdfData, lang: 'hi' | 'en' = 'en'): string {
+  const isHi = lang === 'hi'
+  const isPaid = (data.allotmentAmountPaise ?? 0) > 0
+  const feeLabel = isPaid
+    ? formatRupees(data.allotmentAmountPaise!)
+    : isHi
+      ? 'निःशुल्क (Exempt / Free)'
+      : 'Exempt / Free'
+
+  const fields = [
+    field(isHi ? 'संदर्भ संख्या' : 'Reference Number', `KDB/IGM-2026/ALLOT/${data.applicationNumber}`),
+    field(isHi ? 'आवंटन तिथि' : 'Allotment Date', new Date().toLocaleDateString('en-IN')),
+    field(isHi ? 'आवेदन क्रमांक' : 'Application Number', data.applicationNumber),
+    field(isHi ? 'आवंटित स्टॉल क्रमांक' : 'Allotted Booth / Stall No.', data.stallNumber),
+    field(isHi ? 'श्रेणी' : 'Category', isHi ? (data.categoryNameHi ?? data.categoryName) : data.categoryName),
+    data.organisationName ? field(isHi ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
+    field(isHi ? 'आवंटी का नाम' : 'Allottee Name', data.representativeName),
+    data.fatherName ? field(isHi ? 'पिता / पति का नाम' : "Father's / Husband's Name", data.fatherName) : '',
+    data.mobileNumber ? field(isHi ? 'मोबाइल नंबर' : 'Mobile Number', data.mobileNumber) : '',
+    data.email ? field(isHi ? 'ईमेल' : 'Email Address', data.email) : '',
+    data.address ? field(isHi ? 'पूरा पता' : 'Postal Address', data.address, true) : '',
+    field(isHi ? 'स्टॉल आवंटन शुल्क' : 'Stall Allotment Fee', feeLabel),
+    data.allotmentPaidAt ? field(isHi ? 'भुगतान तिथि' : 'Paid At', new Date(data.allotmentPaidAt).toLocaleString('en-IN')) : ''
+  ].join('')
+
+  const body = `
+    ${letterhead(lang)}
+    <div class="title-row" style="margin-bottom: 10pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt;">
+      <div>
+        <h2 style="font-size: 13pt; margin: 0; color: #000; font-weight: 800;">
+          ${isHi ? 'आधिकारिक बूथ / स्टॉल आवंटन पत्र' : 'OFFICIAL BOOTH / STALL ALLOTMENT ORDER'}
+        </h2>
+        <p style="font-size: 8pt; margin: 2pt 0 0; color: #444;">
+          ${isHi ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — कुरुक्षेत्र विकास बोर्ड' : 'International Geeta Jayanti Mahotsav 2026 — Kurukshetra Development Board'}
+        </p>
+      </div>
+      <span class="badge" style="font-size: 10pt; font-weight: 800; border: 2pt solid #000; padding: 4pt 10pt; background: #fafafa;">
+        STALL: ${escapeHtml(data.stallNumber)}
+      </span>
+    </div>
+
+    <div class="grid" style="margin-top: 8pt;">${fields}</div>
+
+    <div style="margin-top: 14pt; border: 1pt solid #000; padding: 8pt 10pt; font-size: 8pt; background-color: #fafafa; border-radius: 4pt;">
+      <p style="margin: 0 0 4pt; font-weight: bold; text-transform: uppercase;">
+        ${isHi ? 'महत्वपूर्ण निर्देश एवं शर्तें:' : 'Important Terms & Instructions:'}
+      </p>
+      <ol style="margin: 0; padding-left: 14pt; line-height: 1.4;">
+        <li>${isHi ? 'यह आवंटन पत्र अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आधिकारिक है।' : 'This allotment order is valid exclusively for the official duration of International Geeta Jayanti Mahotsav 2026.'}</li>
+        <li>${isHi ? 'आवंटी को केवल आवंटित स्थान व उद्देश्य के लिए ही स्टॉल का उपयोग करने की अनुमति है।' : 'The allottee must occupy only the allocated booth/stall and conduct only approved activities.'}</li>
+        <li>${isHi ? 'स्टॉल परिसर में स्वच्छता, अग्नि सुरक्षा एवं केडीबी के नियमों का पूर्ण पालन अनिवार्य है।' : 'Compliance with fire safety regulations, waste management, and KDB fair bylaws is mandatory.'}</li>
+        <li>${isHi ? 'यह पत्र प्रवेश एवं स्टॉल आधिपत्य लेते समय प्रस्तुत करना आवश्यक है।' : 'Please carry this original allotment letter along with a valid Government Photo ID at the time of taking stall possession.'}</li>
+      </ol>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24pt; padding-top: 8pt;">
+      <div style="font-size: 8pt; color: #555;">
+        <p style="margin: 0;"><strong>Verified Online Record:</strong> IGM-2026-PORTAL</p>
+        <p style="margin: 2pt 0 0;">Generated on: ${new Date().toLocaleString('en-IN')}</p>
+      </div>
+      <div style="text-align: center; min-width: 140pt;">
+        <div style="border-top: 1.5pt solid #000; padding-top: 4pt; font-weight: bold; font-size: 9pt;">
+          Estate Officer / CEO
+        </div>
+        <div style="font-size: 8pt; color: #333;">Kurukshetra Development Board</div>
+      </div>
+    </div>
+  `
+
+  return documentShell(`Allotment-${data.applicationNumber}`, body)
+}

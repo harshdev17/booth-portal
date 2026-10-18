@@ -1,11 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircleIcon, CheckCircle2Icon, Loader2Icon, SearchIcon, UploadIcon } from 'lucide-react'
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  CreditCardIcon,
+  DownloadIcon,
+  FileTextIcon,
+  Loader2Icon,
+  SearchIcon,
+  StoreIcon,
+  UploadIcon
+} from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -16,6 +26,35 @@ import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatDate } from '@/lib/format-date'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
+
+const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
+
+function loadRazorpayCheckoutScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (typeof window === 'undefined') {
+      resolve(false)
+      return
+    }
+
+    if ((window as unknown as { Razorpay?: unknown }).Razorpay) {
+      resolve(true)
+      return
+    }
+
+    const existing = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_SCRIPT_SRC}"]`)
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true))
+      existing.addEventListener('error', () => resolve(false))
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = RAZORPAY_CHECKOUT_SCRIPT_SRC
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 const lookupSchema = z.object({
   applicationNumber: z
@@ -41,9 +80,20 @@ type DocumentRow = {
 
 type StatusResult = {
   applicationId: number
+  accessToken?: string
   status: string
+  stallNumber: string | null
+  allotmentPaymentEnabled: boolean
+  allotmentAmountPaise: number | null
+  allotmentPaymentDeadlineAt: string | null
+  allotmentPaymentStatus: string | null
+  allotmentPaidAt: string | null
   categoryName: string
   categoryNameHi: string | null
+  categorySlug: string
+  feePaise: number | null
+  feeBasePaise: number | null
+  gstPercent: number | null
   submittedAt: string | null
   documents: DocumentRow[]
 }
@@ -84,6 +134,14 @@ const STATUS_HINT: Record<string, { en: string; hi: string }> = {
   query_raised: {
     en: 'The review team needs a corrected document. Please upload it below.',
     hi: 'समीक्षा टीम को सही दस्तावेज़ चाहिए। कृपया नीचे अपलोड करें।'
+  },
+  payment_required: {
+    en: 'Congratulations! Your booth/stall has been selected. Please complete the allotment payment to confirm your booking.',
+    hi: 'बधाई! आपके बूथ/स्टॉल का चयन हो गया है। आबंटन पुष्टि के लिए कृपया आबंटन शुल्क का भुगतान करें।'
+  },
+  allotted: {
+    en: 'Congratulations! Your booth/stall is confirmed and allotted. You can download your official Allotment Letter below.',
+    hi: 'बधाई! आपका बूथ/स्टॉल सफलतापूर्वक आबंटित और पुष्टीकृत हो गया है। आप नीचे अपना आधिकारिक आबंटन पत्र डाउनलोड कर सकते हैं।'
   }
 }
 
@@ -104,28 +162,28 @@ const StatusLookup = () => {
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null)
   const [reuploadedKeys, setReuploadedKeys] = useState<string[]>([])
 
+  // Allotment payment state
+  const [isPayingAllotment, setIsPayingAllotment] = useState(false)
+  const [allotmentPaymentError, setAllotmentPaymentError] = useState<string | null>(null)
+  const [allotmentPaymentSuccess, setAllotmentPaymentSuccess] = useState(false)
+
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
     defaultValues: { applicationNumber: '' }
   })
 
   // Prefills from ?appNo=... when arriving via the homepage's status-check
-  // search bar (StatusCheckSection.tsx), so the applicant isn't asked to
-  // retype the number they already entered — reported live as a real
-  // annoyance ("sahi bhi daalo to next page fir se daalne ka kehta hai").
-  // Deliberately only prefills, doesn't auto-submit: the applicant should
-  // still see and confirm the number before an OTP is sent.
+  // search bar (StatusCheckSection.tsx)
   useEffect(() => {
     const appNo = searchParams.get('appNo')
 
     if (appNo) {
       form.setValue('applicationNumber', appNo)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount against the initial query param only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Phase 1: application number alone only requests a WhatsApp OTP to the
-  // mobile number on file — it never returns status by itself.
+  // Phase 1: application number triggers a WhatsApp OTP to mobile on file
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
     setIsLoading(true)
@@ -145,10 +203,16 @@ const StatusLookup = () => {
         return
       }
 
-      setApplicationNumber(values.applicationNumber)
-      setMaskedMobile(body.maskedMobile)
-      setOtpCode('')
-      setPhase('otp')
+      if (body.otpRequired) {
+        setApplicationNumber(values.applicationNumber)
+        setMaskedMobile(body.maskedMobile || '')
+        setOtpCode('')
+        setPhase('otp')
+      } else {
+        setApplicationNumber(values.applicationNumber)
+        setResult(body)
+        setPhase('result')
+      }
     } catch {
       setError(
         lang === 'hi'
@@ -160,7 +224,7 @@ const StatusLookup = () => {
     }
   }
 
-  // Phase 2: application number + the 6-digit code returns status/documents.
+  // Phase 2: application number + the 6-digit code returns status/documents
   const verifyOtpAndFetchStatus = async () => {
     if (!applicationNumber) return
 
@@ -208,47 +272,166 @@ const StatusLookup = () => {
       formData.append('documentKey', documentKey)
       formData.append('file', file)
 
-      // No access token to send — ownership here is proven by the OTP just
-      // verified for this application's mobile number (server re-checks it
-      // independently; see hasRecentVerifiedOtp in the documents route).
+      const headers: Record<string, string> = {}
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
       const response = await fetch(`/api/applications/${result.applicationId}/documents`, {
         method: 'POST',
+        headers,
         body: formData
       })
 
       const body = await response.json()
 
       if (!response.ok) {
-        setUploadMessage(body.error ?? (lang === 'hi' ? 'फ़ाइल अपलोड नहीं हो सकी। पुनः प्रयास करें।' : 'Could not upload the file. Please try again.'))
+        setUploadMessage(body.error ?? (lang === 'hi' ? 'दस्तावेज़ अपलोड विफल रहा।' : 'Upload failed.'))
 
         return
       }
 
-      // Reflect the response locally — re-fetching the authoritative status
-      // would require another OTP, which isn't worth it for what the
-      // server-side upload response already confirms happened.
-      setResult(prev =>
-        prev
-          ? {
-              ...prev,
-              documents: prev.documents.map(doc =>
-                doc.documentKey === documentKey
-                  ? { ...doc, verificationStatus: 'pending', verificationRemarks: null, originalFilename: body.originalFilename }
-                  : doc
-              )
-            }
-          : prev
-      )
-      setReuploadedKeys(prev => [...prev, documentKey])
-      setUploadedFilename(body.originalFilename ?? file.name)
+      setUploadedFilename(file.name)
+      setReuploadedKeys(prev => (prev.includes(documentKey) ? prev : [...prev, documentKey]))
+
+      setResult(prev => {
+        if (!prev) return null
+
+        return {
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.documentKey === documentKey
+              ? { ...d, verificationStatus: 'pending', verificationRemarks: null, originalFilename: file.name }
+              : d
+          )
+        }
+      })
     } catch {
       setUploadMessage(
         lang === 'hi'
-          ? 'सर्वर से संपर्क नहीं हो सका। कृपया अपना कनेक्शन जांचें।'
-          : 'Could not reach the server. Please check your connection and try again.'
+          ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।'
+          : 'Could not reach the server. Please try again.'
       )
     } finally {
       setUploadingKey(null)
+    }
+  }
+
+  // Allotment fee payment via Razorpay
+  const handlePayAllotmentFee = async () => {
+    if (!result || !result.applicationId) return
+
+    setIsPayingAllotment(true)
+    setAllotmentPaymentError(null)
+
+    try {
+      const loaded = await loadRazorpayCheckoutScript()
+      if (!loaded) {
+        setAllotmentPaymentError(
+          lang === 'hi'
+            ? 'पेमेंट गेटवे लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+            : 'Could not load payment gateway. Please check your internet connection.'
+        )
+        setIsPayingAllotment(false)
+        return
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
+      const orderRes = await fetch(`/api/applications/${result.applicationId}/payment/order`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ purpose: 'pay_now' })
+      })
+
+      const orderData = await orderRes.json()
+
+      if (!orderRes.ok) {
+        setAllotmentPaymentError(
+          orderData.error ??
+            (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate allotment payment.')
+        )
+        setIsPayingAllotment(false)
+        return
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const razorpay = new (window as any).Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amountPaise,
+        currency: orderData.currency || 'INR',
+        order_id: orderData.orderId,
+        name: 'Kurukshetra Development Board',
+        description:
+          lang === 'hi'
+            ? `स्टॉल आबंटन शुल्क — ${orderData.applicationNumber}`
+            : `Stall Allotment Fee — ${orderData.applicationNumber}`,
+        theme: { color: '#0c2847' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            })
+
+            const verifyData = await verifyRes.json()
+
+            if (!verifyRes.ok) {
+              setAllotmentPaymentError(
+                verifyData.error ??
+                  (lang === 'hi'
+                    ? 'भुगतान सत्यापन विफल रहा। यदि राशि कट गई है तो सहायता से संपर्क करें।'
+                    : 'Payment verification failed. If amount was deducted, please contact support.')
+              )
+              setIsPayingAllotment(false)
+              return
+            }
+
+            setAllotmentPaymentSuccess(true)
+            setResult(prev =>
+              prev
+                ? {
+                    ...prev,
+                    status: 'allotted',
+                    allotmentPaymentStatus: 'success',
+                    allotmentPaidAt: new Date().toISOString()
+                  }
+                : null
+            )
+            setIsPayingAllotment(false)
+          } catch {
+            setAllotmentPaymentError(
+              lang === 'hi'
+                ? 'सत्यापन के दौरान त्रुटि हुई। कृपया सहायता से संपर्क करें।'
+                : 'Error verifying payment. Please contact support.'
+            )
+            setIsPayingAllotment(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPayingAllotment(false)
+          }
+        }
+      })
+
+      razorpay.open()
+    } catch {
+      setAllotmentPaymentError(
+        lang === 'hi'
+          ? 'भुगतान शुरू करने में समस्या आई।'
+          : 'An error occurred while starting payment.'
+      )
+      setIsPayingAllotment(false)
     }
   }
 
@@ -355,6 +538,181 @@ const StatusLookup = () => {
 
       {phase === 'result' && result && (
         <div className='flex flex-col gap-5'>
+          {allotmentPaymentSuccess && (
+            <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
+              <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+              <div className='text-sm'>
+                <p className='font-semibold text-emerald-900'>
+                  {lang === 'hi' ? 'आबंटन शुल्क भुगतान सफल!' : 'Allotment Fee Payment Successful!'}
+                </p>
+                <p className='mt-1 text-emerald-800'>
+                  {lang === 'hi'
+                    ? 'आपका बूथ/स्टॉल सफलतापूर्वक आबंटित हो गया है। आप नीचे अपना आधिकारिक आबंटन पत्र डाउनलोड कर सकते हैं।'
+                    : 'Your booth/stall has been successfully allotted. You can download your official Allotment Letter below.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Allotment Payment Required Alert Card */}
+          {effectiveStatus === 'payment_required' && (
+            <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 to-orange-50 p-5 shadow-sm'>
+              <div className='flex items-start gap-3.5'>
+                <div className='rounded-full bg-amber-500 p-2 text-white shrink-0'>
+                  <StoreIcon className='size-5' />
+                </div>
+                <div className='flex-1'>
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <h2 className='text-base font-bold text-amber-950'>
+                      {lang === 'hi'
+                        ? 'बधाई! आपके स्टॉल का चयन हो गया है'
+                        : 'Congratulations! Your Stall is Selected'}
+                    </h2>
+                    <span className='rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-extrabold text-amber-900 border border-amber-300'>
+                      {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
+                    </span>
+                  </div>
+
+                  <p className='mt-1 text-xs text-amber-900/90 leading-relaxed'>
+                    {lang === 'hi'
+                      ? 'लकी ड्रॉ में आपके बूथ/स्टॉल का चयन हुआ है। अपना आबंटन सुरक्षित व पक्का करने के लिए कृपया अंतिम तिथि से पूर्व आबंटन शुल्क का भुगतान करें।'
+                      : 'Your application was selected in the lucky draw. To secure and confirm your stall allotment, please complete the payment before the deadline.'}
+                  </p>
+
+                  <div className='mt-3.5 grid grid-cols-2 gap-3 rounded-lg bg-white/80 p-3 text-xs border border-amber-200/70'>
+                    {result.stallNumber && (
+                      <div>
+                        <span className='text-muted-foreground block text-[11px] font-medium'>
+                          {lang === 'hi' ? 'आबंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}
+                        </span>
+                        <span className='font-mono text-sm font-extrabold text-[#0c2847]'>
+                          {result.stallNumber}
+                        </span>
+                      </div>
+                    )}
+
+                    {result.allotmentAmountPaise !== null && (
+                      <div>
+                        <span className='text-muted-foreground block text-[11px] font-medium'>
+                          {lang === 'hi' ? 'देय आबंटन शुल्क' : 'Allotment Fee Payable'}
+                        </span>
+                        <span className='text-sm font-extrabold text-amber-900'>
+                          ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    )}
+
+                    {result.allotmentPaymentDeadlineAt && (
+                      <div className='col-span-2 pt-1 border-t border-amber-100'>
+                        <span className='text-amber-800 font-semibold'>
+                          {lang === 'hi' ? 'भुगतान की अंतिम तिथि: ' : 'Payment Deadline: '}
+                        </span>
+                        <span className='text-amber-950 font-bold'>
+                          {new Date(result.allotmentPaymentDeadlineAt).toLocaleString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {allotmentPaymentError && (
+                    <div className='mt-3'>
+                      <Alert variant='destructive'>
+                        <AlertCircleIcon className='size-4' />
+                        <AlertDescription>{allotmentPaymentError}</AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+
+                  <div className='mt-4'>
+                    <Button
+                      type='button'
+                      onClick={handlePayAllotmentFee}
+                      disabled={isPayingAllotment}
+                      className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-10'
+                    >
+                      {isPayingAllotment ? (
+                        <>
+                          <Loader2Icon className='size-4 animate-spin mr-2' />
+                          {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
+                        </>
+                      ) : (
+                        <>
+                          <CreditCardIcon className='size-4 mr-2' />
+                          {lang === 'hi'
+                            ? `आबंटन शुल्क का भुगतान करें (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`
+                            : `Pay Allotment Fee (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Allotted & Confirmed Card */}
+          {effectiveStatus === 'allotted' && (
+            <div className='overflow-hidden rounded-xl border-2 border-emerald-400 bg-linear-to-br from-emerald-50 to-teal-50 p-5 shadow-sm'>
+              <div className='flex items-start gap-3.5'>
+                <div className='rounded-full bg-emerald-600 p-2 text-white shrink-0'>
+                  <CheckCircle2Icon className='size-5' />
+                </div>
+                <div className='flex-1'>
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <h2 className='text-base font-bold text-emerald-950'>
+                      {lang === 'hi'
+                        ? 'बधाई! आपका बूथ/स्टॉल आबंटित हो गया है'
+                        : 'Congratulations! Your Stall is Allotted'}
+                    </h2>
+                    <span className='rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-extrabold text-emerald-900 border border-emerald-300'>
+                      {lang === 'hi' ? 'आबंटित' : 'Allotted'}
+                    </span>
+                  </div>
+
+                  <p className='mt-1 text-xs text-emerald-900/90 leading-relaxed'>
+                    {lang === 'hi'
+                      ? 'आपका स्टॉल आबंटन आधिकारिक रूप से पुष्टीकृत हो चुका है। आप अपना आबंटन पत्र यहाँ से डाउनलोड कर सकते हैं।'
+                      : 'Your stall allotment is officially confirmed. You can view and download your official Allotment Letter below.'}
+                  </p>
+
+                  {result.stallNumber && (
+                    <div className='mt-3.5 rounded-lg bg-white/80 p-3 text-xs border border-emerald-200/70 flex items-center justify-between'>
+                      <span className='text-muted-foreground font-medium'>
+                        {lang === 'hi' ? 'आबंटित स्टॉल क्रमांक:' : 'Allotted Stall Number:'}
+                      </span>
+                      <span className='font-mono text-base font-extrabold text-[#0c2847]'>
+                        {result.stallNumber}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className='mt-4 flex flex-col sm:flex-row gap-2.5'>
+                    <Link
+                      href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
+                      className='flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2.5 px-4 shadow-xs transition'
+                    >
+                      <DownloadIcon className='size-4' />
+                      {lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
+                    </Link>
+                    <Link
+                      href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+                      className='inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-700/30 bg-white hover:bg-emerald-50 text-emerald-900 font-bold text-xs py-2.5 px-4 shadow-xs transition'
+                    >
+                      <FileTextIcon className='size-4 text-emerald-700' />
+                      {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Application'}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {uploadedFilename && (
             <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
               <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
@@ -395,6 +753,25 @@ const StatusLookup = () => {
                 <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'स्थिति' : 'Status'}</dt>
                 <dd className='text-right font-semibold text-[var(--kdb-primary)]'>{statusText}</dd>
               </div>
+              {result.stallNumber && (
+                <div className='flex items-start justify-between gap-4 px-5 py-3 bg-amber-50/50'>
+                  <dt className='font-semibold text-amber-900'>{lang === 'hi' ? 'आबंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}</dt>
+                  <dd className='text-right font-bold font-mono text-amber-950'>{result.stallNumber}</dd>
+                </div>
+              )}
+              {result.allotmentPaymentEnabled && result.allotmentAmountPaise !== null && (
+                <div className='flex items-start justify-between gap-4 px-5 py-3'>
+                  <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'आबंटन शुल्क' : 'Allotment Fee'}</dt>
+                  <dd className='text-right font-medium text-[var(--kdb-text)]'>
+                    ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
+                    {result.allotmentPaymentStatus === 'success' && (
+                      <span className='ml-2 inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full'>
+                        {lang === 'hi' ? 'भुगतान सफल' : 'Paid'}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
               {result.submittedAt && (
                 <div className='flex items-start justify-between gap-4 px-5 py-3'>
                   <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'जमा करने की तिथि' : 'Submitted on'}</dt>
@@ -487,6 +864,23 @@ const StatusLookup = () => {
             </div>
           )}
 
+          {/* Quick links to print and allotment letter */}
+          <div className='flex items-center justify-between text-xs text-muted-foreground pt-1 px-1'>
+            <Link
+              href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+              className='underline hover:text-[var(--kdb-primary)] flex items-center gap-1'
+            >
+              <FileTextIcon className='size-3.5' />
+              {lang === 'hi' ? 'आवेदन पत्र प्रिंट करें' : 'Print Application Form'}
+            </Link>
+            <Link
+              href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
+              className='underline hover:text-[var(--kdb-primary)] flex items-center gap-1'
+            >
+              <DownloadIcon className='size-3.5' />
+              {lang === 'hi' ? 'आबंटन पत्र पोर्टल' : 'Allotment Letter Portal'}
+            </Link>
+          </div>
         </div>
       )}
     </div>

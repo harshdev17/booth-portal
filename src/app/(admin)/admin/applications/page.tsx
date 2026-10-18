@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { CheckCircle2Icon, ClockIcon, FileTextIcon, ShieldCheckIcon } from 'lucide-react'
+import { CheckCircle2Icon, ClockIcon, FileTextIcon, ListOrderedIcon, ShieldCheckIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
+import StickyHorizontalTableScroll from '@/components/shared/StickyHorizontalTableScroll'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
@@ -36,6 +37,12 @@ type ApplicationItem = {
   fee_paise: number | null
   submitted_at: string | null
   created_at: string
+  stall_number: string | null
+  draw_allocation_type: 'allotted' | 'waitlist' | null
+  waitlist_position: number | null
+  allotted_at: string | null
+  allotment_payment_status: string
+  allotment_payment_amount_paise: number | null
 }
 
 const STATUS_CONFIG: Record<
@@ -59,6 +66,7 @@ const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> =
   { key: 'approved', label: 'Approved for Draw', statuses: ['approved'] },
   { key: 'query_raised', label: 'Query Raised', statuses: ['query_raised'] },
   { key: 'selected', label: 'Allotted / Selected', statuses: ['selected', 'allotted', 're_allotted'] },
+  { key: 'waitlist', label: 'Waitlist', statuses: [] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] }
 ]
 
@@ -103,7 +111,14 @@ const ApplicationsAdminPage = async ({
   // (payment_pending / payment_failed) rows are never listed.
   const tab = QUICK_FILTERS.find(f => f.key === status)
 
-  if (tab) {
+  if (tab?.key === 'waitlist') {
+    conditions.push(
+      `EXISTS (SELECT 1 FROM draw_allocations waitlist_allocation
+        WHERE waitlist_allocation.application_id = a.id
+          AND waitlist_allocation.allocation_type = 'waitlist'
+          AND waitlist_allocation.status = 'allotted')`
+    )
+  } else if (tab) {
     conditions.push(`a.status IN (${tab.statuses.map(() => '?').join(', ')})`)
     params.push(...tab.statuses)
   } else {
@@ -142,17 +157,31 @@ const ApplicationsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'a.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [applications, categories, statsRows, countRows] = await Promise.all([
+  const [applications, categories, statsRows, countRows, waitlistRows] = await Promise.all([
     query<ApplicationItem[]>(
       `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
               a.organisation_name, a.representative_name, a.mobile_number, a.email,
               a.status, c.fee_paise, a.submitted_at, a.created_at,
+              su.stall_number,
+              latest_draw.allocation_type AS draw_allocation_type,
+              latest_draw.waitlist_position,
+              latest_draw.created_at AS allotted_at,
+              COALESCE(allotment_payment.status, 'not_activated') AS allotment_payment_status,
+              COALESCE(allotment_payment.amount_paise, c.allotment_amount_paise) AS allotment_payment_amount_paise,
               (SELECT COUNT(*) FROM application_documents d
                 WHERE d.application_id = a.id AND d.verification_status = 'query') AS open_queries,
               (SELECT COUNT(*) FROM application_documents d
                 WHERE d.application_id = a.id AND d.reuploaded_at IS NOT NULL AND d.verification_status = 'pending') AS reuploaded_pending
        FROM applications a
        JOIN categories c ON c.id = a.category_id
+       LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
+       LEFT JOIN draw_allocations latest_draw ON latest_draw.id = (
+         SELECT allocation_lookup.id FROM draw_allocations allocation_lookup
+         WHERE allocation_lookup.application_id = a.id
+         ORDER BY allocation_lookup.id DESC LIMIT 1
+       )
+       LEFT JOIN payments allotment_payment
+         ON allotment_payment.application_id = a.id AND allotment_payment.purpose = 'pay_now'
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
        LIMIT ${limit} OFFSET ${offset}`,
@@ -172,6 +201,14 @@ const ApplicationsAdminPage = async ({
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
       params
+    ),
+    query<Array<{ total: number }>>(
+      `SELECT COUNT(DISTINCT a.id) AS total
+       FROM applications a
+       JOIN categories c ON c.id = a.category_id
+       JOIN draw_allocations da ON da.application_id = a.id
+       ${statsWhereClause} AND da.allocation_type = 'waitlist' AND da.status = 'allotted'`,
+      statsParams
     )
   ])
 
@@ -181,6 +218,7 @@ const ApplicationsAdminPage = async ({
   const pendingCount = getStatusCount(['under_review', 'payment_success'])
   const approvedCount = getStatusCount(['approved'])
   const selectedCount = getStatusCount(['selected', 'allotted', 're_allotted'])
+  const waitlistCount = Number(waitlistRows[0]?.total ?? 0)
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
   const selectedCategory = categories.find(item => item.slug === category)
@@ -275,7 +313,7 @@ const ApplicationsAdminPage = async ({
       </div>
 
       {/* KPI Cards */}
-      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5'>
         <KpiCard
           label='Total Applications'
           value={totalSubmitted}
@@ -304,6 +342,13 @@ const ApplicationsAdminPage = async ({
           accentColor='text-purple-600'
           hint='Booths/Stalls successfully allotted or drawn'
         />
+        <KpiCard
+          label='Waitlist'
+          value={waitlistCount}
+          icon={ListOrderedIcon}
+          accentColor='text-amber-600'
+          hint='Candidates retained in draw waitlist order'
+        />
       </div>
 
       {/* Status tabs */}
@@ -312,7 +357,9 @@ const ApplicationsAdminPage = async ({
           {[{ key: '', label: 'All', statuses: [] as string[] }, ...QUICK_FILTERS].map(filter => {
             const active = (status ?? '') === filter.key || (!tab && filter.key === '')
 
-            const count = filter.key
+            const count = filter.key === 'waitlist'
+              ? waitlistCount
+              : filter.key
               ? statsRows.filter(r => filter.statuses.includes(r.status)).reduce((acc, r) => acc + Number(r.count), 0)
               : totalSubmitted
 
@@ -380,8 +427,8 @@ const ApplicationsAdminPage = async ({
               </p>
             </div>
           ) : (
-            <div className='overflow-x-auto'>
-              <table className='w-full text-left text-sm'>
+            <StickyHorizontalTableScroll>
+              <table className='min-w-[1550px] w-full text-left text-sm'>
                 <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
                   <tr>
                     <th className='py-3 px-4'>
@@ -415,6 +462,7 @@ const ApplicationsAdminPage = async ({
                       </Link>
                     </th>
                     <th className='py-3 px-4'>Contact</th>
+                    <th className='py-3 px-4'>Booth / Stall</th>
                     <th className='py-3 px-4'>
                       <Link
                         href={getSortUrl('status')}
@@ -435,6 +483,8 @@ const ApplicationsAdminPage = async ({
                         {getSortIcon('date')}
                       </Link>
                     </th>
+                    <th className='py-3 px-4'>Allotment Payment</th>
+                    <th className='py-3 px-4'>Created / Allotted</th>
                     <th className='py-3 px-4 text-right'>Actions</th>
                   </tr>
                 </thead>
@@ -472,6 +522,15 @@ const ApplicationsAdminPage = async ({
                           <p className='font-mono font-medium text-slate-800'>{app.mobile_number}</p>
                           <p className='text-muted-foreground truncate max-w-[160px]'>{app.email}</p>
                         </td>
+                        <td className='py-3.5 px-4 text-xs'>
+                          {app.stall_number ? (
+                            <p className='font-mono font-bold text-[#0c2847]'>{app.stall_number}</p>
+                          ) : app.draw_allocation_type === 'waitlist' ? (
+                            <p className='font-semibold text-amber-700'>Waitlist #{app.waitlist_position}</p>
+                          ) : (
+                            <span className='text-muted-foreground'>Not allotted</span>
+                          )}
+                        </td>
                         <td className='py-3.5 px-4'>
                           <span
                             className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${statusCfg.color}`}
@@ -488,6 +547,9 @@ const ApplicationsAdminPage = async ({
                               Re-uploaded · needs review
                             </p>
                           )}
+                          {app.draw_allocation_type === 'waitlist' && (
+                            <p className='mt-1 text-[11px] font-semibold text-amber-700'>Waitlist #{app.waitlist_position}</p>
+                          )}
                         </td>
                         <td className='py-3.5 px-4 text-xs text-muted-foreground'>
                           {app.submitted_at
@@ -500,6 +562,39 @@ const ApplicationsAdminPage = async ({
                               })
                             : new Date(app.created_at).toLocaleDateString('en-IN')}
                         </td>
+                        <td className='py-3.5 px-4 text-xs'>
+                          <p className='font-semibold text-slate-800'>
+                            {app.allotment_payment_amount_paise === null
+                              ? 'Amount not set'
+                              : `₹${(Number(app.allotment_payment_amount_paise) / 100).toLocaleString('en-IN')}`}
+                          </p>
+                          <p className='text-muted-foreground'>
+                            {app.allotment_payment_status === 'not_activated'
+                              ? 'Not activated'
+                              : app.allotment_payment_status.replaceAll('_', ' ')}
+                          </p>
+                        </td>
+                        <td className='py-3.5 px-4 text-xs text-muted-foreground'>
+                          <p>
+                            Created: {new Date(app.created_at).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          <p className='mt-1'>
+                            Allotted:{' '}
+                            {app.allotted_at
+                              ? new Date(app.allotted_at).toLocaleString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '—'}
+                          </p>
+                        </td>
                         <td className='py-3.5 px-4'>
                           <div className='flex justify-end'>
                             <ApplicationRowActions applicationId={encodedId} canApprove={canApprove} canReject={canReject} />
@@ -510,7 +605,7 @@ const ApplicationsAdminPage = async ({
                   })}
                 </tbody>
               </table>
-            </div>
+            </StickyHorizontalTableScroll>
           )}
         </CardContent>
         <TablePagination

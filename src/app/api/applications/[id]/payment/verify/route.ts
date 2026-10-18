@@ -4,8 +4,9 @@ import { z } from 'zod'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
-import { notifyPaymentSuccess } from '@/lib/notifications/payment-success'
-import { getPaymentForApplication, recordCheckoutFailure, recordCheckoutSuccess } from '@/lib/payments/payment-records'
+import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
+import { notifyAllotmentPaymentSuccess, notifyPaymentSuccess } from '@/lib/notifications/payment-success'
+import { getPaymentByRazorpayOrderId, recordCheckoutFailure, recordCheckoutSuccess } from '@/lib/payments/payment-records'
 import { verifyCheckoutSignature } from '@/lib/payments/razorpay'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
@@ -29,11 +30,8 @@ type ApplicationRow = {
 /**
  * Server-side verification of a Razorpay Checkout.js success callback. A
  * client-reported "success" is never trusted alone — the HMAC signature is
- * recomputed here from the order id + payment id using the secret key
- * (.ai/PAYMENT.md Section 4, .ai/SECURITY.md). The webhook endpoint
- * (/api/webhooks/razorpay) is the second, independent confirmation path and
- * will reach the same state even if this call never happens (browser closed
- * mid-checkout, etc).
+ * recomputed here from the order id + payment id using the secret key.
+ * Supports both registration payments and allotment payments ('pay_now').
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ipAddress } = getRequestMeta(request)
@@ -53,10 +51,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const authHeader = request.headers.get('authorization')
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
 
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
-  }
-
   let rawBody: unknown
 
   try {
@@ -73,19 +67,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const rows = await query<ApplicationRow[]>(
-      `SELECT id, access_token_hash, status, representative_name, application_number, mobile_number FROM applications WHERE id = ? LIMIT 1`,
+      `SELECT id, access_token_hash, status, representative_name, application_number, mobile_number
+       FROM applications WHERE id = ? LIMIT 1`,
       [applicationId]
     )
 
     const application = rows[0]
 
-    if (!application || !verifyAccessToken(accessToken, application.access_token_hash)) {
+    if (!application) {
       return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
     }
 
-    const payment = await getPaymentForApplication(applicationId, 'registration')
+    const tokenValid = accessToken ? verifyAccessToken(accessToken, application.access_token_hash) : false
+    const otpValid = !tokenValid && (await hasRecentVerifiedOtp(`+91${application.mobile_number}`, 'status_lookup', 30))
 
-    if (!payment || payment.razorpay_order_id !== parsed.data.razorpayOrderId) {
+    if (!tokenValid && !otpValid) {
+      return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
+    }
+
+    const payment = await getPaymentByRazorpayOrderId(parsed.data.razorpayOrderId)
+
+    if (!payment || payment.application_id !== applicationId) {
       return NextResponse.json({ error: 'This payment does not match an order for this application.' }, { status: 409 })
     }
 
@@ -138,11 +140,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       module: 'payments',
       entityType: 'application',
       entityId: String(applicationId),
-      newValue: { razorpayOrderId: parsed.data.razorpayOrderId, razorpayPaymentId: parsed.data.razorpayPaymentId, amountPaise: payment.amount_paise },
+      newValue: {
+        razorpayOrderId: parsed.data.razorpayOrderId,
+        razorpayPaymentId: parsed.data.razorpayPaymentId,
+        amountPaise: payment.amount_paise,
+        purpose: payment.purpose
+      },
       ipAddress
     })
 
-    void notifyPaymentSuccess(applicationId, payment.amount_paise)
+    if (payment.purpose === 'pay_now') {
+      void notifyAllotmentPaymentSuccess(applicationId, payment.amount_paise)
+    } else {
+      void notifyPaymentSuccess(applicationId, payment.amount_paise)
+    }
 
     return NextResponse.json({ status: 'success' })
   } catch (error) {

@@ -2,7 +2,16 @@
 
 import { Fragment, useState } from 'react'
 
-import { AlertCircleIcon, CalendarClockIcon, CheckCircle2Icon, ChevronDownIcon, CopyIcon, Loader2Icon, SaveIcon } from 'lucide-react'
+import {
+  AlertCircleIcon,
+  CalendarClockIcon,
+  CheckCircle2Icon,
+  ChevronDownIcon,
+  CoinsIcon,
+  CopyIcon,
+  Loader2Icon,
+  SaveIcon
+} from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -24,6 +33,9 @@ type CategoryFeeItem = {
   auction_date: string | null
   auction_venue: string | null
   auction_venue_hi: string | null
+  allotment_amount_paise?: number | null
+  allotment_payment_enabled?: number | boolean
+  allotment_payment_deadline_at?: string | null
 }
 
 /** MySQL DATETIME ("2026-11-10 23:59:00") -> <input type="datetime-local"> value ("2026-11-10T23:59"). */
@@ -38,23 +50,78 @@ export default function CategoryFeeSettingsClient({
 }: {
   categories: CategoryFeeItem[]
 }) {
-  const [categories, setCategories] = useState(initialCategories)
+  // Only display active / non-archived categories
+  const activeOnly = initialCategories.filter(c => c.status !== 'archived')
+  const [categories, setCategories] = useState(activeOnly)
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false)
+  const [isBulkSavingFee, setIsBulkSavingFee] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
-  const [isBulkSaving, setIsBulkSaving] = useState(false)
+
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
-  const [bulkSchedule, setBulkSchedule] = useState({
-    applicationOpensAt: '',
-    applicationClosesAt: '',
-    auctionDate: '',
-    auctionVenue: '',
-    auctionVenueHi: ''
+  // Find pre-existing schedule from active categories
+  const firstWithSchedule =
+    activeOnly.find(c => c.application_opens_at || c.application_closes_at || c.auction_date) || activeOnly[0]
+
+  const [portalSchedule, setPortalSchedule] = useState({
+    applicationOpensAt: toDatetimeLocalValue(firstWithSchedule?.application_opens_at ?? null),
+    applicationClosesAt: toDatetimeLocalValue(firstWithSchedule?.application_closes_at ?? null),
+    auctionDate: toDatetimeLocalValue(firstWithSchedule?.auction_date ?? null),
+    auctionVenue: firstWithSchedule?.auction_venue ?? '',
+    auctionVenueHi: firstWithSchedule?.auction_venue_hi ?? ''
   })
 
-  const activeCategoryIds = categories.filter(c => c.status !== 'archived').map(c => c.id)
+  const activeCategoryIds = categories.map(c => c.id)
+
+  const handleSaveGlobalSchedule = async () => {
+    if (
+      portalSchedule.applicationOpensAt &&
+      new Date(portalSchedule.applicationOpensAt) > new Date() &&
+      !window.confirm(
+        `"Application Opens" is set to a future date/time. This will immediately close all ${activeCategoryIds.length} categories to new applicants until then. Continue?`
+      )
+    ) {
+      return
+    }
+
+    setIsSavingSchedule(true)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/categories/schedule', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryIds: activeCategoryIds, ...portalSchedule })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setCategories(prev =>
+          prev.map(c => ({
+            ...c,
+            application_opens_at: portalSchedule.applicationOpensAt || null,
+            application_closes_at: portalSchedule.applicationClosesAt || null,
+            auction_date: portalSchedule.auctionDate || null,
+            auction_venue: portalSchedule.auctionVenue || null,
+            auction_venue_hi: portalSchedule.auctionVenueHi || null
+          }))
+        )
+        setSuccessMessage('Portal schedule updated successfully for all categories!')
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update portal schedule.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setIsSavingSchedule(false)
+    }
+  }
 
   const handleBulkApplyFee = async () => {
     if (bulkFee.baseRs === '') {
@@ -67,9 +134,10 @@ export default function CategoryFeeSettingsClient({
     const gst = bulkFee.gstPercent === '' ? 0 : Number(bulkFee.gstPercent)
     const totalPaise = Math.round(basePaise * (1 + gst / 100))
 
-    if (!window.confirm(`Apply ₹${bulkFee.baseRs} base fee + ${gst}% GST to all ${activeCategoryIds.length} active categories?`)) return
+    if (!window.confirm(`Apply ₹${bulkFee.baseRs} base fee + ${gst}% GST to all ${activeCategoryIds.length} categories?`))
+      return
 
-    setIsBulkSaving(true)
+    setIsBulkSavingFee(true)
     setSuccessMessage(null)
     setErrorMessage(null)
 
@@ -84,7 +152,7 @@ export default function CategoryFeeSettingsClient({
 
       if (response.ok) {
         setCategories(prev =>
-          prev.map(c => (activeCategoryIds.includes(c.id) ? { ...c, fee_base_paise: basePaise, gst_percent: gst, fee_paise: totalPaise } : c))
+          prev.map(c => ({ ...c, fee_base_paise: basePaise, gst_percent: gst, fee_paise: totalPaise }))
         )
         setSuccessMessage(data.message)
         setTimeout(() => setSuccessMessage(null), 4000)
@@ -94,60 +162,7 @@ export default function CategoryFeeSettingsClient({
     } catch {
       setErrorMessage('Could not connect to server. Please try again.')
     } finally {
-      setIsBulkSaving(false)
-    }
-  }
-
-  const handleBulkApplySchedule = async () => {
-    if (
-      bulkSchedule.applicationOpensAt &&
-      new Date(bulkSchedule.applicationOpensAt) > new Date() &&
-      !window.confirm(
-        `"Application Opens" is set to a future date/time. This will immediately close all ${activeCategoryIds.length} active categories to new applicants until then. Continue?`
-      )
-    ) {
-      return
-    }
-
-    if (!window.confirm(`Apply this schedule to all ${activeCategoryIds.length} active categories?`)) return
-
-    setIsBulkSaving(true)
-    setSuccessMessage(null)
-    setErrorMessage(null)
-
-    try {
-      const response = await fetch('/api/admin/categories/schedule', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryIds: activeCategoryIds, ...bulkSchedule })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setCategories(prev =>
-          prev.map(c =>
-            activeCategoryIds.includes(c.id)
-              ? {
-                  ...c,
-                  application_opens_at: bulkSchedule.applicationOpensAt || null,
-                  application_closes_at: bulkSchedule.applicationClosesAt || null,
-                  auction_date: bulkSchedule.auctionDate || null,
-                  auction_venue: bulkSchedule.auctionVenue || null,
-                  auction_venue_hi: bulkSchedule.auctionVenueHi || null
-                }
-              : c
-          )
-        )
-        setSuccessMessage(data.message)
-        setTimeout(() => setSuccessMessage(null), 4000)
-      } else {
-        setErrorMessage(data.error ?? 'Failed to apply schedule to all categories.')
-      }
-    } catch {
-      setErrorMessage('Could not connect to server. Please try again.')
-    } finally {
-      setIsBulkSaving(false)
+      setIsBulkSavingFee(false)
     }
   }
 
@@ -181,7 +196,7 @@ export default function CategoryFeeSettingsClient({
     )
   }
 
-  const handleSave = async (cat: CategoryFeeItem) => {
+  const handleSaveFee = async (cat: CategoryFeeItem) => {
     setSavingId(cat.id)
     setSuccessMessage(null)
     setErrorMessage(null)
@@ -213,48 +228,45 @@ export default function CategoryFeeSettingsClient({
     }
   }
 
-  const handleScheduleFieldChange = (categoryId: number, field: keyof CategoryFeeItem, value: string) => {
-    setCategories(prev => prev.map(c => (c.id === categoryId ? { ...c, [field]: value || null } : c)))
-  }
-
-  const handleSaveSchedule = async (cat: CategoryFeeItem) => {
-    // Setting "Application Opens" to a future date immediately closes this
-    // category to new applicants until that date, even if the category's
-    // status is "open" — confirm explicitly, since this silently blocks
-    // real applicants with no other warning in this UI.
-    if (cat.application_opens_at && new Date(cat.application_opens_at) > new Date()) {
-      const confirmed = window.confirm(
-        `"Application Opens" is set to a future date/time. This will immediately close "${cat.name}" to new applicants until then. Continue?`
-      )
-
-      if (!confirmed) return
-    }
-
+  const handleSaveAllotmentPayment = async (cat: CategoryFeeItem) => {
     setSavingId(cat.id)
     setSuccessMessage(null)
     setErrorMessage(null)
 
+    const enabled = Boolean(cat.allotment_payment_enabled)
+    const amountPaise =
+      cat.allotment_amount_paise !== undefined && cat.allotment_amount_paise !== null
+        ? Number(cat.allotment_amount_paise)
+        : null
+    const deadlineAt = cat.allotment_payment_deadline_at
+      ? new Date(cat.allotment_payment_deadline_at).toISOString()
+      : null
+
+    if (enabled && (amountPaise === null || amountPaise <= 0 || !deadlineAt)) {
+      setErrorMessage('Amount (₹) and payment deadline are required before enabling allotment payment.')
+      setSavingId(null)
+      return
+    }
+
     try {
-      const response = await fetch('/api/admin/categories/schedule', {
+      const response = await fetch('/api/admin/categories/allotment-payment', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           categoryId: cat.id,
-          applicationOpensAt: cat.application_opens_at,
-          applicationClosesAt: cat.application_closes_at,
-          auctionDate: cat.auction_date,
-          auctionVenue: cat.auction_venue,
-          auctionVenueHi: cat.auction_venue_hi
+          enabled,
+          amountPaise,
+          deadlineAt
         })
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSuccessMessage(`Schedule for "${cat.name}" updated successfully!`)
+        setSuccessMessage(`Allotment payment settings for "${cat.name}" updated successfully!`)
         setTimeout(() => setSuccessMessage(null), 4000)
       } else {
-        setErrorMessage(data.error ?? 'Failed to update schedule.')
+        setErrorMessage(data.error ?? 'Failed to update allotment payment settings.')
       }
     } catch {
       setErrorMessage('Could not connect to server. Please try again.')
@@ -279,125 +291,139 @@ export default function CategoryFeeSettingsClient({
         </Alert>
       )}
 
-      <Card className='shadow-xs border-[#d8891d]/30'>
-        <CardHeader className='border-b bg-[#fffaf0] py-4'>
+      {/* 1. Global Unified Portal Schedule */}
+      <Card className='shadow-sm border-[#0c2847]/20'>
+        <CardHeader className='border-b bg-[#f8fafc] py-4'>
           <CardTitle className='flex items-center gap-2 text-base font-bold text-[#0c2847]'>
-            <CopyIcon className='size-4 text-[#d8891d]' />
-            Apply Same Fee/Schedule to All Categories
+            <CalendarClockIcon className='size-5 text-[#0c2847]' />
+            Portal Application &amp; Draw Schedule (सभी फॉर्म्स हेतु एकल समय-सारणी)
           </CardTitle>
           <CardDescription className='text-xs'>
-            If every category shares the same fee and/or dates, set it once here instead of repeating it per category
-            below. This overwrites the current fee/schedule on all {activeCategoryIds.length} active (non-archived)
-            categories — per-category values can still be adjusted individually afterward.
+            आवेदन शुरू/बंद होने की तिथि एवं लकी ड्रॉ/नीलामी की तारीख और स्थान सभी श्रेणियों के फॉर्म्स के लिए एक ही
+            रहते हैं। यहाँ सेट करने पर यह सभी सक्रिय श्रेणियों में स्वतः लागू हो जाएगा।
           </CardDescription>
         </CardHeader>
         <CardContent className='flex flex-col gap-5 pt-6'>
-          <div>
-            <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>Fee &amp; GST</p>
-            <div className='grid gap-3 sm:grid-cols-3'>
-              <div className='relative'>
-                <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
-                <Input
-                  type='number'
-                  min={0}
-                  value={bulkFee.baseRs}
-                  onChange={e => setBulkFee(prev => ({ ...prev, baseRs: e.target.value }))}
-                  placeholder='Base fee for all categories'
-                  className='pl-7 h-9 text-sm'
-                />
-              </div>
-              <div className='relative'>
-                <Input
-                  type='number'
-                  min={0}
-                  max={100}
-                  value={bulkFee.gstPercent}
-                  onChange={e => setBulkFee(prev => ({ ...prev, gstPercent: e.target.value }))}
-                  placeholder='GST % (e.g. 18)'
-                  className='pr-7 h-9 text-sm'
-                />
-                <span className='absolute right-3 top-2 text-xs font-bold text-muted-foreground'>%</span>
-              </div>
-              <Button
-                disabled={isBulkSaving}
-                onClick={handleBulkApplyFee}
-                className='bg-[#d8891d] hover:bg-[#b8761b] text-xs font-bold rounded-lg text-white'
-              >
-                {isBulkSaving ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <CopyIcon className='size-3.5 mr-1.5' />}
-                Apply Fee to All
-              </Button>
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Application Opens (आवेदन प्रारंभ)</label>
+              <Input
+                type='datetime-local'
+                value={portalSchedule.applicationOpensAt}
+                onChange={e => setPortalSchedule(prev => ({ ...prev, applicationOpensAt: e.target.value }))}
+                className='h-9 text-sm'
+              />
             </div>
-          </div>
-
-          <div>
-            <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>Schedule &amp; Draw</p>
-            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Application Opens</label>
-                <Input
-                  type='datetime-local'
-                  value={bulkSchedule.applicationOpensAt}
-                  onChange={e => setBulkSchedule(prev => ({ ...prev, applicationOpensAt: e.target.value }))}
-                  className='h-9 text-sm'
-                />
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Application Closes</label>
-                <Input
-                  type='datetime-local'
-                  value={bulkSchedule.applicationClosesAt}
-                  onChange={e => setBulkSchedule(prev => ({ ...prev, applicationClosesAt: e.target.value }))}
-                  className='h-9 text-sm'
-                />
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Draw Date &amp; Time</label>
-                <Input
-                  type='datetime-local'
-                  value={bulkSchedule.auctionDate}
-                  onChange={e => setBulkSchedule(prev => ({ ...prev, auctionDate: e.target.value }))}
-                  className='h-9 text-sm'
-                />
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Draw Venue (English)</label>
-                <Input
-                  value={bulkSchedule.auctionVenue}
-                  onChange={e => setBulkSchedule(prev => ({ ...prev, auctionVenue: e.target.value }))}
-                  placeholder='Shri Krishna Museum, Thanesar, Kurukshetra'
-                  className='h-9 text-sm'
-                />
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-semibold text-slate-700'>Draw Venue (Hindi)</label>
-                <Input
-                  value={bulkSchedule.auctionVenueHi}
-                  onChange={e => setBulkSchedule(prev => ({ ...prev, auctionVenueHi: e.target.value }))}
-                  placeholder='श्री कृष्ण संग्रहालय, थानेसर, कुरुक्षेत्र'
-                  className='h-9 text-sm'
-                />
-              </div>
-              <div className='flex items-end'>
-                <Button
-                  disabled={isBulkSaving}
-                  onClick={handleBulkApplySchedule}
-                  className='w-full bg-[#d8891d] hover:bg-[#b8761b] text-xs font-bold rounded-lg text-white'
-                >
-                  {isBulkSaving ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <CopyIcon className='size-3.5 mr-1.5' />}
-                  Apply Schedule to All
-                </Button>
-              </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Application Closes (आवेदन की अंतिम तिथि)</label>
+              <Input
+                type='datetime-local'
+                value={portalSchedule.applicationClosesAt}
+                onChange={e => setPortalSchedule(prev => ({ ...prev, applicationClosesAt: e.target.value }))}
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Draw Date &amp; Time (ड्रॉ दिनांक व समय)</label>
+              <Input
+                type='datetime-local'
+                value={portalSchedule.auctionDate}
+                onChange={e => setPortalSchedule(prev => ({ ...prev, auctionDate: e.target.value }))}
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Draw Venue - English (ड्रॉ स्थल)</label>
+              <Input
+                value={portalSchedule.auctionVenue}
+                onChange={e => setPortalSchedule(prev => ({ ...prev, auctionVenue: e.target.value }))}
+                placeholder='Shri Krishna Museum, Thanesar, Kurukshetra'
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Draw Venue - Hindi (ड्रॉ स्थल हिंदी में)</label>
+              <Input
+                value={portalSchedule.auctionVenueHi}
+                onChange={e => setPortalSchedule(prev => ({ ...prev, auctionVenueHi: e.target.value }))}
+                placeholder='श्री कृष्ण संग्रहालय, थानेसर, कुरुक्षेत्र'
+                className='h-9 text-sm'
+              />
+            </div>
+            <div className='flex items-end'>
+              <Button
+                disabled={isSavingSchedule}
+                onClick={handleSaveGlobalSchedule}
+                className='w-full bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white h-9'
+              >
+                {isSavingSchedule ? (
+                  <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                ) : (
+                  <SaveIcon className='size-3.5 mr-1.5' />
+                )}
+                Save Schedule for All Forms
+              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* 2. Bulk Quick Fee Apply (Optional) */}
+      <Card className='shadow-xs border-[#d8891d]/30'>
+        <CardHeader className='border-b bg-[#fffaf0] py-3.5'>
+          <CardTitle className='flex items-center gap-2 text-sm font-bold text-[#0c2847]'>
+            <CopyIcon className='size-4 text-[#d8891d]' />
+            Apply Same Application Fee to All Categories (एकमुश्त शुल्क सेटिंग्स)
+          </CardTitle>
+          <CardDescription className='text-xs'>
+            यदि सभी श्रेणियों में समान आवेदन शुल्क लागू करना हो, तो एक साथ सभी श्रेणियों पर लागू कर सकते हैं।
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='pt-4 pb-4'>
+          <div className='grid gap-3 sm:grid-cols-3 max-w-xl'>
+            <div className='relative'>
+              <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+              <Input
+                type='number'
+                min={0}
+                value={bulkFee.baseRs}
+                onChange={e => setBulkFee(prev => ({ ...prev, baseRs: e.target.value }))}
+                placeholder='Base fee amount'
+                className='pl-7 h-9 text-sm'
+              />
+            </div>
+            <div className='relative'>
+              <Input
+                type='number'
+                min={0}
+                max={100}
+                value={bulkFee.gstPercent}
+                onChange={e => setBulkFee(prev => ({ ...prev, gstPercent: e.target.value }))}
+                placeholder='GST % (e.g. 18)'
+                className='pr-7 h-9 text-sm'
+              />
+              <span className='absolute right-3 top-2 text-xs font-bold text-muted-foreground'>%</span>
+            </div>
+            <Button
+              disabled={isBulkSavingFee}
+              onClick={handleBulkApplyFee}
+              className='bg-[#d8891d] hover:bg-[#b8761b] text-xs font-bold rounded-lg text-white h-9'
+            >
+              {isBulkSavingFee ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <CopyIcon className='size-3.5 mr-1.5' />}
+              Apply Fee to All
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. Category Fees & Allotment Payment Table */}
       <Card className='shadow-xs'>
         <CardHeader className='border-b bg-muted/40 py-4'>
-          <CardTitle className='text-base font-bold text-[#0c2847]'>Booth/Stall Category Fees & GST Rates</CardTitle>
+          <CardTitle className='text-base font-bold text-[#0c2847]'>
+            Active Booth/Stall Categories ({categories.length})
+          </CardTitle>
           <CardDescription className='text-xs'>
-            Set the base application fee in Rupees (₹) and the applicable GST percentage for each booth/stall category.
-            The total payable amount is automatically calculated and shown to applicants on the portal.
+            प्रत्येक श्रेणी का बेस आवेदन शुल्क, जीएसटी दर एवं आबंटन शुल्क (Allotment Fee) प्रबंधित करें।
           </CardDescription>
         </CardHeader>
 
@@ -421,17 +447,17 @@ export default function CategoryFeeSettingsClient({
                   const totalRs = cat.fee_paise !== null ? (cat.fee_paise / 100).toLocaleString('en-IN') : 'Free / Not Set'
                   const isSaving = savingId === cat.id
                   const isExpanded = expandedId === cat.id
-                  const isArchived = cat.status === 'archived'
+                  const hasAllotmentPayment = Boolean(cat.allotment_payment_enabled)
 
                   return (
                     <Fragment key={cat.id}>
-                      <tr className={`transition ${isArchived ? 'bg-slate-50/60 opacity-70' : 'hover:bg-muted/30'}`}>
+                      <tr className='hover:bg-muted/30 transition'>
                         <td className='py-4 px-4'>
                           <div className='flex items-center gap-2'>
                             <p className='font-bold text-[#0c2847]'>{cat.name}</p>
-                            {isArchived && (
-                              <span className='rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase'>
-                                Archived
+                            {hasAllotmentPayment && (
+                              <span className='rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700'>
+                                Allotment Fee ₹{cat.allotment_amount_paise ? (cat.allotment_amount_paise / 100).toLocaleString('en-IN') : 0}
                               </span>
                             )}
                           </div>
@@ -481,16 +507,22 @@ export default function CategoryFeeSettingsClient({
                               size='sm'
                               variant='outline'
                               onClick={() => setExpandedId(isExpanded ? null : cat.id)}
-                              className='text-xs font-bold rounded-lg'
+                              className={`text-xs font-bold rounded-lg border ${
+                                hasAllotmentPayment
+                                  ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50'
+                                  : 'border-slate-300'
+                              }`}
                             >
-                              <CalendarClockIcon className='size-3.5 mr-1.5' />
-                              Schedule
-                              <ChevronDownIcon className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              <CoinsIcon className='size-3.5 mr-1.5' />
+                              Allotment Fee
+                              <ChevronDownIcon
+                                className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              />
                             </Button>
                             <Button
                               size='sm'
                               disabled={isSaving}
-                              onClick={() => handleSave(cat)}
+                              onClick={() => handleSaveFee(cat)}
                               className='bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
                             >
                               {isSaving ? (
@@ -505,74 +537,98 @@ export default function CategoryFeeSettingsClient({
                       </tr>
 
                       {isExpanded && (
-                        <tr key={`${cat.id}-schedule`} className='bg-muted/20'>
-                          <td colSpan={6} className='px-4 py-5'>
-                            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                              <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Application Opens</label>
-                                <Input
-                                  type='datetime-local'
-                                  value={toDatetimeLocalValue(cat.application_opens_at)}
-                                  onChange={e => handleScheduleFieldChange(cat.id, 'application_opens_at', e.target.value)}
-                                  className='h-9 text-sm'
-                                />
+                        <tr key={`${cat.id}-allotment`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <CoinsIcon className='size-3.5 text-amber-600' />
+                                  Allotment Payment Settings for &ldquo;{cat.name}&rdquo; (आबंटन शुल्क सेटिंग्स)
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  Require lucky draw winners to pay an allotment fee before the deadline to confirm their booth/stall.
+                                </p>
                               </div>
-                              <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Application Closes (Last Date)</label>
-                                <Input
-                                  type='datetime-local'
-                                  value={toDatetimeLocalValue(cat.application_closes_at)}
-                                  onChange={e => handleScheduleFieldChange(cat.id, 'application_closes_at', e.target.value)}
-                                  className='h-9 text-sm'
-                                />
-                              </div>
-                              <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Draw Date &amp; Time</label>
-                                <Input
-                                  type='datetime-local'
-                                  value={toDatetimeLocalValue(cat.auction_date)}
-                                  onChange={e => handleScheduleFieldChange(cat.id, 'auction_date', e.target.value)}
-                                  className='h-9 text-sm'
-                                />
-                              </div>
-                              <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Draw Venue (English)</label>
-                                <Input
-                                  value={cat.auction_venue ?? ''}
-                                  onChange={e => handleScheduleFieldChange(cat.id, 'auction_venue', e.target.value)}
-                                  placeholder='Shri Krishna Museum, Thanesar, Kurukshetra'
-                                  className='h-9 text-sm'
-                                />
-                              </div>
-                              <div className='flex flex-col gap-1.5'>
-                                <label className='text-xs font-semibold text-slate-700'>Draw Venue (Hindi)</label>
-                                <Input
-                                  value={cat.auction_venue_hi ?? ''}
-                                  onChange={e => handleScheduleFieldChange(cat.id, 'auction_venue_hi', e.target.value)}
-                                  placeholder='श्री कृष्ण संग्रहालय, थानेसर, कुरुक्षेत्र'
-                                  className='h-9 text-sm'
-                                />
-                              </div>
-                              <div className='flex items-end'>
-                                <Button
-                                  size='sm'
-                                  disabled={isSaving}
-                                  onClick={() => handleSaveSchedule(cat)}
-                                  className='bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
-                                >
-                                  {isSaving ? (
-                                    <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
-                                  ) : (
-                                    <SaveIcon className='size-3.5 mr-1.5' />
-                                  )}
-                                  Save Schedule
-                                </Button>
+
+                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end'>
+                                <div className='flex items-center gap-2 h-9'>
+                                  <input
+                                    type='checkbox'
+                                    id={`allotment-enabled-${cat.id}`}
+                                    checked={Boolean(cat.allotment_payment_enabled)}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, allotment_payment_enabled: e.target.checked ? 1 : 0 } : c
+                                        )
+                                      )
+                                    }
+                                    className='size-4 rounded border-slate-300 text-[#0c2847] focus:ring-[#0c2847]'
+                                  />
+                                  <label
+                                    htmlFor={`allotment-enabled-${cat.id}`}
+                                    className='text-xs font-bold text-slate-800 cursor-pointer'
+                                  >
+                                    Enable Allotment Payment
+                                  </label>
+                                </div>
+
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Allotment Amount (₹)</label>
+                                  <div className='relative'>
+                                    <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+                                    <Input
+                                      type='number'
+                                      min={0}
+                                      value={
+                                        cat.allotment_amount_paise !== null && cat.allotment_amount_paise !== undefined
+                                          ? cat.allotment_amount_paise / 100
+                                          : ''
+                                      }
+                                      onChange={e => {
+                                        const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+                                        setCategories(prev =>
+                                          prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_paise: val } : c))
+                                        )
+                                      }}
+                                      placeholder='e.g. 30000'
+                                      className='pl-7 h-9 text-sm'
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Payment Deadline</label>
+                                  <Input
+                                    type='datetime-local'
+                                    value={toDatetimeLocalValue(cat.allotment_payment_deadline_at ?? null)}
+                                    onChange={e => {
+                                      const val = e.target.value ? e.target.value.replace('T', ' ') + ':00' : null
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, allotment_payment_deadline_at: val } : c))
+                                      )
+                                    }}
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+
+                                <div className='flex items-end'>
+                                  <Button
+                                    size='sm'
+                                    disabled={isSaving}
+                                    onClick={() => handleSaveAllotmentPayment(cat)}
+                                    className='w-full bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white h-9'
+                                  >
+                                    {isSaving ? (
+                                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                    ) : (
+                                      <SaveIcon className='size-3.5 mr-1.5' />
+                                    )}
+                                    Save Allotment Settings
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                            <p className='mt-3 text-xs text-muted-foreground'>
-                              Leave a field blank to hide that instruction point on the public application form. Only
-                              categories with an draw date and venue both set will show the draw instruction.
-                            </p>
                           </td>
                         </tr>
                       )}

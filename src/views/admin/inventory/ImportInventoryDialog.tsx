@@ -175,7 +175,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               className='block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-semibold'
             />
             <p className='mt-2 text-xs text-muted-foreground'>
-              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, EMD Amount
+              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, Stall Amount
               (optional)
             </p>
           </div>

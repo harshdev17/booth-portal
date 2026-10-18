@@ -7,17 +7,21 @@ import { Loader2Icon, PrinterIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
-type Kind = 'receipt' | 'summary'
+type Kind = 'receipt' | 'summary' | 'allotment-letter'
 
 /**
- * Admin-side Print buttons for the application summary and payment receipt.
+ * Admin-side Print buttons for the application summary, payment receipt, and official allotment letter.
  * Fetches the same templates as the PDF routes (api/admin/applications/[id]/
- * receipt|summary/pdf?format=html, admin-authorized) and prints them from a
- * hidden iframe — printing needs no server-side headless browser, which the
- * PDF download did (and which failed on the host). "Save as PDF" is still
- * available from the browser's print dialog.
+ * receipt|summary|allotment-letter/pdf?format=html, admin-authorized) and prints them from a
+ * hidden iframe.
  */
-const ApplicationPdfDownloads = ({ applicationId }: { applicationId: string }) => {
+const ApplicationPdfDownloads = ({
+  applicationId,
+  hasAllotment
+}: {
+  applicationId: string
+  hasAllotment?: boolean
+}) => {
   const [printing, setPrinting] = useState<Kind | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,7 +35,16 @@ const ApplicationPdfDownloads = ({ applicationId }: { applicationId: string }) =
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
 
-        setError(body.error ?? `Could not load the ${kind === 'receipt' ? 'receipt' : 'application summary'} for printing.`)
+        setError(
+          body.error ??
+            `Could not load the ${
+              kind === 'receipt'
+                ? 'receipt'
+                : kind === 'allotment-letter'
+                  ? 'allotment letter'
+                  : 'application summary'
+            } for printing.`
+        )
 
         return
       }
@@ -69,6 +82,19 @@ const ApplicationPdfDownloads = ({ applicationId }: { applicationId: string }) =
           {printing === 'receipt' ? <Loader2Icon className='animate-spin' /> : <PrinterIcon />}
           Print Receipt
         </Button>
+        {hasAllotment && (
+          <Button
+            type='button'
+            variant='default'
+            size='sm'
+            className='bg-[#0c2847] text-white hover:bg-[#0c2847]/90'
+            disabled={printing !== null}
+            onClick={() => print('allotment-letter')}
+          >
+            {printing === 'allotment-letter' ? <Loader2Icon className='animate-spin' /> : <PrinterIcon />}
+            Print Allotment Letter
+          </Button>
+        )}
       </div>
 
       {error && (

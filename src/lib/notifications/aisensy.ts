@@ -49,6 +49,8 @@ export class AiSensyNotificationService implements NotificationService {
       }
     }
 
+    const cleanDestination = input.destination.replace(/\D/g, '')
+
     try {
       const response = await fetch(AISENSY_ENDPOINT, {
         method: 'POST',
@@ -56,7 +58,7 @@ export class AiSensyNotificationService implements NotificationService {
         body: JSON.stringify({
           apiKey,
           campaignName,
-          destination: input.destination,
+          destination: cleanDestination,
           userName: input.userName,
           templateParams: input.templateParams,
           ...(input.buttonParam
@@ -64,8 +66,8 @@ export class AiSensyNotificationService implements NotificationService {
                 buttons: [
                   {
                     type: 'button',
-                    sub_type: 'url',
-                    index: '0',
+                    sub_type: 'URL',
+                    index: 0,
                     parameters: [{ type: 'text', text: input.buttonParam }]
                   }
                 ]

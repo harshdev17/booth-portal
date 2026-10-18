@@ -2,7 +2,18 @@
 
 import { useMemo, useState } from 'react'
 
-import { ChevronLeftIcon, ChevronRightIcon, Loader2Icon, PencilIcon, PlusIcon, StoreIcon, Trash2Icon } from 'lucide-react'
+import {
+  AlertTriangleIcon,
+  BanIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Loader2Icon,
+  PencilIcon,
+  PlusIcon,
+  StoreIcon,
+  Trash2Icon,
+  UserPlusIcon
+} from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -72,13 +83,19 @@ type AddStallFormState = {
   categoryMode: 'existing' | 'new'
   categoryName: string
   newCategoryName: string
+  newCategoryFee: string
   direction: string
-  emdAmount: string
   isDirectAllotment: boolean
   allotteeName: string
+  fatherName: string
+  aadhaarNumber: string
   contactPerson: string
+  address: string
   mobileNumber: string
+  email: string
+  workPurpose: string
   notes: string
+  sendNotification: boolean
 }
 
 const EMPTY_ADD_FORM: AddStallFormState = {
@@ -87,13 +104,19 @@ const EMPTY_ADD_FORM: AddStallFormState = {
   categoryMode: 'existing',
   categoryName: '',
   newCategoryName: '',
+  newCategoryFee: '',
   direction: '',
-  emdAmount: '',
   isDirectAllotment: false,
   allotteeName: '',
+  fatherName: '',
+  aadhaarNumber: '',
   contactPerson: '',
+  address: '',
   mobileNumber: '',
-  notes: ''
+  email: '',
+  workPurpose: '',
+  notes: '',
+  sendNotification: true
 }
 
 // Status is only ever shown/settable while editing an existing unit — a
@@ -138,7 +161,7 @@ const InventoryTable = ({
   const [bulkStatusError, setBulkStatusError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'public' | 'direct'>('all')
+  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'available' | 'allotted' | 'public' | 'direct'>('all')
   const [categoryFilter, setCategoryFilter] = useState(ALL)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
@@ -147,10 +170,12 @@ const InventoryTable = ({
 
   const tabCounts = useMemo(() => {
     const total = rows.length
+    const available = rows.filter(r => r.status === 'available').length
+    const allotted = rows.filter(r => r.status === 'allotted').length
     const direct = rows.filter(r => Boolean(r.isDirectAllotment)).length
     const publicStalls = rows.filter(r => !r.isDirectAllotment).length
 
-    return { total, direct, public: publicStalls }
+    return { total, available, allotted, direct, public: publicStalls }
   }, [rows])
 
   const [addOpen, setAddOpen] = useState(false)
@@ -163,11 +188,162 @@ const InventoryTable = ({
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
+  // Cancellation state
+  const [cancellingAllotmentRow, setCancellingAllotmentRow] = useState<ShopUnitRowData | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelSendNotification, setCancelSendNotification] = useState(true)
+  const [isCancellingAllotment, setIsCancellingAllotment] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+
+  // Direct Re-allotment state
+  const [allottingRow, setAllottingRow] = useState<ShopUnitRowData | null>(null)
+  const [allotForm, setAllotForm] = useState({
+    allotteeName: '',
+    fatherName: '',
+    aadhaarNumber: '',
+    contactPerson: '',
+    address: '',
+    mobileNumber: '',
+    email: '',
+    workPurpose: '',
+    paymentAmountRupees: '0',
+    notes: '',
+    sendNotification: true
+  })
+  const [isSubmittingAllot, setIsSubmittingAllot] = useState(false)
+  const [allotError, setAllotError] = useState<string | null>(null)
+
+  const handleConfirmCancelAllotment = async () => {
+    if (!cancellingAllotmentRow) return
+    setIsCancellingAllotment(true)
+    setCancelError(null)
+
+    try {
+      const res = await fetch(`/api/admin/inventory/${cancellingAllotmentRow.id}/cancel-allotment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: cancelReason,
+          sendNotification: cancelSendNotification
+        })
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        setCancelError(data.error ?? 'Failed to cancel allotment.')
+        return
+      }
+
+      setRows(current =>
+        current.map(r =>
+          r.id === cancellingAllotmentRow.id
+            ? { ...r, status: 'available', applicationNumber: null, isDirectAllotment: false }
+            : r
+        )
+      )
+
+      setCancellingAllotmentRow(null)
+    } catch {
+      setCancelError('Network error while cancelling allotment.')
+    } finally {
+      setIsCancellingAllotment(false)
+    }
+  }
+
+  const openDirectAllotRowDialog = (row: ShopUnitRowData) => {
+    setAllottingRow(row)
+    setAllotError(null)
+    setAllotForm({
+      allotteeName: '',
+      fatherName: '',
+      aadhaarNumber: '',
+      contactPerson: '',
+      address: '',
+      mobileNumber: '',
+      email: '',
+      workPurpose: '',
+      paymentAmountRupees: row.emdAmountPaise ? String(Math.round(row.emdAmountPaise / 100)) : '0',
+      notes: '',
+      sendNotification: true
+    })
+  }
+
+  const handleDirectAllotSubmit = async () => {
+    if (!allottingRow) return
+
+    if (!allotForm.allotteeName.trim()) {
+      setAllotError('Organisation / Allottee name is mandatory.')
+      return
+    }
+    if (!allotForm.fatherName.trim()) {
+      setAllotError("Father's name is mandatory.")
+      return
+    }
+    if (!/^\d{12}$/.test(allotForm.aadhaarNumber.trim().replace(/\s+/g, ''))) {
+      setAllotError('Aadhaar number must be exactly 12 digits.')
+      return
+    }
+    if (!allotForm.address.trim()) {
+      setAllotError('Full address is mandatory.')
+      return
+    }
+    if (!/^[6-9]\d{9}$/.test(allotForm.mobileNumber.trim().replace(/\D/g, '').slice(-10))) {
+      setAllotError('A valid 10-digit mobile number is mandatory.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(allotForm.email.trim())) {
+      setAllotError('A valid email address is mandatory.')
+      return
+    }
+    if (!allotForm.workPurpose.trim()) {
+      setAllotError('Purpose of stall / activity is mandatory.')
+      return
+    }
+
+    setIsSubmittingAllot(true)
+    setAllotError(null)
+
+    try {
+      const res = await fetch(`/api/admin/inventory/${allottingRow.id}/direct-allot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allotForm)
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        setAllotError(data.error ?? 'Failed to allot stall.')
+        return
+      }
+
+      setRows(current =>
+        current.map(r =>
+          r.id === allottingRow.id
+            ? {
+                ...r,
+                status: (data.status as ShopUnitRowData['status']) || 'allotted',
+                applicationNumber: data.applicationNumber || allotForm.allotteeName,
+                isDirectAllotment: true
+              }
+            : r
+        )
+      )
+
+      setAllottingRow(null)
+    } catch {
+      setAllotError('Failed to communicate with server.')
+    } finally {
+      setIsSubmittingAllot(false)
+    }
+  }
+
   const filteredRows = useMemo(() => {
     const searchLower = search.trim().toLowerCase()
 
     return rows.filter(row => {
-      // Tab filter: all vs public/draw vs direct entry
+      // Tab filter: all vs available vs allotted vs public/draw vs direct entry
+      if (stallCategoryTab === 'available' && row.status !== 'available') return false
+      if (stallCategoryTab === 'allotted' && row.status !== 'allotted') return false
       if (stallCategoryTab === 'direct' && !row.isDirectAllotment) return false
       if (stallCategoryTab === 'public' && row.isDirectAllotment) return false
 
@@ -357,10 +533,42 @@ const InventoryTable = ({
       return
     }
 
-    if (addForm.isDirectAllotment && !addForm.allotteeName.trim()) {
-      setAddError('Organisation / Allottee name is required for direct allotment.')
+    if (addForm.isDirectAllotment) {
+      if (!addForm.allotteeName.trim()) {
+        setAddError('Organisation / Allottee name is mandatory.')
 
-      return
+        return
+      }
+      if (!addForm.fatherName.trim()) {
+        setAddError("Father's / Husband's name is mandatory.")
+
+        return
+      }
+      if (!addForm.aadhaarNumber.trim() || !/^\d{12}$/.test(addForm.aadhaarNumber.trim())) {
+        setAddError('A valid 12-digit Aadhaar number is mandatory.')
+
+        return
+      }
+      if (!addForm.address.trim()) {
+        setAddError('Complete postal address is mandatory.')
+
+        return
+      }
+      if (!addForm.mobileNumber.trim() || addForm.mobileNumber.trim().replace(/\D/g, '').length !== 10) {
+        setAddError('A valid 10-digit mobile number is mandatory.')
+
+        return
+      }
+      if (!addForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email.trim())) {
+        setAddError('A valid email address is mandatory.')
+
+        return
+      }
+      if (!addForm.workPurpose.trim()) {
+        setAddError('Purpose of stall / activity is mandatory.')
+
+        return
+      }
     }
 
     setAddSubmitting(true)
@@ -375,13 +583,19 @@ const InventoryTable = ({
           shopType: addForm.shopType,
           categoryName: finalCategory,
           isNewCategory: addForm.categoryMode === 'new',
+          newCategoryFee: addForm.newCategoryFee.trim(),
           direction: addForm.direction.trim() || null,
-          emdAmountPaise: addForm.emdAmount.trim() ? Math.round(Number(addForm.emdAmount) * 100) : null,
           isDirectAllotment: addForm.isDirectAllotment,
-          allotteeName: addForm.isDirectAllotment ? addForm.allotteeName.trim() : null,
-          contactPerson: addForm.isDirectAllotment ? addForm.contactPerson.trim() || null : null,
-          mobileNumber: addForm.isDirectAllotment ? addForm.mobileNumber.trim() || null : null,
-          notes: addForm.isDirectAllotment ? addForm.notes.trim() || null : null
+          allotteeName: addForm.allotteeName.trim(),
+          fatherName: addForm.fatherName.trim(),
+          aadhaarNumber: addForm.aadhaarNumber.trim(),
+          contactPerson: addForm.contactPerson.trim() || null,
+          address: addForm.address.trim(),
+          mobileNumber: addForm.mobileNumber.trim(),
+          email: addForm.email.trim(),
+          workPurpose: addForm.workPurpose.trim(),
+          notes: addForm.notes.trim() || null,
+          sendNotification: addForm.sendNotification
         })
       })
 
@@ -401,7 +615,7 @@ const InventoryTable = ({
           shopType: addForm.shopType as 'single' | 'double',
           categoryName: finalCategory,
           direction: addForm.direction.trim() || null,
-          emdAmountPaise: addForm.emdAmount.trim() ? Math.round(Number(addForm.emdAmount) * 100) : null,
+          emdAmountPaise: body.emdAmountPaise ?? null,
           status: body.status || (addForm.isDirectAllotment ? 'allotted' : 'available'),
           applicationNumber: body.applicationNumber || (addForm.isDirectAllotment ? addForm.allotteeName.trim() : null),
           isDirectAllotment: addForm.isDirectAllotment
@@ -503,13 +717,13 @@ const InventoryTable = ({
 
   return (
     <Card className='shadow-xs'>
-      {/* 3 Navigation Tabs with Live Counts */}
+      {/* Navigation Tabs with Live Counts */}
       <div className='border-b bg-muted/20 px-4 pt-2.5 pb-0'>
         <div className='flex gap-2 sm:gap-6 overflow-x-auto'>
           <button
             type='button'
             onClick={() => { setStallCategoryTab('all'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
               stallCategoryTab === 'all'
                 ? 'border-[#0c2847] text-[#0c2847]'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -525,8 +739,42 @@ const InventoryTable = ({
 
           <button
             type='button'
+            onClick={() => { setStallCategoryTab('available'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+              stallCategoryTab === 'available'
+                ? 'border-emerald-600 text-emerald-700 font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Available
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'available' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+            }`}>
+              {tabCounts.available}
+            </span>
+          </button>
+
+          <button
+            type='button'
+            onClick={() => { setStallCategoryTab('allotted'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+              stallCategoryTab === 'allotted'
+                ? 'border-purple-600 text-purple-700 font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Allotted
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'allotted' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'
+            }`}>
+              {tabCounts.allotted}
+            </span>
+          </button>
+
+          <button
+            type='button'
             onClick={() => { setStallCategoryTab('public'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
               stallCategoryTab === 'public'
                 ? 'border-[#0c2847] text-[#0c2847]'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -543,15 +791,15 @@ const InventoryTable = ({
           <button
             type='button'
             onClick={() => { setStallCategoryTab('direct'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
               stallCategoryTab === 'direct'
-                ? 'border-purple-600 text-purple-700 font-bold'
+                ? 'border-indigo-600 text-indigo-700 font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             Direct Allotment
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-              stallCategoryTab === 'direct' ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-800'
+              stallCategoryTab === 'direct' ? 'bg-indigo-700 text-white' : 'bg-indigo-100 text-indigo-800'
             }`}>
               {tabCounts.direct}
             </span>
@@ -682,7 +930,8 @@ const InventoryTable = ({
                             ...prev,
                             categoryMode: prev.categoryMode === 'existing' ? 'new' : 'existing',
                             categoryName: '',
-                            newCategoryName: ''
+                            newCategoryName: '',
+                            newCategoryFee: ''
                           }))}
                           className='text-xs text-primary font-medium hover:underline'
                         >
@@ -690,53 +939,62 @@ const InventoryTable = ({
                         </button>
                       </div>
                       {addForm.categoryMode === 'existing' ? (
-                        <Select
-                          value={addForm.categoryName || undefined}
-                          onValueChange={value => setAddForm(prev => ({ ...prev, categoryName: value ?? '' }))}
-                        >
-                          <SelectTrigger className='w-full'>
-                            <SelectValue placeholder='Select category' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableCategories.map(name => (
-                              <SelectItem key={name} value={name}>
-                                {name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <>
+                          <Select
+                            value={addForm.categoryName || undefined}
+                            onValueChange={value => setAddForm(prev => ({ ...prev, categoryName: value ?? '' }))}
+                          >
+                            <SelectTrigger className='w-full'>
+                              <SelectValue placeholder='Select category' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableCategories.map(name => (
+                                <SelectItem key={name} value={name}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className='text-[11px] text-muted-foreground'>
+                            💡 Category pricing is managed in <strong>Settings &gt; Category Configuration</strong>. Stalls added to this category automatically share the same pricing.
+                          </p>
+                        </>
                       ) : (
-                        <Input
-                          value={addForm.newCategoryName}
-                          onChange={e => setAddForm(prev => ({ ...prev, newCategoryName: e.target.value }))}
-                          placeholder='e.g. VIP Enclosure / Govt Pavilions'
-                          autoFocus
-                        />
+                        <div className='space-y-2.5'>
+                          <Input
+                            value={addForm.newCategoryName}
+                            onChange={e => setAddForm(prev => ({ ...prev, newCategoryName: e.target.value }))}
+                            placeholder='New Category Name (e.g. VIP Enclosure / Govt Pavilions)'
+                            autoFocus
+                          />
+                          <div className='grid gap-1'>
+                            <Label htmlFor='add-new-cat-fee' className='text-xs font-semibold'>
+                              Initial Stall / Allotment Amount in ₹ (optional)
+                            </Label>
+                            <Input
+                              id='add-new-cat-fee'
+                              type='number'
+                              min='0'
+                              value={addForm.newCategoryFee}
+                              onChange={e => setAddForm(prev => ({ ...prev, newCategoryFee: e.target.value }))}
+                              placeholder='e.g. 30000'
+                            />
+                            <p className='text-[11px] text-muted-foreground'>
+                              💡 Note: You can manage and update category fees, GST, and payment deadlines anytime from <strong>Settings &gt; Category Configuration</strong>. Future stalls added to this category will automatically share this price.
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    <div className='grid grid-cols-2 gap-3'>
-                      <div className='grid gap-1.5'>
-                        <Label htmlFor='add-direction'>Direction (optional)</Label>
-                        <Input
-                          id='add-direction'
-                          value={addForm.direction}
-                          onChange={e => setAddForm(prev => ({ ...prev, direction: e.target.value }))}
-                          placeholder='e.g. North'
-                        />
-                      </div>
-
-                      <div className='grid gap-1.5'>
-                        <Label htmlFor='add-emd'>EMD in ₹ (optional)</Label>
-                        <Input
-                          id='add-emd'
-                          type='number'
-                          min='0'
-                          value={addForm.emdAmount}
-                          onChange={e => setAddForm(prev => ({ ...prev, emdAmount: e.target.value }))}
-                          placeholder='e.g. 5000'
-                        />
-                      </div>
+                    <div className='grid gap-1.5'>
+                      <Label htmlFor='add-direction'>Direction (optional)</Label>
+                      <Input
+                        id='add-direction'
+                        value={addForm.direction}
+                        onChange={e => setAddForm(prev => ({ ...prev, direction: e.target.value }))}
+                        placeholder='e.g. North / Food Court Zone A'
+                      />
                     </div>
 
                     <div className='rounded-lg border p-3.5 bg-slate-50/80 dark:bg-slate-900/40 space-y-3'>
@@ -765,21 +1023,50 @@ const InventoryTable = ({
 
                       {addForm.isDirectAllotment && (
                         <div className='grid gap-3 pt-2.5 border-t border-slate-200 dark:border-slate-800'>
-                          <div className='grid gap-1.5'>
-                            <Label htmlFor='add-allottee-name' className='text-xs font-semibold'>
-                              Organisation / Allottee Name <span className='text-destructive'>*</span>
-                            </Label>
-                            <Input
-                              id='add-allottee-name'
-                              value={addForm.allotteeName}
-                              onChange={e => setAddForm(prev => ({ ...prev, allotteeName: e.target.value }))}
-                              placeholder='e.g. Haryana Tourism / Dept of Forest'
-                            />
+                          <div className='grid sm:grid-cols-2 gap-3'>
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-allottee-name' className='text-xs font-semibold'>
+                                Organisation / Allottee Name <span className='text-destructive'>*</span>
+                              </Label>
+                              <Input
+                                id='add-allottee-name'
+                                value={addForm.allotteeName}
+                                onChange={e => setAddForm(prev => ({ ...prev, allotteeName: e.target.value }))}
+                                placeholder='e.g. Haryana Tourism / Dept of Forest'
+                              />
+                            </div>
+
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-father-name' className='text-xs font-semibold'>
+                                Father&apos;s / Husband&apos;s Name <span className='text-destructive'>*</span>
+                              </Label>
+                              <Input
+                                id='add-father-name'
+                                value={addForm.fatherName}
+                                onChange={e => setAddForm(prev => ({ ...prev, fatherName: e.target.value }))}
+                                placeholder='e.g. Shri Ram Kumar'
+                              />
+                            </div>
                           </div>
 
-                          <div className='grid grid-cols-2 gap-3'>
+                          <div className='grid sm:grid-cols-2 gap-3'>
                             <div className='grid gap-1.5'>
-                              <Label htmlFor='add-contact-person' className='text-xs font-semibold'>Contact Person</Label>
+                              <Label htmlFor='add-aadhaar' className='text-xs font-semibold'>
+                                Aadhaar Card Number (12 digits) <span className='text-destructive'>*</span>
+                              </Label>
+                              <Input
+                                id='add-aadhaar'
+                                maxLength={12}
+                                value={addForm.aadhaarNumber}
+                                onChange={e => setAddForm(prev => ({ ...prev, aadhaarNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }))}
+                                placeholder='12-digit Aadhaar'
+                              />
+                            </div>
+
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-contact-person' className='text-xs font-semibold'>
+                                Contact Person (optional)
+                              </Label>
                               <Input
                                 id='add-contact-person'
                                 value={addForm.contactPerson}
@@ -787,20 +1074,64 @@ const InventoryTable = ({
                                 placeholder='e.g. Ramesh Kumar'
                               />
                             </div>
+                          </div>
 
+                          <div className='grid gap-1.5'>
+                            <Label htmlFor='add-address' className='text-xs font-semibold'>
+                              Complete Postal Address <span className='text-destructive'>*</span>
+                            </Label>
+                            <Input
+                              id='add-address'
+                              value={addForm.address}
+                              onChange={e => setAddForm(prev => ({ ...prev, address: e.target.value }))}
+                              placeholder='Building, Street, City, State, PIN'
+                            />
+                          </div>
+
+                          <div className='grid sm:grid-cols-2 gap-3'>
                             <div className='grid gap-1.5'>
-                              <Label htmlFor='add-mobile' className='text-xs font-semibold'>Mobile Number</Label>
+                              <Label htmlFor='add-mobile' className='text-xs font-semibold'>
+                                Mobile Number (10 digits) <span className='text-destructive'>*</span>
+                              </Label>
                               <Input
                                 id='add-mobile'
+                                maxLength={10}
                                 value={addForm.mobileNumber}
-                                onChange={e => setAddForm(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                                onChange={e => setAddForm(prev => ({ ...prev, mobileNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                                 placeholder='e.g. 9876543210'
+                              />
+                            </div>
+
+                            <div className='grid gap-1.5'>
+                              <Label htmlFor='add-email' className='text-xs font-semibold'>
+                                Email Address <span className='text-destructive'>*</span>
+                              </Label>
+                              <Input
+                                id='add-email'
+                                type='email'
+                                value={addForm.email}
+                                onChange={e => setAddForm(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder='allottee@example.com'
                               />
                             </div>
                           </div>
 
                           <div className='grid gap-1.5'>
-                            <Label htmlFor='add-notes' className='text-xs font-semibold'>Allotment Note / Memo Ref (optional)</Label>
+                            <Label htmlFor='add-purpose' className='text-xs font-semibold'>
+                              Purpose of Stall / Activity <span className='text-destructive'>*</span>
+                            </Label>
+                            <Input
+                              id='add-purpose'
+                              value={addForm.workPurpose}
+                              onChange={e => setAddForm(prev => ({ ...prev, workPurpose: e.target.value }))}
+                              placeholder='e.g. Handicraft exhibition &amp; sales'
+                            />
+                          </div>
+
+                          <div className='grid gap-1.5'>
+                            <Label htmlFor='add-notes' className='text-xs font-semibold'>
+                              Allotment Note / Memo Ref (optional)
+                            </Label>
                             <Textarea
                               id='add-notes'
                               rows={2}
@@ -950,7 +1281,7 @@ const InventoryTable = ({
                 <TableHead>Type</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Direction</TableHead>
-                <TableHead>EMD Amount</TableHead>
+                <TableHead>Stall Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Allotted To</TableHead>
                 {canManage && <TableHead className='w-12' />}
@@ -1003,31 +1334,64 @@ const InventoryTable = ({
                   </TableCell>
                   {canManage && (
                     <TableCell>
-                      {row.status !== 'allotted' && (
-                        <div className='flex items-center gap-1'>
+                      <div className='flex items-center gap-1.5'>
+                        {row.status === 'allotted' && (
                           <Button
                             type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847]'
-                            onClick={() => openEditDialog(row)}
-                          >
-                            <PencilIcon className='size-4' />
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon'
-                            className='text-red-600 hover:bg-red-50 hover:text-red-700'
+                            variant='outline'
+                            size='sm'
+                            className='h-7 px-2 text-xs font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1'
+                            title='Cancel Allotment'
                             onClick={() => {
-                              setError(null)
-                              setDeletingSingle(row)
+                              setCancelError(null)
+                              setCancelReason('')
+                              setCancelSendNotification(true)
+                              setCancellingAllotmentRow(row)
                             }}
                           >
-                            <Trash2Icon className='size-4' />
+                            <BanIcon className='size-3.5' /> Cancel Allotment
                           </Button>
-                        </div>
-                      )}
+                        )}
+
+                        {row.status === 'available' && (
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            className='h-7 px-2 text-xs font-semibold text-purple-700 border-purple-200 hover:bg-purple-50 hover:text-purple-800 gap-1'
+                            title='Direct Allot / Re-allocate'
+                            onClick={() => openDirectAllotRowDialog(row)}
+                          >
+                            <UserPlusIcon className='size-3.5' /> Re-allocate
+                          </Button>
+                        )}
+
+                        {row.status !== 'allotted' && (
+                          <>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847]'
+                              onClick={() => openEditDialog(row)}
+                            >
+                              <PencilIcon className='size-3.5' />
+                            </Button>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700'
+                              onClick={() => {
+                                setError(null)
+                                setDeletingSingle(row)
+                              }}
+                            >
+                              <Trash2Icon className='size-3.5' />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
@@ -1157,7 +1521,7 @@ const InventoryTable = ({
             </div>
 
             <div className='grid gap-1.5'>
-              <Label htmlFor='edit-emd'>EMD Amount in ₹ (optional)</Label>
+              <Label htmlFor='edit-emd'>Stall Amount in ₹ (optional)</Label>
               <Input
                 id='edit-emd'
                 type='number'
@@ -1202,6 +1566,262 @@ const InventoryTable = ({
             <Button type='button' onClick={handleEditSubmit} disabled={editSubmitting}>
               {editSubmitting && <Loader2Icon className='animate-spin' />}
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Allotment Confirmation Dialog */}
+      <Dialog
+        open={cancellingAllotmentRow !== null}
+        onOpenChange={open => !open && !isCancellingAllotment && setCancellingAllotmentRow(null)}
+      >
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-destructive'>
+              <AlertTriangleIcon className='size-5 text-red-600' /> Cancel Stall Allotment
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel the allotment for Booth/Stall{' '}
+              <span className='font-bold text-foreground'>{cancellingAllotmentRow?.stallNumber}</span>?
+            </DialogDescription>
+          </DialogHeader>
+
+          {cancellingAllotmentRow?.applicationNumber && (
+            <div className='rounded-md border bg-slate-50 p-2.5 text-xs text-slate-700'>
+              <span className='font-semibold'>Currently Allotted To:</span>{' '}
+              <span className='font-mono font-bold'>{cancellingAllotmentRow.applicationNumber}</span>
+              <p className='mt-1 text-[11px] text-muted-foreground'>
+                The stall will be released immediately and become available for re-allocation.
+              </p>
+            </div>
+          )}
+
+          <div className='space-y-3 py-2'>
+            <div className='grid gap-1.5'>
+              <Label htmlFor='cancel-reason' className='text-xs'>
+                Reason for Cancellation (optional)
+              </Label>
+              <Input
+                id='cancel-reason'
+                placeholder='e.g. Applicant surrendered, non-payment, administrative order'
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+              />
+            </div>
+
+            <div className='flex items-center space-x-2 rounded-md border p-2.5 bg-slate-50'>
+              <Checkbox
+                id='cancel-notif'
+                checked={cancelSendNotification}
+                onCheckedChange={checked => setCancelSendNotification(checked === true)}
+              />
+              <label htmlFor='cancel-notif' className='text-xs font-medium cursor-pointer select-none text-slate-800'>
+                Send cancellation update via WhatsApp &amp; Email
+              </label>
+            </div>
+
+            {cancelError && (
+              <Alert variant='destructive'>
+                <AlertDescription>{cancelError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setCancellingAllotmentRow(null)}
+              disabled={isCancellingAllotment}
+            >
+              Close
+            </Button>
+            <Button
+              type='button'
+              variant='destructive'
+              onClick={handleConfirmCancelAllotment}
+              disabled={isCancellingAllotment}
+            >
+              {isCancellingAllotment && <Loader2Icon className='mr-1.5 size-4 animate-spin' />}
+              Confirm Cancel Allotment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Direct Re-allocate / Allot Dialog */}
+      <Dialog
+        open={allottingRow !== null}
+        onOpenChange={open => !open && !isSubmittingAllot && setAllottingRow(null)}
+      >
+        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-xl'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-purple-900'>
+              <UserPlusIcon className='size-5 text-purple-700' /> Re-allocate Booth/Stall {allottingRow?.stallNumber}
+            </DialogTitle>
+            <DialogDescription>
+              Directly allot this stall to an organisation or applicant with official record and notifications.
+            </DialogDescription>
+          </DialogHeader>
+
+          {allottingRow && (
+            <div className='flex flex-wrap items-center gap-2 rounded-md border bg-purple-50/50 p-2.5 text-xs text-purple-900'>
+              <span className='font-bold'>Category:</span>
+              <span>{allottingRow.categoryName}</span>
+              <span>·</span>
+              <span className='font-bold'>Type:</span>
+              <span className='capitalize'>{allottingRow.shopType}</span>
+              {allottingRow.direction && (
+                <>
+                  <span>·</span>
+                  <span className='font-bold'>Direction:</span>
+                  <span>{allottingRow.direction}</span>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className='grid gap-4 py-2'>
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-name'>Organisation / Allottee Name *</Label>
+                <Input
+                  id='allot-name'
+                  placeholder='e.g. Haryana Handlooms'
+                  value={allotForm.allotteeName}
+                  onChange={e => setAllotForm(prev => ({ ...prev, allotteeName: e.target.value }))}
+                />
+              </div>
+
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-father'>Father&apos;s Name *</Label>
+                <Input
+                  id='allot-father'
+                  placeholder='Father / Guardian name'
+                  value={allotForm.fatherName}
+                  onChange={e => setAllotForm(prev => ({ ...prev, fatherName: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-aadhaar'>Aadhaar Number (12 digits) *</Label>
+                <Input
+                  id='allot-aadhaar'
+                  placeholder='12-digit Aadhaar'
+                  maxLength={12}
+                  value={allotForm.aadhaarNumber}
+                  onChange={e => setAllotForm(prev => ({ ...prev, aadhaarNumber: e.target.value.replace(/\D/g, '') }))}
+                />
+              </div>
+
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-contact'>Contact Person (optional)</Label>
+                <Input
+                  id='allot-contact'
+                  placeholder='Representative if different'
+                  value={allotForm.contactPerson}
+                  onChange={e => setAllotForm(prev => ({ ...prev, contactPerson: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-1.5'>
+              <Label htmlFor='allot-address'>Full Address *</Label>
+              <Input
+                id='allot-address'
+                placeholder='Village / Street, Tehsil, District, State'
+                value={allotForm.address}
+                onChange={e => setAllotForm(prev => ({ ...prev, address: e.target.value }))}
+              />
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-mobile'>Mobile Number (10 digits) *</Label>
+                <Input
+                  id='allot-mobile'
+                  placeholder='10-digit Indian Mobile'
+                  maxLength={10}
+                  value={allotForm.mobileNumber}
+                  onChange={e => setAllotForm(prev => ({ ...prev, mobileNumber: e.target.value.replace(/\D/g, '') }))}
+                />
+              </div>
+
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-email'>Email Address *</Label>
+                <Input
+                  id='allot-email'
+                  type='email'
+                  placeholder='allottee@example.com'
+                  value={allotForm.email}
+                  onChange={e => setAllotForm(prev => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-1.5'>
+              <Label htmlFor='allot-purpose'>Purpose of Stall / Activity *</Label>
+              <Input
+                id='allot-purpose'
+                placeholder='e.g. Handloom exhibition and retail sales'
+                value={allotForm.workPurpose}
+                onChange={e => setAllotForm(prev => ({ ...prev, workPurpose: e.target.value }))}
+              />
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-fee'>Stall Amount / Fee in ₹</Label>
+                <Input
+                  id='allot-fee'
+                  type='number'
+                  min='0'
+                  placeholder='0'
+                  value={allotForm.paymentAmountRupees}
+                  onChange={e => setAllotForm(prev => ({ ...prev, paymentAmountRupees: e.target.value }))}
+                />
+                <p className='text-[11px] text-muted-foreground'>
+                  If 0, stall is allotted immediately. If &gt; 0, payment link is generated.
+                </p>
+              </div>
+
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-notes'>Internal Note (optional)</Label>
+                <Input
+                  id='allot-notes'
+                  placeholder='Remarks or memo reference'
+                  value={allotForm.notes}
+                  onChange={e => setAllotForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {allotError && (
+              <Alert variant='destructive'>
+                <AlertDescription>{allotError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setAllottingRow(null)}
+              disabled={isSubmittingAllot}
+            >
+              Cancel
+            </Button>
+            <Button
+              type='button'
+              onClick={handleDirectAllotSubmit}
+              disabled={isSubmittingAllot}
+            >
+              {isSubmittingAllot && <Loader2Icon className='mr-1.5 size-4 animate-spin' />}
+              Confirm Allotment
             </Button>
           </DialogFooter>
         </DialogContent>

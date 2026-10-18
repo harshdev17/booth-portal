@@ -138,11 +138,34 @@ export async function recordCheckoutSuccess(input: {
   razorpayPaymentId: string
 }): Promise<void> {
   await withTransaction(async (txQuery: TransactionQuery) => {
-    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await txQuery(
-      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
-      [input.applicationId]
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
     )
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
+    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
+
+    if (purpose === 'pay_now') {
+      await txQuery(
+        `UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
+        [input.applicationId]
+      )
+    } else {
+      await txQuery(
+        `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+        [input.applicationId]
+      )
+    }
+
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'checkout_success',
@@ -164,10 +187,18 @@ export async function recordCheckoutFailure(input: {
   failureReason: string
 }): Promise<void> {
   await withTransaction(async (txQuery: TransactionQuery) => {
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
+    )
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
     await txQuery(`UPDATE payments SET status = 'failed' WHERE id = ? AND status != 'success'`, [input.paymentId])
-    await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
-      input.applicationId
-    ])
+    if (purpose === 'registration') {
+      await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
+        input.applicationId
+      ])
+    }
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'checkout_failed',
@@ -190,11 +221,34 @@ export async function recordWebhookConfirmed(input: {
   webhookEventId: string
 }): Promise<void> {
   await withTransaction(async (txQuery: TransactionQuery) => {
-    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await txQuery(
-      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
-      [input.applicationId]
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
     )
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
+    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
+
+    if (purpose === 'pay_now') {
+      await txQuery(
+        `UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
+        [input.applicationId]
+      )
+    } else {
+      await txQuery(
+        `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+        [input.applicationId]
+      )
+    }
+
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'webhook_confirmed',
@@ -230,11 +284,34 @@ export async function recordAdminReconciled(input: {
   razorpayPaymentId: string
 }): Promise<void> {
   await withTransaction(async (txQuery: TransactionQuery) => {
-    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await txQuery(
-      `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
-      [input.applicationId]
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
     )
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
+    await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
+
+    if (purpose === 'pay_now') {
+      await txQuery(
+        `UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`,
+        [input.applicationId]
+      )
+      await txQuery(
+        `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
+        [input.applicationId]
+      )
+    } else {
+      await txQuery(
+        `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
+        [input.applicationId]
+      )
+    }
+
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'checkout_success',
@@ -257,10 +334,18 @@ export async function recordWebhookFailure(input: {
   webhookEventId: string
 }): Promise<void> {
   await withTransaction(async (txQuery: TransactionQuery) => {
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
+    )
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
     await txQuery(`UPDATE payments SET status = 'failed' WHERE id = ? AND status != 'success'`, [input.paymentId])
-    await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
-      input.applicationId
-    ])
+    if (purpose === 'registration') {
+      await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
+        input.applicationId
+      ])
+    }
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'webhook_failed',

@@ -7,6 +7,8 @@ import type { PoolConnection } from 'mysql2/promise'
 import { getPool } from '@/lib/db/client'
 import { ProvablyFairRandom } from '@/lib/draw/provably-fair'
 import { logAudit } from '@/lib/audit/log'
+import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
+import { sendNotification } from '@/lib/notifications/service'
 
 export interface DrawSimulationParams {
   categoryId: number
@@ -27,6 +29,7 @@ export type CandidateRow = {
   representativeName: string
   organisationName: string
   mobileNumber: string
+  email: string
   aadhaarLast4: string
 }
 
@@ -75,7 +78,7 @@ export class LuckyDrawService {
     const [candidates] = await pool.query<any[]>(
       `SELECT a.id AS applicationId, a.application_number AS applicationNumber,
               a.representative_name AS representativeName, a.organisation_name AS organisationName,
-              a.mobile_number AS mobileNumber, a.aadhaar_last4 AS aadhaarLast4
+              a.mobile_number AS mobileNumber, a.email, a.aadhaar_last4 AS aadhaarLast4
        FROM applications a
        LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
        WHERE a.category_id = ?
@@ -183,7 +186,7 @@ export class LuckyDrawService {
 
       // 1. Lock category
       const [categoryRows] = await conn.query<any[]>(
-        `SELECT id, name FROM categories WHERE id = ? FOR UPDATE`,
+        `SELECT id, name, allotment_payment_enabled, allotment_payment_deadline_at, allotment_amount_paise FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
 
@@ -194,7 +197,7 @@ export class LuckyDrawService {
       const [candidates] = await conn.query<any[]>(
         `SELECT a.id AS applicationId, a.application_number AS applicationNumber,
                 a.representative_name AS representativeName, a.organisation_name AS organisationName,
-                a.mobile_number AS mobileNumber, a.aadhaar_last4 AS aadhaarLast4
+                a.mobile_number AS mobileNumber, a.email, a.aadhaar_last4 AS aadhaarLast4
          FROM applications a
          LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
          WHERE a.category_id = ?
@@ -354,24 +357,45 @@ export class LuckyDrawService {
       }
 
       // 10. Update Allotted Stalls (associate stall with allotted application)
+      const isPaymentRequired = Boolean(
+        category.allotment_payment_enabled &&
+        category.allotment_amount_paise &&
+        Number(category.allotment_amount_paise) > 0
+      )
+      const stallStatus = isPaymentRequired ? 'reserved' : 'allotted'
+      const applicationNewStatus = isPaymentRequired ? 'payment_required' : 'allotted'
+
       for (let idx = 0; idx < allottedCount; idx++) {
         const stall = shuffledStalls[idx]
         const candidate = shuffledCandidates[idx]
 
         await conn.query(
           `UPDATE shop_units 
-           SET status = 'allotted', allotted_to_application_id = ? 
+           SET status = ?, allotted_to_application_id = ? 
            WHERE id = ?`,
-          [candidate.applicationId, stall.shopUnitId]
+          [stallStatus, candidate.applicationId, stall.shopUnitId]
         )
       }
 
-      // 11. Update Applications Status to 'allotted'
+      // 11. Update Applications Status
       if (allottedAppIds.length > 0) {
         await conn.query(
-          `UPDATE applications SET status = 'allotted' WHERE id IN (?)`,
-          [allottedAppIds]
+          `UPDATE applications SET status = ? WHERE id IN (?)`,
+          [applicationNewStatus, allottedAppIds]
         )
+
+        // Seed initial payment record for each winner if payment is required
+        if (isPaymentRequired) {
+          const amountPaise = Number(category.allotment_amount_paise)
+          for (const appId of allottedAppIds) {
+            await conn.query(
+              `INSERT INTO payments (application_id, purpose, amount_paise, status)
+               VALUES (?, 'pay_now', ?, 'not_initiated')
+               ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
+              [appId, amountPaise, amountPaise]
+            )
+          }
+        }
       }
 
       // 12. Update Draw Event Totals
@@ -383,6 +407,44 @@ export class LuckyDrawService {
       )
 
       await conn.commit()
+
+      // The draw is already committed before notifications are attempted, so a
+      // provider outage can never undo or leave the auditable allocation in a
+      // half-complete state. Only actual booth/stall winners are notified;
+      // waitlisted and unallocated candidates receive no draw notification.
+      await Promise.allSettled(
+        shuffledCandidates.slice(0, allottedCount).flatMap(candidate => {
+          const promises: Promise<unknown>[] = [
+            notifyApplicationStatusChange({
+              applicationId: candidate.applicationId,
+              applicationNumber: candidate.applicationNumber,
+              mobileNumber: candidate.mobileNumber,
+              email: candidate.email,
+              representativeName: candidate.representativeName,
+              newStatus: applicationNewStatus
+            })
+          ]
+
+          if (isPaymentRequired) {
+            const destination = candidate.mobileNumber.startsWith('+')
+              ? candidate.mobileNumber
+              : `+91${candidate.mobileNumber}`
+            promises.push(
+              sendNotification({
+                category: 'pay_now_activation',
+                destination,
+                userName: candidate.representativeName,
+                templateParams: [candidate.representativeName, candidate.applicationNumber],
+                buttonParam: candidate.applicationNumber,
+                applicationId: candidate.applicationId,
+                email: candidate.email
+              })
+            )
+          }
+
+          return promises
+        })
+      )
 
       // 13. Audit log
       await logAudit({

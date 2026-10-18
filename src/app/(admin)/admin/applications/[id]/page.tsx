@@ -17,6 +17,7 @@ import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
+import ApplicationAllotmentPaymentCard from '@/views/admin/applications/ApplicationAllotmentPaymentCard'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
@@ -53,6 +54,10 @@ type ApplicationRow = {
   category_slug: string
   selection_method: string
   shop_option_label: string | null
+  stall_number: string | null
+  allotment_amount_paise: number | null
+  allotment_payment_status: string | null
+  allotment_paid_at: string | null
 }
 
 const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string }> }) => {
@@ -69,10 +74,20 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
               a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
               c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
-              so.label AS shop_option_label
+              so.label AS shop_option_label,
+              COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
+              COALESCE(p.amount_paise, da.payment_amount_paise) AS allotment_amount_paise,
+              COALESCE(p.status, da.payment_status) AS allotment_payment_status,
+              (SELECT pt.created_at FROM payment_transactions pt
+                WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
+                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
+       LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+       LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
+       LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
        WHERE a.id = ?`,
       [applicationId]
     ),
@@ -202,7 +217,10 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           </div>
         </div>
 
-        <ApplicationPdfDownloads applicationId={id} />
+        <ApplicationPdfDownloads
+          applicationId={id}
+          hasAllotment={Boolean(app.stall_number) || app.status === 'allotted'}
+        />
 
         {approvalBlockedByDocs && (
           <p className='text-xs font-medium text-amber-700'>
@@ -452,20 +470,39 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         </TabsContent>
 
         <TabsContent value='selection'>
-          <Card className='shadow-xs'>
-            <CardHeader>
-              <CardTitle className='text-base'>Selection & Allotment</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-muted-foreground'>
-                Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
-              </p>
-              <p className='mt-3 text-sm text-muted-foreground'>
-                Draw participation, shop allotment, and the allotment letter/QR will appear here once this
-                application reaches that stage.
-              </p>
-            </CardContent>
-          </Card>
+          <div className='flex flex-col gap-6'>
+            <ApplicationAllotmentPaymentCard
+              applicationId={id}
+              applicationNumber={app.application_number}
+              stallNumber={app.stall_number}
+              status={app.status}
+              paymentAmountPaise={app.allotment_amount_paise}
+              paymentStatus={app.allotment_payment_status}
+              allotmentPaidAt={app.allotment_paid_at}
+              canManage={!!permissions?.has('allotment:perform') || !!permissions?.has('application:approve')}
+            />
+
+            <Card className='shadow-xs'>
+              <CardHeader>
+                <CardTitle className='text-base'>Selection & Allotment Information</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-3 text-sm'>
+                <p className='text-sm text-muted-foreground'>
+                  Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
+                </p>
+                <div className='grid gap-4 sm:grid-cols-2 pt-2'>
+                  <div>
+                    <span className='text-xs font-bold uppercase text-muted-foreground'>Selection Method</span>
+                    <p className='font-semibold text-slate-800 capitalize'>{app.selection_method.replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <span className='text-xs font-bold uppercase text-muted-foreground'>Assigned Booth / Stall</span>
+                    <p className='font-mono font-bold text-blue-700'>{app.stall_number || 'Not yet allocated'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value='audit'>

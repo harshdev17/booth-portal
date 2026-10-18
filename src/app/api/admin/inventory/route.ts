@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 
+import { aadhaarLast4, encryptAadhaar, hashAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
+import { generateApplicationNumber } from '@/lib/applications/application-number'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
+import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
+import { sendNotification } from '@/lib/notifications/service'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { encodeId } from '@/lib/security/opaque-id'
@@ -11,13 +16,20 @@ type CreateBody = {
   shopType?: unknown
   categoryName?: unknown
   isNewCategory?: unknown
+  newCategoryFee?: unknown
   direction?: unknown
   emdAmountPaise?: unknown
   isDirectAllotment?: unknown
   allotteeName?: unknown
+  fatherName?: unknown
+  aadhaarNumber?: unknown
   contactPerson?: unknown
+  address?: unknown
   mobileNumber?: unknown
+  email?: unknown
+  workPurpose?: unknown
   notes?: unknown
+  sendNotification?: unknown
 }
 
 function slugify(value: string) {
@@ -33,10 +45,9 @@ function slugify(value: string) {
  * Creates one booth/stall unit directly from the admin UI.
  * Supports:
  * 1. Standard stall creation with status 'available'.
- * 2. Creating a new category on the fly.
- * 3. Direct Allotment mode: instantly marks stall as 'allotted', creates
- *    the active record in `direct_allotments` with allottee details, and ensures
- *    the category is marked as direct allotment (`is_direct_allotment = 1`).
+ * 2. Creating a new category on the fly with initial category pricing.
+ * 3. Direct Allotment mode: marks stall as 'allotted', creates linked application,
+ *    stores full direct allotment record, and optionally dispatches notifications.
  */
 export async function POST(request: Request) {
   try {
@@ -54,15 +65,20 @@ export async function POST(request: Request) {
     const shopType = body.shopType === 'single' || body.shopType === 'double' ? body.shopType : null
     const categoryName = typeof body.categoryName === 'string' ? body.categoryName.trim() : ''
     const direction = typeof body.direction === 'string' && body.direction.trim() ? body.direction.trim() : null
-    const emdAmountRaw = body.emdAmountPaise
     const isDirectAllotment = Boolean(body.isDirectAllotment)
-    const allotteeName = typeof body.allotteeName === 'string' ? body.allotteeName.trim() : ''
-    const contactPerson = typeof body.contactPerson === 'string' && body.contactPerson.trim() ? body.contactPerson.trim() : null
-    const mobileNumber = typeof body.mobileNumber === 'string' && body.mobileNumber.trim() ? body.mobileNumber.trim() : null
-    const notes = typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null
+    const newCategoryFeePaise = Math.max(0, Math.round(Number(body.newCategoryFee || 0) * 100))
 
-    const emdAmountPaise =
-      emdAmountRaw === null || emdAmountRaw === undefined || emdAmountRaw === '' ? null : Number(emdAmountRaw)
+    // Direct Allotment fields
+    const allotteeName = typeof body.allotteeName === 'string' ? body.allotteeName.trim() : ''
+    const fatherName = typeof body.fatherName === 'string' ? body.fatherName.trim() : ''
+    const aadhaarNumber = typeof body.aadhaarNumber === 'string' ? body.aadhaarNumber.trim().replace(/\s+/g, '') : ''
+    const contactPerson = typeof body.contactPerson === 'string' && body.contactPerson.trim() ? body.contactPerson.trim() : null
+    const address = typeof body.address === 'string' ? body.address.trim() : ''
+    const mobileNumber = typeof body.mobileNumber === 'string' ? body.mobileNumber.trim().replace(/\D/g, '').slice(-10) : ''
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+    const workPurpose = typeof body.workPurpose === 'string' ? body.workPurpose.trim() : ''
+    const notes = typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null
+    const sendNotificationToggle = body.sendNotification !== false
 
     if (!stallNumber) {
       return NextResponse.json({ error: 'Booth/Stall number is required.' }, { status: 400 })
@@ -76,22 +92,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Category is required.' }, { status: 400 })
     }
 
-    if (isDirectAllotment && !allotteeName) {
-      return NextResponse.json({ error: 'Organisation / Allottee name is required for direct allotment.' }, { status: 400 })
+    if (isDirectAllotment) {
+      if (!allotteeName) {
+        return NextResponse.json({ error: 'Organisation / Allottee name is mandatory.' }, { status: 400 })
+      }
+      if (!fatherName) {
+        return NextResponse.json({ error: "Father's / Husband's name is mandatory." }, { status: 400 })
+      }
+      if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber)) {
+        return NextResponse.json({ error: 'A valid 12-digit Aadhaar number is mandatory.' }, { status: 400 })
+      }
+      if (!address) {
+        return NextResponse.json({ error: 'Complete postal address is mandatory.' }, { status: 400 })
+      }
+      if (!mobileNumber || mobileNumber.length !== 10) {
+        return NextResponse.json({ error: 'A valid 10-digit mobile number is mandatory.' }, { status: 400 })
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json({ error: 'A valid email address is mandatory.' }, { status: 400 })
+      }
+      if (!workPurpose) {
+        return NextResponse.json({ error: 'Purpose of stall / activity is mandatory.' }, { status: 400 })
+      }
     }
 
-    if (emdAmountPaise !== null && (!Number.isFinite(emdAmountPaise) || emdAmountPaise < 0)) {
-      return NextResponse.json({ error: 'EMD amount must be a non-negative number.' }, { status: 400 })
-    }
-
-    const categoryRows = await query<Array<{ id: number; is_direct_allotment: number }>>(
-      `SELECT id, is_direct_allotment FROM categories
+    const categoryRows = await query<Array<{
+      id: number
+      is_direct_allotment: number
+      allotment_amount_paise: number | null
+      allotment_payment_enabled: number
+    }>>(
+      `SELECT id, is_direct_allotment, allotment_amount_paise, allotment_payment_enabled FROM categories
        WHERE status != 'archived' AND (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(slug)) = LOWER(TRIM(?)))
        LIMIT 1`,
       [categoryName, categoryName]
     )
 
     let categoryId = categoryRows[0]?.id
+    let categoryAllotmentPaise = categoryRows[0]?.allotment_amount_paise ? Number(categoryRows[0].allotment_amount_paise) : 0
+    let categoryPaymentEnabled = Boolean(categoryRows[0]?.allotment_payment_enabled)
 
     if (!categoryId) {
       // Create new category on the fly
@@ -101,15 +140,23 @@ export async function POST(request: Request) {
       const taken = await query<Array<{ slug: string }>>(`SELECT slug FROM categories WHERE slug LIKE ?`, [`${baseSlug}%`])
       const slug = taken.some(row => row.slug === baseSlug) ? `${baseSlug}-${taken.length + 1}` : baseSlug
 
+      categoryAllotmentPaise = newCategoryFeePaise
+      categoryPaymentEnabled = newCategoryFeePaise > 0
+
       const newCatResult = await query<{ insertId: number }>(
-        `INSERT INTO categories (event_id, slug, name, selection_method, status, is_direct_allotment, display_order)
-         VALUES (?, ?, ?, ?, ?, ?, 9999)`,
+        `INSERT INTO categories (
+           event_id, slug, name, selection_method, status, fee_paise,
+           allotment_amount_paise, allotment_payment_enabled, allotment_payment_deadline_at,
+           is_direct_allotment, display_order
+         ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, DATE_ADD(NOW(), INTERVAL 3 DAY), ?, 9999)`,
         [
           eventId,
           slug,
           categoryName,
           isDirectAllotment ? 'manual' : 'lottery',
           isDirectAllotment ? 'closed' : 'active',
+          categoryAllotmentPaise,
+          categoryPaymentEnabled ? 1 : 0,
           isDirectAllotment ? 1 : 0
         ]
       )
@@ -123,7 +170,7 @@ export async function POST(request: Request) {
         module: 'inventory',
         entityType: 'category',
         entityId: String(categoryId),
-        newValue: { name: categoryName, slug, isDirectAllotment }
+        newValue: { name: categoryName, slug, isDirectAllotment, allotmentAmountPaise: categoryAllotmentPaise }
       })
     } else if (isDirectAllotment && categoryRows[0].is_direct_allotment !== 1) {
       await query(`UPDATE categories SET is_direct_allotment = 1 WHERE id = ?`, [categoryId])
@@ -139,42 +186,156 @@ export async function POST(request: Request) {
     }
 
     if (isDirectAllotment) {
+      const isPaymentRequired = categoryPaymentEnabled && categoryAllotmentPaise > 0
+      const appStatus = isPaymentRequired ? 'payment_required' : 'allotted'
+      const shopStatus = isPaymentRequired ? 'reserved' : 'allotted'
+      const directPaymentStatus = isPaymentRequired ? 'pending' : 'exempt'
+      const representativeName = contactPerson || allotteeName
+
+      const aadhaarCiphertext = encryptAadhaar(aadhaarNumber)
+      const last4 = aadhaarLast4(aadhaarNumber)
+      const aadhaarHash = hashAadhaar(aadhaarNumber)
+      const rawAccessToken = generateAccessToken()
+      const accessTokenHash = hashAccessToken(rawAccessToken)
+
       const created = await withTransaction(async tx => {
+        // 1. Generate official application record
+        let applicationNumber = ''
+        let appInsertResult: { insertId: number } | null = null
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            applicationNumber = generateApplicationNumber(new Date().getFullYear())
+            appInsertResult = await tx<{ insertId: number }>(
+              `INSERT INTO applications (
+                 application_number, category_id,
+                 email, organisation_name, representative_name, father_name,
+                 aadhaar_ciphertext, aadhaar_last4, aadhaar_hash,
+                 address, state, district, pin_code, mobile_number,
+                 work_purpose, achievement_experience,
+                 status, access_token_hash, declaration_accepted_at, submitted_at
+               ) VALUES (
+                 ?, ?,
+                 ?, ?, ?, ?,
+                 ?, ?, ?,
+                 ?, 'Haryana', 'Kurukshetra', '136118', ?,
+                 ?, '',
+                 ?, ?, NOW(), NOW()
+               )`,
+              [
+                applicationNumber,
+                categoryId,
+                email,
+                allotteeName,
+                representativeName,
+                fatherName,
+                aadhaarCiphertext,
+                last4,
+                aadhaarHash,
+                address,
+                mobileNumber,
+                workPurpose,
+                appStatus,
+                accessTokenHash
+              ]
+            )
+            break
+          } catch (err: unknown) {
+            const isDup =
+              typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'ER_DUP_ENTRY'
+            if (!isDup || attempt === 4) throw err
+          }
+        }
+
+        if (!appInsertResult) {
+          throw new Error('Failed to generate official application record.')
+        }
+
+        const applicationId = appInsertResult.insertId
+
+        // 2. Insert stall unit linked to application
         const stallResult = await tx<{ insertId: number }>(
-          `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status)
-           VALUES (?, ?, ?, ?, ?, 'allotted')`,
-          [categoryId, stallNumber, shopType, direction, emdAmountPaise]
+          `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status, allotted_to_application_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [categoryId, stallNumber, shopType, direction, categoryAllotmentPaise || null, shopStatus, applicationId]
         )
 
         const unitId = stallResult.insertId
 
+        // 3. Insert direct_allotments record
         const allotmentResult = await tx<{ insertId: number }>(
-          `INSERT INTO direct_allotments (category_id, shop_unit_id, allottee_name, contact_person, mobile_number, notes, status, allotted_by_user_id)
-           VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
-          [categoryId, unitId, allotteeName, contactPerson, mobileNumber, notes, session.userId]
+          `INSERT INTO direct_allotments (
+             category_id, shop_unit_id, allottee_name, contact_person,
+             father_name, aadhaar_number, address, mobile_number, email, work_purpose,
+             payment_amount_paise, payment_status, application_id, application_number,
+             notes, status, allotted_by_user_id
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+          [
+            categoryId,
+            unitId,
+            allotteeName,
+            contactPerson || null,
+            fatherName,
+            aadhaarNumber,
+            address,
+            mobileNumber,
+            email,
+            workPurpose,
+            categoryAllotmentPaise,
+            directPaymentStatus,
+            applicationId,
+            applicationNumber,
+            notes,
+            session.userId
+          ]
         )
 
-        return { unitId, allotmentId: allotmentResult.insertId }
+        // 4. If payment required, seed payment row
+        if (isPaymentRequired) {
+          await tx(
+            `INSERT INTO payments (application_id, purpose, amount_paise, status)
+             VALUES (?, 'pay_now', ?, 'not_initiated')
+             ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
+            [applicationId, categoryAllotmentPaise, categoryAllotmentPaise]
+          )
+        }
+
+        return { unitId, allotmentId: allotmentResult.insertId, applicationId, applicationNumber, isPaymentRequired }
       })
+
+      // Send WhatsApp and Email Notification if enabled
+      if (sendNotificationToggle) {
+        const dest = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber.replace(/\D/g, '').slice(-10)}`
+        if (created.isPaymentRequired) {
+          await sendNotification({
+            category: 'pay_now_activation',
+            destination: dest,
+            userName: representativeName,
+            templateParams: [representativeName, created.applicationNumber],
+            buttonParam: created.applicationNumber,
+            applicationId: created.applicationId,
+            email
+          }).catch(err => logServerError('inventory.direct_allotment.notification', err))
+        } else {
+          await notifyApplicationStatusChange({
+            applicationId: created.applicationId,
+            applicationNumber: created.applicationNumber,
+            mobileNumber,
+            email,
+            representativeName,
+            newStatus: 'allotted'
+          }).catch(err => logServerError('inventory.direct_allotment.notification', err))
+        }
+      }
 
       await logAudit({
         actorUserId: session.userId,
         actorRoleKey: session.role.key,
-        action: 'inventory.created',
+        action: 'inventory.created_and_allotted',
         module: 'inventory',
         entityType: 'shop_unit',
         entityId: String(created.unitId),
-        newValue: { stallNumber, shopType, categoryName, direction, emdAmountPaise, status: 'allotted' }
-      })
-
-      await logAudit({
-        actorUserId: session.userId,
-        actorRoleKey: session.role.key,
-        action: 'direct_allotment.created',
-        module: 'allotment',
-        entityType: 'direct_allotment',
-        entityId: String(created.allotmentId),
-        newValue: { categoryId, shopUnitId: created.unitId, allotteeName, contactPerson, mobileNumber, notes }
+        newValue: { stallNumber, shopType, categoryName, direction, allotteeName, applicationNumber: created.applicationNumber }
       })
 
       return NextResponse.json({
@@ -183,9 +344,9 @@ export async function POST(request: Request) {
         categoryName,
         shopType,
         direction,
-        emdAmountPaise,
-        status: 'allotted',
-        applicationNumber: allotteeName,
+        emdAmountPaise: categoryAllotmentPaise || null,
+        status: shopStatus,
+        applicationNumber: created.applicationNumber,
         isDirectAllotment: true
       }, { status: 201 })
     }
@@ -193,7 +354,7 @@ export async function POST(request: Request) {
     const result = await query<{ insertId: number }>(
       `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status)
        VALUES (?, ?, ?, ?, ?, 'available')`,
-      [categoryId, stallNumber, shopType, direction, emdAmountPaise]
+      [categoryId, stallNumber, shopType, direction, categoryAllotmentPaise || null]
     )
 
     await logAudit({
@@ -203,7 +364,7 @@ export async function POST(request: Request) {
       module: 'inventory',
       entityType: 'shop_unit',
       entityId: String(result.insertId),
-      newValue: { stallNumber, shopType, categoryName, direction, emdAmountPaise, status: 'available' }
+      newValue: { stallNumber, shopType, categoryName, direction, status: 'available' }
     })
 
     return NextResponse.json({
@@ -212,7 +373,7 @@ export async function POST(request: Request) {
       categoryName,
       shopType,
       direction,
-      emdAmountPaise,
+      emdAmountPaise: categoryAllotmentPaise || null,
       status: 'available',
       applicationNumber: null,
       isDirectAllotment: false

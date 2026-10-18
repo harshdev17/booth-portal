@@ -123,24 +123,12 @@ export const navItems: NavItem[] = [
         label: 'Audit Logs',
         href: '/admin/audit-logs',
         permission: 'audit:view'
-      },
-      {
-        icon: 'ShieldCheck',
-        label: 'Police / Security Portal',
-        href: '/police/dashboard',
-        permission: 'police:view'
       }
     ]
   },
   {
     groupLabel: 'Administration',
     items: [
-      {
-        icon: 'ShieldCheck',
-        label: 'User Roles & Permissions',
-        href: '/admin/roles',
-        permission: 'role:manage'
-      },
       {
         icon: 'Settings',
         label: 'Settings',

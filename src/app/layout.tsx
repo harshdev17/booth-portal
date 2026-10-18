@@ -1,5 +1,5 @@
 // React Imports
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 
 // Next Imports
 import type { Metadata } from 'next'
@@ -12,13 +12,14 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app'
 // Component Imports
 import Providers from '@/components/Providers'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import NextTopLoader from '@/components/layout/NextTopLoader'
+import ScrollToTop from '@/components/layout/ScrollToTop'
 
 // Util Imports
 import { cn } from '@/lib/utils'
 
 // Style Imports
 import './globals.css'
-import ScrollToTop from '@/components/layout/ScrollToTop'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -52,6 +53,10 @@ const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
       suppressHydrationWarning
     >
       <body className='flex min-h-full w-full flex-auto flex-col'>
+        <Suspense fallback={null}>
+          <NextTopLoader color='#ea580c' height={3} showSpinner={true} />
+        </Suspense>
+
         <NuqsAdapter>
           <Providers sidebarDefaultOpen={true}>
             <TooltipProvider>{children}</TooltipProvider>
