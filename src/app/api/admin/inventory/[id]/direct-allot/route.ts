@@ -222,7 +222,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const destination = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`
       if (result.isPaymentRequired) {
         sendNotification({
-          category: 'pay_now_activation',
+          category: 'direct_allotment_payment',
           destination,
           userName: representativeName,
           templateParams: [representativeName, result.applicationNumber],
@@ -233,13 +233,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           console.error('[inventory/direct-allot] Payment notification send failure:', err)
         })
       } else {
-        notifyApplicationStatusChange({
+        sendNotification({
+          category: 'direct_allotment_confirmed',
+          destination,
+          userName: representativeName,
+          templateParams: [representativeName, result.applicationNumber, 'Allotted'],
           applicationId: result.applicationId,
-          applicationNumber: result.applicationNumber,
-          mobileNumber,
-          email,
-          representativeName,
-          newStatus: 'allotted'
+          email
         }).catch(err => {
           console.error('[inventory/direct-allot] Allotment status notification failure:', err)
         })

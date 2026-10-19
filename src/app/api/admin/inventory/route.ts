@@ -308,7 +308,7 @@ export async function POST(request: Request) {
         const dest = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber.replace(/\D/g, '').slice(-10)}`
         if (created.isPaymentRequired) {
           await sendNotification({
-            category: 'pay_now_activation',
+            category: 'direct_allotment_payment',
             destination: dest,
             userName: representativeName,
             templateParams: [representativeName, created.applicationNumber],
@@ -317,13 +317,13 @@ export async function POST(request: Request) {
             email
           }).catch(err => logServerError('inventory.direct_allotment.notification', err))
         } else {
-          await notifyApplicationStatusChange({
+          await sendNotification({
+            category: 'direct_allotment_confirmed',
+            destination: dest,
+            userName: representativeName,
+            templateParams: [representativeName, created.applicationNumber, 'Allotted'],
             applicationId: created.applicationId,
-            applicationNumber: created.applicationNumber,
-            mobileNumber,
-            email,
-            representativeName,
-            newStatus: 'allotted'
+            email
           }).catch(err => logServerError('inventory.direct_allotment.notification', err))
         }
       }

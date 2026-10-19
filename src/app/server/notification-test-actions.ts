@@ -20,6 +20,8 @@ const testMessageSchema = z.object({
     'status_update',
     'document_query',
     'pay_now_activation',
+    'direct_allotment_payment',
+    'direct_allotment_confirmed',
     'reminder'
   ]),
   mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
@@ -47,6 +49,10 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar Card', 'Please upload a clearer copy.'] }
     case 'pay_now_activation':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
+    case 'direct_allotment_payment':
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'], buttonParam: 'IGM-2026-000000' }
+    case 'direct_allotment_confirmed':
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Allotted'] }
     case 'reminder':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
   }

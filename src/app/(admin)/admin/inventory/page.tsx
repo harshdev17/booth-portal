@@ -236,36 +236,36 @@ const InventoryAdminPage = async () => {
       </div>
 
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-        <Card className='shadow-xs'>
-          <CardHeader className='border-b bg-muted/40 py-3'>
+        <Card className='shadow-xs flex flex-col'>
+          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
             <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Category</CardTitle>
           </CardHeader>
-          <CardContent className='flex flex-col gap-2 pt-4'>
+          <CardContent className='flex flex-col gap-1.5 pt-4 max-h-72 overflow-y-auto pr-3'>
             {categoryBreakdown.length === 0 ? (
               <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
             ) : (
               categoryBreakdown.map(([name, count]) => (
-                <div key={name} className='flex items-center justify-between text-sm'>
-                  <span className='text-slate-700'>{name}</span>
-                  <span className='font-bold text-[#0c2847]'>{count}</span>
+                <div key={name} className='flex items-center justify-between text-sm py-1 border-b border-slate-100 last:border-0'>
+                  <span className='text-slate-700 truncate pr-2'>{name}</span>
+                  <span className='font-bold text-[#0c2847] shrink-0'>{count}</span>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
 
-        <Card className='shadow-xs'>
-          <CardHeader className='border-b bg-muted/40 py-3'>
+        <Card className='shadow-xs flex flex-col'>
+          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
             <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Direction</CardTitle>
           </CardHeader>
-          <CardContent className='flex flex-col gap-2 pt-4'>
+          <CardContent className='flex flex-col gap-1.5 pt-4 max-h-72 overflow-y-auto pr-3'>
             {directionBreakdown.length === 0 ? (
               <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
             ) : (
               directionBreakdown.map(([direction, count]) => (
-                <div key={direction} className='flex items-center justify-between text-sm'>
-                  <span className='text-slate-700'>{direction}</span>
-                  <span className='font-bold text-[#0c2847]'>{count}</span>
+                <div key={direction} className='flex items-center justify-between text-sm py-1 border-b border-slate-100 last:border-0'>
+                  <span className='text-slate-700 truncate pr-2'>{direction}</span>
+                  <span className='font-bold text-[#0c2847] shrink-0'>{count}</span>
                 </div>
               ))
             )}

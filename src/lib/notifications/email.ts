@@ -98,6 +98,9 @@ export function buildEmailContent(
   const statusUrl = baseUrl
     ? `${baseUrl.replace(/\/+$/, '')}/status${appNo ? `?appNo=${encodeURIComponent(appNo)}` : ''}`
     : undefined
+  const allotmentLetterUrl = baseUrl
+    ? `${baseUrl.replace(/\/+$/, '')}/allotment-letter${appNo ? `?appNo=${encodeURIComponent(appNo)}` : ''}`
+    : undefined
   let c: Content
 
   switch (category) {
@@ -132,9 +135,6 @@ export function buildEmailContent(
       break
     case 'status_update': {
       const isAllotted = typeof third === 'string' && third.toLowerCase() === 'allotted'
-      const allotmentLetterUrl = baseUrl
-        ? `${baseUrl.replace(/\/+$/, '')}/allotment-letter?appNo=${encodeURIComponent(appNo)}`
-        : undefined
 
       c = {
         subject: isAllotted
@@ -176,18 +176,50 @@ export function buildEmailContent(
       break
     case 'pay_now_activation':
       c = {
-        subject: `Payment is now open for application ${appNo}`,
+        subject: `Draw Selection: Complete Payment for application ${appNo}`,
         en: [
           `Dear ${name},`,
-          `Congratulations! Your application ${appNo} has been selected for stall allotment for International Geeta Jayanti Mahotsav 2026.`,
+          `Congratulations! Your application ${appNo} has been selected in the draw for booth/stall allotment for International Geeta Jayanti Mahotsav 2026.`,
           'Please complete the stall allotment fee payment using the link below to confirm your stall and download your Allotment Letter.'
         ],
         hi: [
           `प्रिय ${name},`,
-          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} को स्टॉल आवंटन के लिए चुना गया है।`,
+          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत ड्रा (Draw) में आपके आवेदन ${appNo} का चयन स्टॉल/बूथ आवंटन हेतु हुआ है।`,
           'कृपया अपना आवंटन सुनिश्चित करने और आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से स्टॉल शुल्क का भुगतान करें।'
         ],
         link: statusUrl
+      }
+      break
+    case 'direct_allotment_payment':
+      c = {
+        subject: `Direct Allotment: Complete Payment for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `A booth/stall has been directly allotted to your application ${appNo} by the administration for International Geeta Jayanti Mahotsav 2026.`,
+          'Please complete the stall allotment fee payment using the link below to confirm your stall and download your official Allotment Letter.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} के लिए प्रशासन द्वारा स्टॉल/बूथ का प्रत्यक्ष आवंटन (Direct Allotment) किया गया है।`,
+          'अपना स्टॉल सुनिश्चित करने और आधिकारिक आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से देय आवंटन शुल्क का ऑनलाइन भुगतान पूर्ण करें।'
+        ],
+        link: statusUrl
+      }
+      break
+    case 'direct_allotment_confirmed':
+      c = {
+        subject: `Direct Allotment Confirmed - Download Allotment Letter for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `A booth/stall has been successfully allotted to your application ${appNo} via direct administrative allotment for International Geeta Jayanti Mahotsav 2026.`,
+          'Your allotment is confirmed. You can now download your official Allotment Letter using the link below.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} के लिए स्टॉल/बूथ का प्रत्यक्ष आवंटन (Direct Allotment) सफलतापूर्वक पुष्टीकृत कर दिया गया है।`,
+          'आपका आवंटन पूर्ण रूप से सुनिश्चित है। आप नीचे दिए गए लिंक से अपना आधिकारिक आवंटन पत्र (Allotment Letter) डाउनलोड कर सकते हैं।'
+        ],
+        link: allotmentLetterUrl
       }
       break
     case 'reminder':
@@ -227,11 +259,14 @@ export function buildEmailContent(
 
   let buttonLabel = 'Open Portal / पोर्टल खोलें'
   let buttonColor = '#0c2847'
-  if (category === 'status_update' && typeof third === 'string' && third.toLowerCase() === 'allotted') {
-    buttonLabel = '📥 Download Allotment Letter / आबंटन पत्र डाउनलोड करें'
+  if (category === 'direct_allotment_confirmed' || (category === 'status_update' && typeof third === 'string' && third.toLowerCase() === 'allotted')) {
+    buttonLabel = '📥 Download Allotment Letter / आवंटन पत्र डाउनलोड करें'
     buttonColor = '#059669'
+  } else if (category === 'direct_allotment_payment') {
+    buttonLabel = '💳 Pay Allotment Fee / आवंटन शुल्क भुगतान करें'
+    buttonColor = '#d97706'
   } else if (category === 'pay_now_activation') {
-    buttonLabel = '💳 Pay Stall Allotment Fee / स्टॉल शुल्क भुगतान करें'
+    buttonLabel = '💳 Pay Stall Fee (Draw) / स्टॉल शुल्क भुगतान करें'
     buttonColor = '#d97706'
   } else if (category === 'payment_confirmation') {
     buttonLabel = '📄 View Receipt & Status / रसीद एवं स्थिति देखें'

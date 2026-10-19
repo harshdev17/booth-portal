@@ -11,6 +11,8 @@ export type NotificationCategory =
   | 'status_update'
   | 'document_query'
   | 'pay_now_activation'
+  | 'direct_allotment_payment'
+  | 'direct_allotment_confirmed'
   | 'reminder'
 
 export type SendTemplateMessageInput = {

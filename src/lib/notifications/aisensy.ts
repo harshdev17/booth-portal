@@ -25,10 +25,26 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
   status_update: 'AISENSY_CAMPAIGN_STATUS_UPDATE',
   document_query: 'AISENSY_CAMPAIGN_DOCUMENT_QUERY',
   pay_now_activation: 'AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION',
+  direct_allotment_payment: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT',
+  direct_allotment_confirmed: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED',
   reminder: 'AISENSY_CAMPAIGN_REMINDER'
 }
 
 function getCampaignName(category: NotificationCategory): string | null {
+  if (category === 'direct_allotment_payment') {
+    return (
+      process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT ||
+      process.env.AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION ||
+      null
+    )
+  }
+  if (category === 'direct_allotment_confirmed') {
+    return (
+      process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED ||
+      process.env.AISENSY_CAMPAIGN_STATUS_UPDATE ||
+      null
+    )
+  }
   return process.env[CAMPAIGN_ENV_VAR[category]] || null
 }
 

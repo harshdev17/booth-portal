@@ -210,9 +210,9 @@ export async function POST(request: Request) {
     if (sendNotificationToggle) {
       const destination = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`
       if (allotted.isPaymentRequired) {
-        // Send payment link activation
+        // Send direct allotment payment link activation
         sendNotification({
-          category: 'pay_now_activation',
+          category: 'direct_allotment_payment',
           destination,
           userName: representativeName,
           templateParams: [representativeName, allotted.applicationNumber],
@@ -223,14 +223,14 @@ export async function POST(request: Request) {
           console.error('[direct-allotments] Payment notification send failure:', err)
         })
       } else {
-        // Free allotment (0 amount): send status update with Allotted & download link
-        notifyApplicationStatusChange({
+        // Free allotment (0 amount): send direct allotment confirmation & download link
+        sendNotification({
+          category: 'direct_allotment_confirmed',
+          destination,
+          userName: representativeName,
+          templateParams: [representativeName, allotted.applicationNumber, 'Allotted'],
           applicationId: allotted.applicationId,
-          applicationNumber: allotted.applicationNumber,
-          mobileNumber,
-          email,
-          representativeName,
-          newStatus: 'allotted'
+          email
         }).catch(err => {
           console.error('[direct-allotments] Allotment status notification failure:', err)
         })
