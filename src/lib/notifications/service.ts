@@ -59,30 +59,33 @@ function applyTestRedirect(input: SendTemplateMessageInput): { input: SendTempla
 export async function sendNotification(original: SendTemplateMessageInput): Promise<boolean> {
   const { input, redirected } = applyTestRedirect(original)
 
-  const result = await getService()
-    .sendTemplateMessage(input)
-    .catch(error => ({ ok: false as const, error: error instanceof Error ? error.message : 'Unknown provider error.' }))
+  const waTask = (async () => {
+    const result = await getService()
+      .sendTemplateMessage(input)
+      .catch(error => ({ ok: false as const, error: error instanceof Error ? error.message : 'Unknown provider error.' }))
 
-  try {
-    await query(
-      `INSERT INTO notification_log (channel, provider, category, application_id, destination, campaign_name, status, error_message)
-       VALUES ('whatsapp', 'aisensy', ?, ?, ?, ?, ?, ?)`,
-      [
-        input.category,
-        input.applicationId ?? null,
-        input.destination,
-        process.env[`AISENSY_CAMPAIGN_${input.category.toUpperCase()}`] ?? null,
-        result.ok ? 'sent' : 'failed',
-        result.ok ? null : result.error.slice(0, 512)
-      ]
-    )
-  } catch (error) {
-    logServerError('notifications.log-write', error)
-  }
+    try {
+      await query(
+        `INSERT INTO notification_log (channel, provider, category, application_id, destination, campaign_name, status, error_message)
+         VALUES ('whatsapp', 'aisensy', ?, ?, ?, ?, ?, ?)`,
+        [
+          input.category,
+          input.applicationId ?? null,
+          input.destination,
+          input.campaignOverride || process.env[`AISENSY_CAMPAIGN_${input.category.toUpperCase()}`] || null,
+          result.ok ? 'sent' : 'failed',
+          result.ok ? null : result.error.slice(0, 512)
+        ]
+      )
+    } catch (error) {
+      logServerError('notifications.log-write', error)
+    }
 
-  // Also email the same message. A separate try so an email problem can never
-  // change the WhatsApp outcome the caller relies on (e.g. the OTP flow).
-  if (input.email) {
+    return result.ok
+  })()
+
+  const emailTask = (async () => {
+    if (!input.email) return
     try {
       const contact = await getContactSettings()
       const content = buildEmailContent(input.category, input.templateParams, contact)
@@ -109,7 +112,9 @@ export async function sendNotification(original: SendTemplateMessageInput): Prom
     } catch (error) {
       logServerError('notifications.email', error, { configured: isEmailConfigured() })
     }
-  }
+  })()
 
-  return result.ok
+  const [waOk] = await Promise.all([waTask, emailTask])
+
+  return waOk
 }

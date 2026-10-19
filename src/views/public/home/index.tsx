@@ -2,19 +2,59 @@ import { getFeeBreakdown, listOpenCategories } from '@/lib/applications/categori
 import { query } from '@/lib/db/client'
 import PublicHomeClient from './PublicHomeClient'
 
+interface CachedHomeData {
+  categories: Array<{
+    slug: string
+    name: string
+    nameHi: string | null
+    description: string | null
+    descriptionHi: string | null
+    selectionMethod: 'draw' | 'manual' | 'auction' | 'tender' | 'application_fee'
+    displayIndex: number
+    feePaise: number | null
+    feeBasePaise: number | null
+    gstPercent: number | null
+    allotmentAmountPaise: number | null
+    allotmentAmountNote: string | null
+    allotmentAmountNoteHi: string | null
+    availableShopsCount: number
+  }>
+  eventStartsOn: string | null
+  eventEndsOn: string | null
+}
+
+let cachedHomeData: CachedHomeData | null = null
+let homeDataCachedAt = 0
+const HOME_CACHE_TTL_MS = 30_000
+
 /**
- * PublicHome server component that fetches category data from the DB
- * and hands off to PublicHomeClient for bilingual language switching (Hindi/English).
+ * PublicHome server component that fetches category and event data from the DB
+ * using parallel queries and a short in-memory cache to minimize latency over
+ * remote database connections.
  */
 const PublicHome = async () => {
-  const rawCategories = await listOpenCategories()
+  const now = Date.now()
 
-  // Available-shop counts per category, from the real inventory
-  // (shop_units — see migration 0016_shop_inventory.sql). The card only shows
-  // the count when it is above 0 (see CategoryCard.tsx).
-  const availableCounts = await query<Array<{ category_id: number; available_count: number }>>(
-    `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
-  )
+  if (cachedHomeData && now - homeDataCachedAt < HOME_CACHE_TTL_MS) {
+    return (
+      <PublicHomeClient
+        categories={cachedHomeData.categories}
+        eventStartsOn={cachedHomeData.eventStartsOn}
+        eventEndsOn={cachedHomeData.eventEndsOn}
+      />
+    )
+  }
+
+  // Fetch all 3 data sources in parallel instead of sequentially
+  const [rawCategories, availableCounts, eventRows] = await Promise.all([
+    listOpenCategories(),
+    query<Array<{ category_id: number; available_count: number }>>(
+      `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
+    ),
+    query<Array<{ starts_on: string | null; ends_on: string | null }>>(
+      `SELECT starts_on, ends_on FROM events ORDER BY id ASC LIMIT 1`
+    )
+  ])
 
   const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, Number(row.available_count)]))
 
@@ -39,15 +79,14 @@ const PublicHome = async () => {
     }
   })
 
-  // Event-wide application window shown in the hero slider — distinct from
-  // any single category's own open/close dates (categories.application_
-  // opens_at/closes_at). Currently unset; the hero shows "to be announced"
-  // rather than inventing placeholder dates until this is configured.
-  const eventRows = await query<Array<{ starts_on: string | null; ends_on: string | null }>>(
-    `SELECT starts_on, ends_on FROM events ORDER BY id ASC LIMIT 1`
-  )
-
   const event = eventRows[0] ?? { starts_on: null, ends_on: null }
+
+  cachedHomeData = {
+    categories,
+    eventStartsOn: event.starts_on,
+    eventEndsOn: event.ends_on
+  }
+  homeDataCachedAt = now
 
   return (
     <PublicHomeClient categories={categories} eventStartsOn={event.starts_on} eventEndsOn={event.ends_on} />

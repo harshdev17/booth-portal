@@ -17,6 +17,7 @@ export type NotificationCategory =
 
 export type SendTemplateMessageInput = {
   category: NotificationCategory
+  campaignOverride?: string
 
   /** Mobile number with country code, e.g. +919876543210 */
   destination: string

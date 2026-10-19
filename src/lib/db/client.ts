@@ -24,8 +24,8 @@ export function getPool(): mysql.Pool {
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
     waitForConnections: true,
-    connectionLimit: 10,
-    maxIdle: 10,
+    connectionLimit: 25,
+    maxIdle: 20,
     idleTimeout: 300000,
 
     // Keep pooled connections warm: with a remote DB each fresh connect costs ~1s+, and a

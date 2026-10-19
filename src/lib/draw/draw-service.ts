@@ -429,12 +429,15 @@ export class LuckyDrawService {
             const destination = candidate.mobileNumber.startsWith('+')
               ? candidate.mobileNumber
               : `+91${candidate.mobileNumber}`
+            const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+            const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
+
             promises.push(
               sendNotification({
                 category: 'pay_now_activation',
                 destination,
                 userName: candidate.representativeName,
-                templateParams: [candidate.representativeName, candidate.applicationNumber],
+                templateParams: [candidate.representativeName, candidate.applicationNumber, payLink],
                 buttonParam: candidate.applicationNumber,
                 applicationId: candidate.applicationId,
                 email: candidate.email

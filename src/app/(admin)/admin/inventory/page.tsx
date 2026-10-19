@@ -31,7 +31,14 @@ type ShopUnitRow = {
   emd_amount_paise: number | null
   status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
   application_number: string | null
+  application_id: number | null
   is_direct_allotment: number | boolean
+  payment_status: string | null
+  payment_amount_paise: number | null
+  is_cancelled: number | boolean | null
+  cancel_reason: string | null
+  allotment_payment_deadline_at: string | null
+  is_payment_overdue: number | boolean
 }
 
 type InventoryLogRow = {
@@ -94,12 +101,28 @@ const InventoryAdminPage = async () => {
   const [rows, categories, logs] = await Promise.all([
     query<ShopUnitRow[]>(
       `SELECT su.id, su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise,
-              su.status, COALESCE(a.application_number, da.allottee_name) AS application_number,
-              (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment
+              su.status,
+              COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
+              COALESCE(a.id, da.application_id) AS application_id,
+              (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment,
+              COALESCE(p.status, da.payment_status) AS payment_status,
+              COALESCE(p.amount_paise, da.payment_amount_paise, su.emd_amount_paise, c.allotment_amount_paise) AS payment_amount_paise,
+              (da_cancelled.id IS NOT NULL OR su.status = 'cancelled' OR a.status = 'cancelled') AS is_cancelled,
+              da_cancelled.notes AS cancel_reason,
+              c.allotment_payment_deadline_at,
+              (c.allotment_payment_deadline_at IS NOT NULL AND c.allotment_payment_deadline_at < NOW() AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')) AS is_payment_overdue
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
        LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
+       LEFT JOIN payments p ON p.application_id = COALESCE(a.id, da.application_id) AND p.status IN ('success', 'paid', 'pending', 'not_initiated')
+       LEFT JOIN (
+         SELECT shop_unit_id, MAX(id) AS max_id
+         FROM direct_allotments
+         WHERE status = 'cancelled'
+         GROUP BY shop_unit_id
+       ) da_canc_max ON da_canc_max.shop_unit_id = su.id
+       LEFT JOIN direct_allotments da_cancelled ON da_cancelled.id = da_canc_max.max_id
        ORDER BY su.stall_number ASC`
     ),
     query<Array<{ name: string }>>(`SELECT name FROM categories WHERE status != 'archived' ORDER BY display_order ASC`),
@@ -110,7 +133,7 @@ const InventoryAdminPage = async () => {
            LEFT JOIN users u ON u.id = al.actor_user_id
            WHERE al.module = 'inventory' OR al.action IN ('direct_allotment.created', 'direct_allotment.interchanged')
            ORDER BY al.created_at DESC
-           LIMIT 200`
+           LIMIT 30`
         )
       : Promise.resolve([])
   ])
@@ -161,11 +184,18 @@ const InventoryAdminPage = async () => {
     emdAmountPaise: row.emd_amount_paise,
     status: row.status,
     applicationNumber: row.application_number,
-    isDirectAllotment: Boolean(row.is_direct_allotment)
+    applicationId: row.application_id,
+    isDirectAllotment: Boolean(row.is_direct_allotment),
+    paymentStatus: row.payment_status,
+    paymentAmountPaise: row.payment_amount_paise,
+    isCancelled: Boolean(row.is_cancelled),
+    cancelReason: row.cancel_reason,
+    allotmentPaymentDeadlineAt: row.allotment_payment_deadline_at,
+    isPaymentOverdue: Boolean(row.is_payment_overdue)
   }))
 
   return (
-    <div className='flex flex-col gap-6'>
+    <div className='flex flex-col gap-6 min-w-0 w-full'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
           <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Inventory / Booths/Stalls</h1>
@@ -273,13 +303,13 @@ const InventoryAdminPage = async () => {
         </Card>
       </div>
 
-      <Tabs defaultValue='units'>
+      <Tabs defaultValue='units' className='min-w-0 w-full'>
         <TabsList>
           <TabsTrigger value='units'>Booth/Stall Units</TabsTrigger>
           {canViewLogs && <TabsTrigger value='logs'>Logs</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value='units'>
+        <TabsContent value='units' className='min-w-0 w-full'>
           <InventoryTable
             initialRows={shopUnitRows}
             canManage={canManage}

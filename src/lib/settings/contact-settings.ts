@@ -45,17 +45,26 @@ type Row = {
   twitter_url: string | null
 }
 
+let cachedContactSettings: ContactSettings | null = null
+let contactSettingsCachedAt = 0
+const CONTACT_SETTINGS_TTL_MS = 60_000
+
+export function clearContactSettingsCache(): void {
+  cachedContactSettings = null
+  contactSettingsCachedAt = 0
+}
+
 /**
  * The single site-wide contact-settings row — see migration 0022. Read by
- * PublicLayout (src/app/(public)/layout.tsx), which wraps every public page
- * including several that are otherwise static (no DB call of their own) —
- * so a DB outage (or, during a build, DB_HOST simply not being configured
- * for that build environment) must never fail the build or the page.
- * Falling back to the same placeholder values the public site used to
- * hardcode is a safe degrade for what is cosmetic contact info, not
- * something correctness-critical.
+ * PublicLayout (src/app/(public)/layout.tsx), which wraps every public page.
+ * Cached in-memory to prevent redundant remote DB round-trips on every page hit.
  */
 export async function getContactSettings(): Promise<ContactSettings> {
+  const now = Date.now()
+  if (cachedContactSettings && now - contactSettingsCachedAt < CONTACT_SETTINGS_TTL_MS) {
+    return cachedContactSettings
+  }
+
   try {
     const rows = await query<Row[]>(
       `SELECT phone, email, whatsapp_number, address, address_hi, facebook_url, instagram_url, youtube_url, twitter_url
@@ -66,7 +75,7 @@ export async function getContactSettings(): Promise<ContactSettings> {
 
     if (!row) return FALLBACK
 
-    return {
+    const result: ContactSettings = {
       phone: row.phone,
       email: row.email,
       whatsappNumber: row.whatsapp_number,
@@ -77,6 +86,11 @@ export async function getContactSettings(): Promise<ContactSettings> {
       youtubeUrl: row.youtube_url,
       twitterUrl: row.twitter_url
     }
+
+    cachedContactSettings = result
+    contactSettingsCachedAt = now
+
+    return result
   } catch (error) {
     logServerError('settings.contact.read', error)
 

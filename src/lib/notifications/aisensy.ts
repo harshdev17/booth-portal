@@ -56,12 +56,12 @@ export class AiSensyNotificationService implements NotificationService {
       return { ok: false, error: 'AISENSY_API_KEY is not configured.' }
     }
 
-    const campaignName = getCampaignName(input.category)
+    const campaignName = input.campaignOverride || getCampaignName(input.category)
 
     if (!campaignName) {
       return {
         ok: false,
-        error: `No AiSensy campaign configured for category "${input.category}" (set ${CAMPAIGN_ENV_VAR[input.category]}).`
+        error: `No AiSensy campaign configured for category "${input.category}".`
       }
     }
 

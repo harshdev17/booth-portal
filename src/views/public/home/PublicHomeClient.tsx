@@ -41,7 +41,8 @@ export default function PublicHomeClient({ categories, eventStartsOn, eventEndsO
             alt='Geeta Jayanti Mahotsav Brahma Sarovar Background'
             fill
             className='object-cover object-top opacity-35'
-            priority
+            sizes='100vw'
+            quality={70}
           />
           {/* Subtle gradient wash to maintain 100% card legibility */}
           <div className='absolute inset-0 bg-gradient-to-b from-[#faf8f5]/80 via-[#faf8f5]/65 to-[#faf8f5]/90' />

@@ -220,13 +220,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Dispatch notification
     if (sendNotificationToggle) {
       const destination = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+      const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(result.applicationNumber)}` : ''
+      const letterLink = baseUrl ? `${baseUrl}/allotment-letter?appNo=${encodeURIComponent(result.applicationNumber)}` : ''
+
       if (result.isPaymentRequired) {
         sendNotification({
           category: 'direct_allotment_payment',
           destination,
           userName: representativeName,
-          templateParams: [representativeName, result.applicationNumber],
-          buttonParam: result.applicationNumber,
+          templateParams: [representativeName, result.applicationNumber, payLink],
           applicationId: result.applicationId,
           email
         }).catch(err => {
@@ -237,7 +240,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           category: 'direct_allotment_confirmed',
           destination,
           userName: representativeName,
-          templateParams: [representativeName, result.applicationNumber, 'Allotted'],
+          templateParams: [representativeName, result.applicationNumber, letterLink],
           applicationId: result.applicationId,
           email
         }).catch(err => {

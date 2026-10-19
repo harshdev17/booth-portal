@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   title: 'Category Details | International Geeta Jayanti Mahotsav 2026'
 }
 
+export const revalidate = 60
+
 const CategoryDetailPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params
   const category = await getCategoryBySlug(slug)
@@ -20,8 +22,10 @@ const CategoryDetailPage = async ({ params }: { params: Promise<{ slug: string }
     notFound()
   }
 
-  const documents = await getDocumentDefinitionsForCategory(category.id)
-  const mapRow = await getCategoryMapBySlug(category.slug)
+  const [documents, mapRow] = await Promise.all([
+    getDocumentDefinitionsForCategory(category.id),
+    getCategoryMapBySlug(category.slug)
+  ])
 
   return (
     <>

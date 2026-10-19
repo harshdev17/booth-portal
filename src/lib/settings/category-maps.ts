@@ -13,6 +13,15 @@ export type CategoryMapRow = {
   updatedAt: string | null
 }
 
+let cachedCategoryMaps: { fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] } | null = null
+let categoryMapsCachedAt = 0
+const CATEGORY_MAPS_TTL_MS = 60_000
+
+export function clearCategoryMapsCache(): void {
+  cachedCategoryMaps = null
+  categoryMapsCachedAt = 0
+}
+
 /**
  * Stall/Booth location maps: one optional PDF per open category, plus a
  * single "Full Map" row (category_id IS NULL). Read by the public
@@ -24,6 +33,12 @@ export type CategoryMapRow = {
  * list — there's nothing to invent per the no-assumptions rule.
  */
 export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] }> {
+  const now = Date.now()
+
+  if (cachedCategoryMaps && now - categoryMapsCachedAt < CATEGORY_MAPS_TTL_MS) {
+    return cachedCategoryMaps
+  }
+
   const rows = await query<
     Array<{
       category_id: number | null
@@ -54,10 +69,15 @@ export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | nu
     updatedAt: row.updated_at
   }))
 
-  return {
+  const result = {
     fullMap: mapped.find(row => row.categoryId === null) ?? null,
     byCategory: mapped.filter((row): row is CategoryMapRow & { categoryId: number } => row.categoryId !== null)
   }
+
+  cachedCategoryMaps = result
+  categoryMapsCachedAt = now
+
+  return result
 }
 
 /** The map PDF for one specific category, if an admin has uploaded one. */

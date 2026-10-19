@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: 'Guidelines | International Geeta Jayanti Mahotsav 2026'
 }
 
+export const revalidate = 60
+
 const GuidelinesPage = async () => {
   const { byCategory } = await listCategoryMaps()
   const mapPdfBySlug = Object.fromEntries(byCategory.map(row => [row.categorySlug, row.pdfPath]))

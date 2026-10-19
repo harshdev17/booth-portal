@@ -546,7 +546,7 @@ export default function CategoryFeeSettingsClient({
                                   Allotment Payment Settings for &ldquo;{cat.name}&rdquo; (आबंटन शुल्क सेटिंग्स)
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>
-                                  Require lucky draw winners to pay an allotment fee before the deadline to confirm their booth/stall.
+                                  Require draw-selected applicants to pay an allotment fee before the deadline to confirm their booth/stall.
                                 </p>
                               </div>
 

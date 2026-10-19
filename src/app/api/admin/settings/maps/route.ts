@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
+import { clearCategoryMapsCache } from '@/lib/settings/category-maps'
 import { detectFileType } from '@/lib/uploads/file-signature'
 
 // Public-facing assets (any site visitor may open these without logging in,
@@ -89,6 +90,8 @@ export async function POST(request: Request) {
       entityId: categoryId === null ? 'full-map' : String(categoryId),
       newValue: { categoryId, pdfPath: filePath, originalFilename: file.name }
     })
+
+    clearCategoryMapsCache()
 
     return NextResponse.json({ success: true, pdfPath: filePath })
   } catch (error) {

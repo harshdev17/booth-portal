@@ -100,6 +100,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       )
     }
 
+    // Do not allow changing payment amount if stall has an active direct allotment
+    const activeDa = await query<Array<{ id: number; payment_status: string }>>(
+      `SELECT id, payment_status FROM direct_allotments WHERE shop_unit_id = ? AND status = 'active' LIMIT 1`,
+      [shopUnitId]
+    )
+    if (activeDa.length > 0 && emdAmountPaise !== null && emdAmountPaise !== existingUnit.emd_amount_paise) {
+      return NextResponse.json(
+        { error: 'Payment amount cannot be modified after stall has been allotted/assigned.' },
+        { status: 400 }
+      )
+    }
+
     const categoryRows = await query<Array<{ id: number }>>(
       `SELECT id FROM categories
        WHERE status != 'archived' AND (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(slug)) = LOWER(TRIM(?)))

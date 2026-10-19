@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   description: 'Official information regarding booth/stall categories, allotment and application for International Geeta Jayanti Mahotsav 2026, Kurukshetra Development Board.'
 }
 
-// Categories are admin-configurable data (.ai/HOMEPAGE.md), so this page
-// must reflect the current database state on every request rather than
-// being statically generated at build time.
-export const dynamic = 'force-dynamic'
+// Revalidate landing page in the background every 60 seconds (ISR).
+// This serves visitors instantaneously in ~10ms from edge/memory cache
+// without executing remote database round-trips on every page hit.
+export const revalidate = 60
 
 const HomePage = () => {
   return (

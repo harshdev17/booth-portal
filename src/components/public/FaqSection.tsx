@@ -150,6 +150,8 @@ export default function FaqSection() {
           fill
           className='object-cover object-center opacity-85'
           priority={false}
+          sizes='100vw'
+          quality={70}
         />
         {/* Soft overlay gradient ensuring maximum text readability while keeping watermarks visible */}
         <div className='absolute inset-0 bg-gradient-to-b from-[#faf8f5]/40 via-transparent to-[#faf8f5]/60' />

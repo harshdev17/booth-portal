@@ -224,9 +224,17 @@ export function buildEmailContent(
       break
     case 'reminder':
       c = {
-        subject: `Reminder for application ${appNo}`,
-        en: [`Dear ${name},`, `This is a reminder about your application ${appNo}. Please check its status using the link below.`],
-        hi: [`प्रिय ${name},`, `यह आपके आवेदन ${appNo} के बारे में एक अनुस्मारक है। कृपया नीचे दिए गए लिंक से स्थिति देखें।`],
+        subject: `Payment Reminder: Complete Booth/Stall Fee for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `This is a payment reminder regarding your booth/stall allotment for application ${appNo} for International Geeta Jayanti Mahotsav 2026.`,
+          'Our records indicate that your stall allotment fee payment is still pending. Please complete the online payment using the official link below to confirm your booth/stall before the deadline.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `यह अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} हेतु देय बूथ/स्टॉल आवंटन शुल्क के भुगतान का अनुस्मारक (Payment Reminder) है।`,
+          'रिकॉर्ड के अनुसार आपके स्टॉल आवंटन शुल्क का भुगतान अभी लंबित है। कृपया अपना स्टॉल आवंटन सुनिश्चित करने के लिए निर्धारित समय से पहले नीचे दिए गए आधिकारिक लिंक से देय शुल्क का ऑनलाइन भुगतान पूर्ण करें।'
+        ],
         link: statusUrl
       }
       break
@@ -260,16 +268,16 @@ export function buildEmailContent(
   let buttonLabel = 'Open Portal / पोर्टल खोलें'
   let buttonColor = '#0c2847'
   if (category === 'direct_allotment_confirmed' || (category === 'status_update' && typeof third === 'string' && third.toLowerCase() === 'allotted')) {
-    buttonLabel = '📥 Download Allotment Letter / आवंटन पत्र डाउनलोड करें'
+    buttonLabel = 'Download Allotment Letter / आवंटन पत्र डाउनलोड करें'
     buttonColor = '#059669'
   } else if (category === 'direct_allotment_payment') {
-    buttonLabel = '💳 Pay Allotment Fee / आवंटन शुल्क भुगतान करें'
+    buttonLabel = 'Pay Allotment Fee / आवंटन शुल्क भुगतान करें'
     buttonColor = '#d97706'
   } else if (category === 'pay_now_activation') {
-    buttonLabel = '💳 Pay Stall Fee (Draw) / स्टॉल शुल्क भुगतान करें'
+    buttonLabel = 'Pay Stall Fee (Draw) / स्टॉल शुल्क भुगतान करें'
     buttonColor = '#d97706'
   } else if (category === 'payment_confirmation') {
-    buttonLabel = '📄 View Receipt & Status / रसीद एवं स्थिति देखें'
+    buttonLabel = 'View Receipt & Status / रसीद एवं स्थिति देखें'
     buttonColor = '#0c2847'
   }
 

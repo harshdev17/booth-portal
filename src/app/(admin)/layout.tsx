@@ -22,6 +22,31 @@ import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
  * if middleware config ever changes/drifts. Never rely on client-side
  * checks alone for this (see CLAUDE.md Section 15).
  */
+let cachedCategoryCounts: Array<{ name: string; slug: string; count: number }> | null = null
+let categoryCountsCachedAt = 0
+const CATEGORY_COUNTS_TTL_MS = 30_000
+
+async function getCachedCategoryCounts(): Promise<Array<{ name: string; slug: string; count: number }>> {
+  const now = Date.now()
+  if (cachedCategoryCounts && now - categoryCountsCachedAt < CATEGORY_COUNTS_TTL_MS) {
+    return cachedCategoryCounts
+  }
+
+  const counts = await query<Array<{ name: string; slug: string; count: number }>>(
+    `SELECT c.name, c.slug, COUNT(a.id) AS count
+     FROM categories c
+     LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
+     WHERE c.status != 'archived'
+     GROUP BY c.id, c.name, c.slug, c.display_order
+     ORDER BY c.display_order ASC`
+  )
+
+  cachedCategoryCounts = counts
+  categoryCountsCachedAt = now
+
+  return counts
+}
+
 const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
   const session = await getSession()
 
@@ -31,28 +56,17 @@ const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {
   const permissions = await getCurrentUserPermissions()
 
   // Only fetched when the sidebar's "All Applications" item would actually
-  // render for this role — feeds the per-category submenu/counts (see
-  // Sidebar.tsx's injectCategoryDropdown). Read-only aggregate counts, no
-  // applicant data, so no extra permission check beyond application:view.
-  const categoryCounts = permissions?.has('application:view')
-    ? await query<Array<{ name: string; slug: string; count: number }>>(
-        `SELECT c.name, c.slug, COUNT(a.id) AS count
-         FROM categories c
-         LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
-         WHERE c.status != 'archived'
-         GROUP BY c.id, c.name, c.slug, c.display_order
-         ORDER BY c.display_order ASC`
-      )
-    : []
+  // render for this role — feeds the per-category submenu/counts.
+  const categoryCounts = permissions?.has('application:view') ? await getCachedCategoryCounts() : []
 
   return (
     <div className='admin-shell flex h-full w-full min-w-0'>
       <Suspense>
         <Sidebar permissions={permissions ? Array.from(permissions) : []} categoryCounts={categoryCounts} />
       </Suspense>
-      <SidebarInset className='flex flex-1 flex-col'>
+      <SidebarInset className='flex flex-1 flex-col min-w-0 overflow-x-hidden'>
         <Header user={{ fullName: session.fullName, email: session.email, roleName: session.role.name }} />
-        <main className='mx-auto size-full max-w-360 flex-1 px-4 py-6 sm:px-6'>{children}</main>
+        <main className='mx-auto w-full max-w-360 flex-1 px-4 py-6 sm:px-6 min-w-0 overflow-x-hidden'>{children}</main>
         <Toaster />
         <Footer />
       </SidebarInset>

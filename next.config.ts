@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
   basePath: process.env.BASEPATH ?? '',
   reactStrictMode: true,
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  compress: true,
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400
+  },
   headers: async () => [
     {
       source: '/:path*',

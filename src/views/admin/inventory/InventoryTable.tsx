@@ -5,11 +5,19 @@ import { useMemo, useState } from 'react'
 import {
   AlertTriangleIcon,
   BanIcon,
+  BellRingIcon,
+  CheckCircle2Icon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockIcon,
+  FileTextIcon,
+  HistoryIcon,
+  InfoIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
+  PrinterIcon,
   StoreIcon,
   Trash2Icon,
   UserPlusIcon
@@ -45,7 +53,14 @@ export type ShopUnitRowData = {
   emdAmountPaise: number | null
   status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
   applicationNumber: string | null
+  applicationId: number | null
   isDirectAllotment?: boolean
+  paymentStatus?: string | null
+  paymentAmountPaise?: number | null
+  isCancelled?: boolean
+  cancelReason?: string | null
+  allotmentPaymentDeadlineAt?: string | null
+  isPaymentOverdue?: boolean
 }
 
 const STATUS_CONFIG: Record<ShopUnitRowData['status'], { label: string; color: string }> = {
@@ -66,6 +81,16 @@ type StallFormState = {
   direction: string
   emdAmount: string
   status: ShopUnitRowData['status']
+  isDirectAllotment: boolean
+  allotteeName: string
+  fatherName: string
+  aadhaarNumber: string
+  address: string
+  mobileNumber: string
+  email: string
+  workPurpose: string
+  notes: string
+  sendNotification: boolean
 }
 
 const EMPTY_FORM: StallFormState = {
@@ -74,7 +99,17 @@ const EMPTY_FORM: StallFormState = {
   categoryName: '',
   direction: '',
   emdAmount: '',
-  status: 'available'
+  status: 'available',
+  isDirectAllotment: false,
+  allotteeName: '',
+  fatherName: '',
+  aadhaarNumber: '',
+  address: '',
+  mobileNumber: '',
+  email: '',
+  workPurpose: '',
+  notes: '',
+  sendNotification: true
 }
 
 type AddStallFormState = {
@@ -89,7 +124,6 @@ type AddStallFormState = {
   allotteeName: string
   fatherName: string
   aadhaarNumber: string
-  contactPerson: string
   address: string
   mobileNumber: string
   email: string
@@ -110,7 +144,6 @@ const EMPTY_ADD_FORM: AddStallFormState = {
   allotteeName: '',
   fatherName: '',
   aadhaarNumber: '',
-  contactPerson: '',
   address: '',
   mobileNumber: '',
   email: '',
@@ -161,7 +194,7 @@ const InventoryTable = ({
   const [bulkStatusError, setBulkStatusError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'available' | 'allotted' | 'public' | 'direct'>('all')
+  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'available' | 'allotted' | 'public' | 'direct' | 'cancelled'>('all')
   const [categoryFilter, setCategoryFilter] = useState(ALL)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
@@ -170,13 +203,75 @@ const InventoryTable = ({
 
   const tabCounts = useMemo(() => {
     const total = rows.length
-    const available = rows.filter(r => r.status === 'available').length
-    const allotted = rows.filter(r => r.status === 'allotted').length
-    const direct = rows.filter(r => Boolean(r.isDirectAllotment)).length
-    const publicStalls = rows.filter(r => !r.isDirectAllotment).length
+    const available = rows.filter(r => r.status === 'available' && !r.isCancelled).length
+    const allotted = rows.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled).length
+    const direct = rows.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled').length
+    const publicStalls = rows.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
+    const cancelled = rows.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled').length
 
-    return { total, available, allotted, direct, public: publicStalls }
+    return { total, available, allotted, direct, public: publicStalls, cancelled }
   }, [rows])
+
+  type HistoryItem = {
+    id: string
+    timestamp: string
+    action: string
+    title: string
+    description: string
+    actorName?: string | null
+    badgeColor: 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'slate'
+  }
+  const [historyRow, setHistoryRow] = useState<ShopUnitRowData | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyEvents, setHistoryEvents] = useState<HistoryItem[]>([])
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
+  const openHistoryDialog = async (row: ShopUnitRowData) => {
+    setHistoryRow(row)
+    setHistoryLoading(true)
+    setHistoryError(null)
+    setHistoryEvents([])
+
+    try {
+      const res = await fetch(`/api/admin/inventory/${row.id}/history`)
+      const data = await res.json()
+      if (!res.ok) {
+        setHistoryError(data.error ?? 'Failed to load history.')
+        return
+      }
+      setHistoryEvents(data.history || [])
+    } catch {
+      setHistoryError('Network error loading history.')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null)
+  const [reminderToast, setReminderToast] = useState<string | null>(null)
+
+  const handleSendReminder = async (row: ShopUnitRowData) => {
+    if (!row.applicationId) return
+    setIsSendingReminder(row.id)
+    setReminderToast(null)
+
+    try {
+      const res = await fetch(`/api/admin/applications/${row.applicationId}/send-payment-reminder`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setReminderToast(`Payment reminder dispatched to ${row.applicationNumber || 'applicant'}!`)
+        setTimeout(() => setReminderToast(null), 4000)
+      } else {
+        alert(data.error ?? 'Failed to send payment reminder.')
+      }
+    } catch {
+      alert('Error sending payment reminder.')
+    } finally {
+      setIsSendingReminder(null)
+    }
+  }
 
   const [addOpen, setAddOpen] = useState(false)
   const [addForm, setAddForm] = useState<AddStallFormState>(EMPTY_ADD_FORM)
@@ -201,7 +296,6 @@ const InventoryTable = ({
     allotteeName: '',
     fatherName: '',
     aadhaarNumber: '',
-    contactPerson: '',
     address: '',
     mobileNumber: '',
     email: '',
@@ -257,7 +351,6 @@ const InventoryTable = ({
       allotteeName: '',
       fatherName: '',
       aadhaarNumber: '',
-      contactPerson: '',
       address: '',
       mobileNumber: '',
       email: '',
@@ -341,11 +434,12 @@ const InventoryTable = ({
     const searchLower = search.trim().toLowerCase()
 
     return rows.filter(row => {
-      // Tab filter: all vs available vs allotted vs public/draw vs direct entry
-      if (stallCategoryTab === 'available' && row.status !== 'available') return false
-      if (stallCategoryTab === 'allotted' && row.status !== 'allotted') return false
-      if (stallCategoryTab === 'direct' && !row.isDirectAllotment) return false
-      if (stallCategoryTab === 'public' && row.isDirectAllotment) return false
+      // Tab filter: all vs available vs allotted by draw vs public/draw vs direct entry vs cancelled
+      if (stallCategoryTab === 'cancelled' && !row.isCancelled && row.status !== 'cancelled') return false
+      if (stallCategoryTab === 'available' && (row.status !== 'available' || row.isCancelled)) return false
+      if (stallCategoryTab === 'allotted' && (row.status !== 'allotted' || row.isDirectAllotment || row.isCancelled)) return false
+      if (stallCategoryTab === 'direct' && (!row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
+      if (stallCategoryTab === 'public' && (row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
 
       if (searchLower) {
         const haystack = [
@@ -520,7 +614,17 @@ const InventoryTable = ({
       categoryName: row.categoryName,
       direction: row.direction ?? '',
       emdAmount: row.emdAmountPaise !== null ? String(row.emdAmountPaise / 100) : '',
-      status: row.status
+      status: row.status,
+      isDirectAllotment: Boolean(row.isDirectAllotment),
+      allotteeName: row.applicationNumber ? row.applicationNumber : '',
+      fatherName: '',
+      aadhaarNumber: '',
+      address: '',
+      mobileNumber: '',
+      email: '',
+      workPurpose: '',
+      notes: '',
+      sendNotification: true
     })
   }
 
@@ -589,7 +693,6 @@ const InventoryTable = ({
           allotteeName: addForm.allotteeName.trim(),
           fatherName: addForm.fatherName.trim(),
           aadhaarNumber: addForm.aadhaarNumber.trim(),
-          contactPerson: addForm.contactPerson.trim() || null,
           address: addForm.address.trim(),
           mobileNumber: addForm.mobileNumber.trim(),
           email: addForm.email.trim(),
@@ -618,7 +721,11 @@ const InventoryTable = ({
           emdAmountPaise: body.emdAmountPaise ?? null,
           status: body.status || (addForm.isDirectAllotment ? 'allotted' : 'available'),
           applicationNumber: body.applicationNumber || (addForm.isDirectAllotment ? addForm.allotteeName.trim() : null),
-          isDirectAllotment: addForm.isDirectAllotment
+          applicationId: body.applicationId ?? null,
+          isDirectAllotment: addForm.isDirectAllotment,
+          paymentStatus: body.paymentStatus ?? null,
+          paymentAmountPaise: body.paymentAmountPaise ?? null,
+          isCancelled: false
         }
       ])
 
@@ -640,8 +747,40 @@ const InventoryTable = ({
 
     if (!editForm.stallNumber.trim() || !editForm.shopType || !editForm.categoryName) {
       setEditError('Booth/Stall number, type, and category are required.')
-
       return
+    }
+
+    const isDoingDirectAllotment = editForm.isDirectAllotment && editingRow.status === 'available'
+
+    if (isDoingDirectAllotment) {
+      if (!editForm.allotteeName.trim()) {
+        setEditError('Organisation / Allottee name is mandatory.')
+        return
+      }
+      if (!editForm.fatherName.trim()) {
+        setEditError("Father's / Husband's name is mandatory.")
+        return
+      }
+      if (!editForm.aadhaarNumber.trim() || !/^\d{12}$/.test(editForm.aadhaarNumber.trim())) {
+        setEditError('A valid 12-digit Aadhaar number is mandatory.')
+        return
+      }
+      if (!editForm.address.trim()) {
+        setEditError('Complete postal address is mandatory.')
+        return
+      }
+      if (!editForm.mobileNumber.trim() || editForm.mobileNumber.trim().replace(/\D/g, '').length !== 10) {
+        setEditError('A valid 10-digit mobile number is mandatory.')
+        return
+      }
+      if (!editForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
+        setEditError('A valid email address is mandatory.')
+        return
+      }
+      if (!editForm.workPurpose.trim()) {
+        setEditError('Purpose of stall / activity is mandatory.')
+        return
+      }
     }
 
     setEditSubmitting(true)
@@ -665,27 +804,71 @@ const InventoryTable = ({
 
       if (!response.ok) {
         setEditError(body.error ?? 'Could not update this booth/stall.')
-
         return
       }
 
-      const updatedId = editingRow.id
+      if (isDoingDirectAllotment) {
+        const allotRes = await fetch(`/api/admin/inventory/${editingRow.id}/direct-allot`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            allotteeName: editForm.allotteeName.trim(),
+            fatherName: editForm.fatherName.trim(),
+            aadhaarNumber: editForm.aadhaarNumber.trim(),
+            address: editForm.address.trim(),
+            mobileNumber: editForm.mobileNumber.trim(),
+            email: editForm.email.trim(),
+            workPurpose: editForm.workPurpose.trim(),
+            notes: editForm.notes.trim() || null,
+            paymentAmountRupees: editForm.emdAmount.trim() ? Number(editForm.emdAmount) : 0,
+            sendNotification: editForm.sendNotification
+          })
+        })
 
-      setRows(prev =>
-        prev.map(r =>
-          r.id === updatedId
-            ? {
-                ...r,
-                stallNumber: editForm.stallNumber.trim(),
-                shopType: editForm.shopType as 'single' | 'double',
-                categoryName: editForm.categoryName,
-                direction: editForm.direction.trim() || null,
-                emdAmountPaise: editForm.emdAmount.trim() ? Math.round(Number(editForm.emdAmount) * 100) : null,
-                status: editForm.status
-              }
-            : r
+        const allotData = await allotRes.json()
+        if (!allotRes.ok) {
+          setEditError(allotData.error ?? 'Stall updated, but Direct Allotment failed.')
+          return
+        }
+
+        setRows(prev =>
+          prev.map(r =>
+            r.id === editingRow.id
+              ? {
+                  ...r,
+                  stallNumber: editForm.stallNumber.trim(),
+                  shopType: editForm.shopType as 'single' | 'double',
+                  categoryName: editForm.categoryName,
+                  direction: editForm.direction.trim() || null,
+                  status: allotData.shopStatus || 'allotted',
+                  isDirectAllotment: true,
+                  applicationNumber: allotData.applicationNumber || editForm.allotteeName.trim(),
+                  applicationId: allotData.applicationId ?? r.applicationId,
+                  paymentStatus: allotData.paymentStatus || (Number(editForm.emdAmount) > 0 ? 'pending' : 'not_required'),
+                  paymentAmountPaise: Math.round(Number(editForm.emdAmount || 0) * 100)
+                }
+              : r
+          )
         )
-      )
+      } else {
+        const updatedId = editingRow.id
+        setRows(prev =>
+          prev.map(r =>
+            r.id === updatedId
+              ? {
+                  ...r,
+                  stallNumber: editForm.stallNumber.trim(),
+                  shopType: editForm.shopType as 'single' | 'double',
+                  categoryName: editForm.categoryName,
+                  direction: editForm.direction.trim() || null,
+                  emdAmountPaise: editForm.emdAmount.trim() ? Math.round(Number(editForm.emdAmount) * 100) : null,
+                  status: editForm.status
+                }
+              : r
+          )
+        )
+      }
+
       setEditingRow(null)
     } catch {
       setEditError('Could not reach the server. Please try again.')
@@ -716,7 +899,7 @@ const InventoryTable = ({
   }
 
   return (
-    <Card className='shadow-xs'>
+    <Card className='shadow-xs w-full min-w-0 overflow-hidden'>
       {/* Navigation Tabs with Live Counts */}
       <div className='border-b bg-muted/20 px-4 pt-2.5 pb-0'>
         <div className='flex gap-2 sm:gap-6 overflow-x-auto'>
@@ -763,7 +946,7 @@ const InventoryTable = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Allotted
+            Allotted by Draw
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
               stallCategoryTab === 'allotted' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'
             }`}>
@@ -804,8 +987,42 @@ const InventoryTable = ({
               {tabCounts.direct}
             </span>
           </button>
+
+          <button
+            type='button'
+            onClick={() => { setStallCategoryTab('cancelled'); setPage(1) }}
+            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+              stallCategoryTab === 'cancelled'
+                ? 'border-red-600 text-red-700 font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Cancelled
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              stallCategoryTab === 'cancelled' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800'
+            }`}>
+              {tabCounts.cancelled}
+            </span>
+          </button>
         </div>
       </div>
+
+      {reminderToast && (
+        <div className='mx-6 my-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-md text-xs font-medium flex items-center justify-between shadow-2xs'>
+          <span className='flex items-center gap-2'>
+            <CheckCircle2Icon className='size-4 text-emerald-600 shrink-0' />
+            {reminderToast}
+          </span>
+          <button
+            type='button'
+            onClick={() => setReminderToast(null)}
+            className='text-emerald-700 font-bold hover:text-emerald-950 px-1 text-sm'
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <CardHeader className='border-b bg-muted/40 py-4'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div>
@@ -884,13 +1101,35 @@ const InventoryTable = ({
                   <PlusIcon />
                   Add Booth/Stall
                 </DialogTrigger>
-                <DialogContent className='sm:max-w-lg max-h-[90vh] overflow-y-auto'>
+                <DialogContent className='sm:max-w-3xl max-h-[92vh] overflow-y-auto'>
                   <DialogHeader>
                     <DialogTitle>Add Booth/Stall Unit</DialogTitle>
                     <DialogDescription>
                       Create a booth/stall unit in inventory. Optionally assign directly to an allottee.
                     </DialogDescription>
                   </DialogHeader>
+
+                  {/* Allotment Guidelines Banner */}
+                  <div className='rounded-lg border border-[#0c2847]/15 bg-[#0c2847]/[0.03] p-3 text-xs text-slate-800'>
+                    <div className='flex items-center gap-2 font-semibold text-[#0c2847] mb-2'>
+                      <InfoIcon className='size-4 text-[#0c2847] shrink-0' />
+                      <span>Allotment Guidelines &amp; Rules</span>
+                    </div>
+                    <div className='grid gap-2 sm:grid-cols-3 text-[11px] leading-relaxed'>
+                      <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                        <span className='font-bold text-[#0c2847] block mb-0.5'>Public / Draw Stalls</span>
+                        <span className='text-slate-600'>Direct Allotment OFF: Stalls are pooled for verified applicants via the automated Draw Process.</span>
+                      </div>
+                      <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                        <span className='font-bold text-[#0c2847] block mb-0.5'>Direct Allotment</span>
+                        <span className='text-slate-600'>Direct Allotment ON: Assigned directly to an organisation or applicant without participating in the public draw.</span>
+                      </div>
+                      <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                        <span className='font-bold text-[#0c2847] block mb-0.5'>Fee &amp; Allotment Letter</span>
+                        <span className='text-slate-600'>If fee is ₹0, the official Allotment Letter is dispatched immediately. If fee &gt; ₹0, a secure payment link is sent first.</span>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className='grid gap-4 py-1'>
                     <div className='grid grid-cols-2 gap-3'>
@@ -956,7 +1195,7 @@ const InventoryTable = ({
                             </SelectContent>
                           </Select>
                           <p className='text-[11px] text-muted-foreground'>
-                            💡 Category pricing is managed in <strong>Settings &gt; Category Configuration</strong>. Stalls added to this category automatically share the same pricing.
+                            Category pricing is managed in <strong>Settings &gt; Category Configuration</strong>. Stalls added to this category automatically share the same pricing.
                           </p>
                         </>
                       ) : (
@@ -980,7 +1219,7 @@ const InventoryTable = ({
                               placeholder='e.g. 30000'
                             />
                             <p className='text-[11px] text-muted-foreground'>
-                              💡 Note: You can manage and update category fees, GST, and payment deadlines anytime from <strong>Settings &gt; Category Configuration</strong>. Future stalls added to this category will automatically share this price.
+                              Note: You can manage and update category fees, GST, and payment deadlines anytime from <strong>Settings &gt; Category Configuration</strong>. Future stalls added to this category will automatically share this price.
                             </p>
                           </div>
                         </div>
@@ -1049,31 +1288,20 @@ const InventoryTable = ({
                             </div>
                           </div>
 
-                          <div className='grid sm:grid-cols-2 gap-3'>
-                            <div className='grid gap-1.5'>
-                              <Label htmlFor='add-aadhaar' className='text-xs font-semibold'>
-                                Aadhaar Card Number (12 digits) <span className='text-destructive'>*</span>
-                              </Label>
-                              <Input
-                                id='add-aadhaar'
-                                maxLength={12}
-                                value={addForm.aadhaarNumber}
-                                onChange={e => setAddForm(prev => ({ ...prev, aadhaarNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }))}
-                                placeholder='12-digit Aadhaar'
-                              />
-                            </div>
-
-                            <div className='grid gap-1.5'>
-                              <Label htmlFor='add-contact-person' className='text-xs font-semibold'>
-                                Contact Person (optional)
-                              </Label>
-                              <Input
-                                id='add-contact-person'
-                                value={addForm.contactPerson}
-                                onChange={e => setAddForm(prev => ({ ...prev, contactPerson: e.target.value }))}
-                                placeholder='e.g. Ramesh Kumar'
-                              />
-                            </div>
+                          <div className='grid gap-1.5'>
+                            <Label htmlFor='add-aadhaar' className='text-xs font-semibold'>
+                              Aadhaar Card Number (12 digits) <span className='text-destructive'>*</span>
+                            </Label>
+                            <Input
+                              id='add-aadhaar'
+                              maxLength={12}
+                              value={addForm.aadhaarNumber}
+                              onChange={e => setAddForm(prev => ({ ...prev, aadhaarNumber: e.target.value.replace(/\D/g, '').slice(0, 12) }))}
+                              placeholder='12-digit Aadhaar'
+                            />
+                            <p className='text-[11px] text-muted-foreground'>
+                              Official 12-digit UID of allottee for verification.
+                            </p>
                           </div>
 
                           <div className='grid gap-1.5'>
@@ -1252,7 +1480,7 @@ const InventoryTable = ({
           </div>
         )}
       </CardHeader>
-      <CardContent className='p-0'>
+      <CardContent className='p-0 w-full min-w-0'>
         {rows.length === 0 ? (
           <div className='py-16 text-center'>
             <StoreIcon className='mx-auto mb-2 size-8 text-muted-foreground/50' />
@@ -1269,7 +1497,7 @@ const InventoryTable = ({
             </Button>
           </div>
         ) : (
-          <Table>
+          <Table className='min-w-[1000px]'>
             <TableHeader>
               <TableRow>
                 {canManage && (
@@ -1284,7 +1512,7 @@ const InventoryTable = ({
                 <TableHead>Stall Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Allotted To</TableHead>
-                {canManage && <TableHead className='w-12' />}
+                {canManage && <TableHead className='text-right min-w-[200px]'>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1292,7 +1520,7 @@ const InventoryTable = ({
                 <TableRow key={row.id}>
                   {canManage && (
                     <TableCell>
-                      {row.status !== 'allotted' && (
+                      {row.status !== 'allotted' && !row.isCancelled && (
                         <Checkbox
                           checked={selectedIds.has(row.id)}
                           onCheckedChange={checked => toggleRow(row.id, checked === true)}
@@ -1306,17 +1534,54 @@ const InventoryTable = ({
                   <TableCell>{row.categoryName}</TableCell>
                   <TableCell>{row.direction ?? '—'}</TableCell>
                   <TableCell>
-                    {row.emdAmountPaise !== null ? `₹${(row.emdAmountPaise / 100).toLocaleString('en-IN')}` : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <div className='flex flex-wrap items-center gap-1.5'>
-                      <Badge className={STATUS_CONFIG[row.status].color}>{STATUS_CONFIG[row.status].label}</Badge>
-                      {row.isDirectAllotment && (
-                        <Badge variant='outline' className='bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-bold py-0 px-1.5 shadow-2xs'>
-                          Direct Allotment
+                    <div className='flex flex-col gap-1'>
+                      <span className='font-medium text-slate-800 dark:text-slate-200'>
+                        {row.emdAmountPaise !== null ? `₹${(row.emdAmountPaise / 100).toLocaleString('en-IN')}` : '—'}
+                      </span>
+                      {row.isPaymentOverdue && (
+                        <Badge variant='destructive' className='bg-red-600 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-bold animate-pulse'>
+                          <ClockIcon className='size-2.5' /> Overdue
+                        </Badge>
+                      )}
+                      {!row.isPaymentOverdue && (row.paymentStatus === 'success' || row.paymentStatus === 'paid') && (
+                        <Badge className='bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-semibold'>
+                          <CheckCircle2Icon className='size-2.5' /> Paid (₹{((row.paymentAmountPaise || row.emdAmountPaise || 0) / 100).toLocaleString('en-IN')})
+                        </Badge>
+                      )}
+                      {!row.isPaymentOverdue && (row.paymentStatus === 'pending' || row.paymentStatus === 'initiated') && (
+                        <Badge className='bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-semibold'>
+                          <ClockIcon className='size-2.5' /> Pending
+                        </Badge>
+                      )}
+                      {!row.isPaymentOverdue && row.isDirectAllotment && (row.paymentAmountPaise === 0 || !row.paymentAmountPaise) && row.status === 'allotted' && (
+                        <Badge className='bg-slate-600 text-white text-[10px] px-1.5 py-0 w-fit font-medium'>
+                          Free Allotment
                         </Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {row.isCancelled || row.status === 'cancelled' ? (
+                      <div className='flex flex-col gap-1'>
+                        <Badge className='bg-red-100 text-red-800 border-red-300 w-fit font-bold'>
+                          Cancelled
+                        </Badge>
+                        {row.cancelReason && (
+                          <span className='text-[10px] text-muted-foreground truncate max-w-[130px]' title={row.cancelReason}>
+                            {row.cancelReason}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className='flex flex-wrap items-center gap-1.5'>
+                        <Badge className={STATUS_CONFIG[row.status].color}>{STATUS_CONFIG[row.status].label}</Badge>
+                        {row.isDirectAllotment && (
+                          <Badge variant='outline' className='bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-bold py-0 px-1.5 shadow-2xs'>
+                            Direct Allotment
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className='text-xs'>
                     {row.applicationNumber ? (
@@ -1334,14 +1599,29 @@ const InventoryTable = ({
                   </TableCell>
                   {canManage && (
                     <TableCell>
-                      <div className='flex items-center gap-1.5'>
-                        {row.status === 'allotted' && (
+                      <div className='flex flex-wrap items-center gap-1.5 justify-end'>
+                        {/* 1. Re-allocate: ONLY on cancelled stalls */}
+                        {(row.isCancelled || row.status === 'cancelled') && (
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            className='h-7 px-2 text-xs font-semibold text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-800 gap-1'
+                            title='Re-allocate Cancelled Stall'
+                            onClick={() => openDirectAllotRowDialog(row)}
+                          >
+                            <UserPlusIcon className='size-3.5' /> Re-allocate
+                          </Button>
+                        )}
+
+                        {/* 2. Cancel Allotment: on allotted stalls that are not cancelled */}
+                        {row.status === 'allotted' && !row.isCancelled && (
                           <Button
                             type='button'
                             variant='outline'
                             size='sm'
                             className='h-7 px-2 text-xs font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1'
-                            title='Cancel Allotment'
+                            title='Cancel Stall Allotment'
                             onClick={() => {
                               setCancelError(null)
                               setCancelReason('')
@@ -1349,30 +1629,90 @@ const InventoryTable = ({
                               setCancellingAllotmentRow(row)
                             }}
                           >
-                            <BanIcon className='size-3.5' /> Cancel Allotment
+                            <BanIcon className='size-3.5' /> Cancel
                           </Button>
                         )}
 
-                        {row.status === 'available' && (
+                        {/* 3. Send Payment Reminder (WhatsApp & Email): when payment pending or overdue */}
+                        {Boolean(
+                          row.applicationId &&
+                          !row.isCancelled &&
+                          row.status !== 'cancelled' &&
+                          (row.paymentStatus === 'pending' || row.paymentStatus === 'initiated' || row.isPaymentOverdue || row.status === 'reserved')
+                        ) && (
                           <Button
                             type='button'
                             variant='outline'
                             size='sm'
-                            className='h-7 px-2 text-xs font-semibold text-purple-700 border-purple-200 hover:bg-purple-50 hover:text-purple-800 gap-1'
-                            title='Direct Allot / Re-allocate'
-                            onClick={() => openDirectAllotRowDialog(row)}
+                            className='h-7 px-2 text-xs font-medium text-amber-700 border-amber-300 hover:bg-amber-50 gap-1'
+                            title='Send Payment Reminder via WhatsApp & Email'
+                            disabled={isSendingReminder === row.id}
+                            onClick={() => handleSendReminder(row)}
                           >
-                            <UserPlusIcon className='size-3.5' /> Re-allocate
+                            {isSendingReminder === row.id ? (
+                              <Loader2Icon className='size-3.5 animate-spin' />
+                            ) : (
+                              <BellRingIcon className='size-3.5' />
+                            )}
+                            Reminder
                           </Button>
                         )}
 
-                        {row.status !== 'allotted' && (
+                        {/* 4. Payment Receipt PDF: when payment is success/paid */}
+                        {Boolean(
+                          row.applicationId &&
+                          (row.paymentStatus === 'success' || row.paymentStatus === 'paid')
+                        ) && (
+                          <a
+                            href={`/api/admin/applications/${row.applicationId}/receipt/pdf`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-emerald-700 border border-emerald-300 rounded hover:bg-emerald-50 transition'
+                            title='View / Print Payment Receipt'
+                          >
+                            <PrinterIcon className='size-3.5' /> Receipt
+                          </a>
+                        )}
+
+                        {/* 5. Allotment Letter PDF: when allotted / confirmed */}
+                        {Boolean(
+                          row.applicationId &&
+                          !row.isCancelled &&
+                          row.status !== 'cancelled' &&
+                          (row.status === 'allotted' || row.paymentStatus === 'success' || row.paymentStatus === 'paid' || (row.isDirectAllotment && !row.paymentAmountPaise))
+                        ) && (
+                          <a
+                            href={`/api/admin/applications/${row.applicationId}/allotment-letter/pdf`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50 transition'
+                            title='Download Allotment Letter'
+                          >
+                            <FileTextIcon className='size-3.5' /> Letter
+                          </a>
+                        )}
+
+                        {/* 6. History Timeline: available for all rows */}
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon'
+                          className='size-7 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          title='View Stall History Timeline'
+                          onClick={() => openHistoryDialog(row)}
+                        >
+                          <HistoryIcon className='size-3.5' />
+                        </Button>
+
+                        {/* 7. Edit & Delete: available for unallotted, uncancelled stalls */}
+                        {row.status !== 'allotted' && !row.isCancelled && (
                           <>
                             <Button
                               type='button'
                               variant='ghost'
                               size='icon'
                               className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847]'
+                              title='Edit Stall Details'
                               onClick={() => openEditDialog(row)}
                             >
                               <PencilIcon className='size-3.5' />
@@ -1382,6 +1722,7 @@ const InventoryTable = ({
                               variant='ghost'
                               size='icon'
                               className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700'
+                              title='Delete Stall'
                               onClick={() => {
                                 setError(null)
                                 setDeletingSingle(row)
@@ -1460,40 +1801,65 @@ const InventoryTable = ({
       </Dialog>
 
       <Dialog open={!!editingRow} onOpenChange={open => !open && setEditingRow(null)}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='sm:max-w-3xl max-h-[92vh] overflow-y-auto'>
           <DialogHeader>
-            <DialogTitle>Edit Stall {editingRow?.stallNumber}</DialogTitle>
-            <DialogDescription>Update this booth/stall unit&apos;s details.</DialogDescription>
+            <DialogTitle>Edit Booth/Stall Unit {editingRow?.stallNumber}</DialogTitle>
+            <DialogDescription>Update this booth/stall unit&apos;s details and allotment configuration.</DialogDescription>
           </DialogHeader>
 
-          <div className='grid gap-3'>
-            <div className='grid gap-1.5'>
-              <Label htmlFor='edit-stall-number'>Booth/Stall Number</Label>
-              <Input
-                id='edit-stall-number'
-                value={editForm.stallNumber}
-                onChange={e => setEditForm(prev => ({ ...prev, stallNumber: e.target.value }))}
-              />
+          {/* Allotment Guidelines Banner */}
+          <div className='rounded-lg border border-[#0c2847]/15 bg-[#0c2847]/[0.03] p-3 text-xs text-slate-800'>
+            <div className='flex items-center gap-2 font-semibold text-[#0c2847] mb-2'>
+              <InfoIcon className='size-4 text-[#0c2847] shrink-0' />
+              <span>Editing Guidelines &amp; Rules</span>
+            </div>
+            <div className='grid gap-2 sm:grid-cols-3 text-[11px] leading-relaxed'>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Stall Details</span>
+                <span className='text-slate-600'>Update stall number, type, category, and physical location direction.</span>
+              </div>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Fee Protection</span>
+                <span className='text-slate-600'>Stall fee is protected once allotted. Modifying stall details maintains financial audit history.</span>
+              </div>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Direct Allotment in Edit</span>
+                <span className='text-slate-600'>Available stalls can be assigned directly. If fee is ₹0, the Allotment Letter is issued immediately.</span>
+              </div>
+            </div>
+          </div>
+
+          <div className='grid gap-4 py-1'>
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='grid gap-1.5'>
+                <Label htmlFor='edit-stall-number'>Booth/Stall Number <span className='text-destructive'>*</span></Label>
+                <Input
+                  id='edit-stall-number'
+                  value={editForm.stallNumber}
+                  onChange={e => setEditForm(prev => ({ ...prev, stallNumber: e.target.value }))}
+                  placeholder='e.g. A-101'
+                />
+              </div>
+
+              <div className='grid gap-1.5'>
+                <Label>Type <span className='text-destructive'>*</span></Label>
+                <Select
+                  value={editForm.shopType || undefined}
+                  onValueChange={value => setEditForm(prev => ({ ...prev, shopType: (value as 'single' | 'double') ?? '' }))}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='Select type' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='single'>Single</SelectItem>
+                    <SelectItem value='double'>Double</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className='grid gap-1.5'>
-              <Label>Type</Label>
-              <Select
-                value={editForm.shopType || undefined}
-                onValueChange={value => setEditForm(prev => ({ ...prev, shopType: (value as 'single' | 'double') ?? '' }))}
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Select type' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='single'>Single</SelectItem>
-                  <SelectItem value='double'>Double</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='grid gap-1.5'>
-              <Label>Category</Label>
+              <Label>Category <span className='text-destructive'>*</span></Label>
               <Select
                 value={editForm.categoryName || undefined}
                 onValueChange={value => setEditForm(prev => ({ ...prev, categoryName: value ?? '' }))}
@@ -1509,6 +1875,9 @@ const InventoryTable = ({
                   ))}
                 </SelectContent>
               </Select>
+              <p className='text-[11px] text-muted-foreground'>
+                Stalls in this category share the same base category pricing and draw configurations.
+              </p>
             </div>
 
             <div className='grid gap-1.5'>
@@ -1517,40 +1886,247 @@ const InventoryTable = ({
                 id='edit-direction'
                 value={editForm.direction}
                 onChange={e => setEditForm(prev => ({ ...prev, direction: e.target.value }))}
+                placeholder='e.g. North / Food Court Zone A'
               />
             </div>
 
             <div className='grid gap-1.5'>
-              <Label htmlFor='edit-emd'>Stall Amount in ₹ (optional)</Label>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='edit-emd'>Stall Amount in ₹</Label>
+                {Boolean(
+                  editingRow?.status === 'allotted' ||
+                  editingRow?.paymentStatus === 'success' ||
+                  editingRow?.paymentStatus === 'paid' ||
+                  editingRow?.isDirectAllotment ||
+                  (editingRow?.paymentAmountPaise !== undefined && editingRow.paymentAmountPaise !== null && editingRow.paymentAmountPaise > 0)
+                ) && (
+                  <span className='text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded'>
+                    Locked
+                  </span>
+                )}
+              </div>
               <Input
                 id='edit-emd'
                 type='number'
                 min='0'
                 value={editForm.emdAmount}
+                disabled={Boolean(
+                  editingRow?.status === 'allotted' ||
+                  editingRow?.paymentStatus === 'success' ||
+                  editingRow?.paymentStatus === 'paid' ||
+                  editingRow?.isDirectAllotment ||
+                  (editingRow?.paymentAmountPaise !== undefined && editingRow.paymentAmountPaise !== null && editingRow.paymentAmountPaise > 0)
+                )}
                 onChange={e => setEditForm(prev => ({ ...prev, emdAmount: e.target.value }))}
+                className={
+                  editingRow?.status === 'allotted' ||
+                  editingRow?.paymentStatus === 'success' ||
+                  editingRow?.paymentStatus === 'paid' ||
+                  editingRow?.isDirectAllotment ||
+                  (editingRow?.paymentAmountPaise !== undefined && editingRow.paymentAmountPaise !== null && editingRow.paymentAmountPaise > 0)
+                    ? 'bg-muted/60 text-muted-foreground cursor-not-allowed'
+                    : ''
+                }
               />
+              {Boolean(
+                editingRow?.status === 'allotted' ||
+                editingRow?.paymentStatus === 'success' ||
+                editingRow?.paymentStatus === 'paid' ||
+                editingRow?.isDirectAllotment ||
+                (editingRow?.paymentAmountPaise !== undefined && editingRow.paymentAmountPaise !== null && editingRow.paymentAmountPaise > 0)
+              ) ? (
+                <p className='text-[11px] text-amber-700 font-medium'>
+                  Payment amount is fixed and cannot be modified once assigned or allotted.
+                </p>
+              ) : (
+                <p className='text-[11px] text-muted-foreground'>
+                  Leave blank or 0 if stall amount is set by category.
+                </p>
+              )}
             </div>
 
-            <div className='grid gap-1.5'>
-              <Label>Status</Label>
-              <Select
-                value={editForm.status}
-                onValueChange={value =>
-                  setEditForm(prev => ({ ...prev, status: (value as ShopUnitRowData['status']) ?? prev.status }))
-                }
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue>{STATUS_CONFIG[editForm.status].label}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {EDITABLE_EDIT_STATUSES.map(status => (
-                    <SelectItem key={status} value={status}>
-                      {STATUS_CONFIG[status].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {editingRow?.status !== 'allotted' && (
+              <div className='grid gap-1.5'>
+                <Label>Status</Label>
+                <Select
+                  value={editForm.status}
+                  onValueChange={value =>
+                    setEditForm(prev => ({ ...prev, status: (value as ShopUnitRowData['status']) ?? prev.status }))
+                  }
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>{STATUS_CONFIG[editForm.status].label}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITABLE_EDIT_STATUSES.map(status => (
+                      <SelectItem key={status} value={status}>
+                        {STATUS_CONFIG[status].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Direct Allotment Section for Available Stalls */}
+            {editingRow?.status === 'available' && !editingRow?.isDirectAllotment && (
+              <div className='rounded-lg border p-3.5 bg-slate-50/80 dark:bg-slate-900/40 space-y-3'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='space-y-0.5'>
+                    <div className='flex items-center gap-2'>
+                      <Label htmlFor='edit-direct-allotment-toggle' className='font-semibold text-sm cursor-pointer text-[#0c2847] dark:text-slate-100'>
+                        Direct Allotment
+                      </Label>
+                      {editForm.isDirectAllotment && (
+                        <Badge className='bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200 text-[10px] py-0 px-1.5'>
+                          Admin Only
+                        </Badge>
+                      )}
+                    </div>
+                    <p className='text-xs text-muted-foreground'>
+                      Directly assign this stall to an organisation / VIP without public application
+                    </p>
+                  </div>
+                  <Switch
+                    id='edit-direct-allotment-toggle'
+                    checked={editForm.isDirectAllotment}
+                    onCheckedChange={checked => setEditForm(prev => ({ ...prev, isDirectAllotment: checked }))}
+                  />
+                </div>
+
+                {editForm.isDirectAllotment && (
+                  <div className='space-y-3 pt-2 border-t'>
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-allottee-name'>Organisation / Allottee Name <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-allottee-name'
+                          value={editForm.allotteeName}
+                          onChange={e => setEditForm(prev => ({ ...prev, allotteeName: e.target.value }))}
+                          placeholder='e.g. Haryana Handlooms / Artisan Name'
+                        />
+                      </div>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-father-name'>Father&apos;s / Husband&apos;s Name <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-father-name'
+                          value={editForm.fatherName}
+                          onChange={e => setEditForm(prev => ({ ...prev, fatherName: e.target.value }))}
+                          placeholder='e.g. Ramesh Kumar'
+                        />
+                      </div>
+                    </div>
+
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-aadhaar-number'>Aadhaar Number (12 digits) <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-aadhaar-number'
+                          value={editForm.aadhaarNumber}
+                          maxLength={12}
+                          onChange={e => setEditForm(prev => ({ ...prev, aadhaarNumber: e.target.value.replace(/\D/g, '') }))}
+                          placeholder='12-digit UID'
+                        />
+                      </div>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-mobile-number'>Mobile Number <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-mobile-number'
+                          value={editForm.mobileNumber}
+                          maxLength={10}
+                          onChange={e => setEditForm(prev => ({ ...prev, mobileNumber: e.target.value.replace(/\D/g, '') }))}
+                          placeholder='10-digit mobile'
+                        />
+                      </div>
+                    </div>
+
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-email'>Email Address <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-email'
+                          type='email'
+                          value={editForm.email}
+                          onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder='applicant@example.com'
+                        />
+                      </div>
+                      <div className='grid gap-1.5'>
+                        <Label htmlFor='edit-work-purpose'>Purpose of Stall / Activity <span className='text-destructive'>*</span></Label>
+                        <Input
+                          id='edit-work-purpose'
+                          value={editForm.workPurpose}
+                          onChange={e => setEditForm(prev => ({ ...prev, workPurpose: e.target.value }))}
+                          placeholder='e.g. Handloom exhibition / food stall'
+                        />
+                      </div>
+                    </div>
+
+                    <div className='grid gap-1.5'>
+                      <Label htmlFor='edit-address'>Full Postal Address <span className='text-destructive'>*</span></Label>
+                      <Textarea
+                        id='edit-address'
+                        rows={2}
+                        value={editForm.address}
+                        onChange={e => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder='House/Shop No., Street, City, State, PIN'
+                      />
+                    </div>
+
+                    <div className='grid gap-1.5'>
+                      <Label htmlFor='edit-notes'>Admin Notes / Remarks (optional)</Label>
+                      <Input
+                        id='edit-notes'
+                        value={editForm.notes}
+                        onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder='Any administrative reference or note'
+                      />
+                    </div>
+
+                    <div className='flex items-center justify-between rounded-md border p-2.5 bg-background'>
+                      <div className='space-y-0.5'>
+                        <Label htmlFor='edit-send-notif' className='text-xs font-medium cursor-pointer'>
+                          Send WhatsApp &amp; Email Notifications
+                        </Label>
+                        <p className='text-[11px] text-muted-foreground'>
+                          Dispatches automated payment link (if fee &gt; 0) or allotment confirmation to the applicant
+                        </p>
+                      </div>
+                      <Switch
+                        id='edit-send-notif'
+                        checked={editForm.sendNotification}
+                        onCheckedChange={checked => setEditForm(prev => ({ ...prev, sendNotification: checked }))}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Direct Allotment Summary Card if already allotted */}
+            {(editingRow?.isDirectAllotment || editingRow?.status === 'allotted') && (
+              <div className='rounded-lg border border-purple-200 bg-purple-50/70 p-3.5 space-y-2 text-xs'>
+                <div className='flex items-center justify-between'>
+                  <span className='font-bold text-purple-950 flex items-center gap-1.5'>
+                    <CheckCircle2Icon className='size-4 text-purple-700' />
+                    {editingRow.isDirectAllotment ? 'Direct Allotment Active' : 'Allotted by Draw'}
+                  </span>
+                  <Badge className='bg-purple-100 text-purple-800 border-purple-300 capitalize text-[10px]'>
+                    {editingRow.paymentStatus ? `Payment: ${editingRow.paymentStatus}` : 'Allotted'}
+                  </Badge>
+                </div>
+                <div className='grid grid-cols-2 gap-2 text-[11px] text-purple-900 pt-1 border-t border-purple-200/60'>
+                  <div>
+                    <span className='text-muted-foreground'>Applicant/Ref:</span>{' '}
+                    <strong className='font-mono'>{editingRow.applicationNumber || '—'}</strong>
+                  </div>
+                  <div>
+                    <span className='text-muted-foreground'>Payment Amount:</span>{' '}
+                    <strong>₹{editingRow.paymentAmountPaise ? (editingRow.paymentAmountPaise / 100).toLocaleString('en-IN') : '0'}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {editError && (
@@ -1655,18 +2231,40 @@ const InventoryTable = ({
         open={allottingRow !== null}
         onOpenChange={open => !open && !isSubmittingAllot && setAllottingRow(null)}
       >
-        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-xl'>
+        <DialogContent className='sm:max-w-3xl max-h-[92vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2 text-purple-900'>
               <UserPlusIcon className='size-5 text-purple-700' /> Re-allocate Booth/Stall {allottingRow?.stallNumber}
             </DialogTitle>
             <DialogDescription>
-              Directly allot this stall to an organisation or applicant with official record and notifications.
+              Directly allot this cancelled/vacant stall to an organisation or applicant with official application record and notifications.
             </DialogDescription>
           </DialogHeader>
 
+          {/* Re-allocation Guidelines Banner */}
+          <div className='rounded-lg border border-[#0c2847]/15 bg-[#0c2847]/[0.03] p-3 text-xs text-slate-800'>
+            <div className='flex items-center gap-2 font-semibold text-[#0c2847] mb-2'>
+              <InfoIcon className='size-4 text-[#0c2847] shrink-0' />
+              <span>Direct Allotment Guidelines &amp; Rules</span>
+            </div>
+            <div className='grid gap-2 sm:grid-cols-3 text-[11px] leading-relaxed'>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Direct Assignment</span>
+                <span className='text-slate-600'>Reassigns this stall directly to a verified applicant/organisation. The audit trail remains logged in history.</span>
+              </div>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Paid Allotment (&gt; ₹0)</span>
+                <span className='text-slate-600'>If stall fee &gt; ₹0, a secure payment link is dispatched via WhatsApp &amp; Email to confirm allotment.</span>
+              </div>
+              <div className='rounded-md border border-slate-200/80 bg-white/90 p-2.5'>
+                <span className='font-bold text-[#0c2847] block mb-0.5'>Free / Exempt (₹0)</span>
+                <span className='text-slate-600'>If fee is ₹0, the stall is confirmed immediately and the official Allotment Letter is sent directly to the allottee.</span>
+              </div>
+            </div>
+          </div>
+
           {allottingRow && (
-            <div className='flex flex-wrap items-center gap-2 rounded-md border bg-purple-50/50 p-2.5 text-xs text-purple-900'>
+            <div className='flex flex-wrap items-center gap-2 rounded-md border bg-slate-50 p-2.5 text-xs text-slate-800'>
               <span className='font-bold'>Category:</span>
               <span>{allottingRow.categoryName}</span>
               <span>·</span>
@@ -1695,7 +2293,7 @@ const InventoryTable = ({
               </div>
 
               <div className='grid gap-1.5'>
-                <Label htmlFor='allot-father'>Father&apos;s Name *</Label>
+                <Label htmlFor='allot-father'>Father&apos;s / Husband&apos;s Name *</Label>
                 <Input
                   id='allot-father'
                   placeholder='Father / Guardian name'
@@ -1718,28 +2316,6 @@ const InventoryTable = ({
               </div>
 
               <div className='grid gap-1.5'>
-                <Label htmlFor='allot-contact'>Contact Person (optional)</Label>
-                <Input
-                  id='allot-contact'
-                  placeholder='Representative if different'
-                  value={allotForm.contactPerson}
-                  onChange={e => setAllotForm(prev => ({ ...prev, contactPerson: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className='grid gap-1.5'>
-              <Label htmlFor='allot-address'>Full Address *</Label>
-              <Input
-                id='allot-address'
-                placeholder='Village / Street, Tehsil, District, State'
-                value={allotForm.address}
-                onChange={e => setAllotForm(prev => ({ ...prev, address: e.target.value }))}
-              />
-            </div>
-
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <div className='grid gap-1.5'>
                 <Label htmlFor='allot-mobile'>Mobile Number (10 digits) *</Label>
                 <Input
                   id='allot-mobile'
@@ -1749,7 +2325,9 @@ const InventoryTable = ({
                   onChange={e => setAllotForm(prev => ({ ...prev, mobileNumber: e.target.value.replace(/\D/g, '') }))}
                 />
               </div>
+            </div>
 
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div className='grid gap-1.5'>
                 <Label htmlFor='allot-email'>Email Address *</Label>
                 <Input
@@ -1760,15 +2338,26 @@ const InventoryTable = ({
                   onChange={e => setAllotForm(prev => ({ ...prev, email: e.target.value }))}
                 />
               </div>
+
+              <div className='grid gap-1.5'>
+                <Label htmlFor='allot-purpose'>Purpose of Stall / Activity *</Label>
+                <Input
+                  id='allot-purpose'
+                  placeholder='e.g. Handloom exhibition and retail sales'
+                  value={allotForm.workPurpose}
+                  onChange={e => setAllotForm(prev => ({ ...prev, workPurpose: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div className='grid gap-1.5'>
-              <Label htmlFor='allot-purpose'>Purpose of Stall / Activity *</Label>
-              <Input
-                id='allot-purpose'
-                placeholder='e.g. Handloom exhibition and retail sales'
-                value={allotForm.workPurpose}
-                onChange={e => setAllotForm(prev => ({ ...prev, workPurpose: e.target.value }))}
+              <Label htmlFor='allot-address'>Full Postal Address *</Label>
+              <Textarea
+                id='allot-address'
+                rows={2}
+                placeholder='Village / Street, Tehsil, District, State, PIN'
+                value={allotForm.address}
+                onChange={e => setAllotForm(prev => ({ ...prev, address: e.target.value }))}
               />
             </div>
 
@@ -1799,6 +2388,22 @@ const InventoryTable = ({
               </div>
             </div>
 
+            <div className='flex items-center justify-between rounded-md border p-2.5 bg-background'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='allot-send-notif' className='text-xs font-medium cursor-pointer'>
+                  Send WhatsApp &amp; Email Notifications
+                </Label>
+                <p className='text-[11px] text-muted-foreground'>
+                  Dispatches automated payment link (if fee &gt; 0) or allotment confirmation to the applicant
+                </p>
+              </div>
+              <Switch
+                id='allot-send-notif'
+                checked={allotForm.sendNotification}
+                onCheckedChange={checked => setAllotForm(prev => ({ ...prev, sendNotification: checked }))}
+              />
+            </div>
+
             {allotError && (
               <Alert variant='destructive'>
                 <AlertDescription>{allotError}</AlertDescription>
@@ -1822,6 +2427,133 @@ const InventoryTable = ({
             >
               {isSubmittingAllot && <Loader2Icon className='mr-1.5 size-4 animate-spin' />}
               Confirm Allotment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stall History Dialog */}
+      <Dialog open={historyRow !== null} onOpenChange={open => !open && setHistoryRow(null)}>
+        <DialogContent className='sm:max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden'>
+          <DialogHeader className='px-5 py-4 border-b bg-card shrink-0'>
+            <div className='flex items-center justify-between gap-3 pr-6'>
+              <div className='flex items-center gap-2.5'>
+                <div className='flex size-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0'>
+                  <HistoryIcon className='size-4 text-slate-700' />
+                </div>
+                <div>
+                  <DialogTitle className='text-base font-bold text-slate-900'>
+                    Stall {historyRow?.stallNumber} Activity
+                  </DialogTitle>
+                  <p className='text-xs text-muted-foreground'>
+                    {historyRow?.categoryName} · {historyRow?.shopType === 'double' ? 'Double' : 'Single'} Stall
+                  </p>
+                </div>
+              </div>
+
+              {historyRow && (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold capitalize border ${
+                  historyRow.status === 'available'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : historyRow.status === 'allotted'
+                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}>
+                  {historyRow.status}
+                </span>
+              )}
+            </div>
+          </DialogHeader>
+
+          {historyRow && (
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-2.5 bg-slate-50/70 border-b text-xs shrink-0'>
+              <div>
+                <span className='block text-[11px] text-muted-foreground'>Stall No.</span>
+                <span className='font-bold text-slate-900 font-mono'>{historyRow.stallNumber}</span>
+              </div>
+              <div>
+                <span className='block text-[11px] text-muted-foreground'>Direction</span>
+                <span className='font-medium text-slate-800 truncate block'>{historyRow.direction || '—'}</span>
+              </div>
+              <div>
+                <span className='block text-[11px] text-muted-foreground'>Stall Fee</span>
+                <span className='font-medium text-slate-800'>
+                  {historyRow.paymentAmountPaise
+                    ? `₹${(historyRow.paymentAmountPaise / 100).toLocaleString('en-IN')}`
+                    : historyRow.emdAmountPaise
+                    ? `₹${(historyRow.emdAmountPaise / 100).toLocaleString('en-IN')}`
+                    : '₹0'}
+                </span>
+              </div>
+              <div>
+                <span className='block text-[11px] text-muted-foreground'>Allottee / App</span>
+                <span className='font-medium text-slate-800 truncate block'>
+                  {historyRow.applicationNumber || '—'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className='flex-1 overflow-y-auto px-5 py-4'>
+            {historyLoading ? (
+              <div className='flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground'>
+                <Loader2Icon className='size-5 animate-spin text-slate-600' />
+                <p className='text-xs font-medium text-slate-600'>Loading activity...</p>
+              </div>
+            ) : historyError ? (
+              <Alert variant='destructive' className='my-2'>
+                <AlertDescription>{historyError}</AlertDescription>
+              </Alert>
+            ) : historyEvents.length === 0 ? (
+              <div className='flex flex-col items-center justify-center py-12 text-center text-xs text-muted-foreground gap-1.5'>
+                <HistoryIcon className='size-6 text-slate-300' />
+                <p className='text-xs font-medium text-slate-600'>No recorded activity yet for this stall.</p>
+              </div>
+            ) : (
+              <div className='relative border-l border-slate-200 ml-3 pl-5 space-y-5 py-1'>
+                {historyEvents.map((evt, idx) => {
+                  const dotColor = {
+                    blue: 'bg-blue-600 ring-blue-100',
+                    green: 'bg-emerald-600 ring-emerald-100',
+                    amber: 'bg-amber-600 ring-amber-100',
+                    red: 'bg-rose-600 ring-rose-100',
+                    purple: 'bg-purple-600 ring-purple-100',
+                    slate: 'bg-slate-400 ring-slate-100'
+                  }[evt.badgeColor] || 'bg-slate-400 ring-slate-100'
+
+                  return (
+                    <div key={idx} className='relative group'>
+                      <div className={`absolute -left-[25px] top-1.5 size-2.5 rounded-full ring-4 ${dotColor}`} />
+                      <div className='space-y-1'>
+                        <div className='flex items-baseline justify-between gap-2 flex-wrap'>
+                          <h4 className='text-xs font-bold text-slate-900'>{evt.title}</h4>
+                          <span className='text-[11px] text-muted-foreground'>
+                            {new Date(evt.timestamp).toLocaleString('en-IN', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })}
+                          </span>
+                        </div>
+                        <p className='text-xs text-slate-600 leading-relaxed'>{evt.description}</p>
+                        {evt.actorName && (
+                          <p className='text-[11px] text-muted-foreground'>
+                            by <span className='font-medium text-slate-700'>{evt.actorName}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className='px-5 py-3 border-t bg-slate-50/50 shrink-0 flex items-center justify-between sm:justify-between'>
+            <span className='text-xs text-muted-foreground'>
+              {historyEvents.length > 0 ? `${historyEvents.length} event${historyEvents.length > 1 ? 's' : ''}` : ''}
+            </span>
+            <Button type='button' variant='outline' size='sm' onClick={() => setHistoryRow(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

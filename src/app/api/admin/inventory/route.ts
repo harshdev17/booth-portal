@@ -306,13 +306,16 @@ export async function POST(request: Request) {
       // Send WhatsApp and Email Notification if enabled
       if (sendNotificationToggle) {
         const dest = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber.replace(/\D/g, '').slice(-10)}`
+        const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+        const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(created.applicationNumber)}` : ''
+        const letterLink = baseUrl ? `${baseUrl}/allotment-letter?appNo=${encodeURIComponent(created.applicationNumber)}` : ''
+
         if (created.isPaymentRequired) {
           await sendNotification({
             category: 'direct_allotment_payment',
             destination: dest,
             userName: representativeName,
-            templateParams: [representativeName, created.applicationNumber],
-            buttonParam: created.applicationNumber,
+            templateParams: [representativeName, created.applicationNumber, payLink],
             applicationId: created.applicationId,
             email
           }).catch(err => logServerError('inventory.direct_allotment.notification', err))
@@ -321,7 +324,7 @@ export async function POST(request: Request) {
             category: 'direct_allotment_confirmed',
             destination: dest,
             userName: representativeName,
-            templateParams: [representativeName, created.applicationNumber, 'Allotted'],
+            templateParams: [representativeName, created.applicationNumber, letterLink],
             applicationId: created.applicationId,
             email
           }).catch(err => logServerError('inventory.direct_allotment.notification', err))

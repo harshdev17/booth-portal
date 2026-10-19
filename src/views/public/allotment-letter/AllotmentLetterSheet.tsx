@@ -24,9 +24,9 @@ const AllotmentLetterSheet = ({ data, lang }: { data: AllotmentData; lang: 'en' 
       {/* Background Watermark */}
       <div
         aria-hidden='true'
-        className='pointer-events-none absolute inset-0 hidden items-center justify-center print:flex'
+        className='pointer-events-none absolute inset-0 flex items-center justify-center'
       >
-        <div className='relative size-80 opacity-[0.06]'>
+        <div className='relative size-80 opacity-[0.08]'>
           <Image src='/images/public/logo.webp' alt='' fill className='object-contain' />
         </div>
       </div>
@@ -164,12 +164,7 @@ const AllotmentLetterSheet = ({ data, lang }: { data: AllotmentData; lang: 'en' 
       {/* Signatures & Verification */}
       <div className='mt-10 flex items-end justify-between border-t border-black pt-4 text-xs text-black'>
         <div>
-          <p className='font-semibold text-[11px]'>
-            {isHi
-              ? 'यह एक कंप्यूटर-जनित अधिकृत आबंटन पत्र है।'
-              : 'This is a computer-generated official allotment letter.'}
-          </p>
-          <p className='text-[10px] text-black/60 mt-0.5'>{new Date().toLocaleString('en-IN')}</p>
+          <p className='text-xs text-black/70'>Generated on: {new Date().toLocaleDateString('en-IN')}</p>
         </div>
         <div className='text-right'>
           <div className='h-10' />

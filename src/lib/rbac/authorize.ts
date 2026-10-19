@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { cache } from 'react'
+
 import { getSession } from '@/lib/auth/session'
 import { query } from '@/lib/db/client'
 import type { Permission } from '@/lib/rbac/permissions'
@@ -83,10 +85,10 @@ export async function requireAnyPermission(permissions: Permission[]) {
 }
 
 /** For UI-only decisions (show/hide). Never a substitute for requirePermission on the server action itself. */
-export async function getCurrentUserPermissions(): Promise<Set<string> | null> {
+export const getCurrentUserPermissions = cache(async function getCurrentUserPermissions(): Promise<Set<string> | null> {
   const session = await getSession()
 
   if (!session) return null
 
   return getRolePermissions(session.role.key)
-}
+})

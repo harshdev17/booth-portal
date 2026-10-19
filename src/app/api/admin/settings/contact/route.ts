@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
+import { clearContactSettingsCache } from '@/lib/settings/contact-settings'
 
 const emptyToNull = (v: string) => (v.trim() ? v.trim() : null)
 
@@ -78,6 +79,8 @@ export async function PATCH(request: Request) {
       entityId: '1',
       newValue: d
     })
+
+    clearContactSettingsCache()
 
     return NextResponse.json({ success: true })
   } catch (error) {

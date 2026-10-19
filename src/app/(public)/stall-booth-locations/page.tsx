@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: 'Stall/Booth Locations | International Geeta Jayanti Mahotsav 2026'
 }
 
+export const revalidate = 60
+
 const StallBoothLocationsPage = async () => {
   const { fullMap, byCategory } = await listCategoryMaps()
 

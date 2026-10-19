@@ -209,14 +209,17 @@ export async function POST(request: Request) {
     // Dispatch notification if toggle is enabled
     if (sendNotificationToggle) {
       const destination = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+      const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(allotted.applicationNumber)}` : ''
+      const letterLink = baseUrl ? `${baseUrl}/allotment-letter?appNo=${encodeURIComponent(allotted.applicationNumber)}` : ''
+
       if (allotted.isPaymentRequired) {
         // Send direct allotment payment link activation
         sendNotification({
           category: 'direct_allotment_payment',
           destination,
           userName: representativeName,
-          templateParams: [representativeName, allotted.applicationNumber],
-          buttonParam: allotted.applicationNumber,
+          templateParams: [representativeName, allotted.applicationNumber, payLink],
           applicationId: allotted.applicationId,
           email
         }).catch(err => {
@@ -228,7 +231,7 @@ export async function POST(request: Request) {
           category: 'direct_allotment_confirmed',
           destination,
           userName: representativeName,
-          templateParams: [representativeName, allotted.applicationNumber, 'Allotted'],
+          templateParams: [representativeName, allotted.applicationNumber, letterLink],
           applicationId: allotted.applicationId,
           email
         }).catch(err => {

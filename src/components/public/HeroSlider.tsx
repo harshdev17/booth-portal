@@ -50,7 +50,7 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
             }`}
             aria-hidden={index !== activeIndex}
           >
-            <Image src={src} alt='' fill priority={index === 0} className='object-cover' />
+            <Image src={src} alt='' fill priority={index === 0} sizes='100vw' quality={80} className='object-cover' />
             <div className='absolute inset-0 bg-gradient-to-r from-[#0c2847]/80 via-[#0c2847]/35 to-transparent sm:via-[#0c2847]/25' />
             <div className='absolute inset-0 bg-gradient-to-t from-[#0c2847]/50 via-transparent to-transparent' />
           </div>
