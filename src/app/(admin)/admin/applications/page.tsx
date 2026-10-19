@@ -298,7 +298,7 @@ const ApplicationsAdminPage = async ({
   }
 
   return (
-    <div className='flex flex-col gap-6'>
+    <div className='flex min-w-0 max-w-full flex-col gap-6'>
       {/* Top Header */}
       <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
         <div>
@@ -386,7 +386,7 @@ const ApplicationsAdminPage = async ({
       </nav>
 
       {/* Filters & Search Bar */}
-      <Card className='shadow-xs'>
+      <Card className='min-w-0 max-w-full overflow-hidden shadow-xs'>
         <CardContent className='pt-6'>
           <ApplicationsFilterBar categories={categories} />
         </CardContent>

@@ -7,10 +7,15 @@ import { useSearchParams } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   AlertCircleIcon,
+  ArrowLeftIcon,
+  CalendarIcon,
   CheckCircle2Icon,
+  ClockIcon,
   CreditCardIcon,
   DownloadIcon,
+  ExternalLinkIcon,
   FileTextIcon,
+  InfoIcon,
   Loader2Icon,
   SearchIcon,
   StoreIcon,
@@ -136,12 +141,12 @@ const STATUS_HINT: Record<string, { en: string; hi: string }> = {
     hi: 'समीक्षा टीम को सही दस्तावेज़ चाहिए। कृपया नीचे अपलोड करें।'
   },
   payment_required: {
-    en: 'Congratulations! Your booth/stall has been selected. Please complete the allotment payment to confirm your booking.',
-    hi: 'बधाई! आपके बूथ/स्टॉल का चयन हो गया है। आबंटन पुष्टि के लिए कृपया आबंटन शुल्क का भुगतान करें।'
+    en: 'Your booth/stall has been allocated. Please complete the allotment payment to confirm your booking.',
+    hi: 'आपके बूथ/स्टॉल का आवंटन निर्धारित किया गया है। पुष्टि के लिए कृपया निर्धारित समय से पूर्व आवंटन शुल्क का भुगतान करें।'
   },
   allotted: {
-    en: 'Congratulations! Your booth/stall is confirmed and allotted. You can download your official Allotment Letter below.',
-    hi: 'बधाई! आपका बूथ/स्टॉल सफलतापूर्वक आबंटित और पुष्टीकृत हो गया है। आप नीचे अपना आधिकारिक आबंटन पत्र डाउनलोड कर सकते हैं।'
+    en: 'Your booth/stall is confirmed and allotted. You can download your official Allotment Letter below.',
+    hi: 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित और पुष्टीकृत हो गया है। आप नीचे अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
   }
 }
 
@@ -445,21 +450,80 @@ const StatusLookup = () => {
   const statusText = STATUS_LABEL[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en'] ?? effectiveStatus
   const hint = STATUS_HINT[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en']
 
-  return (
-    <div className='mx-auto max-w-xl px-4 py-12 sm:px-6'>
-      <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)]'>
-        {lang === 'hi' ? 'अपने स्टॉल/बूथ आवेदन फॉर्म की स्थिति जांचें' : 'Check Your Stall/Booth Application Status'}
-      </h1>
-      <p className='mb-8 text-[var(--kdb-muted)]'>
-        {phase === 'otp'
-          ? lang === 'hi'
-            ? `आपके व्हाट्सएप नंबर पर भेजा गया 6-अंकों का कोड दर्ज करें (...${maskedMobile.slice(-4)})।`
-            : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
-          : lang === 'hi'
-            ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
-            : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
-      </p>
+  const isResult = phase === 'result' && !!result
 
+  return (
+    <div
+      className={`mx-auto px-4 py-8 sm:px-6 lg:px-8 transition-all duration-200 ${
+        isResult ? 'max-w-6xl' : 'max-w-xl py-12'
+      }`}
+    >
+      {/* Page Header */}
+      {!isResult ? (
+        <div className='mb-8 text-center sm:text-left'>
+          <h1 className='mb-2 text-2xl font-extrabold text-[var(--kdb-primary)] tracking-tight'>
+            {phase === 'otp'
+              ? lang === 'hi'
+                ? 'सत्यापन कोड (OTP) दर्ज करें'
+                : 'Enter Verification Code'
+              : lang === 'hi'
+                ? 'अपने स्टॉल/बूथ आवेदन फॉर्म की स्थिति जांचें'
+                : 'Check Your Stall/Booth Application Status'}
+          </h1>
+          <p className='text-sm text-[var(--kdb-muted)] leading-relaxed'>
+            {phase === 'otp'
+              ? lang === 'hi'
+                ? `आपके पंजीकृत मोबाइल/व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का सत्यापन कोड दर्ज करें।`
+              : `Enter the 6-digit verification code sent to your registered WhatsApp number ending ${(maskedMobile || '').slice(-4)}.`
+              : lang === 'hi'
+                ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
+                : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
+          </p>
+        </div>
+      ) : (
+        <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5'>
+          <div>
+            <div className='inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-900 border border-amber-200 mb-2'>
+              <span>अंतर्राष्ट्रीय गीता महोत्सव 2026</span>
+              <span>•</span>
+              <span>कुरुक्षेत्र विकास बोर्ड (KDB)</span>
+            </div>
+            <h1 className='text-2xl sm:text-3xl font-extrabold text-[#0c2847] tracking-tight'>
+              {lang === 'hi' ? 'आवेदन स्थिति एवं आवंटन विवरण' : 'Application Status & Allotment Details'}
+            </h1>
+            <p className='text-xs sm:text-sm text-slate-500 mt-1'>
+              {lang === 'hi'
+                ? `आवेदन क्रमांक: ${applicationNumber} | नवीनतम अद्यतन स्थिति`
+                : `Application No: ${applicationNumber} | Latest Status`}
+            </p>
+          </div>
+          <div className='flex items-center gap-2.5 self-start sm:self-auto'>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() => {
+                setPhase('lookup')
+                setError(null)
+              }}
+              className='h-9 text-xs font-semibold'
+            >
+              <ArrowLeftIcon className='size-3.5 mr-1.5' />
+              {lang === 'hi' ? 'अन्य आवेदन जांचें' : 'Check Another Application'}
+            </Button>
+            <Link
+              href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+              target='_blank'
+              className='inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition'
+            >
+              <FileTextIcon className='size-3.5 text-slate-600' />
+              {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Form'}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Lookup Phase */}
       {phase === 'lookup' && (
         <form onSubmit={form.handleSubmit(requestOtpForLookup)} className='flex flex-col gap-4'>
           <Controller
@@ -481,13 +545,14 @@ const StatusLookup = () => {
             </Alert>
           )}
 
-          <Button type='submit' disabled={isLoading}>
+          <Button type='submit' disabled={isLoading} className='h-11 font-semibold'>
             {isLoading ? <Loader2Icon className='animate-spin' /> : <SearchIcon />}
             {lang === 'hi' ? 'सत्यापन कोड भेजें' : 'Send Verification Code'}
           </Button>
         </form>
       )}
 
+      {/* OTP Phase */}
       {phase === 'otp' && (
         <div className='flex flex-col gap-4'>
           <Field>
@@ -509,7 +574,12 @@ const StatusLookup = () => {
             </Alert>
           )}
 
-          <Button type='button' disabled={isLoading || otpCode.length !== 6} onClick={verifyOtpAndFetchStatus}>
+          <Button
+            type='button'
+            disabled={isLoading || otpCode.length !== 6}
+            onClick={verifyOtpAndFetchStatus}
+            className='h-11 font-semibold'
+          >
             {isLoading && <Loader2Icon className='animate-spin' />}
             {lang === 'hi' ? 'सत्यापित करें और स्थिति देखें' : 'Verify & Check Status'}
           </Button>
@@ -536,350 +606,405 @@ const StatusLookup = () => {
         </div>
       )}
 
+      {/* Result Phase */}
       {phase === 'result' && result && (
-        <div className='flex flex-col gap-5'>
-          {allotmentPaymentSuccess && (
-            <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
-              <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
-              <div className='text-sm'>
-                <p className='font-semibold text-emerald-900'>
-                  {lang === 'hi' ? 'आबंटन शुल्क भुगतान सफल!' : 'Allotment Fee Payment Successful!'}
-                </p>
-                <p className='mt-1 text-emerald-800'>
-                  {lang === 'hi'
-                    ? 'आपका बूथ/स्टॉल सफलतापूर्वक आबंटित हो गया है। आप नीचे अपना आधिकारिक आबंटन पत्र डाउनलोड कर सकते हैं।'
-                    : 'Your booth/stall has been successfully allotted. You can download your official Allotment Letter below.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Allotment Payment Required Alert Card */}
-          {effectiveStatus === 'payment_required' && (
-            <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 to-orange-50 p-5 shadow-sm'>
-              <div className='flex items-start gap-3.5'>
-                <div className='rounded-full bg-amber-500 p-2 text-white shrink-0'>
-                  <StoreIcon className='size-5' />
-                </div>
-                <div className='flex-1'>
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <h2 className='text-base font-bold text-amber-950'>
-                      {lang === 'hi'
-                        ? 'बधाई! आपके स्टॉल का चयन हो गया है'
-                        : 'Congratulations! Your Stall is Selected'}
-                    </h2>
-                    <span className='rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-extrabold text-amber-900 border border-amber-300'>
-                      {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
-                    </span>
-                  </div>
-
-                  <p className='mt-1 text-xs text-amber-900/90 leading-relaxed'>
-                    {lang === 'hi'
-                      ? 'लकी ड्रॉ में आपके बूथ/स्टॉल का चयन हुआ है। अपना आबंटन सुरक्षित व पक्का करने के लिए कृपया अंतिम तिथि से पूर्व आबंटन शुल्क का भुगतान करें।'
-                      : 'Your application was selected in the lucky draw. To secure and confirm your stall allotment, please complete the payment before the deadline.'}
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
+          {/* Main / Primary Column */}
+          <div className='lg:col-span-7 xl:col-span-8 flex flex-col gap-5'>
+            {allotmentPaymentSuccess && (
+              <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
+                <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+                <div className='text-sm'>
+                  <p className='font-bold text-emerald-900'>
+                    {lang === 'hi' ? 'आवंटन शुल्क भुगतान सफल!' : 'Allotment Fee Payment Successful!'}
                   </p>
+                  <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
+                    {lang === 'hi'
+                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आप नीचे दिए गए बटन से अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
+                      : 'Your booth/stall has been successfully allotted. You can download your official Allotment Letter below.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                  <div className='mt-3.5 grid grid-cols-2 gap-3 rounded-lg bg-white/80 p-3 text-xs border border-amber-200/70'>
+            {/* Allotment Payment Required Alert Card */}
+            {effectiveStatus === 'payment_required' && (
+              <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
+                    <StoreIcon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-lg font-bold text-amber-950'>
+                        {lang === 'hi'
+                          ? 'आवंटन सूचना: आवंटन शुल्क भुगतान आवश्यक'
+                          : 'Allotment Notice: Allotment Fee Payment Required'}
+                      </h2>
+                      <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
+                        {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
+                      </span>
+                    </div>
+
+                    <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
+                      {lang === 'hi'
+                        ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 के अंतर्गत आपके स्टॉल/बूथ का आवंटन निर्धारित किया गया है। अपना आवंटन पुष्टीकृत करने हेतु कृपया निर्धारित अंतिम तिथि से पूर्व आवंटन शुल्क का भुगतान करें।'
+                        : 'Your booth/stall has been allocated for International Gita Mahotsav 2026. To secure and confirm your stall allotment, please complete the payment of the allotment fee before the deadline.'}
+                    </p>
+
+                    <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg bg-white/90 p-3.5 text-xs border border-amber-200/80 shadow-2xs'>
+                      {result.stallNumber && (
+                        <div>
+                          <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
+                            {lang === 'hi' ? 'आवंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}
+                          </span>
+                          <span className='font-mono text-base font-extrabold text-[#0c2847]'>
+                            {result.stallNumber}
+                          </span>
+                        </div>
+                      )}
+
+                      {result.allotmentAmountPaise !== null && (
+                        <div>
+                          <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
+                            {lang === 'hi' ? 'देय आवंटन शुल्क' : 'Allotment Fee Payable'}
+                          </span>
+                          <span className='text-base font-extrabold text-amber-950'>
+                            ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      )}
+
+                      {result.allotmentPaymentDeadlineAt && (
+                        <div className='col-span-1 sm:col-span-2 pt-2 border-t border-amber-100 flex items-center justify-between flex-wrap gap-2'>
+                          <span className='text-amber-800 font-semibold text-xs flex items-center gap-1.5'>
+                            <ClockIcon className='size-3.5 text-amber-700' />
+                            {lang === 'hi' ? 'भुगतान की अंतिम तिथि:' : 'Payment Deadline:'}
+                          </span>
+                          <span className='text-amber-950 font-bold text-xs bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200'>
+                            {new Date(result.allotmentPaymentDeadlineAt).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {allotmentPaymentError && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>{allotmentPaymentError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
+                    <div className='mt-4'>
+                      <Button
+                        type='button'
+                        onClick={handlePayAllotmentFee}
+                        disabled={isPayingAllotment}
+                        className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
+                      >
+                        {isPayingAllotment ? (
+                          <>
+                            <Loader2Icon className='size-4 animate-spin mr-2' />
+                            {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCardIcon className='size-4 mr-2' />
+                            {lang === 'hi'
+                              ? `आवंटन शुल्क का भुगतान करें (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`
+                              : `Pay Allotment Fee (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Allotted & Confirmed Card */}
+            {effectiveStatus === 'allotted' && (
+              <div className='overflow-hidden rounded-xl border-2 border-emerald-400 bg-linear-to-br from-emerald-50 via-teal-50/60 to-emerald-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-emerald-600 p-2.5 text-white shrink-0 shadow-xs'>
+                    <CheckCircle2Icon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-lg font-bold text-emerald-950'>
+                        {lang === 'hi'
+                          ? 'बधाई! आपका स्टॉल आवंटन पुष्टीकृत हो चुका है'
+                          : 'Congratulations! Your Stall Allotment is Confirmed'}
+                      </h2>
+                      <span className='rounded-full bg-emerald-200/90 px-3 py-1 text-xs font-extrabold text-emerald-900 border border-emerald-300 shadow-2xs'>
+                        {lang === 'hi' ? 'आवंटित' : 'Allotted'}
+                      </span>
+                    </div>
+
+                    <p className='mt-2 text-xs sm:text-sm text-emerald-900/95 leading-relaxed'>
+                      {lang === 'hi'
+                        ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 हेतु आपका स्टॉल आधिकारिक रूप से आवंटित व पुष्टीकृत कर दिया गया है। आप नीचे दिए गए बटन से अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
+                        : 'Your stall allotment for International Gita Mahotsav 2026 is officially confirmed. You can view and download your official Allotment Letter below.'}
+                    </p>
+
                     {result.stallNumber && (
-                      <div>
-                        <span className='text-muted-foreground block text-[11px] font-medium'>
-                          {lang === 'hi' ? 'आबंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}
+                      <div className='mt-4 rounded-lg bg-white/90 p-3.5 text-sm border border-emerald-200/80 flex items-center justify-between shadow-2xs'>
+                        <span className='text-slate-500 font-medium text-xs'>
+                          {lang === 'hi' ? 'आवंटित स्टॉल क्रमांक:' : 'Allotted Stall Number:'}
                         </span>
-                        <span className='font-mono text-sm font-extrabold text-[#0c2847]'>
+                        <span className='font-mono text-base sm:text-lg font-extrabold text-[#0c2847] bg-emerald-100/70 px-3 py-1 rounded-md border border-emerald-300/60'>
                           {result.stallNumber}
                         </span>
                       </div>
                     )}
 
-                    {result.allotmentAmountPaise !== null && (
-                      <div>
-                        <span className='text-muted-foreground block text-[11px] font-medium'>
-                          {lang === 'hi' ? 'देय आबंटन शुल्क' : 'Allotment Fee Payable'}
-                        </span>
-                        <span className='text-sm font-extrabold text-amber-900'>
-                          ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                    )}
-
-                    {result.allotmentPaymentDeadlineAt && (
-                      <div className='col-span-2 pt-1 border-t border-amber-100'>
-                        <span className='text-amber-800 font-semibold'>
-                          {lang === 'hi' ? 'भुगतान की अंतिम तिथि: ' : 'Payment Deadline: '}
-                        </span>
-                        <span className='text-amber-950 font-bold'>
-                          {new Date(result.allotmentPaymentDeadlineAt).toLocaleString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {allotmentPaymentError && (
-                    <div className='mt-3'>
-                      <Alert variant='destructive'>
-                        <AlertCircleIcon className='size-4' />
-                        <AlertDescription>{allotmentPaymentError}</AlertDescription>
-                      </Alert>
+                    <div className='mt-4 flex flex-col sm:flex-row gap-2.5'>
+                      <Link
+                        href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
+                        className='flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-2.5 px-4 shadow-xs transition'
+                      >
+                        <DownloadIcon className='size-4' />
+                        {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
+                      </Link>
+                      <Link
+                        href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+                        className='inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-700/30 bg-white hover:bg-emerald-50 text-emerald-900 font-bold text-xs sm:text-sm py-2.5 px-4 shadow-xs transition'
+                      >
+                        <FileTextIcon className='size-4 text-emerald-700' />
+                        {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Application'}
+                      </Link>
                     </div>
-                  )}
-
-                  <div className='mt-4'>
-                    <Button
-                      type='button'
-                      onClick={handlePayAllotmentFee}
-                      disabled={isPayingAllotment}
-                      className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-10'
-                    >
-                      {isPayingAllotment ? (
-                        <>
-                          <Loader2Icon className='size-4 animate-spin mr-2' />
-                          {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
-                        </>
-                      ) : (
-                        <>
-                          <CreditCardIcon className='size-4 mr-2' />
-                          {lang === 'hi'
-                            ? `आबंटन शुल्क का भुगतान करें (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`
-                            : `Pay Allotment Fee (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`}
-                        </>
-                      )}
-                    </Button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Allotted & Confirmed Card */}
-          {effectiveStatus === 'allotted' && (
-            <div className='overflow-hidden rounded-xl border-2 border-emerald-400 bg-linear-to-br from-emerald-50 to-teal-50 p-5 shadow-sm'>
-              <div className='flex items-start gap-3.5'>
-                <div className='rounded-full bg-emerald-600 p-2 text-white shrink-0'>
-                  <CheckCircle2Icon className='size-5' />
-                </div>
-                <div className='flex-1'>
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <h2 className='text-base font-bold text-emerald-950'>
-                      {lang === 'hi'
-                        ? 'बधाई! आपका बूथ/स्टॉल आबंटित हो गया है'
-                        : 'Congratulations! Your Stall is Allotted'}
-                    </h2>
-                    <span className='rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-extrabold text-emerald-900 border border-emerald-300'>
-                      {lang === 'hi' ? 'आबंटित' : 'Allotted'}
-                    </span>
-                  </div>
-
-                  <p className='mt-1 text-xs text-emerald-900/90 leading-relaxed'>
-                    {lang === 'hi'
-                      ? 'आपका स्टॉल आबंटन आधिकारिक रूप से पुष्टीकृत हो चुका है। आप अपना आबंटन पत्र यहाँ से डाउनलोड कर सकते हैं।'
-                      : 'Your stall allotment is officially confirmed. You can view and download your official Allotment Letter below.'}
-                  </p>
-
-                  {result.stallNumber && (
-                    <div className='mt-3.5 rounded-lg bg-white/80 p-3 text-xs border border-emerald-200/70 flex items-center justify-between'>
-                      <span className='text-muted-foreground font-medium'>
-                        {lang === 'hi' ? 'आबंटित स्टॉल क्रमांक:' : 'Allotted Stall Number:'}
-                      </span>
-                      <span className='font-mono text-base font-extrabold text-[#0c2847]'>
-                        {result.stallNumber}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className='mt-4 flex flex-col sm:flex-row gap-2.5'>
-                    <Link
-                      href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
-                      className='flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2.5 px-4 shadow-xs transition'
-                    >
-                      <DownloadIcon className='size-4' />
-                      {lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
-                    </Link>
-                    <Link
-                      href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
-                      className='inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-700/30 bg-white hover:bg-emerald-50 text-emerald-900 font-bold text-xs py-2.5 px-4 shadow-xs transition'
-                    >
-                      <FileTextIcon className='size-4 text-emerald-700' />
-                      {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Application'}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {uploadedFilename && (
-            <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
-              <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
-              <div className='text-sm'>
-                <p className='font-semibold text-emerald-900'>
-                  {lang === 'hi' ? 'फ़ाइल सफलतापूर्वक अपलोड हो गई' : 'File uploaded successfully'}
-                </p>
-                <p className='break-all text-emerald-800'>{uploadedFilename}</p>
-                <p className='mt-1 text-emerald-800'>
-                  {lang === 'hi'
-                    ? 'आपका सही किया हुआ दस्तावेज़ जमा हो गया है और समीक्षा के लिए भेज दिया गया है।'
-                    : 'Your corrected document has been submitted and sent back for review.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {uploadMessage && (
-            <Alert variant='destructive'>
-              <AlertCircleIcon className='size-4' />
-              <AlertDescription>{uploadMessage}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className='overflow-hidden rounded-lg border border-[var(--kdb-border)] bg-white'>
-            <div className='border-b border-[var(--kdb-border)] px-5 py-4'>
-              <p className='text-xs text-[var(--kdb-muted)]'>{lang === 'hi' ? 'आवेदन क्रमांक' : 'Application No.'}</p>
-              <p className='font-mono text-lg font-bold text-[var(--kdb-primary)]'>{applicationNumber}</p>
-            </div>
-            <dl className='divide-y divide-[var(--kdb-border)] text-sm'>
-              <div className='flex items-start justify-between gap-4 px-5 py-3'>
-                <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'श्रेणी' : 'Category'}</dt>
-                <dd className='text-right font-medium text-[var(--kdb-text)]'>
-                  {lang === 'hi' ? (result.categoryNameHi || result.categoryName) : result.categoryName}
-                </dd>
-              </div>
-              <div className='flex items-start justify-between gap-4 px-5 py-3'>
-                <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'स्थिति' : 'Status'}</dt>
-                <dd className='text-right font-semibold text-[var(--kdb-primary)]'>{statusText}</dd>
-              </div>
-              {result.stallNumber && (
-                <div className='flex items-start justify-between gap-4 px-5 py-3 bg-amber-50/50'>
-                  <dt className='font-semibold text-amber-900'>{lang === 'hi' ? 'आबंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}</dt>
-                  <dd className='text-right font-bold font-mono text-amber-950'>{result.stallNumber}</dd>
-                </div>
-              )}
-              {result.allotmentPaymentEnabled && result.allotmentAmountPaise !== null && (
-                <div className='flex items-start justify-between gap-4 px-5 py-3'>
-                  <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'आबंटन शुल्क' : 'Allotment Fee'}</dt>
-                  <dd className='text-right font-medium text-[var(--kdb-text)]'>
-                    ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
-                    {result.allotmentPaymentStatus === 'success' && (
-                      <span className='ml-2 inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full'>
-                        {lang === 'hi' ? 'भुगतान सफल' : 'Paid'}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-              )}
-              {result.submittedAt && (
-                <div className='flex items-start justify-between gap-4 px-5 py-3'>
-                  <dt className='text-[var(--kdb-muted)]'>{lang === 'hi' ? 'जमा करने की तिथि' : 'Submitted on'}</dt>
-                  <dd className='text-right font-medium text-[var(--kdb-text)]'>
-                    {formatDate(result.submittedAt, lang)}
-                  </dd>
-                </div>
-              )}
-            </dl>
-            {hint && (
-              <p className='border-t border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] px-5 py-3 text-sm text-[var(--kdb-text)]'>
-                {hint}
-              </p>
             )}
+
+            {uploadedFilename && (
+              <div className='flex gap-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3' role='status'>
+                <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+                <div className='text-sm'>
+                  <p className='font-semibold text-emerald-900'>
+                    {lang === 'hi' ? 'फ़ाइल सफलतापूर्वक अपलोड हो गई' : 'File uploaded successfully'}
+                  </p>
+                  <p className='break-all text-emerald-800'>{uploadedFilename}</p>
+                  <p className='mt-1 text-emerald-800'>
+                    {lang === 'hi'
+                      ? 'आपका सही किया हुआ दस्तावेज़ जमा हो गया है और समीक्षा के लिए भेज दिया गया है।'
+                      : 'Your corrected document has been submitted and sent back for review.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {uploadMessage && (
+              <Alert variant='destructive'>
+                <AlertCircleIcon className='size-4' />
+                <AlertDescription>{uploadMessage}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Application Details Card */}
+            <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs'>
+              <div className='border-b border-slate-200 px-5 py-4 bg-slate-50/60 flex items-center justify-between flex-wrap gap-2'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    {lang === 'hi' ? 'आवेदन विवरण' : 'Application Details'}
+                  </p>
+                  <p className='font-mono text-lg font-bold text-[#0c2847]'>{applicationNumber}</p>
+                </div>
+                <span className='rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 border border-slate-200'>
+                  {statusText}
+                </span>
+              </div>
+              <dl className='divide-y divide-slate-100 text-sm'>
+                <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
+                  <dt className='text-slate-500 text-xs font-medium uppercase tracking-wider'>
+                    {lang === 'hi' ? 'श्रेणी' : 'Category'}
+                  </dt>
+                  <dd className='text-right font-medium text-slate-900'>
+                    {lang === 'hi' ? (result.categoryNameHi || result.categoryName) : result.categoryName}
+                  </dd>
+                </div>
+                <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
+                  <dt className='text-slate-500 text-xs font-medium uppercase tracking-wider'>
+                    {lang === 'hi' ? 'स्थिति' : 'Status'}
+                  </dt>
+                  <dd className='text-right font-semibold text-[var(--kdb-primary)]'>{statusText}</dd>
+                </div>
+                {result.stallNumber && (
+                  <div className='flex items-start justify-between gap-4 px-5 py-3.5 bg-amber-50/60'>
+                    <dt className='font-semibold text-amber-900 text-xs uppercase tracking-wider'>
+                      {lang === 'hi' ? 'आवंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}
+                    </dt>
+                    <dd className='text-right font-bold font-mono text-amber-950 text-base'>{result.stallNumber}</dd>
+                  </div>
+                )}
+                {result.allotmentPaymentEnabled && result.allotmentAmountPaise !== null && (
+                  <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
+                    <dt className='text-slate-500 text-xs font-medium uppercase tracking-wider'>
+                      {lang === 'hi' ? 'आवंटन शुल्क' : 'Allotment Fee'}
+                    </dt>
+                    <dd className='text-right font-medium text-slate-900'>
+                      ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
+                      {result.allotmentPaymentStatus === 'success' && (
+                        <span className='ml-2 inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full'>
+                          {lang === 'hi' ? 'भुगतान सफल' : 'Paid'}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+                {result.submittedAt && (
+                  <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
+                    <dt className='text-slate-500 text-xs font-medium uppercase tracking-wider'>
+                      {lang === 'hi' ? 'जमा करने की तिथि' : 'Submitted on'}
+                    </dt>
+                    <dd className='text-right font-medium text-slate-900'>
+                      {formatDate(result.submittedAt, lang)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {hint && (
+                <div className='border-t border-slate-200 bg-blue-50/40 px-5 py-3 text-xs sm:text-sm text-slate-700 flex items-start gap-2.5'>
+                  <InfoIcon className='size-4 text-blue-600 shrink-0 mt-0.5' />
+                  <span>{hint}</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {result.documents.length > 0 && (
-            <div className='rounded-lg border border-[var(--kdb-border)] bg-white'>
-              <p className='border-b border-[var(--kdb-border)] px-5 py-3 text-sm font-semibold text-[var(--kdb-primary)]'>
-                {lang === 'hi' ? 'दस्तावेज़' : 'Documents'}
-              </p>
-              <ul className='divide-y divide-[var(--kdb-border)]'>
-                {result.documents.map(doc => {
-                  const needsResponse = doc.verificationStatus === 'query'
+          {/* Side / Secondary Column */}
+          <div className='lg:col-span-5 xl:col-span-4 flex flex-col gap-5'>
+            {/* Quick Actions Card */}
+            <div className='overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-xs'>
+              <h3 className='text-sm font-bold text-[#0c2847] uppercase tracking-wider mb-3'>
+                {lang === 'hi' ? 'त्वरित सेवाएं' : 'Quick Services'}
+              </h3>
+              <div className='flex flex-col gap-2'>
+                <Link
+                  href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+                  className='flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 text-xs font-semibold text-slate-800 transition'
+                >
+                  <span className='flex items-center gap-2'>
+                    <FileTextIcon className='size-4 text-[#0c2847]' />
+                    {lang === 'hi' ? 'आवेदन पत्र प्रिंट करें' : 'Print Application Form'}
+                  </span>
+                  <ExternalLinkIcon className='size-3.5 text-slate-400' />
+                </Link>
 
-                  const cfg = doc.verificationStatus
-                    ? getDocumentStatusConfig(doc.verificationStatus)
-                    : { label: '', color: 'bg-gray-100 text-gray-700' }
+                {effectiveStatus === 'allotted' && (
+                  <Link
+                    href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
+                    className='flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 hover:bg-emerald-50 text-xs font-semibold text-emerald-950 transition'
+                  >
+                    <span className='flex items-center gap-2'>
+                      <DownloadIcon className='size-4 text-emerald-700' />
+                      {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
+                    </span>
+                    <ExternalLinkIcon className='size-3.5 text-emerald-600' />
+                  </Link>
+                )}
 
-                  const statusLabel = doc.verificationStatus
-                    ? lang === 'hi'
-                      ? (DOCUMENT_STATUS_HI[doc.verificationStatus] ?? cfg.label)
-                      : cfg.label
-                    : lang === 'hi'
-                      ? 'अपलोड नहीं हुआ'
-                      : 'Not uploaded'
-
-                  return (
-                    <li key={doc.documentKey} className='px-5 py-3 text-sm'>
-                      <div className='flex items-start justify-between gap-3'>
-                        <span className='text-[var(--kdb-text)]'>
-                          {lang === 'hi' ? (doc.labelHi || doc.label) : doc.label}
-                        </span>
-                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.color}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-
-                      {needsResponse && (
-                        <div className='mt-2 border-l-2 border-orange-400 pl-3'>
-                          {doc.verificationRemarks && (
-                            <p className='text-xs text-[var(--kdb-text)]'>
-                              <span className='font-semibold'>{lang === 'hi' ? 'टिप्पणी: ' : 'Reviewer note: '}</span>
-                              {doc.verificationRemarks}
-                            </p>
-                          )}
-                          <label className='mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md bg-[var(--kdb-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90'>
-                            {uploadingKey === doc.documentKey ? (
-                              <Loader2Icon className='size-3.5 animate-spin' />
-                            ) : (
-                              <UploadIcon className='size-3.5' />
-                            )}
-                            {lang === 'hi' ? 'सही फ़ाइल अपलोड करें' : 'Upload corrected file'}
-                            <input
-                              type='file'
-                              className='hidden'
-                              accept='.pdf,.jpg,.jpeg,.png'
-                              disabled={uploadingKey === doc.documentKey}
-                              onChange={e => {
-                                const file = e.target.files?.[0]
-
-                                if (file) void respondToQuery(doc.documentKey, file)
-                                e.target.value = ''
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      {reuploadedKeys.includes(doc.documentKey) && !needsResponse && (
-                        <p className='mt-1 flex items-center gap-1 text-xs text-emerald-700'>
-                          <CheckCircle2Icon className='size-3.5' />
-                          {lang === 'hi' ? 'नई फ़ाइल जमा हो गई, समीक्षा लंबित।' : 'New file submitted, awaiting review.'}
-                        </p>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
+                <Link
+                  href='/guidelines'
+                  className='flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 text-xs font-semibold text-slate-800 transition'
+                >
+                  <span className='flex items-center gap-2'>
+                    <InfoIcon className='size-4 text-slate-600' />
+                    {lang === 'hi' ? 'नियम एवं दिशानिर्देश' : 'Rules & Guidelines'}
+                  </span>
+                  <ExternalLinkIcon className='size-3.5 text-slate-400' />
+                </Link>
+              </div>
             </div>
-          )}
 
-          {/* Quick links to print and allotment letter */}
-          <div className='flex items-center justify-between text-xs text-muted-foreground pt-1 px-1'>
-            <Link
-              href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
-              className='underline hover:text-[var(--kdb-primary)] flex items-center gap-1'
-            >
-              <FileTextIcon className='size-3.5' />
-              {lang === 'hi' ? 'आवेदन पत्र प्रिंट करें' : 'Print Application Form'}
-            </Link>
-            <Link
-              href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
-              className='underline hover:text-[var(--kdb-primary)] flex items-center gap-1'
-            >
-              <DownloadIcon className='size-3.5' />
-              {lang === 'hi' ? 'आबंटन पत्र पोर्टल' : 'Allotment Letter Portal'}
-            </Link>
+            {/* Documents Verification Status Card */}
+            {result.documents.length > 0 && (
+              <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs'>
+                <div className='border-b border-slate-200 px-5 py-3.5 bg-slate-50/60'>
+                  <p className='text-xs font-bold text-[#0c2847] uppercase tracking-wider'>
+                    {lang === 'hi' ? 'संलग्न दस्तावेज़ स्थिति' : 'Attached Documents Status'}
+                  </p>
+                </div>
+                <ul className='divide-y divide-slate-100'>
+                  {result.documents.map(doc => {
+                    const needsResponse = doc.verificationStatus === 'query'
+
+                    const cfg = doc.verificationStatus
+                      ? getDocumentStatusConfig(doc.verificationStatus)
+                      : { label: '', color: 'bg-gray-100 text-gray-700' }
+
+                    const statusLabel = doc.verificationStatus
+                      ? lang === 'hi'
+                        ? (DOCUMENT_STATUS_HI[doc.verificationStatus] ?? cfg.label)
+                        : cfg.label
+                      : lang === 'hi'
+                        ? 'अपलोड नहीं हुआ'
+                        : 'Not uploaded'
+
+                    return (
+                      <li key={doc.documentKey} className='px-5 py-3.5 text-xs sm:text-sm'>
+                        <div className='flex items-start justify-between gap-3'>
+                          <span className='font-medium text-slate-800'>
+                            {lang === 'hi' ? (doc.labelHi || doc.label) : doc.label}
+                          </span>
+                          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cfg.color}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+
+                        {needsResponse && (
+                          <div className='mt-2.5 rounded-lg border-l-4 border-amber-500 bg-amber-50/60 p-2.5'>
+                            {doc.verificationRemarks && (
+                              <p className='text-xs text-amber-950 mb-2'>
+                                <span className='font-bold'>{lang === 'hi' ? 'समीक्षक टिप्पणी: ' : 'Reviewer note: '}</span>
+                                {doc.verificationRemarks}
+                              </p>
+                            )}
+                            <label className='inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#0c2847] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#071a2f] shadow-2xs transition'>
+                              {uploadingKey === doc.documentKey ? (
+                                <Loader2Icon className='size-3.5 animate-spin' />
+                              ) : (
+                                <UploadIcon className='size-3.5' />
+                              )}
+                              {lang === 'hi' ? 'सही फ़ाइल अपलोड करें' : 'Upload corrected file'}
+                              <input
+                                type='file'
+                                className='hidden'
+                                accept='.pdf,.jpg,.jpeg,.png'
+                                disabled={uploadingKey === doc.documentKey}
+                                onChange={e => {
+                                  const file = e.target.files?.[0]
+
+                                  if (file) void respondToQuery(doc.documentKey, file)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {reuploadedKeys.includes(doc.documentKey) && !needsResponse && (
+                          <p className='mt-1.5 flex items-center gap-1 text-xs text-emerald-700 font-medium'>
+                            <CheckCircle2Icon className='size-3.5' />
+                            {lang === 'hi' ? 'नई फ़ाइल जमा हो गई, समीक्षा लंबित।' : 'New file submitted, awaiting review.'}
+                          </p>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}

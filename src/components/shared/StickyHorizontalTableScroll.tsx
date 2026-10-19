@@ -45,10 +45,10 @@ export default function StickyHorizontalTableScroll({ children }: StickyHorizont
   }, [])
 
   return (
-    <div className='relative max-w-full'>
+    <div className='relative min-w-0 w-full max-w-full'>
       <div
         ref={contentRef}
-        className='overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+        className='min-w-0 w-full max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
       >
         {children}
       </div>

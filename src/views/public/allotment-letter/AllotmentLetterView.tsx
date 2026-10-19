@@ -195,8 +195,8 @@ const AllotmentLetterView = () => {
         <div className='print:hidden max-w-xl rounded-xl border border-[var(--kdb-border)] bg-white p-6 shadow-xs flex flex-col gap-4'>
           <p className='text-xs text-[var(--kdb-muted)]'>
             {lang === 'hi'
-              ? `आपके व्हाट्सएप नंबर (...${maskedMobile.slice(-4)}) पर भेजा गया 6-अंकों का कोड दर्ज करें:`
-              : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}:`}
+              ? `आपके व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का कोड दर्ज करें:`
+              : `Enter the 6-digit code sent to your WhatsApp number ending ${(maskedMobile || '').slice(-4)}:`}
           </p>
 
           <Field>
