@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+
 import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
@@ -13,7 +15,9 @@ const AllotmentLetterPage = () => {
     <>
       <PublicHeader />
       <main className='min-h-[calc(100vh-280px)] bg-slate-50/50 py-6'>
-        <AllotmentLetterView />
+        <Suspense fallback={<div className='py-20 text-center text-sm text-slate-500'>Loading allotment letter...</div>}>
+          <AllotmentLetterView />
+        </Suspense>
       </main>
       <PublicFooter />
     </>
