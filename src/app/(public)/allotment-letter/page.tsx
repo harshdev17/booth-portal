@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   title: 'Allotment Letter | International Geeta Jayanti Mahotsav 2026'
 }
 
+// Forced dynamic (not statically prerendered): the CSP nonce proxy.ts sets
+// per-request only matches the inline hydration scripts on the SAME
+// response, so any cached/prerendered copy of this page inevitably ships a
+// stale nonce that cannot match the freshly generated CSP header, blocking
+// all scripts (the page gets stuck on "Loading..." forever). See
+// src/proxy.ts, .ai/DECISIONS.md decision #11, and the identical fix
+// already applied to src/app/(public)/page.tsx and others.
+export const dynamic = 'force-dynamic'
+
 const AllotmentLetterPage = () => {
   return (
     <>
