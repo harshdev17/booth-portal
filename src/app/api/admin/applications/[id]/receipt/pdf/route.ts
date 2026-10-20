@@ -38,13 +38,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const wantsHtml = searchParams.get('format') === 'html'
 
   const { id } = await params
-  const applicationId = decodeId(id)
+  const applicationId = decodeId(id) ?? (Number.isInteger(Number(id)) && Number(id) > 0 ? Number(id) : null)
 
   if (applicationId === null) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 })
   }
 
   try {
+    // Picks whichever payment (registration fee, or allotment/pay-now fee)
+    // actually has a successful payment for this application — a direct
+    // allotment or a draw-won applicant never has a 'registration' payment
+    // row at all, only 'pay_now', so restricting to 'registration' alone
+    // 404'd for every such case even though the row list's own
+    // "Receipt" button already correctly showed (its paymentStatus comes
+    // from a COALESCE across both purposes, same as the allotment letter
+    // query in src/lib/allotment/allotment-letter-pdf.ts).
     const rows = await query<ReceiptRow[]>(
       `SELECT a.id, a.application_number, a.organisation_name, a.representative_name,
               c.name AS category_name, c.name_hi AS category_name_hi,
@@ -58,8 +66,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 ORDER BY pt.created_at DESC LIMIT 1) AS paid_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
-       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'registration'
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose IN ('registration', 'pay_now') AND p.status = 'success'
        WHERE a.id = ?
+       ORDER BY p.id DESC
        LIMIT 1`,
       [applicationId]
     )

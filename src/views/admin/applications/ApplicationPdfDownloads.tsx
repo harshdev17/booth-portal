@@ -2,25 +2,30 @@
 
 import { useState } from 'react'
 
-import { Loader2Icon, PrinterIcon } from 'lucide-react'
+import { ChevronDownIcon, DownloadIcon, FileTextIcon, Loader2Icon, PrinterIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 type Kind = 'receipt' | 'summary' | 'allotment-letter'
 
 /**
- * Admin-side Print buttons for the application summary, payment receipt, and official allotment letter.
- * Fetches the same templates as the PDF routes (api/admin/applications/[id]/
- * receipt|summary|allotment-letter/pdf?format=html, admin-authorized) and prints them from a
- * hidden iframe.
+ * Admin-side Downloads dropdown for the application summary, payment
+ * receipt, and official allotment letter — grouped into one menu (instead
+ * of three separate buttons) to match the same Downloads pattern used on
+ * the Inventory table. Fetches the same templates as the PDF routes
+ * (api/admin/applications/[id]/receipt|summary|allotment-letter/pdf?format=html,
+ * admin-authorized) and prints them from a hidden iframe.
  */
 const ApplicationPdfDownloads = ({
   applicationId,
-  hasAllotment
+  hasAllotment,
+  hasReceipt
 }: {
   applicationId: string
   hasAllotment?: boolean
+  hasReceipt?: boolean
 }) => {
   const [printing, setPrinting] = useState<Kind | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -73,29 +78,32 @@ const ApplicationPdfDownloads = ({
 
   return (
     <div className='flex flex-col gap-2'>
-      <div className='flex flex-wrap gap-2'>
-        <Button type='button' variant='outline' size='sm' disabled={printing !== null} onClick={() => print('summary')}>
-          {printing === 'summary' ? <Loader2Icon className='animate-spin' /> : <PrinterIcon />}
-          Print Application
-        </Button>
-        <Button type='button' variant='outline' size='sm' disabled={printing !== null} onClick={() => print('receipt')}>
-          {printing === 'receipt' ? <Loader2Icon className='animate-spin' /> : <PrinterIcon />}
-          Print Receipt
-        </Button>
-        {hasAllotment && (
-          <Button
-            type='button'
-            variant='default'
-            size='sm'
-            className='bg-[#0c2847] text-white hover:bg-[#0c2847]/90'
-            disabled={printing !== null}
-            onClick={() => print('allotment-letter')}
-          >
-            {printing === 'allotment-letter' ? <Loader2Icon className='animate-spin' /> : <PrinterIcon />}
-            Print Allotment Letter
-          </Button>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button type='button' variant='outline' size='sm' disabled={printing !== null} className='gap-1.5'>
+              {printing !== null ? <Loader2Icon className='animate-spin' /> : <DownloadIcon />}
+              Downloads
+              <ChevronDownIcon />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align='start' className='w-48'>
+          <DropdownMenuItem className='whitespace-nowrap' onClick={() => print('summary')}>
+            <PrinterIcon className='size-3.5' /> Application Form
+          </DropdownMenuItem>
+          {hasReceipt && (
+            <DropdownMenuItem className='whitespace-nowrap' onClick={() => print('receipt')}>
+              <PrinterIcon className='size-3.5' /> Payment Receipt
+            </DropdownMenuItem>
+          )}
+          {hasAllotment && (
+            <DropdownMenuItem className='whitespace-nowrap' onClick={() => print('allotment-letter')}>
+              <FileTextIcon className='size-3.5' /> Allotment Letter
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {error && (
         <Alert variant='destructive' className='w-fit'>

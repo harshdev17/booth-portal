@@ -51,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const wantsHtml = searchParams.get('format') === 'html'
 
   const { id } = await params
-  const applicationId = decodeId(id)
+  const applicationId = decodeId(id) ?? (Number.isInteger(Number(id)) && Number(id) > 0 ? Number(id) : null)
 
   if (applicationId === null) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 })

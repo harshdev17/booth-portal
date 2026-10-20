@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+
 import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
@@ -12,7 +14,10 @@ const PrintApplicationPage = () => {
   return (
     <>
       <PublicHeader />
-      <PrintApplication />
+      {/* PrintApplication reads ?appNo= via useSearchParams, which requires a Suspense boundary in the App Router */}
+      <Suspense>
+        <PrintApplication />
+      </Suspense>
       <PublicFooter />
     </>
   )

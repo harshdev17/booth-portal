@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatDate } from '@/lib/format-date'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
+import { downloadBlob } from '@/lib/browser/download-blob'
 
 const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
 
@@ -172,21 +173,32 @@ const StatusLookup = () => {
   const [allotmentPaymentError, setAllotmentPaymentError] = useState<string | null>(null)
   const [allotmentPaymentSuccess, setAllotmentPaymentSuccess] = useState(false)
 
+  const [isDownloadingAllotmentLetter, setIsDownloadingAllotmentLetter] = useState(false)
+  const [allotmentLetterError, setAllotmentLetterError] = useState<string | null>(null)
+
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
     defaultValues: { applicationNumber: '' }
   })
 
   // Prefills from ?appNo=... when arriving via the homepage's status-check
-  // search bar (StatusCheckSection.tsx)
+  // search bar (StatusCheckSection.tsx), a print/receipt page link, or a
+  // directly-pasted URL. Depends on `searchParams` (not `[]`) because on a
+  // direct hard navigation to this URL, `useSearchParams()` can still return
+  // an empty/initial value on the very first client render before the
+  // router has resolved the query string — an empty-deps effect runs
+  // exactly once and never gets a chance to pick up the value once it
+  // becomes available, silently leaving the field blank.
   useEffect(() => {
     const appNo = searchParams.get('appNo')
 
+    // eslint-disable-next-line no-console
+    console.warn('[KDB-DEBUG] prefill effect ran', { appNo, raw: searchParams.toString() })
+
     if (appNo) {
-      form.setValue('applicationNumber', appNo)
+      form.setValue('applicationNumber', appNo, { shouldDirty: true, shouldTouch: true, shouldValidate: false })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams, form])
 
   // Phase 1: application number triggers a WhatsApp OTP to mobile on file
   const requestOtpForLookup = async (values: LookupValues) => {
@@ -437,6 +449,43 @@ const StatusLookup = () => {
           : 'An error occurred while starting payment.'
       )
       setIsPayingAllotment(false)
+    }
+  }
+
+  // Downloads the official allotment letter PDF directly — same data/HTML
+  // template as the admin panel's download (src/lib/allotment/allotment-letter-pdf.ts),
+  // so applicant and admin always see identical content, always in English.
+  const downloadAllotmentLetter = async () => {
+    if (!result) return
+
+    setAllotmentLetterError(null)
+    setIsDownloadingAllotmentLetter(true)
+
+    try {
+      const headers: Record<string, string> = {}
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
+      const response = await fetch(`/api/applications/${result.applicationId}/allotment-letter/pdf?lang=en`, { headers })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+
+        setAllotmentLetterError(
+          body.error ?? (lang === 'hi' ? 'आवंटन पत्र डाउनलोड नहीं हो सका।' : 'Could not download the allotment letter.')
+        )
+
+        return
+      }
+
+      downloadBlob(await response.blob(), `Allotment-Letter-${applicationNumber}.pdf`)
+    } catch {
+      setAllotmentLetterError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsDownloadingAllotmentLetter(false)
     }
   }
 
@@ -767,13 +816,19 @@ const StatusLookup = () => {
                     )}
 
                     <div className='mt-4 flex flex-col sm:flex-row gap-2.5'>
-                      <Link
-                        href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
-                        className='flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-2.5 px-4 shadow-xs transition'
+                      <button
+                        type='button'
+                        onClick={downloadAllotmentLetter}
+                        disabled={isDownloadingAllotmentLetter}
+                        className='flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-2.5 px-4 shadow-xs transition disabled:opacity-60'
                       >
-                        <DownloadIcon className='size-4' />
+                        {isDownloadingAllotmentLetter ? (
+                          <Loader2Icon className='size-4 animate-spin' />
+                        ) : (
+                          <DownloadIcon className='size-4' />
+                        )}
                         {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
-                      </Link>
+                      </button>
                       <Link
                         href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
                         className='inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-700/30 bg-white hover:bg-emerald-50 text-emerald-900 font-bold text-xs sm:text-sm py-2.5 px-4 shadow-xs transition'
@@ -782,6 +837,9 @@ const StatusLookup = () => {
                         {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Application'}
                       </Link>
                     </div>
+                    {allotmentLetterError && (
+                      <p className='mt-2 text-xs font-semibold text-red-700'>{allotmentLetterError}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -902,16 +960,21 @@ const StatusLookup = () => {
                 </Link>
 
                 {effectiveStatus === 'allotted' && (
-                  <Link
-                    href={`/allotment-letter?appNo=${encodeURIComponent(applicationNumber)}`}
-                    className='flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 hover:bg-emerald-50 text-xs font-semibold text-emerald-950 transition'
+                  <button
+                    type='button'
+                    onClick={downloadAllotmentLetter}
+                    disabled={isDownloadingAllotmentLetter}
+                    className='flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 hover:bg-emerald-50 text-xs font-semibold text-emerald-950 transition disabled:opacity-60'
                   >
                     <span className='flex items-center gap-2'>
-                      <DownloadIcon className='size-4 text-emerald-700' />
+                      {isDownloadingAllotmentLetter ? (
+                        <Loader2Icon className='size-4 animate-spin text-emerald-700' />
+                      ) : (
+                        <DownloadIcon className='size-4 text-emerald-700' />
+                      )}
                       {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
                     </span>
-                    <ExternalLinkIcon className='size-3.5 text-emerald-600' />
-                  </Link>
+                  </button>
                 )}
 
                 <Link

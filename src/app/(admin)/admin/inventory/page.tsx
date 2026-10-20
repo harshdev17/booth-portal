@@ -39,6 +39,7 @@ type ShopUnitRow = {
   cancel_reason: string | null
   allotment_payment_deadline_at: string | null
   is_payment_overdue: number | boolean
+  created_at: string
 }
 
 type InventoryLogRow = {
@@ -107,10 +108,11 @@ const InventoryAdminPage = async () => {
               (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment,
               COALESCE(p.status, da.payment_status) AS payment_status,
               COALESCE(p.amount_paise, da.payment_amount_paise, su.emd_amount_paise, c.allotment_amount_paise) AS payment_amount_paise,
-              (da_cancelled.id IS NOT NULL OR su.status = 'cancelled' OR a.status = 'cancelled') AS is_cancelled,
+              (da.id IS NULL AND (da_cancelled.id IS NOT NULL OR su.status = 'cancelled' OR a.status = 'cancelled')) AS is_cancelled,
               da_cancelled.notes AS cancel_reason,
               c.allotment_payment_deadline_at,
-              (c.allotment_payment_deadline_at IS NOT NULL AND c.allotment_payment_deadline_at < NOW() AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')) AS is_payment_overdue
+              (c.allotment_payment_deadline_at IS NOT NULL AND c.allotment_payment_deadline_at < NOW() AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')) AS is_payment_overdue,
+              su.created_at
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
@@ -191,7 +193,8 @@ const InventoryAdminPage = async () => {
     isCancelled: Boolean(row.is_cancelled),
     cancelReason: row.cancel_reason,
     allotmentPaymentDeadlineAt: row.allotment_payment_deadline_at,
-    isPaymentOverdue: Boolean(row.is_payment_overdue)
+    isPaymentOverdue: Boolean(row.is_payment_overdue),
+    createdAt: row.created_at
   }))
 
   return (

@@ -152,28 +152,25 @@ export async function GET(
 
     for (const da of directAllotments) {
       const amountStr = da.payment_amount_paise > 0 ? `₹${(da.payment_amount_paise / 100).toLocaleString('en-IN')}` : 'Free (₹0)'
-      
-      if (da.status === 'cancelled') {
-        events.push({
-          id: `da-cancelled-${da.id}`,
-          timestamp: da.allotted_at,
-          action: 'allotment.cancelled',
-          title: `Allotment Cancelled: ${da.allottee_name}`,
-          description: `Allotment of ${unit.stall_number} to ${da.allottee_name} (App: ${da.application_number ?? '—'}) was cancelled.${da.notes ? ` Reason: ${da.notes}` : ''}`,
-          actorName: da.actor_name,
-          badgeColor: 'red'
-        })
-      } else {
-        events.push({
-          id: `da-allotted-${da.id}`,
-          timestamp: da.allotted_at,
-          action: 'direct_allotment.created',
-          title: `Directly Allotted: ${da.allottee_name}`,
-          description: `Direct allotment assigned to ${da.allottee_name} (App: ${da.application_number ?? '—'}). Fee: ${amountStr}. Payment: ${da.payment_status}.`,
-          actorName: da.actor_name,
-          badgeColor: 'purple'
-        })
-      }
+
+      // `direct_allotments.allotted_at` is set once, at row creation, and is
+      // never updated when the row is later cancelled/interchanged — so it
+      // is only ever a correct timestamp for the CREATION event, never for
+      // a cancellation. The cancellation itself is represented below by the
+      // audit_logs scan (action: 'allotment.cancelled'), which has its own
+      // correctly-timestamped created_at. Emitting a second cancellation
+      // event here from `da.allotted_at` showed "Allotment Cancelled" at the
+      // original allotment time, i.e. before/at creation — this always
+      // emits the creation event regardless of current status.
+      events.push({
+        id: `da-allotted-${da.id}`,
+        timestamp: da.allotted_at,
+        action: 'direct_allotment.created',
+        title: `Directly Allotted: ${da.allottee_name}`,
+        description: `Direct allotment assigned to ${da.allottee_name} (App: ${da.application_number ?? '—'}). Fee: ${amountStr}. Payment: ${da.payment_status}.`,
+        actorName: da.actor_name,
+        badgeColor: 'purple'
+      })
     }
 
     for (const d of drawAllotments) {
@@ -248,7 +245,12 @@ export async function GET(
       events.push({
         id: `notif-${n.id}`,
         timestamp: n.created_at,
-        action: 'notification.sent',
+        // Channel-qualified: WhatsApp and Email are dispatched together for
+        // the same category within the same minute, and the generic
+        // 'notification.sent' action previously collided with itself in the
+        // dedup step below, silently dropping one of the two channels from
+        // the timeline (only the last one sorted-in survived).
+        action: `notification.sent.${n.channel}`,
         title,
         description: `Dispatched to ${n.destination} via ${n.channel.toUpperCase()} (${n.status}).`,
         badgeColor

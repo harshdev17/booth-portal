@@ -350,7 +350,8 @@ export async function POST(request: Request) {
         emdAmountPaise: categoryAllotmentPaise || null,
         status: shopStatus,
         applicationNumber: created.applicationNumber,
-        isDirectAllotment: true
+        isDirectAllotment: true,
+        createdAt: new Date().toISOString()
       }, { status: 201 })
     }
 
@@ -379,7 +380,8 @@ export async function POST(request: Request) {
       emdAmountPaise: categoryAllotmentPaise || null,
       status: 'available',
       applicationNumber: null,
-      isDirectAllotment: false
+      isDirectAllotment: false,
+      createdAt: new Date().toISOString()
     }, { status: 201 })
   } catch (error) {
     logServerError('api.admin.inventory.create', error)

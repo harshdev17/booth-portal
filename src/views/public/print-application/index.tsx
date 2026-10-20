@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircleIcon, DownloadIcon, Loader2Icon, PrinterIcon, SearchIcon } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -29,6 +30,7 @@ type Phase = 'lookup' | 'otp' | 'result'
 
 const PrintApplication = () => {
   const { lang } = useLanguage()
+  const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('lookup')
   const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
@@ -43,6 +45,19 @@ const PrintApplication = () => {
     resolver: zodResolver(lookupSchema),
     defaultValues: { applicationNumber: '' }
   })
+
+  // Prefills from ?appNo=... when arriving via the Application Status page's
+  // "Print Application" button (status/index.tsx) — this page has its own
+  // independent OTP-gated lookup, so without this the applicant lands on an
+  // empty lookup form that looks nearly identical to /status and has to
+  // retype + re-verify the application number they already entered once.
+  useEffect(() => {
+    const appNo = searchParams.get('appNo')
+
+    if (appNo) {
+      form.setValue('applicationNumber', appNo)
+    }
+  }, [searchParams, form])
 
   // Browsers use the page's <title> as the suggested filename for "Save as
   // PDF" from the print dialog — this is the only way to influence that

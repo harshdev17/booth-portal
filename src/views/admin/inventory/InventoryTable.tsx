@@ -4,13 +4,18 @@ import { useMemo, useState } from 'react'
 
 import {
   AlertTriangleIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowUpDownIcon,
   BanIcon,
   BellRingIcon,
   CheckCircle2Icon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
+  DownloadIcon,
   FileTextIcon,
   HistoryIcon,
   InfoIcon,
@@ -28,6 +33,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import {
   Dialog,
   DialogContent,
@@ -61,6 +72,7 @@ export type ShopUnitRowData = {
   cancelReason?: string | null
   allotmentPaymentDeadlineAt?: string | null
   isPaymentOverdue?: boolean
+  createdAt: string
 }
 
 const STATUS_CONFIG: Record<ShopUnitRowData['status'], { label: string; color: string }> = {
@@ -199,7 +211,19 @@ const InventoryTable = ({
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
   const [directionFilter, setDirectionFilter] = useState(ALL)
+  type SortColumn = 'stallNumber' | 'shopType' | 'categoryName' | 'direction' | 'amount' | 'status' | 'createdAt'
+  const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
 
   const tabCounts = useMemo(() => {
     const total = rows.length
@@ -433,7 +457,7 @@ const InventoryTable = ({
   const filteredRows = useMemo(() => {
     const searchLower = search.trim().toLowerCase()
 
-    return rows.filter(row => {
+    const filtered = rows.filter(row => {
       // Tab filter: all vs available vs allotted by draw vs public/draw vs direct entry vs cancelled
       if (stallCategoryTab === 'cancelled' && !row.isCancelled && row.status !== 'cancelled') return false
       if (stallCategoryTab === 'available' && (row.status !== 'available' || row.isCancelled)) return false
@@ -463,7 +487,36 @@ const InventoryTable = ({
 
       return true
     })
-  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, directionFilter])
+
+    const sorted = [...filtered]
+    const dir = sortDirection === 'asc' ? 1 : -1
+
+    sorted.sort((a, b) => {
+      switch (sortColumn) {
+        case 'stallNumber':
+          return dir * a.stallNumber.localeCompare(b.stallNumber, undefined, { numeric: true })
+        case 'shopType':
+          return dir * a.shopType.localeCompare(b.shopType)
+        case 'categoryName':
+          return dir * a.categoryName.localeCompare(b.categoryName)
+        case 'direction':
+          return dir * (a.direction ?? '').localeCompare(b.direction ?? '')
+        case 'amount': {
+          const aAmount = a.paymentAmountPaise ?? a.emdAmountPaise ?? 0
+          const bAmount = b.paymentAmountPaise ?? b.emdAmountPaise ?? 0
+
+          return dir * (aAmount - bAmount)
+        }
+        case 'status':
+          return dir * a.status.localeCompare(b.status)
+        case 'createdAt':
+        default:
+          return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      }
+    })
+
+    return sorted
+  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, directionFilter, sortColumn, sortDirection])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
 
@@ -725,7 +778,8 @@ const InventoryTable = ({
           isDirectAllotment: addForm.isDirectAllotment,
           paymentStatus: body.paymentStatus ?? null,
           paymentAmountPaise: body.paymentAmountPaise ?? null,
-          isCancelled: false
+          isCancelled: false,
+          createdAt: body.createdAt ?? new Date().toISOString()
         }
       ])
 
@@ -1505,14 +1559,53 @@ const InventoryTable = ({
                     <Checkbox checked={allSelected} onCheckedChange={checked => toggleAll(checked === true)} aria-label='Select all' />
                   </TableHead>
                 )}
-                <TableHead>Booth/Stall No.</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Direction</TableHead>
-                <TableHead>Stall Amount</TableHead>
-                <TableHead>Status</TableHead>
+                {([
+                  ['stallNumber', 'Booth/Stall No.'],
+                  ['shopType', 'Type'],
+                  ['categoryName', 'Category'],
+                  ['direction', 'Direction'],
+                  ['amount', 'Stall Amount'],
+                  ['status', 'Status']
+                ] as [SortColumn, string][]).map(([column, label]) => (
+                  <TableHead key={column}>
+                    <button
+                      type='button'
+                      onClick={() => toggleSort(column)}
+                      className='inline-flex items-center gap-1 hover:text-foreground'
+                    >
+                      {label}
+                      {sortColumn === column ? (
+                        sortDirection === 'asc' ? (
+                          <ArrowUpIcon className='size-3' />
+                        ) : (
+                          <ArrowDownIcon className='size-3' />
+                        )
+                      ) : (
+                        <ArrowUpDownIcon className='size-3 opacity-40' />
+                      )}
+                    </button>
+                  </TableHead>
+                ))}
                 <TableHead>Allotted To</TableHead>
-                {canManage && <TableHead className='text-right min-w-[200px]'>Actions</TableHead>}
+                <TableHead>
+                  <button
+                    type='button'
+                    onClick={() => toggleSort('createdAt')}
+                    className='inline-flex items-center gap-1 hover:text-foreground'
+                  >
+                    Created
+                    {sortColumn === 'createdAt' ? (
+                      sortDirection === 'asc' ? (
+                        <ArrowUpIcon className='size-3' />
+                      ) : (
+                        <ArrowDownIcon className='size-3' />
+                      )
+                    ) : (
+                      <ArrowUpDownIcon className='size-3 opacity-40' />
+                    )}
+                  </button>
+                </TableHead>
+                {canManage && <TableHead className='text-right min-w-[160px]'>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1575,11 +1668,6 @@ const InventoryTable = ({
                     ) : (
                       <div className='flex flex-wrap items-center gap-1.5'>
                         <Badge className={STATUS_CONFIG[row.status].color}>{STATUS_CONFIG[row.status].label}</Badge>
-                        {row.isDirectAllotment && (
-                          <Badge variant='outline' className='bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-bold py-0 px-1.5 shadow-2xs'>
-                            Direct Allotment
-                          </Badge>
-                        )}
                       </div>
                     )}
                   </TableCell>
@@ -1597,121 +1685,163 @@ const InventoryTable = ({
                       '—'
                     )}
                   </TableCell>
+                  <TableCell className='text-xs text-muted-foreground whitespace-nowrap'>
+                    {new Date(row.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </TableCell>
                   {canManage && (
                     <TableCell>
-                      <div className='flex flex-wrap items-center gap-1.5 justify-end'>
-                        {/* 1. Re-allocate: ONLY on cancelled stalls */}
-                        {(row.isCancelled || row.status === 'cancelled') && (
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            className='h-7 px-2 text-xs font-semibold text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-800 gap-1'
-                            title='Re-allocate Cancelled Stall'
-                            onClick={() => openDirectAllotRowDialog(row)}
-                          >
-                            <UserPlusIcon className='size-3.5' /> Re-allocate
-                          </Button>
-                        )}
+                      <div className='flex flex-nowrap items-center gap-1 justify-end'>
+                        {/* Actions dropdown: Re-allocate, Cancel, Reminder, and the
+                            Downloads (Application/Receipt/Letter) submenu items — grouped
+                            into one menu so the row's visible buttons never wrap onto a
+                            second line regardless of how many are applicable at once. */}
+                        {(() => {
+                          const hasReceipt = Boolean(
+                            row.applicationId && (row.paymentStatus === 'success' || row.paymentStatus === 'paid')
+                          )
+                          const hasLetter = Boolean(
+                            row.applicationId &&
+                              !row.isCancelled &&
+                              row.status !== 'cancelled' &&
+                              (row.status === 'allotted' ||
+                                row.paymentStatus === 'success' ||
+                                row.paymentStatus === 'paid' ||
+                                (row.isDirectAllotment && !row.paymentAmountPaise))
+                          )
+                          const hasApplication = Boolean(row.applicationId)
+                          const canReallocate = row.isCancelled || row.status === 'cancelled'
+                          const canCancel = row.status === 'allotted' && !row.isCancelled
+                          const canRemind = Boolean(
+                            row.applicationId &&
+                              !row.isCancelled &&
+                              row.status !== 'cancelled' &&
+                              (row.paymentStatus === 'pending' ||
+                                row.paymentStatus === 'initiated' ||
+                                row.isPaymentOverdue ||
+                                row.status === 'reserved')
+                          )
 
-                        {/* 2. Cancel Allotment: on allotted stalls that are not cancelled */}
-                        {row.status === 'allotted' && !row.isCancelled && (
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            className='h-7 px-2 text-xs font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1'
-                            title='Cancel Stall Allotment'
-                            onClick={() => {
-                              setCancelError(null)
-                              setCancelReason('')
-                              setCancelSendNotification(true)
-                              setCancellingAllotmentRow(row)
-                            }}
-                          >
-                            <BanIcon className='size-3.5' /> Cancel
-                          </Button>
-                        )}
+                          if (!hasReceipt && !hasLetter && !hasApplication && !canReallocate && !canCancel && !canRemind) {
+                            return null
+                          }
 
-                        {/* 3. Send Payment Reminder (WhatsApp & Email): when payment pending or overdue */}
-                        {Boolean(
-                          row.applicationId &&
-                          !row.isCancelled &&
-                          row.status !== 'cancelled' &&
-                          (row.paymentStatus === 'pending' || row.paymentStatus === 'initiated' || row.isPaymentOverdue || row.status === 'reserved')
-                        ) && (
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            className='h-7 px-2 text-xs font-medium text-amber-700 border-amber-300 hover:bg-amber-50 gap-1'
-                            title='Send Payment Reminder via WhatsApp & Email'
-                            disabled={isSendingReminder === row.id}
-                            onClick={() => handleSendReminder(row)}
-                          >
-                            {isSendingReminder === row.id ? (
-                              <Loader2Icon className='size-3.5 animate-spin' />
-                            ) : (
-                              <BellRingIcon className='size-3.5' />
-                            )}
-                            Reminder
-                          </Button>
-                        )}
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <Button
+                                    type='button'
+                                    variant='outline'
+                                    size='sm'
+                                    className='h-7 px-2 text-xs font-medium text-slate-700 border-slate-300 hover:bg-slate-50 gap-1 shrink-0'
+                                  >
+                                    Actions <ChevronDownIcon className='size-3' />
+                                  </Button>
+                                }
+                              />
+                              <DropdownMenuContent align='end' className='w-52'>
+                                {canReallocate && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap text-purple-700'
+                                    onClick={() => openDirectAllotRowDialog(row)}
+                                  >
+                                    <UserPlusIcon className='size-3.5' /> Re-allocate
+                                  </DropdownMenuItem>
+                                )}
+                                {canCancel && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap text-red-600'
+                                    onClick={() => {
+                                      setCancelError(null)
+                                      setCancelReason('')
+                                      setCancelSendNotification(true)
+                                      setCancellingAllotmentRow(row)
+                                    }}
+                                  >
+                                    <BanIcon className='size-3.5' /> Cancel Allotment
+                                  </DropdownMenuItem>
+                                )}
+                                {canRemind && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap text-amber-700'
+                                    disabled={isSendingReminder === row.id}
+                                    onClick={() => handleSendReminder(row)}
+                                  >
+                                    {isSendingReminder === row.id ? (
+                                      <Loader2Icon className='size-3.5 animate-spin' />
+                                    ) : (
+                                      <BellRingIcon className='size-3.5' />
+                                    )}
+                                    Send Reminder
+                                  </DropdownMenuItem>
+                                )}
+                                {hasApplication && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap'
+                                    render={
+                                      <a
+                                        href={`/api/admin/applications/${row.applicationId}/summary/pdf`}
+                                        target='_blank'
+                                        rel='noopener noreferrer'
+                                      />
+                                    }
+                                  >
+                                    <FileTextIcon className='size-3.5' /> Application Form
+                                  </DropdownMenuItem>
+                                )}
+                                {hasReceipt && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap'
+                                    render={
+                                      <a
+                                        href={`/api/admin/applications/${row.applicationId}/receipt/pdf`}
+                                        target='_blank'
+                                        rel='noopener noreferrer'
+                                      />
+                                    }
+                                  >
+                                    <PrinterIcon className='size-3.5' /> Payment Receipt
+                                  </DropdownMenuItem>
+                                )}
+                                {hasLetter && (
+                                  <DropdownMenuItem
+                                    className='whitespace-nowrap'
+                                    render={
+                                      <a
+                                        href={`/api/admin/applications/${row.applicationId}/allotment-letter/pdf`}
+                                        target='_blank'
+                                        rel='noopener noreferrer'
+                                      />
+                                    }
+                                  >
+                                    <FileTextIcon className='size-3.5' /> Allotment Letter
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })()}
 
-                        {/* 4. Payment Receipt PDF: when payment is success/paid */}
-                        {Boolean(
-                          row.applicationId &&
-                          (row.paymentStatus === 'success' || row.paymentStatus === 'paid')
-                        ) && (
-                          <a
-                            href={`/api/admin/applications/${row.applicationId}/receipt/pdf`}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-emerald-700 border border-emerald-300 rounded hover:bg-emerald-50 transition'
-                            title='View / Print Payment Receipt'
-                          >
-                            <PrinterIcon className='size-3.5' /> Receipt
-                          </a>
-                        )}
-
-                        {/* 5. Allotment Letter PDF: when allotted / confirmed */}
-                        {Boolean(
-                          row.applicationId &&
-                          !row.isCancelled &&
-                          row.status !== 'cancelled' &&
-                          (row.status === 'allotted' || row.paymentStatus === 'success' || row.paymentStatus === 'paid' || (row.isDirectAllotment && !row.paymentAmountPaise))
-                        ) && (
-                          <a
-                            href={`/api/admin/applications/${row.applicationId}/allotment-letter/pdf`}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50 transition'
-                            title='Download Allotment Letter'
-                          >
-                            <FileTextIcon className='size-3.5' /> Letter
-                          </a>
-                        )}
-
-                        {/* 6. History Timeline: available for all rows */}
+                        {/* History: always visible, icon-only */}
                         <Button
                           type='button'
                           variant='ghost'
                           size='icon'
-                          className='size-7 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          className='size-7 text-slate-600 hover:bg-slate-100 hover:text-slate-900 shrink-0'
                           title='View Stall History Timeline'
                           onClick={() => openHistoryDialog(row)}
                         >
                           <HistoryIcon className='size-3.5' />
                         </Button>
 
-                        {/* 7. Edit & Delete: available for unallotted, uncancelled stalls */}
+                        {/* Edit & Delete: always visible, icon-only, for unallotted/uncancelled stalls */}
                         {row.status !== 'allotted' && !row.isCancelled && (
                           <>
                             <Button
                               type='button'
                               variant='ghost'
                               size='icon'
-                              className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847]'
+                              className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847] shrink-0'
                               title='Edit Stall Details'
                               onClick={() => openEditDialog(row)}
                             >
@@ -1721,7 +1851,7 @@ const InventoryTable = ({
                               type='button'
                               variant='ghost'
                               size='icon'
-                              className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700'
+                              className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700 shrink-0'
                               title='Delete Stall'
                               onClick={() => {
                                 setError(null)
@@ -2434,8 +2564,8 @@ const InventoryTable = ({
 
       {/* Stall History Dialog */}
       <Dialog open={historyRow !== null} onOpenChange={open => !open && setHistoryRow(null)}>
-        <DialogContent className='sm:max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden'>
-          <DialogHeader className='px-5 py-4 border-b bg-card shrink-0'>
+        <DialogContent className='sm:max-w-4xl max-h-[80vh] flex flex-col p-0 gap-0 overflow-hidden'>
+          <DialogHeader className='px-6 py-4 border-b bg-card shrink-0'>
             <div className='flex items-center justify-between gap-3 pr-6'>
               <div className='flex items-center gap-2.5'>
                 <div className='flex size-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0'>
@@ -2466,7 +2596,7 @@ const InventoryTable = ({
           </DialogHeader>
 
           {historyRow && (
-            <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 px-5 py-2.5 bg-slate-50/70 border-b text-xs shrink-0'>
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-3 bg-slate-50/70 border-b text-xs shrink-0'>
               <div>
                 <span className='block text-[11px] text-muted-foreground'>Stall No.</span>
                 <span className='font-bold text-slate-900 font-mono'>{historyRow.stallNumber}</span>
@@ -2494,7 +2624,7 @@ const InventoryTable = ({
             </div>
           )}
 
-          <div className='flex-1 overflow-y-auto px-5 py-4'>
+          <div className='flex-1 overflow-y-auto px-6 py-5'>
             {historyLoading ? (
               <div className='flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground'>
                 <Loader2Icon className='size-5 animate-spin text-slate-600' />
@@ -2510,7 +2640,7 @@ const InventoryTable = ({
                 <p className='text-xs font-medium text-slate-600'>No recorded activity yet for this stall.</p>
               </div>
             ) : (
-              <div className='relative border-l border-slate-200 ml-3 pl-5 space-y-5 py-1'>
+              <div className='relative border-l border-slate-200 ml-3 pl-6 space-y-6 py-1'>
                 {historyEvents.map((evt, idx) => {
                   const dotColor = {
                     blue: 'bg-blue-600 ring-blue-100',
@@ -2523,20 +2653,20 @@ const InventoryTable = ({
 
                   return (
                     <div key={idx} className='relative group'>
-                      <div className={`absolute -left-[25px] top-1.5 size-2.5 rounded-full ring-4 ${dotColor}`} />
-                      <div className='space-y-1'>
-                        <div className='flex items-baseline justify-between gap-2 flex-wrap'>
-                          <h4 className='text-xs font-bold text-slate-900'>{evt.title}</h4>
-                          <span className='text-[11px] text-muted-foreground'>
+                      <div className={`absolute -left-[27px] top-1.5 size-3 rounded-full ring-4 ${dotColor}`} />
+                      <div className='space-y-1.5'>
+                        <div className='flex items-baseline justify-between gap-3 flex-wrap'>
+                          <h4 className='text-sm font-bold text-slate-900'>{evt.title}</h4>
+                          <span className='text-xs text-muted-foreground shrink-0'>
                             {new Date(evt.timestamp).toLocaleString('en-IN', {
                               dateStyle: 'medium',
                               timeStyle: 'short'
                             })}
                           </span>
                         </div>
-                        <p className='text-xs text-slate-600 leading-relaxed'>{evt.description}</p>
+                        <p className='text-sm text-slate-600 leading-relaxed'>{evt.description}</p>
                         {evt.actorName && (
-                          <p className='text-[11px] text-muted-foreground'>
+                          <p className='text-xs text-muted-foreground'>
                             by <span className='font-medium text-slate-700'>{evt.actorName}</span>
                           </p>
                         )}
@@ -2548,7 +2678,7 @@ const InventoryTable = ({
             )}
           </div>
 
-          <DialogFooter className='px-5 py-3 border-t bg-slate-50/50 shrink-0 flex items-center justify-between sm:justify-between'>
+          <DialogFooter className='px-6 py-3 border-t bg-slate-50/50 shrink-0 flex items-center justify-between sm:justify-between'>
             <span className='text-xs text-muted-foreground'>
               {historyEvents.length > 0 ? `${historyEvents.length} event${historyEvents.length > 1 ? 's' : ''}` : ''}
             </span>

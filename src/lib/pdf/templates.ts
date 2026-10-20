@@ -87,6 +87,15 @@ const field = (label: string, value: string, full?: boolean) => `
   </div>
 `
 
+// Shared across all three document types (receipt, application summary,
+// allotment letter) so every official PDF carries the same faint KDB logo
+// watermark, rather than only the allotment letter having one.
+const watermark = `
+  <div style="position: fixed; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 280pt; height: 280pt; opacity: 0.08; pointer-events: none; z-index: 0;">
+    <img src="data:image/png;base64,${getLogoBase64()}" style="width: 100%; height: 100%; object-fit: contain;" alt="" />
+  </div>
+`
+
 const documentShell = (title: string, body: string) => `
 <!doctype html>
 <html>
@@ -95,7 +104,10 @@ const documentShell = (title: string, body: string) => `
     <title>${escapeHtml(title)}</title>
     <style>${baseStyles}</style>
   </head>
-  <body>${body}</body>
+  <body>
+    ${watermark}
+    <div style="position: relative; z-index: 1;">${body}</div>
+  </body>
 </html>
 `
 
@@ -239,6 +251,7 @@ export type AllotmentLetterPdfData = {
   categoryName: string
   categoryNameHi?: string | null
   stallNumber: string
+  stallDirection?: string | null
   mobileNumber?: string | null
   email?: string | null
   address?: string | null
@@ -261,6 +274,7 @@ export function allotmentLetterHtml(data: AllotmentLetterPdfData, lang: 'hi' | '
     field(isHi ? 'आवंटन तिथि' : 'Allotment Date', new Date().toLocaleDateString('en-IN')),
     field(isHi ? 'आवेदन क्रमांक' : 'Application Number', data.applicationNumber),
     field(isHi ? 'आवंटित स्टॉल क्रमांक' : 'Allotted Booth / Stall No.', data.stallNumber),
+    data.stallDirection ? field(isHi ? 'स्टॉल स्थान / दिशा' : 'Stall Location / Direction', data.stallDirection) : '',
     field(isHi ? 'श्रेणी' : 'Category', isHi ? (data.categoryNameHi ?? data.categoryName) : data.categoryName),
     data.organisationName ? field(isHi ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
     field(isHi ? 'आवंटी का नाम' : 'Allottee Name', data.representativeName),
@@ -273,52 +287,37 @@ export function allotmentLetterHtml(data: AllotmentLetterPdfData, lang: 'hi' | '
   ].join('')
 
   const body = `
-    <!-- Official KDB Logo Watermark -->
-    <div style="position: fixed; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 280pt; height: 280pt; opacity: 0.08; pointer-events: none; z-index: 0;">
-      <img src="data:image/png;base64,${getLogoBase64()}" style="width: 100%; height: 100%; object-fit: contain;" alt="" />
+    ${letterhead(lang)}
+    <div class="title-row" style="margin-bottom: 10pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt;">
+      <div>
+        <h2 style="font-size: 13pt; margin: 0; color: #000; font-weight: 800;">
+          ${isHi ? 'आधिकारिक बूथ / स्टॉल आवंटन पत्र' : 'OFFICIAL BOOTH / STALL ALLOTMENT ORDER'}
+        </h2>
+        <p style="font-size: 8pt; margin: 2pt 0 0; color: #444;">
+          ${isHi ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — कुरुक्षेत्र विकास बोर्ड' : 'International Geeta Jayanti Mahotsav 2026 — Kurukshetra Development Board'}
+        </p>
+      </div>
+      <span class="badge" style="font-size: 10pt; font-weight: 800; border: 2pt solid #000; padding: 4pt 10pt; background: rgba(250, 250, 250, 0.85);">
+        STALL: ${escapeHtml(data.stallNumber)}
+      </span>
     </div>
 
-    <div style="position: relative; z-index: 1;">
-      ${letterhead(lang)}
-      <div class="title-row" style="margin-bottom: 10pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt;">
-        <div>
-          <h2 style="font-size: 13pt; margin: 0; color: #000; font-weight: 800;">
-            ${isHi ? 'आधिकारिक बूथ / स्टॉल आवंटन पत्र' : 'OFFICIAL BOOTH / STALL ALLOTMENT ORDER'}
-          </h2>
-          <p style="font-size: 8pt; margin: 2pt 0 0; color: #444;">
-            ${isHi ? 'अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 — कुरुक्षेत्र विकास बोर्ड' : 'International Geeta Jayanti Mahotsav 2026 — Kurukshetra Development Board'}
-          </p>
-        </div>
-        <span class="badge" style="font-size: 10pt; font-weight: 800; border: 2pt solid #000; padding: 4pt 10pt; background: rgba(250, 250, 250, 0.85);">
-          STALL: ${escapeHtml(data.stallNumber)}
-        </span>
-      </div>
+    <div class="grid" style="margin-top: 8pt;">${fields}</div>
 
-      <div class="grid" style="margin-top: 8pt;">${fields}</div>
+    <div style="margin-top: 14pt; border: 1pt solid #000; padding: 8pt 10pt; font-size: 8pt; background-color: rgba(250, 250, 250, 0.85); border-radius: 4pt;">
+      <p style="margin: 0 0 4pt; font-weight: bold; text-transform: uppercase;">
+        ${isHi ? 'महत्वपूर्ण निर्देश एवं शर्तें:' : 'Important Terms & Instructions:'}
+      </p>
+      <ol style="margin: 0; padding-left: 14pt; line-height: 1.4;">
+        <li>${isHi ? 'यह आवंटन पत्र अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आधिकारिक है।' : 'This allotment order is valid exclusively for the official duration of International Geeta Jayanti Mahotsav 2026.'}</li>
+        <li>${isHi ? 'आवंटी को केवल आवंटित स्थान व उद्देश्य के लिए ही स्टॉल का उपयोग करने की अनुमति है।' : 'The allottee must occupy only the allocated booth/stall and conduct only approved activities.'}</li>
+        <li>${isHi ? 'स्टॉल परिसर में स्वच्छता, अग्नि सुरक्षा एवं केडीबी के नियमों का पूर्ण पालन अनिवार्य है।' : 'Compliance with fire safety regulations, waste management, and KDB fair bylaws is mandatory.'}</li>
+        <li>${isHi ? 'यह पत्र प्रवेश एवं स्टॉल आधिपत्य लेते समय प्रस्तुत करना आवश्यक है।' : 'Please carry this original allotment letter along with a valid Government Photo ID at the time of taking stall possession.'}</li>
+      </ol>
+    </div>
 
-      <div style="margin-top: 14pt; border: 1pt solid #000; padding: 8pt 10pt; font-size: 8pt; background-color: rgba(250, 250, 250, 0.85); border-radius: 4pt;">
-        <p style="margin: 0 0 4pt; font-weight: bold; text-transform: uppercase;">
-          ${isHi ? 'महत्वपूर्ण निर्देश एवं शर्तें:' : 'Important Terms & Instructions:'}
-        </p>
-        <ol style="margin: 0; padding-left: 14pt; line-height: 1.4;">
-          <li>${isHi ? 'यह आवंटन पत्र अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आधिकारिक है।' : 'This allotment order is valid exclusively for the official duration of International Geeta Jayanti Mahotsav 2026.'}</li>
-          <li>${isHi ? 'आवंटी को केवल आवंटित स्थान व उद्देश्य के लिए ही स्टॉल का उपयोग करने की अनुमति है।' : 'The allottee must occupy only the allocated booth/stall and conduct only approved activities.'}</li>
-          <li>${isHi ? 'स्टॉल परिसर में स्वच्छता, अग्नि सुरक्षा एवं केडीबी के नियमों का पूर्ण पालन अनिवार्य है।' : 'Compliance with fire safety regulations, waste management, and KDB fair bylaws is mandatory.'}</li>
-          <li>${isHi ? 'यह पत्र प्रवेश एवं स्टॉल आधिपत्य लेते समय प्रस्तुत करना आवश्यक है।' : 'Please carry this original allotment letter along with a valid Government Photo ID at the time of taking stall possession.'}</li>
-        </ol>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24pt; padding-top: 8pt;">
-        <div style="font-size: 8pt; color: #555;">
-          <p style="margin: 0;">Generated on: ${new Date().toLocaleDateString('en-IN')}</p>
-        </div>
-        <div style="text-align: center; min-width: 140pt;">
-          <div style="border-top: 1.5pt solid #000; padding-top: 4pt; font-weight: bold; font-size: 9pt;">
-            Estate Officer / CEO
-          </div>
-          <div style="font-size: 8pt; color: #333;">Kurukshetra Development Board</div>
-        </div>
-      </div>
+    <div style="margin-top: 24pt; padding-top: 8pt; font-size: 8pt; color: #555;">
+      <p style="margin: 0;">Generated on: ${new Date().toLocaleDateString('en-IN')}</p>
     </div>
   `
 

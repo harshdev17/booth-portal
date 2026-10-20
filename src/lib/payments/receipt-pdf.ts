@@ -21,7 +21,14 @@ export type ReceiptRow = {
   paid_at: string | null
 }
 
-/** Loads the registration-fee payment + application fields a receipt needs. `where` must be a fixed, caller-controlled fragment (never user input). */
+/**
+ * Loads the application fields a receipt needs, plus whichever payment
+ * (registration fee, or allotment/pay-now fee) actually has a successful
+ * payment — a direct allotment or draw-won applicant never has a
+ * 'registration' payment at all, only 'pay_now', so restricting to
+ * 'registration' alone made the receipt 404 for every such applicant.
+ * `where` must be a fixed, caller-controlled fragment (never user input).
+ */
 export async function findReceiptRow(where: 'a.id = ?' | 'a.application_number = ?', value: number | string) {
   const rows = await query<ReceiptRow[]>(
     `SELECT a.id, a.application_number, a.access_token_hash, a.mobile_number, a.organisation_name, a.representative_name,
@@ -36,8 +43,9 @@ export async function findReceiptRow(where: 'a.id = ?' | 'a.application_number =
               ORDER BY pt.created_at DESC LIMIT 1) AS paid_at
      FROM applications a
      JOIN categories c ON c.id = a.category_id
-     LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'registration'
+     LEFT JOIN payments p ON p.application_id = a.id AND p.purpose IN ('registration', 'pay_now') AND p.status = 'success'
      WHERE ${where}
+     ORDER BY p.id DESC
      LIMIT 1`,
     [value]
   )

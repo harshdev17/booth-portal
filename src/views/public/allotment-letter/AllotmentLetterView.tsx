@@ -10,7 +10,6 @@ import {
   CreditCardIcon,
   DownloadIcon,
   Loader2Icon,
-  PrinterIcon,
   SearchIcon,
   StoreIcon
 } from 'lucide-react'
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
-import AllotmentLetterSheet, { type AllotmentData } from './AllotmentLetterSheet'
+import { downloadBlob } from '@/lib/browser/download-blob'
 
 const lookupSchema = z.object({
   applicationNumber: z
@@ -62,6 +61,8 @@ const AllotmentLetterView = () => {
   const [statusData, setStatusData] = useState<StatusApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
@@ -70,11 +71,11 @@ const AllotmentLetterView = () => {
 
   useEffect(() => {
     const appNo = searchParams.get('appNo')
+
     if (appNo) {
       form.setValue('applicationNumber', appNo)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams, form])
 
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
@@ -142,8 +143,43 @@ const AllotmentLetterView = () => {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
+  // Same unified PDF (src/lib/allotment/allotment-letter-pdf.ts) that the
+  // admin panel and the already-verified /status page download — ensures
+  // this OTP-gated standalone page can never show different content.
+  const downloadAllotmentLetter = async () => {
+    if (!statusData) return
+
+    setDownloadError(null)
+    setIsDownloading(true)
+
+    try {
+      const headers: Record<string, string> = {}
+      if (statusData.accessToken) {
+        headers['Authorization'] = `Bearer ${statusData.accessToken}`
+      }
+
+      const response = await fetch(`/api/applications/${statusData.applicationId}/allotment-letter/pdf?lang=en`, {
+        headers
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+
+        setDownloadError(
+          body.error ?? (lang === 'hi' ? 'आवंटन पत्र डाउनलोड नहीं हो सका।' : 'Could not download the allotment letter.')
+        )
+
+        return
+      }
+
+      downloadBlob(await response.blob(), `Allotment-Letter-${applicationNumber}.pdf`)
+    } catch {
+      setDownloadError(
+        lang === 'hi' ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।' : 'Could not reach the server. Please try again.'
+      )
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -297,10 +333,10 @@ const AllotmentLetterView = () => {
             </div>
           )}
 
-          {/* If status is allotted: Show Print Sheet */}
+          {/* If status is allotted: offer the official PDF download */}
           {statusData.status === 'allotted' && statusData.stallNumber && (
-            <div>
-              <div className='print:hidden mb-4 flex items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200'>
+            <div className='rounded-xl border border-slate-200 bg-white p-6'>
+              <div className='flex items-center justify-between gap-3'>
                 <div>
                   <p className='text-xs text-muted-foreground'>
                     {lang === 'hi' ? 'आबंटित स्टॉल:' : 'Allotted Stall:'}{' '}
@@ -311,27 +347,21 @@ const AllotmentLetterView = () => {
                   </p>
                 </div>
                 <Button
-                  onClick={handlePrint}
+                  onClick={downloadAllotmentLetter}
+                  disabled={isDownloading}
                   className='bg-[#0c2847] hover:bg-[#071a2f] text-white text-xs font-bold gap-2'
                 >
-                  <PrinterIcon className='size-4' />
-                  {lang === 'hi' ? 'प्रिंट / सेव करें' : 'Print / Save Letter'}
+                  {isDownloading ? <Loader2Icon className='size-4 animate-spin' /> : <DownloadIcon className='size-4' />}
+                  {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
                 </Button>
               </div>
 
-              <AllotmentLetterSheet
-                lang={lang}
-                data={{
-                  applicationNumber,
-                  representativeName: statusData.categoryName, // fallback
-                  categoryName: statusData.categoryName,
-                  categoryNameHi: statusData.categoryNameHi,
-                  stallNumber: statusData.stallNumber,
-                  allotmentAmountPaise: statusData.allotmentAmountPaise,
-                  allotmentPaidAt: statusData.allotmentPaidAt,
-                  submittedAt: statusData.submittedAt
-                }}
-              />
+              {downloadError && (
+                <Alert variant='destructive' className='mt-4'>
+                  <AlertCircleIcon className='size-4' />
+                  <AlertDescription>{downloadError}</AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </div>

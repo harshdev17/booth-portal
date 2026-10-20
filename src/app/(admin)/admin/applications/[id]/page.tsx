@@ -58,6 +58,7 @@ type ApplicationRow = {
   allotment_amount_paise: number | null
   allotment_payment_status: string | null
   allotment_paid_at: string | null
+  registration_payment_status: string | null
 }
 
 const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string }> }) => {
@@ -80,12 +81,14 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               COALESCE(p.status, da.payment_status) AS allotment_payment_status,
               (SELECT pt.created_at FROM payment_transactions pt
                 WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
-                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at
+                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
+              reg_p.status AS registration_payment_status
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
        LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
        LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+       LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
        LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
        LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
        WHERE a.id = ?`,
@@ -219,7 +222,14 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
         <ApplicationPdfDownloads
           applicationId={id}
-          hasAllotment={Boolean(app.stall_number) || app.status === 'allotted'}
+          hasAllotment={
+            Boolean(app.stall_number) &&
+            (app.status === 'allotted' || app.status === 'payment_required' || app.status === 're_allotted')
+          }
+          hasReceipt={
+            (app.status === 'allotted' || app.status === 'payment_required' || app.status === 're_allotted') &&
+            (app.registration_payment_status === 'success' || app.allotment_payment_status === 'success')
+          }
         />
 
         {approvalBlockedByDocs && (
