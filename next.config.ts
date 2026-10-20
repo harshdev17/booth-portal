@@ -22,6 +22,19 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   compress: true,
+
+  // pdfkit (used internally by @react-pdf/renderer, src/lib/pdf/react-templates.tsx)
+  // loads its standard-font .afm files via a `require()` relative to its own
+  // package directory AT RUNTIME, which Next.js's build-time file tracer
+  // cannot see statically — it silently excluded those files from the
+  // production deploy, causing "Cannot find module
+  // '.../pdfkit/js/standard-fonts/Helvetica.cjs'" in production (confirmed
+  // live on Hostinger) while working fine in local dev, where the full
+  // node_modules tree is always present. Marking both packages external
+  // makes Next.js leave them as plain `require()` calls resolved against
+  // the real node_modules tree at runtime, instead of bundling/tracing them.
+  serverExternalPackages: ['@react-pdf/renderer', 'pdfkit', 'fontkit'],
+
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400
