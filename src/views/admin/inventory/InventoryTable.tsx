@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import {
   AlertTriangleIcon,
   ArrowDownIcon,
+  ArrowLeftRightIcon,
   ArrowUpIcon,
   ArrowUpDownIcon,
   BanIcon,
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -313,6 +315,117 @@ const InventoryTable = ({
   const [cancelSendNotification, setCancelSendNotification] = useState(true)
   const [isCancellingAllotment, setIsCancellingAllotment] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+
+  // Interchange state
+  const [interchangeDialogOpen, setInterchangeDialogOpen] = useState(false)
+  const [interchangeFirstId, setInterchangeFirstId] = useState('')
+  const [interchangeSecondId, setInterchangeSecondId] = useState('')
+  const [interchangeReason, setInterchangeReason] = useState('')
+  const [interchangeSendNotification, setInterchangeSendNotification] = useState(true)
+  const [isInterchanging, setIsInterchanging] = useState(false)
+  const [interchangeError, setInterchangeError] = useState<string | null>(null)
+
+  // A stall whose allotment was cancelled is practically available again (cancelling
+  // an allotment resets shop_units.status to 'available' — see cancel-allotment.ts —
+  // the isCancelled flag only marks that it HAS a cancellation in its history), so it's
+  // a valid interchange side like any other available stall, not excluded here.
+  // shop_units.status === 'cancelled' is a different, separate meaning (the physical
+  // stall itself is withdrawn from inventory) and is excluded — see interchangeStalls().
+  const interchangeEligibleRows = useMemo(() => rows.filter(r => r.status !== 'cancelled'), [rows])
+
+  const resetInterchangeState = () => {
+    setInterchangeFirstId('')
+    setInterchangeSecondId('')
+    setInterchangeReason('')
+    setInterchangeSendNotification(true)
+    setInterchangeError(null)
+  }
+
+  const handleInterchange = async () => {
+    setInterchangeError(null)
+    setIsInterchanging(true)
+
+    try {
+      const res = await fetch('/api/admin/inventory/interchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstShopUnitId: interchangeFirstId,
+          secondShopUnitId: interchangeSecondId,
+          reason: interchangeReason.trim(),
+          sendNotifications: interchangeSendNotification
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setInterchangeError(data.error ?? 'Could not interchange these stalls.')
+
+        return
+      }
+
+      // Local row refresh is correct here, not router.refresh(): that call
+      // re-runs every query the whole Inventory page needs (see the comment
+      // above the InventoryTable component) just to reflect two rows'
+      // changed application links — a full page reload's worth of DB work
+      // for an update the client already has the exact before/after for.
+      //
+      // Swap the FULL allotment-related field bundle between the two rows
+      // (not just applicationId/applicationNumber/status) — an earlier
+      // version of this patch updated only those three fields and left
+      // paymentStatus, paymentAmountPaise, isCancelled, isDirectAllotment,
+      // cancelReason, and isPaymentOverdue holding whichever row's value
+      // they'd had BEFORE the swap. That showed as a stall that had just
+      // become empty/available still displaying "Cancelled" and "Paid"
+      // badges left over from the allotment it no longer has, until a full
+      // page reload re-fetched the real (correct) server state. A stall
+      // that loses its allotment just has none of this bundle any more, so
+      // the "other side" fields default to null/false/undefined rather than
+      // carrying anything across.
+      setRows(prev => {
+        const firstRow = prev.find(r => r.id === data.first.shopUnitId)
+        const secondRow = prev.find(r => r.id === data.second.shopUnitId)
+
+        if (!firstRow || !secondRow) return prev
+
+        const bundleFor = (apiSide: typeof data.first, sourceRow: ShopUnitRowData | undefined) => ({
+          applicationId: apiSide.applicationId,
+          applicationNumber: apiSide.applicationNumber,
+          status: (apiSide.applicationId ? 'allotted' : 'available') as ShopUnitRowData['status'],
+          isDirectAllotment: apiSide.applicationId ? sourceRow?.isDirectAllotment : undefined,
+          paymentStatus: apiSide.applicationId ? sourceRow?.paymentStatus : null,
+          paymentAmountPaise: apiSide.applicationId ? sourceRow?.paymentAmountPaise : null,
+          isCancelled: apiSide.applicationId ? sourceRow?.isCancelled : false,
+          cancelReason: apiSide.applicationId ? sourceRow?.cancelReason : null,
+          isPaymentOverdue: apiSide.applicationId ? sourceRow?.isPaymentOverdue : false
+        })
+
+        // `second`'s old allotment-related fields now belong to `first`'s
+        // stall (it gained second's applicant), and vice versa.
+        const firstBundle = bundleFor(data.first, secondRow)
+        const secondBundle = bundleFor(data.second, firstRow)
+
+        return prev.map(r => {
+          if (r.id === data.first.shopUnitId) {
+            return { ...r, ...firstBundle, categoryName: data.first.categoryName || r.categoryName }
+          }
+          if (r.id === data.second.shopUnitId) {
+            return { ...r, ...secondBundle, categoryName: data.second.categoryName || r.categoryName }
+          }
+
+          return r
+        })
+      })
+
+      setInterchangeDialogOpen(false)
+      resetInterchangeState()
+    } catch {
+      setInterchangeError('Failed to communicate with server.')
+    } finally {
+      setIsInterchanging(false)
+    }
+  }
 
   // Direct Re-allotment state
   const [allottingRow, setAllottingRow] = useState<ShopUnitRowData | null>(null)
@@ -1087,6 +1200,115 @@ const InventoryTable = ({
           </div>
 
           <div className='flex items-center gap-2'>
+            {canManage && (
+              <Dialog open={interchangeDialogOpen} onOpenChange={openValue => { setInterchangeDialogOpen(openValue); if (!openValue) resetInterchangeState() }}>
+                <DialogTrigger render={<Button type='button' variant='outline' size='sm' className='gap-1.5' />}>
+                  <ArrowLeftRightIcon className='size-3.5' /> Interchange Stalls
+                </DialogTrigger>
+                <DialogContent className='sm:max-w-md'>
+                  <DialogHeader>
+                    <DialogTitle>Interchange Two Booth/Stall Units</DialogTitle>
+                    <DialogDescription>
+                      Swaps whatever category and allottee each stall currently has — the stall&apos;s own number and
+                      location never move. At least one of the two must currently have an allottee; interchanging
+                      two empty/available stalls does nothing.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className='flex flex-col gap-3'>
+                    <Field>
+                      <FieldLabel htmlFor='interchange-first'>First Stall</FieldLabel>
+                      <select
+                        id='interchange-first'
+                        className='border-input h-9 w-full rounded-md border bg-transparent px-2.5 text-sm'
+                        value={interchangeFirstId}
+                        onChange={e => setInterchangeFirstId(e.target.value)}
+                      >
+                        <option value=''>Select a stall…</option>
+                        {interchangeEligibleRows.map(r => (
+                          <option key={r.id} value={r.id} disabled={r.id === interchangeSecondId}>
+                            {r.stallNumber} ({r.categoryName}{r.direction ? `, ${r.direction}` : ''}) —{' '}
+                            {STATUS_CONFIG[r.status].label}
+                            {r.applicationNumber ? ` (${r.applicationNumber})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor='interchange-second'>Second Stall</FieldLabel>
+                      <select
+                        id='interchange-second'
+                        className='border-input h-9 w-full rounded-md border bg-transparent px-2.5 text-sm'
+                        value={interchangeSecondId}
+                        onChange={e => setInterchangeSecondId(e.target.value)}
+                      >
+                        <option value=''>Select a stall…</option>
+                        {interchangeEligibleRows.map(r => (
+                          <option key={r.id} value={r.id} disabled={r.id === interchangeFirstId}>
+                            {r.stallNumber} ({r.categoryName}{r.direction ? `, ${r.direction}` : ''}) —{' '}
+                            {STATUS_CONFIG[r.status].label}
+                            {r.applicationNumber ? ` (${r.applicationNumber})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor='interchange-reason'>Reason for Interchange *</FieldLabel>
+                      <Textarea
+                        id='interchange-reason'
+                        value={interchangeReason}
+                        onChange={e => setInterchangeReason(e.target.value)}
+                        placeholder='e.g. Applicant requested a corner stall swap'
+                        rows={2}
+                      />
+                    </Field>
+
+                    <div className='flex items-center gap-2'>
+                      <Checkbox
+                        id='interchange-notify'
+                        checked={interchangeSendNotification}
+                        onCheckedChange={checked => setInterchangeSendNotification(checked === true)}
+                      />
+                      <Label htmlFor='interchange-notify' className='text-xs font-normal'>
+                        Notify affected applicant(s) via WhatsApp &amp; Email
+                      </Label>
+                    </div>
+
+                    {interchangeError && (
+                      <Alert variant='destructive'>
+                        <AlertDescription>{interchangeError}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button type='button' variant='outline' onClick={() => setInterchangeDialogOpen(false)} disabled={isInterchanging}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type='button'
+                      onClick={handleInterchange}
+                      disabled={
+                        isInterchanging ||
+                        !interchangeFirstId ||
+                        !interchangeSecondId ||
+                        interchangeFirstId === interchangeSecondId ||
+                        !interchangeReason.trim() ||
+                        // Both sides empty: nothing would actually change.
+                        (!interchangeEligibleRows.find(r => r.id === interchangeFirstId)?.applicationId &&
+                          !interchangeEligibleRows.find(r => r.id === interchangeSecondId)?.applicationId)
+                      }
+                    >
+                      {isInterchanging && <Loader2Icon className='animate-spin' />}
+                      Interchange
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
             {canManage && deletableSelectedIds.length > 0 && (
               <div className='flex items-center gap-1.5'>
                 <Select value={bulkStatus} onValueChange={value => setBulkStatus((value as ShopUnitRowData['status']) ?? bulkStatus)}>

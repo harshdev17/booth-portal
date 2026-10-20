@@ -21,6 +21,7 @@ const CATEGORY_ENV_MAP: Array<{ category: string; label: string; envVar: string 
   { category: 'pay_now_activation', label: 'Pay Now Activation (Draw)', envVar: 'AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION' },
   { category: 'direct_allotment_payment', label: 'Direct Allotment Payment', envVar: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT' },
   { category: 'direct_allotment_confirmed', label: 'Direct Allotment Confirmed', envVar: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED' },
+  { category: 'stall_interchanged', label: 'Stall Interchanged', envVar: 'AISENSY_CAMPAIGN_STALL_INTERCHANGED' },
   { category: 'reminder', label: 'Reminder', envVar: 'AISENSY_CAMPAIGN_REMINDER' }
 ]
 

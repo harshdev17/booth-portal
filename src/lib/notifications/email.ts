@@ -222,6 +222,22 @@ export function buildEmailContent(
         link: allotmentLetterUrl
       }
       break
+    case 'stall_interchanged':
+      c = {
+        subject: `Stall Updated - Your New Booth/Stall for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `Please note that your booth/stall allotment for application ${appNo} has been updated for International Geeta Jayanti Mahotsav 2026. Your stall has changed from ${third || 'your previous stall'} to ${fourth || 'a new stall'}.`,
+          'Your updated official Allotment Letter reflecting this new stall is available using the link below.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `कृपया ध्यान दें कि अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} का बूथ/स्टॉल आवंटन अद्यतन किया गया है। आपका स्टॉल ${third || 'पुराने स्टॉल'} से बदलकर ${fourth || 'नए स्टॉल'} कर दिया गया है।`,
+          'इस नए स्टॉल को दर्शाने वाला आपका अद्यतन आधिकारिक आवंटन पत्र नीचे दिए गए लिंक से उपलब्ध है।'
+        ],
+        link: allotmentLetterUrl
+      }
+      break
     case 'reminder':
       c = {
         subject: `Payment Reminder: Complete Booth/Stall Fee for application ${appNo}`,
@@ -267,7 +283,11 @@ export function buildEmailContent(
 
   let buttonLabel = 'Open Portal / पोर्टल खोलें'
   let buttonColor = '#0c2847'
-  if (category === 'direct_allotment_confirmed' || (category === 'status_update' && typeof third === 'string' && third.toLowerCase() === 'allotted')) {
+  if (
+    category === 'direct_allotment_confirmed' ||
+    category === 'stall_interchanged' ||
+    (category === 'status_update' && typeof third === 'string' && third.toLowerCase() === 'allotted')
+  ) {
     buttonLabel = 'Download Allotment Letter / आवंटन पत्र डाउनलोड करें'
     buttonColor = '#059669'
   } else if (category === 'direct_allotment_payment') {

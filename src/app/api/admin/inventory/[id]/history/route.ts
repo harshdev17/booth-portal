@@ -208,6 +208,23 @@ export async function GET(
           actorName: log.actor_name,
           badgeColor: 'amber'
         })
+      } else if (log.action === 'inventory.interchanged') {
+        const nv = log.new_value as {
+          interchangedWithStallNumber?: string
+          applicationNumber?: string | null
+          reason?: string
+        } | null
+        events.push({
+          id: `audit-general-interchange-${log.id}`,
+          timestamp: log.created_at,
+          action: 'inventory.interchanged',
+          title: `Stall Interchanged`,
+          description: `Category and allottee were swapped with Stall ${nv?.interchangedWithStallNumber ?? '—'}.${
+            nv?.applicationNumber ? ` Now allotted to ${nv.applicationNumber}.` : ' Now available.'
+          }${nv?.reason ? ` Reason: ${nv.reason}` : ''}`,
+          actorName: log.actor_name,
+          badgeColor: 'amber'
+        })
       } else if (log.action === 'inventory.updated') {
         events.push({
           id: `audit-update-${log.id}`,

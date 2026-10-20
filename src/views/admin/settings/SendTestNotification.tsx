@@ -19,6 +19,7 @@ const CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'pay_now_activation', label: 'Pay Now Activation (Draw)' },
   { value: 'direct_allotment_payment', label: 'Direct Allotment Payment' },
   { value: 'direct_allotment_confirmed', label: 'Direct Allotment Confirmed' },
+  { value: 'stall_interchanged', label: 'Stall Interchanged' },
   { value: 'reminder', label: 'Reminder' }
 ]
 

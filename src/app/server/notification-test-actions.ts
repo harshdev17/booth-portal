@@ -22,6 +22,7 @@ const testMessageSchema = z.object({
     'pay_now_activation',
     'direct_allotment_payment',
     'direct_allotment_confirmed',
+    'stall_interchanged',
     'reminder'
   ]),
   mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
@@ -58,6 +59,10 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
     case 'direct_allotment_confirmed': {
       const link = 'http://192.168.1.3:3000/allotment-letter?appNo=IGM-2026-000000'
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', link] }
+    }
+    case 'stall_interchanged': {
+      const link = 'http://192.168.1.3:3000/allotment-letter?appNo=IGM-2026-000000'
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'A-01', 'F-101978', link] }
     }
     case 'reminder':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }

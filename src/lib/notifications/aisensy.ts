@@ -27,6 +27,7 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
   pay_now_activation: 'AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION',
   direct_allotment_payment: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT',
   direct_allotment_confirmed: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED',
+  stall_interchanged: 'AISENSY_CAMPAIGN_STALL_INTERCHANGED',
   reminder: 'AISENSY_CAMPAIGN_REMINDER'
 }
 
@@ -40,6 +41,18 @@ function getCampaignName(category: NotificationCategory): string | null {
   }
   if (category === 'direct_allotment_confirmed') {
     return (
+      process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED ||
+      process.env.AISENSY_CAMPAIGN_STATUS_UPDATE ||
+      null
+    )
+  }
+  if (category === 'stall_interchanged') {
+    // Falls back to the Direct Allotment Confirmed / Status Update campaigns
+    // until AISENSY_CAMPAIGN_STALL_INTERCHANGED's own dedicated template is
+    // submitted and approved in the AiSensy dashboard (see .ai/NOTIFICATIONS.md
+    // and interchange-stalls.ts for the drafted template text to submit).
+    return (
+      process.env.AISENSY_CAMPAIGN_STALL_INTERCHANGED ||
       process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED ||
       process.env.AISENSY_CAMPAIGN_STATUS_UPDATE ||
       null

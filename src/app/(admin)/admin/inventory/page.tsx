@@ -108,7 +108,19 @@ const InventoryAdminPage = async () => {
               (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment,
               COALESCE(p.status, da.payment_status) AS payment_status,
               COALESCE(p.amount_paise, da.payment_amount_paise, su.emd_amount_paise, c.allotment_amount_paise) AS payment_amount_paise,
-              (da.id IS NULL AND (da_cancelled.id IS NOT NULL OR su.status = 'cancelled' OR a.status = 'cancelled')) AS is_cancelled,
+              (da.id IS NULL AND (
+                su.status = 'cancelled' OR a.status = 'cancelled' OR
+                -- A direct-allotment cancellation only still counts as "this
+                -- stall is cancelled" if nothing has touched the stall since
+                -- (e.g. an interchange emptying it out the ordinary way,
+                -- which also sets updated_at). Without this, a stall that
+                -- was cancelled long ago and later interchanged into/out of
+                -- kept showing a stale "Cancelled" badge forever, since
+                -- da_cancelled is matched purely by shop_unit_id with no
+                -- time bound.
+                (da_cancelled.id IS NOT NULL AND
+                  (latest_cancel_audit.cancelled_at IS NULL OR su.updated_at <= latest_cancel_audit.cancelled_at))
+              )) AS is_cancelled,
               da_cancelled.notes AS cancel_reason,
               c.allotment_payment_deadline_at,
               (c.allotment_payment_deadline_at IS NOT NULL AND c.allotment_payment_deadline_at < NOW() AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')) AS is_payment_overdue,
@@ -125,6 +137,12 @@ const InventoryAdminPage = async () => {
          GROUP BY shop_unit_id
        ) da_canc_max ON da_canc_max.shop_unit_id = su.id
        LEFT JOIN direct_allotments da_cancelled ON da_cancelled.id = da_canc_max.max_id
+       LEFT JOIN (
+         SELECT entity_id, MAX(created_at) AS cancelled_at
+         FROM audit_logs
+         WHERE entity_type = 'shop_unit' AND action = 'allotment.cancelled'
+         GROUP BY entity_id
+       ) latest_cancel_audit ON latest_cancel_audit.entity_id = CAST(su.id AS CHAR)
        ORDER BY su.stall_number ASC`
     ),
     query<Array<{ name: string }>>(`SELECT name FROM categories WHERE status != 'archived' ORDER BY display_order ASC`),

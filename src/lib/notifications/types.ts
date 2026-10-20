@@ -13,6 +13,7 @@ export type NotificationCategory =
   | 'pay_now_activation'
   | 'direct_allotment_payment'
   | 'direct_allotment_confirmed'
+  | 'stall_interchanged'
   | 'reminder'
 
 export type SendTemplateMessageInput = {
