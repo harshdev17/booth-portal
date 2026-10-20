@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 
 import { query } from '@/lib/db/client'
 import { logAudit } from '@/lib/audit/log'
-import { renderHtmlToPdf } from '@/lib/pdf/browser'
 import { receiptHtml } from '@/lib/pdf/templates'
+import { renderReceiptPdf } from '@/lib/pdf/react-templates'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -83,21 +83,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'No successful payment found for this application yet.' }, { status: 404 })
     }
 
-    const html = receiptHtml(
-      {
-        applicationNumber: application.application_number,
-        organisationName: application.organisation_name,
-        representativeName: application.representative_name,
-        categoryName: application.category_name,
-        categoryNameHi: application.category_name_hi,
-        amountPaise: application.amount_paise,
-        razorpayOrderId: application.razorpay_order_id,
-        razorpayPaymentId: application.razorpay_payment_id,
-        paidAt: application.paid_at
-      },
-      'en'
-    )
-
     await logAudit({
       actorUserId: session.userId,
       actorRoleKey: session.role.key,
@@ -108,12 +93,36 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     })
 
     if (wantsHtml) {
+      const html = receiptHtml(
+        {
+          applicationNumber: application.application_number,
+          organisationName: application.organisation_name,
+          representativeName: application.representative_name,
+          categoryName: application.category_name,
+          categoryNameHi: application.category_name_hi,
+          amountPaise: application.amount_paise,
+          razorpayOrderId: application.razorpay_order_id,
+          razorpayPaymentId: application.razorpay_payment_id,
+          paidAt: application.paid_at
+        },
+        'en'
+      )
+
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }
       })
     }
 
-    const buffer = await renderHtmlToPdf(html)
+    const buffer = await renderReceiptPdf({
+      applicationNumber: application.application_number,
+      organisationName: application.organisation_name,
+      representativeName: application.representative_name,
+      categoryName: application.category_name,
+      amountPaise: application.amount_paise,
+      razorpayOrderId: application.razorpay_order_id,
+      razorpayPaymentId: application.razorpay_payment_id,
+      paidAt: application.paid_at
+    })
 
     return new Response(new Uint8Array(buffer), {
       headers: {

@@ -1,8 +1,7 @@
 import 'server-only'
 
 import { query } from '@/lib/db/client'
-import { renderHtmlToPdf } from '@/lib/pdf/browser'
-import { receiptHtml } from '@/lib/pdf/templates'
+import { renderReceiptPdf } from '@/lib/pdf/react-templates'
 
 export type ReceiptRow = {
   id: number
@@ -53,23 +52,20 @@ export async function findReceiptRow(where: 'a.id = ?' | 'a.application_number =
   return rows[0] ?? null
 }
 
-export async function renderReceiptPdfResponse(row: ReceiptRow, lang: 'en' | 'hi'): Promise<Response> {
-  const html = receiptHtml(
-    {
-      applicationNumber: row.application_number,
-      organisationName: row.organisation_name,
-      representativeName: row.representative_name,
-      categoryName: row.category_name,
-      categoryNameHi: row.category_name_hi,
-      amountPaise: row.amount_paise,
-      razorpayOrderId: row.razorpay_order_id,
-      razorpayPaymentId: row.razorpay_payment_id,
-      paidAt: row.paid_at
-    },
-    lang
-  )
-
-  const buffer = await renderHtmlToPdf(html)
+// `lang` param kept for call-site compatibility, but every official PDF is
+// English-only now (@react-pdf/renderer cannot shape Devanagari correctly —
+// see react-templates.tsx).
+export async function renderReceiptPdfResponse(row: ReceiptRow, _lang: 'en' | 'hi'): Promise<Response> {
+  const buffer = await renderReceiptPdf({
+    applicationNumber: row.application_number,
+    organisationName: row.organisation_name,
+    representativeName: row.representative_name,
+    categoryName: row.category_name,
+    amountPaise: row.amount_paise,
+    razorpayOrderId: row.razorpay_order_id,
+    razorpayPaymentId: row.razorpay_payment_id,
+    paidAt: row.paid_at
+  })
 
   return new Response(new Uint8Array(buffer), {
     headers: {

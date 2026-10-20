@@ -3,8 +3,7 @@ import { NextResponse } from 'next/server'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { query } from '@/lib/db/client'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
-import { renderHtmlToPdf } from '@/lib/pdf/browser'
-import { applicationHtml } from '@/lib/pdf/templates'
+import { renderApplicationPdf } from '@/lib/pdf/react-templates'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
@@ -56,7 +55,6 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const applicationNumber = url.searchParams.get('applicationNumber')?.trim() ?? ''
-  const lang = url.searchParams.get('lang') === 'hi' ? 'hi' : 'en'
 
   if (!APPLICATION_NUMBER_PATTERN.test(applicationNumber)) {
     return NextResponse.json({ error: 'Enter a valid application number.' }, { status: 400 })
@@ -104,35 +102,29 @@ export async function GET(request: Request) {
       [application.id]
     )
 
-    const html = applicationHtml(
-      {
-        applicationNumber: application.application_number,
-        status: application.status,
-        categoryName: application.category_name,
-        categoryNameHi: application.category_name_hi,
-        shopOptionLabel: application.shop_option_label,
-        feePaise: application.fee_paise,
-        submittedAt: application.submitted_at,
-        organisationName: application.organisation_name,
-        representativeName: application.representative_name,
-        fatherName: application.father_name,
-        aadhaarNumber: decryptAadhaar(application.aadhaar_ciphertext),
-        email: application.email,
-        mobileNumber: `+91${application.mobile_number}`,
-        alternateMobile: application.alternate_mobile ? `+91${application.alternate_mobile}` : null,
-        address: application.address,
-        state: application.state,
-        district: application.district,
-        pinCode: application.pin_code,
-        workPurpose: application.work_purpose,
-        achievementExperience: application.achievement_experience,
-        remarks: application.remarks,
-        fieldValues
-      },
-      lang
-    )
-
-    const buffer = await renderHtmlToPdf(html)
+    const buffer = await renderApplicationPdf({
+      applicationNumber: application.application_number,
+      status: application.status,
+      categoryName: application.category_name,
+      shopOptionLabel: application.shop_option_label,
+      feePaise: application.fee_paise,
+      submittedAt: application.submitted_at,
+      organisationName: application.organisation_name,
+      representativeName: application.representative_name,
+      fatherName: application.father_name,
+      aadhaarNumber: decryptAadhaar(application.aadhaar_ciphertext),
+      email: application.email,
+      mobileNumber: `+91${application.mobile_number}`,
+      alternateMobile: application.alternate_mobile ? `+91${application.alternate_mobile}` : null,
+      address: application.address,
+      state: application.state,
+      district: application.district,
+      pinCode: application.pin_code,
+      workPurpose: application.work_purpose,
+      achievementExperience: application.achievement_experience,
+      remarks: application.remarks,
+      fieldValues
+    })
 
     return new Response(new Uint8Array(buffer), {
       headers: {

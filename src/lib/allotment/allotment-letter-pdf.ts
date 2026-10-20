@@ -1,8 +1,7 @@
 import 'server-only'
 
 import { query } from '@/lib/db/client'
-import { renderHtmlToPdf } from '@/lib/pdf/browser'
-import { allotmentLetterHtml } from '@/lib/pdf/templates'
+import { renderAllotmentLetterPdf } from '@/lib/pdf/react-templates'
 
 export type AllotmentLetterRow = {
   id: number
@@ -57,41 +56,31 @@ export async function findAllotmentLetterRow(where: 'a.id = ?' | 'a.application_
   return rows[0] ?? null
 }
 
-export async function renderAllotmentLetterPdfResponse(row: AllotmentLetterRow, lang: 'en' | 'hi'): Promise<Response> {
-  const html = allotmentLetterHtml(
-    {
-      applicationNumber: row.application_number,
-      organisationName: row.organisation_name,
-      representativeName: row.representative_name,
-      fatherName: row.father_name,
-      categoryName: row.category_name,
-      categoryNameHi: row.category_name_hi,
-      stallNumber: row.stall_number as string,
-      stallDirection: row.stall_direction,
-      mobileNumber: row.mobile_number,
-      email: row.email,
-      address: row.address,
-      allotmentAmountPaise: row.allotment_amount_paise,
-      allotmentPaidAt: row.allotment_paid_at,
-      submittedAt: row.submitted_at
-    },
-    lang
-  )
+// `lang` param kept for call-site compatibility, but every official PDF is
+// English-only now (@react-pdf/renderer cannot shape Devanagari correctly —
+// see react-templates.tsx) — matching the already-English-by-default
+// convention these PDFs settled on.
+export async function renderAllotmentLetterPdfResponse(row: AllotmentLetterRow, _lang: 'en' | 'hi'): Promise<Response> {
+  const buffer = await renderAllotmentLetterPdf({
+    applicationNumber: row.application_number,
+    organisationName: row.organisation_name,
+    representativeName: row.representative_name,
+    fatherName: row.father_name,
+    categoryName: row.category_name,
+    stallNumber: row.stall_number as string,
+    stallDirection: row.stall_direction,
+    mobileNumber: row.mobile_number,
+    email: row.email,
+    address: row.address,
+    allotmentAmountPaise: row.allotment_amount_paise,
+    allotmentPaidAt: row.allotment_paid_at
+  })
 
-  try {
-    const buffer = await renderHtmlToPdf(html)
-
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="allotment-order-${row.application_number}.pdf"`,
-        'Cache-Control': 'private, no-store'
-      }
-    })
-  } catch {
-    // Fallback to HTML if headless Chromium fails on the host
-    return new Response(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }
-    })
-  }
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="allotment-order-${row.application_number}.pdf"`,
+      'Cache-Control': 'private, no-store'
+    }
+  })
 }
