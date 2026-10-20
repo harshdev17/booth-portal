@@ -24,16 +24,23 @@ const nextConfig: NextConfig = {
   compress: true,
 
   // pdfkit (used internally by @react-pdf/renderer, src/lib/pdf/react-templates.tsx)
-  // loads its standard-font .afm files via a `require()` relative to its own
-  // package directory AT RUNTIME, which Next.js's build-time file tracer
-  // cannot see statically — it silently excluded those files from the
-  // production deploy, causing "Cannot find module
-  // '.../pdfkit/js/standard-fonts/Helvetica.cjs'" in production (confirmed
-  // live on Hostinger) while working fine in local dev, where the full
-  // node_modules tree is always present. Marking both packages external
-  // makes Next.js leave them as plain `require()` calls resolved against
-  // the real node_modules tree at runtime, instead of bundling/tracing them.
+  // loads its standard-font .cjs modules via a `require()` relative to its
+  // own package directory AT RUNTIME, which Next.js's build-time file
+  // tracer cannot see statically — it kept excluding those files from the
+  // production deploy ("Cannot find module '.../pdfkit/js/standard-fonts/
+  // Helvetica.cjs'", confirmed live on Hostinger), even after marking the
+  // packages external (below), because `serverExternalPackages` only stops
+  // Next.js from BUNDLING a package — it does not, by itself, widen what
+  // the tracer decides to ship for it. `outputFileTracingIncludes` is the
+  // forceful fix: it explicitly adds these files to Next's own trace
+  // output for every route, and most Node hosting panels (including
+  // Hostinger's) build their deployable file set FROM that trace output,
+  // so whatever it omits never reaches the server at all regardless of
+  // what a plain `npm install` would have included.
   serverExternalPackages: ['@react-pdf/renderer', 'pdfkit', 'fontkit'],
+  outputFileTracingIncludes: {
+    '/**': ['./node_modules/pdfkit/js/**/*', './node_modules/fontkit/**/*']
+  },
 
   images: {
     formats: ['image/avif', 'image/webp'],
