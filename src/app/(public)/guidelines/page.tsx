@@ -9,7 +9,9 @@ export const metadata: Metadata = {
   title: 'Guidelines | International Geeta Jayanti Mahotsav 2026'
 }
 
-export const revalidate = 60
+// Forced dynamic (not ISR): see src/app/(public)/page.tsx for why a
+// per-request CSP nonce is incompatible with caching this route.
+export const dynamic = 'force-dynamic'
 
 const GuidelinesPage = async () => {
   const { byCategory } = await listCategoryMaps()

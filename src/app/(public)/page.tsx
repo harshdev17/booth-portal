@@ -9,10 +9,12 @@ export const metadata: Metadata = {
   description: 'Official information regarding booth/stall categories, allotment and application for International Geeta Jayanti Mahotsav 2026, Kurukshetra Development Board.'
 }
 
-// Revalidate landing page in the background every 60 seconds (ISR).
-// This serves visitors instantaneously in ~10ms from edge/memory cache
-// without executing remote database round-trips on every page hit.
-export const revalidate = 60
+// Forced dynamic (not ISR): the CSP nonce proxy.ts sets per-request only
+// matches the inline hydration scripts on the SAME response, so any cached/
+// prerendered copy of this page inevitably ships a stale nonce that cannot
+// match the freshly generated CSP header, blocking all scripts. See
+// src/proxy.ts and .ai/DECISIONS.md decision #11.
+export const dynamic = 'force-dynamic'
 
 const HomePage = () => {
   return (
