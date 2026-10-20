@@ -53,11 +53,12 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
   const isDev = process.env.NODE_ENV !== 'production'
 
   const scriptSrc = isDev
-    ? `script-src 'self' 'unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+    ? `script-src 'self' 'unsafe-eval' 'unsafe-inline' 'nonce-${nonce}'`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'nonce-${nonce}'`
 
   return [
     "default-src 'self'",
+    `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com`,
 
     // Razorpay Checkout.js (loaded on the payment page, see
     // PaymentPageView.tsx) needs its own script origin, opens its payment
@@ -72,7 +73,6 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
     // Razorpay origin above it, a bare 'self' CSP silently blocks the
     // widget's script and its frame with no visible error beyond the
     // submission never getting a token.
-    `${scriptSrc} https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.googletagmanager.com`,
 
     // github.io: the floating chatbot widget (FloatingChatbot.tsx) embeds a
     // third-party-hosted chat page in an iframe — without this, the iframe

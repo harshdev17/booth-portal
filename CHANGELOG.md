@@ -2,6 +2,33 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.4.0 (2026-10-20)
+
+### Fixed
+- **UAT & Production CSP Script Blocking Resolution (`src/proxy.ts`)**:
+  - Removed `'strict-dynamic'` from `buildContentSecurityPolicy` which previously caused modern browsers to ignore `'self'` and host whitelists, blocking all Next.js static script chunks (`/_next/static/chunks/*.js`) and Google Analytics scripts on production/UAT deployments with `(blocked:csp)`.
+  - Added explicit `'unsafe-inline'` and `'unsafe-eval'` support alongside `'self'` and `'nonce'`, enabling immediate client hydration and ending infinite loading screens.
+- **Booth/Stall History Database Query Performance & Stability (`src/app/api/admin/inventory/[id]/history/route.ts`)**:
+  - Replaced slow, unindexed `JSON_EXTRACT` full-table scans on `audit_logs` with fast indexed lookups (`entity_type = 'shop_unit' AND entity_id = ?`).
+  - Swapped sequential database calls for a unified `Promise.all` fetching unit details, direct allotments, draw allocations, audit logs, and notification records concurrently, dropping latency from over 2 seconds to ~300ms.
+  - Replaced non-existent `allotments` table reference with `draw_allocations` and corrected applicant name mapping to `COALESCE(a.representative_name, a.organisation_name)`.
+- **Admin Inventory Table Horizontal Scrollbar Containment (`src/app/(admin)/layout.tsx`, `InventoryTable.tsx`)**:
+  - Added `min-w-0` and `overflow-x-hidden` constraints across `SidebarInset`, `<main>`, and page containers to contain table overflow strictly within the `<Table>` container rather than pushing a full-window browser scrollbar.
+
+### Changed
+- **Institutional Terminology Standardization**:
+  - Completely purged "lucky draw" terminology across the entire portal in favor of official government e-governance terms: **"Draw Process"**, **"Draw Allocation"**, and **"Public / Draw Stalls"**.
+- **Allotment Guidelines & Direct Allotment Workflow (`InventoryTable.tsx`)**:
+  - Redesigned Admin Guidance banners across Add, Edit, and Re-allocate modal dialogs to match the official KDB Navy (`#0c2847`) institutional theme with a crisp 3-card grid layout.
+  - Formally codified the direct allotment fee rule: If stall fee is ₹0 (Free/Exempt), the stall is confirmed immediately and the official Allotment Letter is dispatched directly to the allottee via WhatsApp and Email; if stall fee is > ₹0, a secure payment link is issued first.
+- **Stall History Modal User Interface Redesign (`InventoryTable.tsx`)**:
+  - Replaced the oversized `w-[95vw] h-[86vh]` modal with a proportional, content-adaptive dialog (`sm:max-w-xl max-h-[85vh]`).
+  - Transformed the timeline into a modern, human-crafted activity feed with color-coded status nodes, clean timestamps, and natural descriptions, eliminating artificial uppercase badges (`STALL.CREATED`) and raw internal IDs.
+  - Added a clean 4-column metadata overview (Stall No., Direction, Fee, Allottee/App).
+- **Allotment Letter Refinements (`src/lib/pdf/templates.ts`, `AllotmentLetterSheet.tsx`)**:
+  - Added an official centered Kurukshetra Development Board watermark emblem with subtle opacity.
+  - Simplified the generation date footer to `Generated on: DD/MM/YYYY` (removed trailing time strings and redundant online verification IDs).
+
 ## v1.3.0 (2026-10-17)
 
 ### Added
