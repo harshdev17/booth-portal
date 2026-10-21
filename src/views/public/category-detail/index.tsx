@@ -6,7 +6,8 @@ import { MapIcon, MapPinIcon } from 'lucide-react'
 
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
 import { useLanguage } from '@/context/LanguageContext'
-import { getCategoryGuideline, parseGuidelineBullet } from '@/lib/content/category-guidelines'
+import { getCategoryGuideline, parseGuidelineBullet, substituteGuidelineDates } from '@/lib/content/category-guidelines'
+import { formatDateTime } from '@/lib/format-date'
 
 const SELECTION_METHOD_LABEL: Record<CategoryRow['selection_method'], { en: string; hi: string }> = {
   draw: { en: 'Draw', hi: 'ड्रॉ' },
@@ -40,6 +41,8 @@ const CategoryDetail = ({
   const guideline = getCategoryGuideline(category.slug)
   const methodLabel = guideline?.selectionMethod?.[lang] ?? SELECTION_METHOD_LABEL[category.selection_method][lang]
   const docOverride = guideline?.requiredDocuments
+  const applicationOpensDisplay = category.application_opens_at ? formatDateTime(category.application_opens_at, lang) : null
+  const applicationClosesDisplay = category.application_closes_at ? formatDateTime(category.application_closes_at, lang) : null
 
   return (
     <div className='mx-auto max-w-7xl px-4 py-14 sm:px-6'>
@@ -145,7 +148,9 @@ const CategoryDetail = ({
           </h2>
           <ol className='flex flex-col divide-y divide-[var(--kdb-border)]'>
             {guideline.body.map((line, i) => {
-              const parsed = parseGuidelineBullet(lang === 'hi' ? line.hi : line.en)
+              const rawText = lang === 'hi' ? line.hi : line.en
+              const substituted = substituteGuidelineDates(rawText, applicationOpensDisplay, applicationClosesDisplay)
+              const parsed = parseGuidelineBullet(substituted)
 
               return (
                 <li key={i} className='flex gap-4 py-4'>

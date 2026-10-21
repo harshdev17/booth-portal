@@ -19,7 +19,7 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
   const auctionVenue = lang === 'hi' && category.auctionVenueHi ? category.auctionVenueHi : category.auctionVenue
   const hasAuctionDetails =
     !getApplyInstructions(category.slug)?.hideScheduleBox &&
-    !!(category.applicationClosesAt || (category.auctionDate && auctionVenue))
+    !!(category.applicationOpensAt || category.applicationClosesAt || (category.auctionDate && auctionVenue))
   const applyInstructions = getApplyInstructions(category.slug)
   const categoryInstructions = applyInstructions?.bullets
   const docOverride = applyInstructions?.requiredDocuments
@@ -88,6 +88,15 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
 
       {hasAuctionDetails && (
         <ul className='flex flex-col gap-2 rounded-xl border border-[#fbd38d] bg-[#fffaf0] p-4'>
+          {category.applicationOpensAt && (
+            <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+              <span>•</span>
+              <span>
+                {lang === 'hi' ? 'आवेदन प्रारंभ तिथि: ' : 'Application start date: '}
+                {formatDateTime(category.applicationOpensAt, lang)}
+              </span>
+            </li>
+          )}
           {category.applicationClosesAt && (
             <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
               <span>•</span>

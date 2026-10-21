@@ -345,19 +345,10 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की स्पष्ट तस्वीरें'
       }
     ],
-    hideScheduleBox: true,
     sections: [
       {
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
-          {
-            en: 'Application Start Date: 14 October 2026',
-            hi: 'आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026'
-          },
-          {
-            en: 'Last Date to Apply: 28 October 2026, by 11:59 PM',
-            hi: 'आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक'
-          },
           {
             en: 'Draw / Result Date: 5 November 2026',
             hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026'
@@ -433,13 +424,10 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की स्पष्ट तस्वीरें'
       }
     ],
-    hideScheduleBox: true,
     sections: [
       {
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
-          { en: 'Application Start Date: 14 October 2026', hi: 'आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026' },
-          { en: 'Last Date to Apply: 28 October 2026, by 11:59 PM', hi: 'आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक' },
           { en: 'Draw / Result Date: 5 November 2026', hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026' },
           { en: 'Payment Deadline: 10 November 2026', hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026' }
         ]
@@ -517,16 +505,6 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'प्रतिनिधि के माध्यम से आवेदन करने पर प्राधिकरण पत्र'
       }
     ],
-    hideScheduleBox: true,
-    sections: [
-      {
-        title: { en: 'Application Timeline', hi: 'आवेदन की समय-सीमा' },
-        items: [
-          { en: 'Application Start Date: 14 October 2026', hi: 'आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026' },
-          { en: 'Last Date to Apply: 28 October 2026, by 11:59 PM', hi: 'आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक' }
-        ]
-      }
-    ],
     bullets: [],
     importantInstructions: [
       {
@@ -585,13 +563,6 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       {
         en: 'Product Photographs',
         hi: 'उत्पादों की तस्वीरें'
-      }
-    ],
-    hideScheduleBox: true,
-    sections: [
-      {
-        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
-        items: [{ en: 'Last Date to Apply: 28 October 2026 at 11:59 PM', hi: 'आवेदन करने की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक' }]
       }
     ],
     bulletsHeading: { en: 'Before You Apply', hi: 'आवेदन करने से पहले' },
@@ -678,13 +649,10 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'ध्यान दें: इस श्रेणी में आर्टिजन कार्ड या राष्ट्रीय/राज्य पुरस्कार प्रमाणपत्र की आवश्यकता नहीं है।'
       }
     ],
-    hideScheduleBox: true,
     sections: [
       {
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
-          { en: 'Application Start Date: 14 October 2026', hi: 'आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026' },
-          { en: 'Last Date to Apply: 28 October 2026, by 11:59 PM', hi: 'आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक' },
           { en: 'Draw / Result Date: 5 November 2026', hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026' },
           { en: 'Payment Deadline: 10 November 2026', hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026' }
         ]

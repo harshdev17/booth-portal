@@ -1,4 +1,4 @@
-import { getFeeBreakdown, listOpenCategories } from '@/lib/applications/categories'
+import { getFeeBreakdown, getPortalApplicationSchedule, listOpenCategories } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
 import PublicHomeClient from './PublicHomeClient'
 
@@ -21,6 +21,8 @@ interface CachedHomeData {
   }>
   eventStartsOn: string | null
   eventEndsOn: string | null
+  applicationOpensAt: string | null
+  applicationClosesAt: string | null
 }
 
 let cachedHomeData: CachedHomeData | null = null
@@ -41,19 +43,22 @@ const PublicHome = async () => {
         categories={cachedHomeData.categories}
         eventStartsOn={cachedHomeData.eventStartsOn}
         eventEndsOn={cachedHomeData.eventEndsOn}
+        applicationOpensAt={cachedHomeData.applicationOpensAt}
+        applicationClosesAt={cachedHomeData.applicationClosesAt}
       />
     )
   }
 
-  // Fetch all 3 data sources in parallel instead of sequentially
-  const [rawCategories, availableCounts, eventRows] = await Promise.all([
+  // Fetch all 4 data sources in parallel instead of sequentially
+  const [rawCategories, availableCounts, eventRows, schedule] = await Promise.all([
     listOpenCategories(),
     query<Array<{ category_id: number; available_count: number }>>(
       `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
     ),
     query<Array<{ starts_on: string | null; ends_on: string | null }>>(
       `SELECT starts_on, ends_on FROM events ORDER BY id ASC LIMIT 1`
-    )
+    ),
+    getPortalApplicationSchedule()
   ])
 
   const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, Number(row.available_count)]))
@@ -84,12 +89,20 @@ const PublicHome = async () => {
   cachedHomeData = {
     categories,
     eventStartsOn: event.starts_on,
-    eventEndsOn: event.ends_on
+    eventEndsOn: event.ends_on,
+    applicationOpensAt: schedule.applicationOpensAt,
+    applicationClosesAt: schedule.applicationClosesAt
   }
   homeDataCachedAt = now
 
   return (
-    <PublicHomeClient categories={categories} eventStartsOn={event.starts_on} eventEndsOn={event.ends_on} />
+    <PublicHomeClient
+      categories={categories}
+      eventStartsOn={event.starts_on}
+      eventEndsOn={event.ends_on}
+      applicationOpensAt={schedule.applicationOpensAt}
+      applicationClosesAt={schedule.applicationClosesAt}
+    />
   )
 }
 

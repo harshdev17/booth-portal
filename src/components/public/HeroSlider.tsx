@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { formatDate } from '@/lib/format-date'
 
 const SLIDE_IMAGES = ['/images/public/hero-slider/1.png', '/images/public/hero-slider/2.png', '/images/public/hero-slider/3.png']
 const AUTOPLAY_MS = 6000
@@ -15,14 +16,28 @@ const AUTOPLAY_MS = 6000
 /**
  * Hero image carousel — same bilingual text content on every slide (per
  * explicit instruction), only the background image cycles. The application
- * period line is now the business's own fixed wording ("14 October 2026 to
- * 28 October 2026"), not derived from events.starts_on/ends_on — kept in
- * sync with that DB row manually when the window changes, same as every
- * other piece of static copy on this page.
+ * period line used to be the business's own hardcoded wording ("14 October
+ * 2026 to 28 October 2026"), manually kept in sync with the DB whenever the
+ * window changed — a real source of staleness (CLAUDE.md §5: never hardcode
+ * configurable business values like application dates). It now reads
+ * applicationOpensAt/applicationClosesAt — the admin's "Portal Application &
+ * Draw Schedule" (applies one open/close date to every active category at
+ * once, see src/app/api/admin/categories/schedule/route.ts) — so this line
+ * always matches whatever the admin actually configured, with no manual
+ * sync step. eventStartsOn/eventEndsOn (from the `events` table) are still
+ * accepted for call-site compatibility but not rendered directly.
  */
-const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | null; eventEndsOn: string | null }) => {
-  // eventStartsOn/eventEndsOn are accepted (and threaded through from the DB
-  // by the caller) but no longer rendered directly — see the comment above.
+const HeroSlider = ({
+  eventStartsOn,
+  eventEndsOn,
+  applicationOpensAt,
+  applicationClosesAt
+}: {
+  eventStartsOn: string | null
+  eventEndsOn: string | null
+  applicationOpensAt: string | null
+  applicationClosesAt: string | null
+}) => {
   void eventStartsOn
   void eventEndsOn
 
@@ -77,11 +92,13 @@ const HeroSlider = ({ eventStartsOn, eventEndsOn }: { eventStartsOn: string | nu
                 : 'Online applications are now open for stalls/booths at International Gita Jayanti Mahotsav 2026. Interested applicants can apply online after checking the eligibility criteria and guidelines for their chosen category.'}
             </p>
 
-            <p className='mb-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
-              {lang === 'hi'
-                ? 'ऑनलाइन आवेदन की अवधि: 14 अक्टूबर 2026 से 28 अक्टूबर 2026 तक (रात 11:59 बजे तक)।'
-                : 'Application Period: 14 October 2026 to 28 October 2026 (until 11:59 PM).'}
-            </p>
+            {applicationOpensAt && applicationClosesAt && (
+              <p className='mb-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
+                {lang === 'hi'
+                  ? `ऑनलाइन आवेदन की अवधि: ${formatDate(applicationOpensAt, 'hi')} से ${formatDate(applicationClosesAt, 'hi')} तक (रात 11:59 बजे तक)।`
+                  : `Application Period: ${formatDate(applicationOpensAt, 'en')} to ${formatDate(applicationClosesAt, 'en')} (until 11:59 PM).`}
+              </p>
+            )}
 
             <p className='mb-8 max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base'>
               {lang === 'hi'

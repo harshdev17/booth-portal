@@ -323,6 +323,17 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
         en: '22. Important Financial Conditions: The ₹236 Application Fee is non-refundable.\n\nThe ₹50,000 Auction Participation Fee is collected only from applicants declared eligible for the auction.\n\nIf the bid is unsuccessful and no booth/stall is allotted, the ₹50,000 Demand Draft will be returned as per the prescribed process.\n\nThe successful bidder\'s ₹50,000 Participation Fee itself becomes the Security Deposit.\n\nA separate ₹50,000 Security Deposit will not be collected from the successful bidder.\n\nThe Security Deposit will not be adjusted against the Final Bid Amount.\n\nThe Final Bid Amount must be paid online within 4 days of the successful auction.\n\nElectricity charges of ₹600 per day must be paid separately and in advance.\n\nFailure to comply with the payment conditions may result in action by KDB under the applicable rules.',
         hi: '22. महत्वपूर्ण वित्तीय शर्तें: ₹236/- का आवेदन शुल्क वापस नहीं किया जाएगा।\n\n₹50,000/- की नीलामी भागीदारी राशि केवल नीलामी के लिए पात्र आवेदकों से ली जाएगी।\n\nबोली सफल नहीं होने और बूथ/स्टॉल आबंटित नहीं होने पर ₹50,000/- का डिमांड ड्राफ्ट निर्धारित प्रक्रिया के अनुसार वापस किया जाएगा।\n\nसफल बोलीदाता की ₹50,000/- की भागीदारी राशि ही धरोहर राशि बनेगी।\n\nसफल बोलीदाता से अलग से ₹50,000/- की धरोहर राशि नहीं ली जाएगी।\n\nधरोहर राशि को अंतिम बोली राशि में समायोजित नहीं किया जाएगा।\n\nअंतिम बोली राशि सफल नीलामी के 4 दिनों के भीतर ऑनलाइन जमा करनी होगी।\n\n₹600/- प्रतिदिन का बिजली शुल्क अलग से और पहले जमा करना होगा।\n\nभुगतान संबंधी शर्तों का पालन नहीं करने पर KDB लागू नियमों के अनुसार कार्रवाई कर सकता है।'
       },
+      // [TBC – Business Confirmation Required]: this bullet's English text
+      // ("Security Deposit Refund" only) and Hindi text ("Key Dates & Auction
+      // Details" — full Mahotsav dates, draw date/time/venue, THEN security
+      // deposit refund) cover materially different content, not a
+      // translation of each other — a pre-existing data mismatch discovered
+      // while making other hardcoded dates in this file dynamic, not
+      // something safe to silently merge/guess a fix for. The Hindi text
+      // also hardcodes its own "28 अक्टूबर 2026" application-closing date,
+      // separately from the now-dynamic {{APPLICATION_CLOSES}} placeholder
+      // used elsewhere in this file — left untouched pending confirmation of
+      // which language's content is correct/current.
       {
         en: '23. Security Deposit Refund: After the conclusion of the International Gita Jayanti Mahotsav 2026, subject to compliance with the prescribed conditions and process, before 31 January 2027.\n\nApplicants are advised to submit their applications well before the deadline and keep checking the prescribed portal for updates regarding document verification, eligibility, auction participation, and other instructions.',
         hi: '23. महत्वपूर्ण तिथियां एवं नीलामी विवरण: महोत्सव की तिथियां\n\n05 दिसंबर 2026 से 25 दिसंबर 2026 तक\n\nऑनलाइन आवेदन की अंतिम तिथि\n\n28 अक्टूबर 2026, रात 11:59 बजे तक\n\nभौतिक नीलामी की तिथि\n\n06 नवंबर 2026\n\nनीलामी शुरू होने का समय\n\nसुबह 10:00 बजे से\n\nनीलामी का स्थान\n\nश्री कृष्ण संग्रहालय, पैनोरमा साइंस सेंटर के पास, KDB रोड, थानेसर, कुरुक्षेत्र।\n\nनीलामी का प्रकार\n\nभौतिक नीलामी (Physical Auction)\n\nधरोहर राशि वापसी\n\nअंतरराष्ट्रीय गीता जयंती महोत्सव 2026 समाप्त होने के बाद, निर्धारित प्रक्रिया और नियमों के पालन के अधीन, 31 जनवरी 2027 से पहले।\n\nआवेदकों को सलाह दी जाती है कि वे अंतिम तिथि से पहले आवेदन जमा करें और दस्तावेज सत्यापन, पात्रता, नीलामी में भागीदारी तथा अन्य निर्देशों के लिए निर्धारित पोर्टल पर नियमित रूप से जानकारी देखते रहें।'
@@ -375,8 +386,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
         hi: '1. इस श्रेणी के बारे में: यह श्रेणी उन वास्तविक आर्टिजन कार्ड होल्डर्स के लिए है, जिनके पास केंद्र सरकार के द्वारा जारी वैध आर्टिजन कार्ड (Artisan Card), या सर्टिफिकेट है।\n\nपात्र आर्टिजन कार्ड होल्डर अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 के दौरान अपनी कारीगरी से बनाए गए उत्पादों को प्रदर्शित करने और बेचने के लिए बूथ/स्टॉल हेतु आवेदन कर सकते हैं। हालांकि, केवल आवेदन करने से बूथ/स्टॉल मिलना सुनिश्चित नहीं होता। सबसे पहले कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सभी आवेदनों, दस्तावेजों और कारीगरी के काम की जाँच की जाएगी।\n\nकेवल उन्हीं आवेदकों को बूथ/स्टॉल आबंटन प्रक्रिया में शामिल किया जाएगा, जिनके दस्तावेज और कारीगरी का काम सत्यापन के बाद सही पाए जाएंगे और जो निर्धारित पात्रता शर्तों को पूरा करेंगे।\n\nबूथ/स्टॉल आबंटन का तरीका पात्र आवेदनों की संख्या और उपलब्ध बूथ/स्टॉल के आधार पर तय किया जाएगा।\n\nसीधा आबंटन: यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल की सीमा के भीतर रहती है, तो KDB उपलब्धता और निर्धारित प्रक्रिया के अनुसार सीधे बूथ/स्टॉल आबंटित कर सकता है।\n\nड्रॉ: यदि पात्र आवेदनों की संख्या उपलब्ध बूथ/स्टॉल से अधिक होती है, तो सत्यापित और पात्र आवेदकों के बीच ड्रॉ के माध्यम से आबंटन किया जाएगा।\n\nआबंटित बूथ/स्टॉल का उपयोग मुख्य रूप से आवेदक के अपने से बनाए गए उत्पादों को प्रदर्शित करने और बेचने के लिए किया जाएगा। किसी दूसरे व्यक्ति के उत्पादों को अपना काम बताकर प्रदर्शित करना या बेचना प्रतिबंधित है।'
       },
       {
-        en: '2. Application Timeline: Application Start Date: 14 October 2026\n\nLast Date to Apply: 28 October 2026, by 11:59 PM\n\nDraw / Result Date: 5 November 2026\n\nPayment Deadline: 10 November 2026',
-        hi: '2. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026\n\nआवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक\n\nड्रॉ / परिणाम की तिथि: 5 नवंबर 2026\n\nभुगतान की अंतिम तिथि: 10 नवंबर 2026'
+        en: '2. Application Timeline: Application Start Date: {{APPLICATION_OPENS}}\n\nLast Date to Apply: {{APPLICATION_CLOSES}}\n\nDraw / Result Date: 5 November 2026\n\nPayment Deadline: 10 November 2026',
+        hi: '2. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: {{APPLICATION_OPENS}}\n\nआवेदन की अंतिम तिथि: {{APPLICATION_CLOSES}}\n\nड्रॉ / परिणाम की तिथि: 5 नवंबर 2026\n\nभुगतान की अंतिम तिथि: 10 नवंबर 2026'
       },
       {
         en: '3. Required Documents: Please keep the following documents ready before starting your online application.\n\n1. Applicant\'s Aadhaar Card\nUpload a clear and readable copy of the applicant\'s Aadhaar Card.\n\nThe information entered in the application form must match the details provided on the identity document.\n\n2. Valid Artisan Card\nUpload a valid Artisan Card issued by the relevant government department or authorised authority.\n\nThe Artisan Card or certificate must remain valid until the last date of application. Expired, invalid, or unverifiable cards will not be accepted.\n\n3. Recent Passport-Size Photograph\nUpload a recent passport-size photograph of the applicant.\n\n4. Description of Artisan Work\nProvide accurate and clear details of your art or handicraft work in the application form.\n\nThis may include the type of work you do, the products you make, the materials you use, your work experience, and the special features of your handicrafts.\n\n5. Photographs of Your Own Products or Artwork\nUpload clear and recent photographs of your own handicraft products or artwork.\n\nThe photographs must show your actual work. Images taken from the internet or photographs of another person\'s work will not be accepted.',
@@ -458,8 +469,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     ],
     body: [
       {
-        en: '1. Application Timeline: Application Start Date: 14 October 2026. Last Date to Apply: 28 October 2026, by 11:59 PM. Draw / Result Date: 5 November 2026. Payment Deadline: 10 November 2026.',
-        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026। आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक। ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026। भुगतान की अंतिम तिथि: 10 नवंबर 2026।'
+        en: '1. Application Timeline: Application Start Date: {{APPLICATION_OPENS}}. Last Date to Apply: {{APPLICATION_CLOSES}}. Draw / Result Date: 5 November 2026. Payment Deadline: 10 November 2026.',
+        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: {{APPLICATION_OPENS}}। आवेदन की अंतिम तिथि: {{APPLICATION_CLOSES}}। ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026। भुगतान की अंतिम तिथि: 10 नवंबर 2026।'
       },
       {
         en: "2. Required Documents: please keep the following documents ready before starting your online application.\n\n• Applicant's Aadhaar Card or Valid Identity Proof: upload a clear and readable copy of the applicant's Aadhaar Card or another valid government-issued identity document. The information entered in the application form must match the details provided in the identity document.\n• Valid National or State Award Certificate: upload a clear and readable copy of the National or State Award Certificate relevant to the applicant's artisan or handicraft work. The certificate must be genuine and verifiable. KDB may verify the certificate and request additional supporting documents if required.\n• Recent Passport-Size Photograph: upload a recent passport-size photograph of the applicant.\n• Photographs of Your Own Products or Artwork: upload clear and recent photographs of your own handicraft products or artwork. The photographs must represent the applicant's actual craftwork. Images taken from the internet or photographs of another person's work will not be accepted.",
@@ -541,8 +552,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     ],
     body: [
       {
-        en: '1. Application Timeline: Application Start Date: 14 October 2026. Last Date to Apply: 28 October 2026, by 11:59 PM.',
-        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026। आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक।'
+        en: '1. Application Timeline: Application Start Date: {{APPLICATION_OPENS}}. Last Date to Apply: {{APPLICATION_CLOSES}}.',
+        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: {{APPLICATION_OPENS}}। आवेदन की अंतिम तिथि: {{APPLICATION_CLOSES}}।'
       },
       {
         en: "2. Required Documents: please keep the following documents ready before starting your application.\n\n• Owner's or Authorised Representative's Identity Proof: Aadhaar Card or another valid government-issued identity document of the owner or authorised representative.\n• Business/Firm/Company Registration Certificate: business, firm, or company registration proof, where applicable.\n• Authorisation Letter: required if the application is submitted by a representative on behalf of the company, firm, or business.\n• Brand, Product, or Service Details: basic information about the brand, company, products, or services you want to promote during the Mahotsav.",
@@ -699,8 +710,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
     ],
     body: [
       {
-        en: '1. Application Timeline: Application Start Date: 14 October 2026. Last Date to Apply: 28 October 2026, by 11:59 PM. Draw / Result Date: 5 November 2026. Payment Deadline: 10 November 2026.',
-        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: 14 अक्टूबर 2026। आवेदन की अंतिम तिथि: 28 अक्टूबर 2026, रात 11:59 बजे तक। ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026। भुगतान की अंतिम तिथि: 10 नवंबर 2026।'
+        en: '1. Application Timeline: Application Start Date: {{APPLICATION_OPENS}}. Last Date to Apply: {{APPLICATION_CLOSES}}. Draw / Result Date: 5 November 2026. Payment Deadline: 10 November 2026.',
+        hi: '1. आवेदन की समय-सीमा: आवेदन शुरू होने की तिथि: {{APPLICATION_OPENS}}। आवेदन की अंतिम तिथि: {{APPLICATION_CLOSES}}। ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026। भुगतान की अंतिम तिथि: 10 नवंबर 2026।'
       },
       {
         en: "2. Required Documents: please keep the following documents ready before starting your online application.\n\n• Applicant's Aadhaar Card or Valid Identity Proof: upload a clear and readable copy of the applicant's Aadhaar Card or another valid government-issued identity document. The information entered in the application form must match the details provided in the identity document.\n• Recent Passport-Size Photograph: upload a recent passport-size photograph of the applicant.\n• Description of Art and Craft Work: provide accurate and clear details of your art and craft work in the application form. Include the type of art or craft you create, the products you make, the materials you use, your experience, and any special features of your work.\n• Photographs of Your Own Art and Craft Products: upload clear and recent photographs of your own art and craft products or artwork. The photographs must show your actual work. Images taken from the internet or photographs of another person's work will not be accepted.\n\nImportant: an Artisan Card or National/State Award Certificate is not mandatory for this category.",
@@ -836,4 +847,40 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
 
 export function getCategoryGuideline(slug: string): CategoryGuideline | undefined {
   return CATEGORY_GUIDELINES.find(c => c.slug === slug)
+}
+
+/**
+ * Substitutes the `{{APPLICATION_OPENS}}` / `{{APPLICATION_CLOSES}}`
+ * placeholders in a guideline's `body` text with the admin-configured
+ * portal-wide application open/close dates (categories.application_opens_at
+ * / application_closes_at — the "Portal Application & Draw Schedule" in
+ * /admin/settings/general, applied to every active category at once). These
+ * "Application Timeline" bullets previously hardcoded a specific date
+ * ("14 October 2026") directly in this file, requiring a manual code edit
+ * every time the schedule changed — a real staleness bug (the admin's saved
+ * schedule correctly updated the DB and the public homepage banner, but not
+ * this prose text) and a violation of CLAUDE.md §5 (never hardcode
+ * configurable business values like application dates). A placeholder left
+ * unsubstituted (both dates null, e.g. no schedule configured yet) renders
+ * literally — acceptable since this is the pre-launch/misconfigured case,
+ * not the normal one.
+ */
+export function substituteGuidelineDates(
+  text: string,
+  applicationOpensDisplay: string | null,
+  applicationClosesDisplay: string | null
+): string {
+  if (!text.includes('{{APPLICATION_OPENS}}') && !text.includes('{{APPLICATION_CLOSES}}')) return text
+
+  // Callers pass already-formatted display strings (e.g. via
+  // src/lib/format-date.ts's formatDateTime) — this module stays
+  // formatting-agnostic since it's imported by both server and client code.
+  // Left unsubstituted (literal "{{APPLICATION_OPENS}}" shown) only if no
+  // schedule has been configured yet in /admin/settings/general.
+  let out = text
+
+  if (applicationOpensDisplay) out = out.replaceAll('{{APPLICATION_OPENS}}', applicationOpensDisplay)
+  if (applicationClosesDisplay) out = out.replaceAll('{{APPLICATION_CLOSES}}', applicationClosesDisplay)
+
+  return out
 }

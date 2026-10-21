@@ -150,3 +150,27 @@ export function isCategoryAcceptingApplications(category: CategoryRow, now: Date
 
   return true
 }
+
+/**
+ * The portal-wide "Portal Application & Draw Schedule" (admin/settings/general)
+ * applies one open/close date to every active category at once (see
+ * src/app/api/admin/categories/schedule/route.ts), so any active category
+ * with a schedule set reflects the same value as every other — the first
+ * non-null row is the portal-wide date. Used wherever public pages display
+ * this date dynamically (hero banner, guidelines, category detail) instead
+ * of hardcoding it, per CLAUDE.md §5.
+ */
+export async function getPortalApplicationSchedule(): Promise<{
+  applicationOpensAt: string | null
+  applicationClosesAt: string | null
+}> {
+  const rows = await query<Array<{ application_opens_at: string | null; application_closes_at: string | null }>>(
+    `SELECT application_opens_at, application_closes_at FROM categories
+     WHERE status != 'archived' AND application_opens_at IS NOT NULL
+     LIMIT 1`
+  )
+
+  const row = rows[0] ?? { application_opens_at: null, application_closes_at: null }
+
+  return { applicationOpensAt: row.application_opens_at, applicationClosesAt: row.application_closes_at }
+}

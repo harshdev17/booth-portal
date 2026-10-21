@@ -17,14 +17,27 @@ interface PublicHomeClientProps {
   categories: CategoryCardData[]
   eventStartsOn: string | null
   eventEndsOn: string | null
+  applicationOpensAt: string | null
+  applicationClosesAt: string | null
 }
 
-export default function PublicHomeClient({ categories, eventStartsOn, eventEndsOn }: PublicHomeClientProps) {
+export default function PublicHomeClient({
+  categories,
+  eventStartsOn,
+  eventEndsOn,
+  applicationOpensAt,
+  applicationClosesAt
+}: PublicHomeClientProps) {
   const { t } = useLanguage()
 
   return (
     <>
-      <HeroSlider eventStartsOn={eventStartsOn} eventEndsOn={eventEndsOn} />
+      <HeroSlider
+        eventStartsOn={eventStartsOn}
+        eventEndsOn={eventEndsOn}
+        applicationOpensAt={applicationOpensAt}
+        applicationClosesAt={applicationClosesAt}
+      />
 
       {/* About International Gita Mahotsav */}
       <AboutGitaMahotsavSection />

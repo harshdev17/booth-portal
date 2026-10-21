@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { ChevronDownIcon, MapIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
-import { CATEGORY_GUIDELINES, parseGuidelineBullet } from '@/lib/content/category-guidelines'
+import { CATEGORY_GUIDELINES, parseGuidelineBullet, substituteGuidelineDates } from '@/lib/content/category-guidelines'
+import { formatDateTime } from '@/lib/format-date'
 
 const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   {
@@ -43,8 +44,18 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
   }
 ]
 
-const GuidelinesView = ({ mapPdfBySlug }: { mapPdfBySlug: Record<string, string> }) => {
+const GuidelinesView = ({
+  mapPdfBySlug,
+  applicationOpensAt,
+  applicationClosesAt
+}: {
+  mapPdfBySlug: Record<string, string>
+  applicationOpensAt: string | null
+  applicationClosesAt: string | null
+}) => {
   const { lang } = useLanguage()
+  const applicationOpensDisplay = applicationOpensAt ? formatDateTime(applicationOpensAt, lang) : null
+  const applicationClosesDisplay = applicationClosesAt ? formatDateTime(applicationClosesAt, lang) : null
   const [openSlug, setOpenSlug] = useState<string | null>(CATEGORY_GUIDELINES[0]?.slug ?? null)
 
   const handleToggle = (slug: string) => {
@@ -137,7 +148,9 @@ const GuidelinesView = ({ mapPdfBySlug }: { mapPdfBySlug: Record<string, string>
                     )}
                     <div className='flex flex-col'>
                       {cat.body.map((line, i) => {
-                        const parsed = parseGuidelineBullet(lang === 'hi' ? line.hi : line.en)
+                        const rawText = lang === 'hi' ? line.hi : line.en
+                        const substituted = substituteGuidelineDates(rawText, applicationOpensDisplay, applicationClosesDisplay)
+                        const parsed = parseGuidelineBullet(substituted)
 
                         return (
                           <div key={i} className={`flex gap-4 py-4 ${i > 0 ? 'border-t border-[#f1e7d2]' : ''}`}>
