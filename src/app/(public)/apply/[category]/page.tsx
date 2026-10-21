@@ -21,6 +21,20 @@ export const metadata: Metadata = {
   title: 'Apply | International Geeta Jayanti Mahotsav 2026'
 }
 
+// Forced dynamic — this page's "Applications Closed" vs. actual application
+// form decision depends on isCategoryAcceptingApplications(), which compares
+// the category's DB dates against the CURRENT time on every request. A
+// statically prerendered copy of this page freezes that decision at
+// whatever moment it was built/cached — e.g. a category correctly closed at
+// build time stays "Applications Closed" forever afterward, even once its
+// application_opens_at has since passed, confirmed live: the DB had the
+// right dates and NOW() was already past opens_at, but the page kept
+// showing closed. Same root cause/fix as the CSP-nonce "stuck on
+// Loading..." bug fixed earlier on other public pages (missing this export
+// let Next.js statically prerender a page whose content isn't actually
+// static) — see src/app/(public)/page.tsx and .ai/CHANGELOG.md.
+export const dynamic = 'force-dynamic'
+
 /**
  * Informational "If Yes →" warnings from the business-supplied form spec
  * (NGO commercial-activity, Government commercial-promotion, Refreshment
