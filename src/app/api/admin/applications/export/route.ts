@@ -2,18 +2,9 @@ import { type NextRequest } from 'next/server'
 
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
+import { toCsvField } from '@/lib/export/csv'
 import { requireAnyPermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
-
-function toCsvField(value: unknown): string {
-  const str = value === null || value === undefined ? '' : String(value)
-
-  if (/[",\n\r]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-
-  return str
-}
 
 const QUICK_FILTERS: Record<string, string[]> = {
   under_review: ['under_review', 'payment_success'],

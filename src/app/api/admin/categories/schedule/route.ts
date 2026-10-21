@@ -10,36 +10,23 @@ import { logServerError } from '@/lib/security/error-log'
 // an invalid value — distinct from omitting the key entirely.
 //
 // The admin UI sends a bare <input type="datetime-local"> value
-// ("2026-10-01T00:00", no timezone/offset). Per the HTML spec this has no
-// intrinsic timezone — `new Date(value)` therefore parses it using
-// whatever timezone the RUNNING PROCESS happens to be in, which varies
-// between a developer's local machine (e.g. IST) and a deployed server
-// (commonly UTC). The same input previously produced different stored
-// UTC instants depending on which process handled the request — a real
-// bug that silently shifted application open/close times by up to 5.5
-// hours and could make a category show "Applications Closed" or "Open"
-// incorrectly. Since this portal is India-only, the value is always
-// interpreted as IST (UTC+5:30) explicitly here, never the ambient
-// process timezone.
-const IST_OFFSET_MINUTES = 5 * 60 + 30
-
-function parseIstDatetimeLocal(value: string): Date {
-  const [datePart, timePart] = value.split('T')
-  const [year, month, day] = datePart.split('-').map(Number)
-  const [hour, minute] = timePart.split(':').map(Number)
-
-  // Date.UTC gives the instant that is this wall-clock time in UTC; since
-  // the input is actually IST wall-clock time, subtract the IST offset to
-  // get the true UTC instant.
-  return new Date(Date.UTC(year, month - 1, day, hour, minute) - IST_OFFSET_MINUTES * 60 * 1000)
-}
-
+// ("2026-10-22T00:00", no timezone/offset) — this is already the IST
+// wall-clock time the admin intends, with no conversion needed. Every
+// pooled DB connection runs `SET time_zone = '+05:30'` (see
+// src/lib/db/client.ts), so MySQL's own NOW() also returns IST wall-clock
+// time, and this column is compared directly against NOW() elsewhere
+// (isCategoryAcceptingApplications() / lib/applications/categories.ts).
+// Storing anything other than the IST wall-clock value here — e.g. a
+// previous version of this file converted the input to a UTC instant
+// before storing it — creates a silent ~5.5 hour mismatch against that
+// IST-returning NOW(): a category set to open at midnight IST showed as
+// already open 5.5 hours early, confirmed live against the UAT database.
 const nullableDateTime = z
   .string()
   .trim()
   .refine(value => value === '' || !Number.isNaN(Date.parse(value)), 'Invalid date/time')
   .nullable()
-  .transform(value => (value ? parseIstDatetimeLocal(value).toISOString().slice(0, 19).replace('T', ' ') : null))
+  .transform(value => (value ? `${value.replace('T', ' ')}:00` : null))
 
 const nullableText = z
   .string()

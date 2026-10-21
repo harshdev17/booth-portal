@@ -16,6 +16,14 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
 type CategoryFeeItem = {
@@ -62,6 +70,16 @@ export default function CategoryFeeSettingsClient({
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
+  // Replaces window.confirm() for both the schedule and bulk-fee actions
+  // with the project's own Dialog component — a custom confirm dialog
+  // matching the rest of the admin panel instead of the browser's native
+  // confirm() popup.
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string
+    description: string
+    onConfirm: () => void
+  } | null>(null)
+
   // Find pre-existing schedule from active categories
   const firstWithSchedule =
     activeOnly.find(c => c.application_opens_at || c.application_closes_at || c.auction_date) || activeOnly[0]
@@ -76,17 +94,7 @@ export default function CategoryFeeSettingsClient({
 
   const activeCategoryIds = categories.map(c => c.id)
 
-  const handleSaveGlobalSchedule = async () => {
-    if (
-      portalSchedule.applicationOpensAt &&
-      new Date(portalSchedule.applicationOpensAt) > new Date() &&
-      !window.confirm(
-        `"Application Opens" is set to a future date/time. This will immediately close all ${activeCategoryIds.length} categories to new applicants until then. Continue?`
-      )
-    ) {
-      return
-    }
-
+  const saveGlobalSchedule = async () => {
     setIsSavingSchedule(true)
     setSuccessMessage(null)
     setErrorMessage(null)
@@ -123,19 +131,10 @@ export default function CategoryFeeSettingsClient({
     }
   }
 
-  const handleBulkApplyFee = async () => {
-    if (bulkFee.baseRs === '') {
-      setErrorMessage('Enter a base fee amount to apply to all categories.')
-
-      return
-    }
-
+  const applyBulkFee = async () => {
     const basePaise = Math.round(Number(bulkFee.baseRs) * 100)
     const gst = bulkFee.gstPercent === '' ? 0 : Number(bulkFee.gstPercent)
     const totalPaise = Math.round(basePaise * (1 + gst / 100))
-
-    if (!window.confirm(`Apply ₹${bulkFee.baseRs} base fee + ${gst}% GST to all ${activeCategoryIds.length} categories?`))
-      return
 
     setIsBulkSavingFee(true)
     setSuccessMessage(null)
@@ -164,6 +163,42 @@ export default function CategoryFeeSettingsClient({
     } finally {
       setIsBulkSavingFee(false)
     }
+  }
+
+  const handleSaveGlobalSchedule = () => {
+    if (portalSchedule.applicationOpensAt && new Date(portalSchedule.applicationOpensAt) > new Date()) {
+      setConfirmDialog({
+        title: 'Confirm Future Opening Date',
+        description: `"Application Opens" is set to a future date/time. This will immediately close all ${activeCategoryIds.length} categories to new applicants until then. Continue?`,
+        onConfirm: () => {
+          setConfirmDialog(null)
+          saveGlobalSchedule()
+        }
+      })
+
+      return
+    }
+
+    saveGlobalSchedule()
+  }
+
+  const handleBulkApplyFee = () => {
+    if (bulkFee.baseRs === '') {
+      setErrorMessage('Enter a base fee amount to apply to all categories.')
+
+      return
+    }
+
+    const gst = bulkFee.gstPercent === '' ? 0 : Number(bulkFee.gstPercent)
+
+    setConfirmDialog({
+      title: 'Confirm Bulk Fee Update',
+      description: `Apply ₹${bulkFee.baseRs} base fee + ${gst}% GST to all ${activeCategoryIds.length} categories?`,
+      onConfirm: () => {
+        setConfirmDialog(null)
+        applyBulkFee()
+      }
+    })
   }
 
   const handleBaseFeeChange = (categoryId: number, value: string) => {
@@ -640,6 +675,23 @@ export default function CategoryFeeSettingsClient({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmDialog !== null} onOpenChange={open => !open && setConfirmDialog(null)}>
+        <DialogContent className='sm:max-w-sm'>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogDescription>{confirmDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setConfirmDialog(null)}>
+              Cancel
+            </Button>
+            <Button type='button' onClick={() => confirmDialog?.onConfirm()} className='bg-[#0c2847] hover:bg-[#071f3a] text-white'>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

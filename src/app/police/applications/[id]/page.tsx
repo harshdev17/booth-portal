@@ -93,7 +93,7 @@ export default async function PoliceApplicationDetailPage({
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
        LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
-       WHERE a.id = ?`,
+       WHERE a.id = ? AND a.status IN ('selected', 'allotted', 're_allotted')`,
       [applicationId]
     ),
     query<DocRow[]>(

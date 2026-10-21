@@ -1,17 +1,8 @@
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
+import { toCsvField } from '@/lib/export/csv'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
-
-function toCsvField(value: unknown): string {
-  const str = value === null || value === undefined ? '' : String(value)
-
-  if (/[",\n]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-
-  return str
-}
 
 function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
   const header = columns.join(',')

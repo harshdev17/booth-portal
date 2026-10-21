@@ -29,12 +29,21 @@ export type ParsedCsv = {
   errors: CsvRowError[]
 }
 
+// Formula-injection guard matches src/lib/export/csv.ts's toCsvField() — a
+// value starting with =, +, -, or @ is treated as a formula by Excel/Sheets
+// when this export is opened, so it's prefixed with a literal quote first.
 function escapeCsvField(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`
+  let out = value
+
+  if (/^[=+\-@\t\r]/.test(out)) {
+    out = `'${out}`
   }
 
-  return value
+  if (out.includes(',') || out.includes('"') || out.includes('\n')) {
+    return `"${out.replace(/"/g, '""')}"`
+  }
+
+  return out
 }
 
 export function buildCsv(rows: string[][]): string {

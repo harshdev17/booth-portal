@@ -15,6 +15,7 @@ type DocumentRow = {
   mime_type: string
   original_filename: string
   access_token_hash: string
+  application_status: string
 }
 
 /**
@@ -50,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const rows = await query<DocumentRow[]>(
       `SELECT doc.id, doc.application_id, doc.storage_path, doc.mime_type, doc.original_filename,
-              a.access_token_hash
+              a.access_token_hash, a.status AS application_status
        FROM application_documents doc
        JOIN applications a ON a.id = doc.application_id
        WHERE doc.id = ?
@@ -76,13 +77,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
       if (session) {
         const permissions = await getCurrentUserPermissions()
+        const isAllottedForPolice = ['selected', 'allotted', 're_allotted'].includes(document.application_status)
 
         isAuthorizedAdmin =
           !!permissions &&
           (permissions.has('document:verify') ||
             permissions.has('document:view') ||
             permissions.has('application:view') ||
-            permissions.has('police:view'))
+            // police:view is intentionally scoped narrower than the admin
+            // permissions above: police must only ever see documents for
+            // applications that have actually reached selected/allotted/
+            // re_allotted — never a draft/rejected/pending applicant with
+            // no on-ground verification need. Mirrors the same status
+            // scoping already enforced on /police/dashboard and
+            // /police/applications/[id].
+            (permissions.has('police:view') && isAllottedForPolice))
 
         if (isAuthorizedAdmin) {
           await logAudit({
