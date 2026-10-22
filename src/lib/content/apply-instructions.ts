@@ -405,6 +405,78 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
     ]
   },
   {
+    slug: 'sweets-special-items',
+    requiredDocuments: [
+      {
+        en: 'Aadhaar Card or valid identity proof of the applicant',
+        hi: 'आवेदक का आधार कार्ड या वैध पहचान पत्र'
+      },
+      {
+        en: 'Business / Firm Registration Certificate / GST Certificate / PAN Card',
+        hi: 'व्यवसाय / फर्म पंजीकरण प्रमाणपत्र / जीएसटी प्रमाणपत्र / पैन कार्ड'
+      },
+      {
+        en: 'Valid FSSAI License',
+        hi: 'वैध FSSAI लाइसेंस'
+      },
+      {
+        en: 'Clear photographs of the sweets / special items proposed for sale',
+        hi: 'बिक्री हेतु प्रस्तावित मिष्ठान/विशेष वस्तुओं की स्पष्ट तस्वीरें'
+      }
+    ],
+    bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
+    bullets: [
+      {
+        en: 'Please read all the guidelines for this category carefully before applying.',
+        hi: 'आवेदन करने से पहले इस श्रेणी के सभी दिशानिर्देशों को ध्यानपूर्वक पढ़ें।'
+      },
+      {
+        en: 'Applicants must have an active WhatsApp mobile number and email ID.',
+        hi: 'आवेदन करने के लिए सक्रिय WhatsApp मोबाइल नंबर और ईमेल आईडी होना अनिवार्य है।'
+      },
+      {
+        en: 'Enter all details correctly as they appear on your government-issued identity proof and FSSAI license.',
+        hi: 'आवेदन फॉर्म में सभी जानकारी अपने सरकारी पहचान पत्र और FSSAI लाइसेंस के अनुसार सही-सही भरें।'
+      },
+      {
+        en: 'Upload all required documents clearly and make sure they are complete and readable.',
+        hi: 'सभी आवश्यक दस्तावेज़ स्पष्ट और पढ़ने योग्य अपलोड करें।'
+      },
+      {
+        en: 'The FSSAI license must be valid and must remain valid until the last date of application.',
+        hi: 'FSSAI लाइसेंस वैध होना चाहिए और आवेदन की अंतिम तिथि तक वैध रहना चाहिए।'
+      },
+      {
+        en: 'Upload photographs of the sweets / special items proposed for sale only. Images taken from the internet will not be accepted.',
+        hi: 'केवल बिक्री हेतु प्रस्तावित मिष्ठान/विशेष वस्तुओं की तस्वीरें ही अपलोड करें। इंटरनेट से ली गई तस्वीरें स्वीकार नहीं की जाएंगी।'
+      },
+      {
+        en: 'Only pre-made, ready-to-sell sweets and special items (e.g. barfi and similar items prepared off-site/at the vendor\'s own premises) may be sold. Cooking, frying, heating, or any kind of food preparation at the booth/stall during the Mahotsav is strictly not permitted.',
+        hi: 'केवल पहले से बनी हुई, बिक्री हेतु तैयार मिष्ठान एवं विशेष वस्तुएं (जैसे बर्फी और इसी प्रकार की अन्य वस्तुएं, जो स्टॉल के बाहर/विक्रेता के अपने परिसर में तैयार की गई हों) ही बेची जा सकती हैं। महोत्सव के दौरान बूथ/स्टॉल पर खाना पकाना, तलना, गर्म करना या किसी भी प्रकार की खाद्य तैयारी करना सख्त वर्जित है।'
+      },
+      {
+        en: 'Review all details and documents carefully before submitting your application, as changes cannot be made after submission.',
+        hi: 'आवेदन जमा करने से पहले सभी जानकारी और दस्तावेज़ों की अच्छी तरह जाँच कर लें। आवेदन जमा होने के बाद उसमें बदलाव नहीं किया जा सकेगा।'
+      },
+      {
+        en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for allotment.',
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदकों को ही आबंटन प्रक्रिया में शामिल किया जाएगा।'
+      },
+      {
+        en: 'Booths/stalls will be allotted directly or through a Draw, depending on availability and the number of eligible applications.',
+        hi: 'उपलब्ध बूथ / बूथ/स्टॉल की संख्या और पात्र आवेदनों के आधार पर सीधे आबंटन या ड्रॉ के माध्यम से आबंटन किया जाएगा।'
+      },
+      {
+        en: 'The booth/stall allotment amount is ₹50,000.',
+        hi: 'बूथ/स्टॉल आबंटन राशि ₹50,000 है।'
+      },
+      {
+        en: 'The Kurukshetra Development Board (KDB) will have the final authority to accept or reject applications and approve booth/stall allotments.',
+        hi: 'आवेदन स्वीकार या अस्वीकार करने तथा बूथ / बूथ/स्टॉल आबंटन का अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा।'
+      }
+    ]
+  },
+  {
     slug: 'national-awardees',
     requiredDocuments: [
       {
@@ -553,8 +625,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'अधिकृत प्रतिनिधि का आधार कार्ड'
       },
       {
-        en: 'SHG Registration Certificate / Registration Proof',
-        hi: 'स्वयं सहायता समूह (SHG) का पंजीकरण प्रमाणपत्र / पंजीकरण का प्रमाण'
+        en: 'SARAS Registration Certificate / Registration Proof',
+        hi: 'सेल (ऑफ आर्टिकल्स ऑफ रूरल आर्टिजन्स सोसाइटी) (SARAS) का पंजीकरण प्रमाणपत्र / पंजीकरण का प्रमाण'
       },
       {
         en: 'Authorization Letter',
@@ -568,8 +640,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
     bulletsHeading: { en: 'Before You Apply', hi: 'आवेदन करने से पहले' },
     bullets: [
       {
-        en: 'Only registered Self Help Groups (SHGs) with valid registration proof can apply. The application must be submitted by an authorized member or representative of the SHG.',
-        hi: 'इस श्रेणी में केवल पंजीकृत स्वयं सहायता समूह (SHG) ही आवेदन कर सकते हैं। समूह की ओर से आवेदन किसी अधिकृत सदस्य या प्रतिनिधि द्वारा किया जाना चाहिए।'
+        en: 'Only registered SARAS (Sale of Articles of Rural Artisans Society) members with valid registration proof can apply. The application must be submitted by an authorized member or representative of the society.',
+        hi: 'इस श्रेणी में केवल पंजीकृत सेल (ऑफ आर्टिकल्स ऑफ रूरल आर्टिजन्स सोसाइटी) (SARAS) के सदस्य ही आवेदन कर सकते हैं। सोसाइटी की ओर से आवेदन किसी अधिकृत सदस्य या प्रतिनिधि द्वारा किया जाना चाहिए।'
       },
       {
         en: 'All applicants must pay a non-refundable application fee of ₹236 (₹200 + 18% GST) online. This fee will not be refunded, whether the application is accepted or rejected.',
@@ -580,20 +652,20 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन फॉर्म में सभी जानकारी सही-सही भरें और आवश्यक दस्तावेज स्पष्ट एवं पढ़ने योग्य अपलोड करें। गलत, अधूरी या भ्रामक जानकारी देने पर आवेदन अस्वीकार किया जा सकता है।'
       },
       {
-        en: 'Only SHGs verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for stall allotment.',
-        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित स्वयं सहायता समूहों को ही स्टॉल आबंटन प्रक्रिया में शामिल किया जाएगा।'
+        en: 'Only SARAS members verified and declared eligible by the Kurukshetra Development Board (KDB) will be considered for stall allotment.',
+        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित SARAS सदस्यों को ही स्टॉल आबंटन प्रक्रिया में शामिल किया जाएगा।'
       },
       {
-        en: 'A total of 60 stalls are reserved for SHGs: 40 for Haryana and 20 for outside Haryana. If eligible applications exceed the available stalls in a region, allotment will be made through a transparent draw. Otherwise, stalls may be allotted directly according to the prescribed process.',
-        hi: 'स्वयं सहायता समूहों के लिए कुल 60 स्टॉल आरक्षित हैं, जिनमें 40 हरियाणा और 20 हरियाणा के बाहर के समूहों के लिए हैं। यदि पात्र आवेदनों की संख्या उपलब्ध स्टॉलों से अधिक होती है, तो पारदर्शी ड्रॉ के माध्यम से आबंटन किया जाएगा। अन्यथा, निर्धारित प्रक्रिया के अनुसार सीधे स्टॉल आबंटित किए जा सकते हैं।'
+        en: 'A total of 60 stalls are reserved under this category: 40 for Haryana and 20 for outside Haryana. If eligible applications exceed the available stalls in a region, allotment will be made through a transparent draw. Otherwise, stalls may be allotted directly according to the prescribed process.',
+        hi: 'इस श्रेणी में कुल 60 स्टॉल आरक्षित हैं, जिनमें 40 हरियाणा और 20 हरियाणा के बाहर के आवेदकों के लिए हैं। यदि पात्र आवेदनों की संख्या उपलब्ध स्टॉलों से अधिक होती है, तो पारदर्शी ड्रॉ के माध्यम से आबंटन किया जाएगा। अन्यथा, निर्धारित प्रक्रिया के अनुसार सीधे स्टॉल आबंटित किए जा सकते हैं।'
       },
       {
-        en: 'The stall will be provided free of cost to the selected SHG. No separate stall allotment fee will be charged.',
-        hi: 'चयनित स्वयं सहायता समूहों को स्टॉल निःशुल्क दिया जाएगा। इसके लिए कोई अलग स्टॉल आबंटन शुल्क नहीं देना होगा।'
+        en: 'The stall will be provided free of cost to the selected applicant. No separate stall allotment fee will be charged.',
+        hi: 'चयनित आवेदक को स्टॉल निःशुल्क दिया जाएगा। इसके लिए कोई अलग स्टॉल आबंटन शुल्क नहीं देना होगा।'
       },
       {
-        en: 'Only products made or manufactured by the SHG itself may be displayed and sold at the stall. Permitted products may include achar, masale, uncooked papad, and other eligible food and non-food products.',
-        hi: 'स्टॉल पर केवल स्वयं सहायता समूह द्वारा बनाए या तैयार किए गए उत्पाद ही प्रदर्शित और बेचे जा सकेंगे। इनमें अचार, मसाले, बिना पके पापड़ तथा अन्य अनुमत खाद्य और गैर-खाद्य उत्पाद शामिल हो सकते हैं।'
+        en: 'Only products made or manufactured by the applicant\'s own SARAS society may be displayed and sold at the stall. Permitted products may include achar, masale, uncooked papad, and other eligible food and non-food products.',
+        hi: 'स्टॉल पर केवल आवेदक की अपनी SARAS सोसाइटी द्वारा बनाए या तैयार किए गए उत्पाद ही प्रदर्शित और बेचे जा सकेंगे। इनमें अचार, मसाले, बिना पके पापड़ तथा अन्य अनुमत खाद्य और गैर-खाद्य उत्पाद शामिल हो सकते हैं।'
       },
       {
         en: 'Cooking, frying, roasting, heating food, or preparing and serving ready-to-eat refreshments at the stall is strictly prohibited. All food products must meet applicable food safety, packaging, and labelling requirements.',
@@ -608,8 +680,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन जमा करने के बाद उसमें बदलाव नहीं किया जा सकेगा। आवेदन में गलत, अधूरी, भ्रामक या झूठी जानकारी पाए जाने पर आवेदन अस्वीकार किया जा सकता है। आबंटन के बाद ऐसी जानकारी सामने आने पर स्टॉल आबंटन रद्द किया जा सकता है।'
       },
       {
-        en: 'KDB reserves the right to verify the submitted documents and inspect allotted stalls. All selected SHGs must follow the prescribed rules and guidelines.',
-        hi: 'KDB को जमा किए गए दस्तावेजों की जाँच करने और आबंटित स्टॉल का निरीक्षण करने का अधिकार होगा। सभी चयनित समूहों को KDB द्वारा निर्धारित नियमों और दिशा-निर्देशों का पालन करना होगा।'
+        en: 'KDB reserves the right to verify the submitted documents and inspect allotted stalls. All selected applicants must follow the prescribed rules and guidelines.',
+        hi: 'KDB को जमा किए गए दस्तावेजों की जाँच करने और आबंटित स्टॉल का निरीक्षण करने का अधिकार होगा। सभी चयनित आवेदकों को KDB द्वारा निर्धारित नियमों और दिशा-निर्देशों का पालन करना होगा।'
       },
       {
         en: 'KDB may change the number of stalls, stall locations, allotment process, or other arrangements for the International Gita Jayanti Mahotsav 2026, if required.',
@@ -620,8 +692,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन स्वीकार करने, पात्रता तय करने और स्टॉल आबंटन से संबंधित अंतिम निर्णय कुरुक्षेत्र विकास बोर्ड (KDB) का होगा। किसी भी विवाद की स्थिति में, जहाँ लागू हो, कुरुक्षेत्र के सक्षम न्यायालयों का क्षेत्राधिकार होगा।'
       },
       {
-        en: 'Please regularly check ThanesarInfo.com for the latest updates regarding SHG applications, document verification, eligibility, draw, and stall allotment.',
-        hi: 'कृपया SHG आवेदन, दस्तावेज सत्यापन, पात्रता, ड्रॉ और स्टॉल आबंटन से संबंधित नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखते रहें।'
+        en: 'Please regularly check ThanesarInfo.com for the latest updates regarding SARAS applications, document verification, eligibility, draw, and stall allotment.',
+        hi: 'कृपया SARAS आवेदन, दस्तावेज सत्यापन, पात्रता, ड्रॉ और स्टॉल आबंटन से संबंधित नवीनतम अपडेट के लिए नियमित रूप से ThanesarInfo.com देखते रहें।'
       }
     ]
   },
@@ -768,8 +840,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन शुल्क ₹236 है, जिसमें 18% GST शामिल है। यह शुल्क वापस नहीं किया जाएगा।'
       },
       {
-        en: 'The booth/stall allotment amount is ₹60,000.',
-        hi: 'बूथ/स्टॉल आबंटन राशि ₹60,000 है।'
+        en: 'The booth/stall allotment amount is ₹50,000.',
+        hi: 'बूथ/स्टॉल आबंटन राशि ₹50,000 है।'
       },
       {
         en: 'Allotment will be through Direct Allotment / Draw, based on verified and eligible applications and the availability of suitable spaces.',

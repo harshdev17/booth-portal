@@ -22,9 +22,9 @@ const FAQ_ITEMS: FaqItem[] = [
     questionHi: 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में बूथ/स्टॉल के लिए कौन आवेदन कर सकता है?',
     questionEn: 'Who can apply for a booth/stall at International Gita Jayanti Mahotsav 2026?',
     answerHi:
-      'केवल वही व्यक्ति, संस्था, व्यापारी, कारीगर, स्वयं सहायता समूह (SHG) या अन्य आवेदक बूथ/स्टॉल के लिए आवेदन कर सकता है, जो संबंधित श्रेणी की निर्धारित पात्रता शर्तों को पूरा करता हो। जिस श्रेणी के लिए आप आवेदन करना चाहते हैं, उसके दिशानिर्देश ध्यानपूर्वक पढ़ें। यदि आप उस श्रेणी की सभी निर्धारित पात्रता शर्तों को पूरा करते हैं, तो बूथ/स्टॉल के लिए आवेदन कर सकते हैं।',
+      'केवल वही व्यक्ति, संस्था, व्यापारी, कारीगर, SARAS सदस्य/सोसाइटी या अन्य आवेदक बूथ/स्टॉल के लिए आवेदन कर सकता है, जो संबंधित श्रेणी की निर्धारित पात्रता शर्तों को पूरा करता हो। जिस श्रेणी के लिए आप आवेदन करना चाहते हैं, उसके दिशानिर्देश ध्यानपूर्वक पढ़ें। यदि आप उस श्रेणी की सभी निर्धारित पात्रता शर्तों को पूरा करते हैं, तो बूथ/स्टॉल के लिए आवेदन कर सकते हैं।',
     answerEn:
-      'Only an individual, organisation, trader, artisan, Self Help Group (SHG), or other applicant who meets the eligibility conditions prescribed for that category can apply for a booth/stall. Read the guidelines for the category you wish to apply under carefully. If you meet all the prescribed eligibility conditions for that category, you can apply for a booth/stall.'
+      'Only an individual, organisation, trader, artisan, SARAS member/society, or other applicant who meets the eligibility conditions prescribed for that category can apply for a booth/stall. Read the guidelines for the category you wish to apply under carefully. If you meet all the prescribed eligibility conditions for that category, you can apply for a booth/stall.'
   },
   {
     id: 'faq-2',
