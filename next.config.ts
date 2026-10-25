@@ -50,6 +50,18 @@ const nextConfig: NextConfig = {
     '/**': ['./node_modules/pdfkit/js/**/*', './node_modules/fontkit/**/*']
   },
 
+  // The production build server (Hostinger) reports a host-level CPU count
+  // (seen: 63) to the container, but the container's actual process/thread
+  // limit is far lower — Next.js's "Collecting page data" step spawns one
+  // native worker per detected CPU by default, and asking for 63 on a
+  // container that can't support that many crashed the build outright
+  // ("OS can't spawn worker thread: Resource temporarily unavailable (os
+  // error 11)" — a tokio/Rust panic, not a Node OOM). Capping `cpus` keeps
+  // the worker count sane regardless of what the host reports.
+  experimental: {
+    cpus: 2
+  },
+
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400
