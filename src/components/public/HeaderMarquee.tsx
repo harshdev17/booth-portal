@@ -52,7 +52,7 @@ export default function HeaderMarquee() {
         </div>
 
         {/* Marquee Ticker Track */}
-        <div className='relative overflow-hidden w-full flex-1'>
+        <div className='relative min-w-0 w-full flex-1 overflow-hidden'>
           <div className='marquee-track flex whitespace-nowrap gap-10 hover:[animation-play-state:paused] cursor-default'>
             <div className='flex items-center gap-10 shrink-0 text-sm font-medium text-slate-100'>
               {notices.map((text, idx) => (

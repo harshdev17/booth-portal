@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   compress: true,
 
+  // Next.js 16.4+ auto-generates/re-creates an AGENTS.md on every `next dev`
+  // run (see node_modules/next/dist/server/lib/generate-agent-files.js) —
+  // disabled since this repo already has its own CLAUDE.md as the
+  // authoritative AI-instructions file; a second auto-regenerating one would
+  // just be noise in every diff and a potential source of conflicting
+  // guidance for future sessions.
+  agentRules: false,
+
   // pdfkit (used internally by @react-pdf/renderer, src/lib/pdf/react-templates.tsx)
   // loads its standard-font .cjs modules via a `require()` relative to its
   // own package directory AT RUNTIME, which Next.js's build-time file
