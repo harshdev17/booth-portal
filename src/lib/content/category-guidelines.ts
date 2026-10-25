@@ -246,6 +246,7 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
         en: '22. Important Financial Conditions: The ₹236 Application Fee is non-refundable.\n\nThe ₹50,000 Auction Participation Fee is collected only from applicants declared eligible for the auction.\n\nIf the bid is unsuccessful and no booth/stall is allotted, the ₹50,000 Demand Draft will be returned as per the prescribed process.\n\nThe successful bidder\'s ₹50,000 Participation Fee itself becomes the Security Deposit.\n\nA separate ₹50,000 Security Deposit will not be collected from the successful bidder.\n\nThe Security Deposit will not be adjusted against the Final Bid Amount.\n\nThe Final Bid Amount must be paid online within 4 days of the successful auction.\n\nElectricity charges of ₹600 per day must be paid separately and in advance.\n\nFailure to comply with the payment conditions may result in action by KDB under the applicable rules.',
         hi: '22. महत्वपूर्ण वित्तीय शर्तें: ₹236/- का आवेदन शुल्क वापस नहीं किया जाएगा।\n\n₹50,000/- की नीलामी भागीदारी राशि केवल नीलामी के लिए पात्र आवेदकों से ली जाएगी।\n\nबोली सफल नहीं होने और बूथ/स्टॉल आबंटित नहीं होने पर ₹50,000/- का डिमांड ड्राफ्ट निर्धारित प्रक्रिया के अनुसार वापस किया जाएगा।\n\nसफल बोलीदाता की ₹50,000/- की भागीदारी राशि ही धरोहर राशि बनेगी।\n\nसफल बोलीदाता से अलग से ₹50,000/- की धरोहर राशि नहीं ली जाएगी।\n\nधरोहर राशि को अंतिम बोली राशि में समायोजित नहीं किया जाएगा।\n\nअंतिम बोली राशि सफल नीलामी के 4 दिनों के भीतर ऑनलाइन जमा करनी होगी।\n\n₹600/- प्रतिदिन का बिजली शुल्क अलग से और पहले जमा करना होगा।\n\nभुगतान संबंधी शर्तों का पालन नहीं करने पर KDB लागू नियमों के अनुसार कार्रवाई कर सकता है।'
       },
+
       // [TBC – Business Confirmation Required]: this bullet's English text
       // ("Security Deposit Refund" only) and Hindi text ("Key Dates & Auction
       // Details" — full Mahotsav dates, draw date/time/venue, THEN security
@@ -621,7 +622,7 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
   },
   {
     slug: 'special-art-craft',
-    title: 'Art and Craft (without card holder)',
+    title: 'Art and Craft (Without card holder)',
     titleHi: 'आर्ट एंड क्राफ्ट (बिना कार्ड के)',
     description: 'Guidelines for artists and craft workers (no Artisan Card or Award Certificate required)',
     descriptionHi: 'कलाकारों एवं हस्तशिल्प कारीगरों हेतु दिशा-निर्देश (आर्टिजन कार्ड या पुरस्कार प्रमाणपत्र अनिवार्य नहीं)',
