@@ -95,6 +95,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const title = lang === 'hi' ? (category.nameHi || category.name) : category.name
 
   const languageKey = lang === 'hi' ? 'hi' : 'en'
+
   const methodLabel = DIRECT_OR_DRAW_CATEGORY_SLUGS.has(category.slug)
     ? DIRECT_OR_DRAW_LABEL[languageKey]
     : (getCategoryGuideline(category.slug)?.selectionMethod?.[languageKey] ??
@@ -137,6 +138,12 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         >
           <Icon className='size-7' strokeWidth={2} aria-hidden='true' />
         </div>
+        {/* 2nd and 3rd cards in display order are marked "A" / "B" — explicit request. */}
+        {(category.displayIndex === 2 || category.displayIndex === 3) && (
+          <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--kdb-primary)] text-sm font-black text-white'>
+            {category.displayIndex === 2 ? 'A' : 'B'}
+          </span>
+        )}
       </div>
 
       {/* Title */}
