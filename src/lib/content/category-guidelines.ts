@@ -278,8 +278,8 @@ export const CATEGORY_GUIDELINES: CategoryGuideline[] = [
   },
   {
     slug: 'sweets-special-items',
-    title: 'Sweets & Special Food Items',
-    titleHi: 'मिष्ठान एवं विशेष खाद्य वस्तुएं',
+    title: 'Sweets and Bakers (Special Items)',
+    titleHi: 'मिष्ठान एवं बेकर्स (विशेष वस्तुएं)',
     description: 'Guidelines for verified sellers of sweets and special food items',
     descriptionHi: 'मिष्ठान एवं विशेष खाद्य वस्तुओं के सत्यापित विक्रेताओं हेतु दिशा-निर्देश',
     selectionMethod: {

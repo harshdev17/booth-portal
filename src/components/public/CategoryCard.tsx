@@ -87,6 +87,18 @@ function formatRupees(paise: number): string {
   return `₹${(paise / 100).toLocaleString('en-IN')}`
 }
 
+// Every card shows a serial number badge. The 2nd and 3rd cards (in display
+// order) share slot "2" — shown as "2(A)" and "2(B)" respectively, per
+// explicit request — so every card after them is numbered one lower than
+// its raw displayIndex (4th card -> "3", 5th card -> "4", etc.).
+function getCardBadgeLabel(displayIndex: number): string {
+  if (displayIndex === 2) return '2(A)'
+  if (displayIndex === 3) return '2(B)'
+  if (displayIndex > 3) return String(displayIndex - 1)
+
+  return String(displayIndex)
+}
+
 const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const { lang } = useLanguage()
 
@@ -138,12 +150,12 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         >
           <Icon className='size-7' strokeWidth={2} aria-hidden='true' />
         </div>
-        {/* 2nd and 3rd cards in display order are marked "A" / "B" — explicit request. */}
-        {(category.displayIndex === 2 || category.displayIndex === 3) && (
-          <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--kdb-primary)] text-sm font-black text-white'>
-            {category.displayIndex === 2 ? 'A' : 'B'}
-          </span>
-        )}
+        {/* Serial number badge on every card — the 2nd/3rd cards show
+            "2(A)"/"2(B)" (shared slot), every later card numbered one
+            lower than its raw displayIndex to account for that. */}
+        <span className='flex h-7 w-auto min-w-7 shrink-0 items-center justify-center rounded-full bg-[var(--kdb-primary)] px-2 text-sm font-black text-white'>
+          {getCardBadgeLabel(category.displayIndex)}
+        </span>
       </div>
 
       {/* Title */}

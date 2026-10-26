@@ -23,8 +23,17 @@ export function getPool(): mysql.Pool {
     user: requireEnv('DB_USER'),
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
+    // 40 is a safe margin under the DB user's actual max_user_connections
+    // ceiling (75, confirmed live via `SHOW VARIABLES LIKE
+    // 'max_user_connections'` — the server-wide max_connections is 2000,
+    // but that's shared across everyone on the host, not a limit specific
+    // to this app's DB user). Raised from 25 to widen how many simultaneous
+    // application submissions the pool can serve before later requests
+    // queue (waitForConnections below), while still leaving headroom for
+    // other concurrent connections (admin panel usage, etc.) under the
+    // 75-connection ceiling.
     waitForConnections: true,
-    connectionLimit: 25,
+    connectionLimit: 40,
     maxIdle: 20,
     idleTimeout: 300000,
 
