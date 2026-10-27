@@ -67,7 +67,17 @@ const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> =
   { key: 'query_raised', label: 'Query Raised', statuses: ['query_raised'] },
   { key: 'selected', label: 'Allotted / Selected', statuses: ['selected', 'allotted', 're_allotted'] },
   { key: 'waitlist', label: 'Waitlist', statuses: [] },
-  { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] }
+  { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] },
+
+  // Added per explicit request (2026-10-28): the sidebar's per-category
+  // count (admin/layout.tsx's getCachedCategoryCounts) counts every
+  // non-draft application, INCLUDING payment_pending/payment_failed ones —
+  // but this page's "All" view and every other tab deliberately excluded
+  // them (see the `else` branch below), so a category with only an
+  // unpaid/abandoned-at-payment application showed a sidebar badge of "1"
+  // next to a "0 results" list, with no way to ever see that one row. This
+  // tab surfaces them instead of hiding them, so the two numbers can agree.
+  { key: 'payment_pending', label: 'Payment Pending', statuses: ['payment_pending', 'payment_failed'] }
 ]
 
 const VALID_SORT_FIELDS: Record<string, string> = {
@@ -106,9 +116,11 @@ const ApplicationsAdminPage = async ({
   const conditions: string[] = []
   const params: unknown[] = []
 
-  // Exclude raw draft applications that were abandoned without submission unless specifically queried
-  // An application only counts once its payment is made: drafts and unpaid
-  // (payment_pending / payment_failed) rows are never listed.
+  // Exclude raw draft applications that were abandoned without submission
+  // unless specifically queried — a draft never shows anywhere, including
+  // "All". payment_pending/payment_failed applications DO show in "All"
+  // (per explicit request, 2026-10-28) as well as their own dedicated
+  // "Payment Pending" tab below — only 'draft' is hidden by default.
   const tab = QUICK_FILTERS.find(f => f.key === status)
 
   if (tab?.key === 'waitlist') {
@@ -122,7 +134,7 @@ const ApplicationsAdminPage = async ({
     conditions.push(`a.status IN (${tab.statuses.map(() => '?').join(', ')})`)
     params.push(...tab.statuses)
   } else {
-    conditions.push(`a.status NOT IN ('draft', 'payment_pending', 'payment_failed')`)
+    conditions.push(`a.status != 'draft'`)
   }
 
   if (category && category !== 'all') {
@@ -142,8 +154,12 @@ const ApplicationsAdminPage = async ({
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
   // KPI and quick-filter totals follow the selected category, but not a
-  // free-text or current-status filter, so they show the whole category workload.
-  const statsConditions = ["a.status NOT IN ('draft', 'payment_pending', 'payment_failed')"]
+  // free-text or current-status filter, so they show the whole category
+  // workload. Only 'draft' (abandoned mid-fill, before payment even started)
+  // is excluded — matches `conditions`' own "All" default above, so the
+  // "All" tab's own count and list agree, and so does the sidebar's
+  // per-category count (admin/layout.tsx's getCachedCategoryCounts).
+  const statsConditions = ["a.status != 'draft'"]
   const statsParams: unknown[] = []
 
   if (category && category !== 'all') {
@@ -212,6 +228,9 @@ const ApplicationsAdminPage = async ({
     )
   ])
 
+  // "All" now includes payment_pending/payment_failed too (matches its own
+  // list query's `conditions` above, which only excludes 'draft') — no
+  // filtering needed here, statsRows already excludes only 'draft'.
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
   const getStatusCount = (statuses: string[]) =>
     statsRows.filter(row => statuses.includes(row.status)).reduce((total, row) => total + Number(row.count), 0)

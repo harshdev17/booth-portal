@@ -18,6 +18,8 @@ export type ApprovalChecklist = {
 const STATIC_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'representative_name', label: 'Representative Name' },
   { key: 'father_name', label: "Father's Name" },
+  { key: 'police_station_name', label: 'Police Station Name' },
+  { key: 'police_station_address', label: 'Police Station Address' },
   { key: 'aadhaar_number', label: 'Aadhaar Number' },
   { key: 'email', label: 'Email' },
   { key: 'mobile_number', label: 'WhatsApp Number' },

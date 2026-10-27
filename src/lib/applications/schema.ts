@@ -56,6 +56,15 @@ const placeName = z
   .max(100, 'Too long (maximum 100 characters).')
   .regex(/^[\p{L}\p{M}][\p{L}\p{M} .'’()-]*$/u, 'Use letters only — no numbers or symbols.')
 
+// Police station names commonly include numbers/abbreviations (e.g. "PS Sector 29"),
+// so this is deliberately more permissive than placeName/personName.
+const policeStationName = z
+  .string()
+  .trim()
+  .min(2, 'Enter at least 2 characters.')
+  .max(150, 'Too long (maximum 150 characters).')
+  .regex(/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} .,'()/-]*$/u, 'Enter a valid police station name.')
+
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
 
 const email = z
@@ -100,6 +109,12 @@ export const applicationCommonFieldsSchema = z
     email,
     representativeName: personName,
     fatherName: personName,
+    policeStationName,
+    policeStationAddress: z
+      .string()
+      .trim()
+      .min(10, 'Enter the full police station address (at least 10 characters).')
+      .max(512, 'Too long (maximum 512 characters).'),
     aadhaarNumber,
     address: z
       .string()

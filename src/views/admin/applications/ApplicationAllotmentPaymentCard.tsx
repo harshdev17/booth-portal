@@ -277,17 +277,29 @@ export default function ApplicationAllotmentPaymentCard({
                 </Button>
               )}
 
-              <Button
-                type='button'
-                size='sm'
-                variant='outline'
-                disabled={sendingReminder}
-                onClick={sendReminder}
-                className='text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
-              >
-                {sendingReminder ? <Loader2Icon className='animate-spin size-3.5' /> : <BellRingIcon className='size-3.5' />}
-                Send WhatsApp &amp; Email Reminder
-              </Button>
+              {/* Hidden per explicit request (2026-10-28) — the underlying
+                  WhatsApp template this sends ("Pay Now Activation (Draw)")
+                  was worded as if the booth/stall is already allotted and
+                  only the fee remains, which is wrong for an application
+                  still awaiting payment before allotment is final. Needs the
+                  AiSensy template content itself reviewed/corrected before
+                  this button comes back — that lives in AiSensy's own
+                  dashboard, not this codebase. sendReminder/sendingReminder
+                  are left in place, unused, so re-enabling later is a
+                  one-line change once the template is fixed. */}
+              {false && (
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  disabled={sendingReminder}
+                  onClick={sendReminder}
+                  className='text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
+                >
+                  {sendingReminder ? <Loader2Icon className='animate-spin size-3.5' /> : <BellRingIcon className='size-3.5' />}
+                  Send WhatsApp &amp; Email Reminder
+                </Button>
+              )}
 
               {hasAllotment && (
                 <Button

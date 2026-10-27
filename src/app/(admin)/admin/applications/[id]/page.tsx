@@ -36,6 +36,8 @@ type ApplicationRow = {
   organisation_name: string
   representative_name: string
   father_name: string
+  police_station_name: string
+  police_station_address: string
   aadhaar_last4: string
   aadhaar_ciphertext: Buffer
   address: string
@@ -72,7 +74,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const [rows, fieldValues, checkedFieldRows, documents, auditEntries, permissions, approvalChecklist] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
-              a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
+              a.father_name, a.police_station_name, a.police_station_address,
+              a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
               a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
               c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
               so.label AS shop_option_label,
@@ -179,6 +182,20 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     isReviewStage && !!permissions?.has('application:approve') && !!approvalChecklist?.allDocumentsVerified
 
   const canReject = (isReviewStage || app.status === 'query_raised') && !!permissions?.has('application:reject')
+
+  const approveDisabledReason = canApprove
+    ? undefined
+    : !permissions?.has('application:approve')
+      ? 'You do not have permission to approve applications.'
+      : !isReviewStage
+        ? `Approve is only available while the application is under review (current status: ${statusCfg.label}).`
+        : 'Every required document must be verified before this application can be approved.'
+
+  const rejectDisabledReason = canReject
+    ? undefined
+    : !permissions?.has('application:reject')
+      ? 'You do not have permission to reject applications.'
+      : `Reject is only available while the application is under review or has a query raised (current status: ${statusCfg.label}).`
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
   const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
@@ -241,7 +258,13 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           </p>
         )}
 
-        <ApplicationDecisionActions applicationId={id} canApprove={canApprove} canReject={canReject} />
+        <ApplicationDecisionActions
+          applicationId={id}
+          canApprove={canApprove}
+          canReject={canReject}
+          approveDisabledReason={approveDisabledReason}
+          rejectDisabledReason={rejectDisabledReason}
+        />
       </div>
 
       <Tabs defaultValue='personal'>
@@ -276,6 +299,22 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   value={app.father_name}
                   canCheck={canVerifyDocuments}
                   initiallyChecked={checkedFieldKeys.has('father_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='police_station_name'
+                  label='Police Station Name'
+                  value={app.police_station_name}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('police_station_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='police_station_address'
+                  label='Police Station Address'
+                  value={app.police_station_address}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('police_station_address')}
                 />
                 {app.organisation_name && (
                   <ApplicationFieldRow

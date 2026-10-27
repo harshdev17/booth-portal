@@ -66,7 +66,7 @@ const DashboardPage = async () => {
          COUNT(*) AS total_stalls,
          SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
          SUM(CASE WHEN status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls,
-         SUM(CASE WHEN status = 'reserved' THEN 1 ELSE 0 END) AS reserved_stalls
+         SUM(CASE WHEN status IN ('reserved', 'reserved_for_direct_allotment') THEN 1 ELSE 0 END) AS reserved_stalls
        FROM shop_units`
     ),
     query<Array<{ category_name: string; selection_method: string; total_stalls: number; available_stalls: number; allotted_stalls: number }>>(

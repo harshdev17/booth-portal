@@ -7,7 +7,9 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
 
-const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled', 'rejected'] as const
+// 'reserved' (payment-pending) is deliberately excluded — see the matching
+// comment in api/admin/inventory/[id]/route.ts.
+const EDITABLE_STATUSES = ['available', 'reserved_for_direct_allotment', 'cancelled', 'rejected'] as const
 
 const bulkStatusSchema = z.object({
   ids: z.array(z.string()).min(1).max(500),

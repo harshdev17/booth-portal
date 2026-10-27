@@ -97,11 +97,12 @@ export async function createDraftApplication(
         `INSERT INTO applications (
            application_number, category_id, shop_option_id,
            email, organisation_name, representative_name, father_name,
+           police_station_name, police_station_address,
            aadhaar_ciphertext, aadhaar_last4, aadhaar_hash,
            address, state, district, pin_code, mobile_number, alternate_mobile,
            work_purpose, achievement_experience, remarks,
            status, access_token_hash, ip_address
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`,
         [
           candidateNumber,
           validated.category.id,
@@ -110,6 +111,8 @@ export async function createDraftApplication(
           deriveOrganisationName(input.categoryFields),
           input.common.representativeName,
           input.common.fatherName,
+          input.common.policeStationName,
+          input.common.policeStationAddress,
           aadhaarCiphertext,
           last4,
           aadhaarHash,
@@ -210,6 +213,7 @@ export async function updateDraftApplication(
       `UPDATE applications SET
          category_id = ?, shop_option_id = ?,
          email = ?, organisation_name = ?, representative_name = ?, father_name = ?,
+         police_station_name = ?, police_station_address = ?,
          aadhaar_ciphertext = ?, aadhaar_last4 = ?, aadhaar_hash = ?,
          address = ?, state = ?, district = ?, pin_code = ?, mobile_number = ?, alternate_mobile = ?,
          work_purpose = ?, achievement_experience = ?, remarks = ?
@@ -221,6 +225,8 @@ export async function updateDraftApplication(
         deriveOrganisationName(input.categoryFields),
         input.common.representativeName,
         input.common.fatherName,
+        input.common.policeStationName,
+        input.common.policeStationAddress,
         aadhaarCiphertext,
         last4,
         aadhaarHash,

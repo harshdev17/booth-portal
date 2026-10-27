@@ -66,7 +66,8 @@ export async function POST(request: Request) {
     const allotted = await withTransaction(async tx => {
       const units = await tx<Array<{ id: number; stall_number: string }>>(
         `SELECT su.id, su.stall_number FROM shop_units su JOIN categories c ON c.id = su.category_id
-         WHERE su.id = ? AND su.category_id = ? AND su.status = 'available' AND c.is_direct_allotment = 1 FOR UPDATE`,
+         WHERE su.id = ? AND su.category_id = ? AND su.status IN ('available', 'reserved_for_direct_allotment')
+           AND c.is_direct_allotment = 1 FOR UPDATE`,
         [shopUnitId, categoryId]
       )
       const unit = units[0]

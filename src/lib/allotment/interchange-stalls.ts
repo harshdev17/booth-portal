@@ -16,7 +16,7 @@ export type InterchangeStallsParams = {
 type UnitRow = {
   id: number
   stall_number: string
-  status: 'available' | 'reserved' | 'allotted' | 'cancelled'
+  status: 'available' | 'reserved' | 'reserved_for_direct_allotment' | 'allotted' | 'cancelled'
   allotted_to_application_id: number | null
   category_id: number
 }
@@ -126,12 +126,15 @@ export async function interchangeStalls(params: InterchangeStallsParams): Promis
     const firstApp = await loadApp(first.allotted_to_application_id)
     const secondApp = await loadApp(second.allotted_to_application_id)
 
-    // A stall keeps 'reserved' if it was already reserved independent of
-    // having an application (e.g. awaiting an allotment-payment deadline on
-    // the SAME application that is about to move with it); otherwise it
-    // becomes 'allotted' when it gains a link, 'available' when it loses one.
+    // A stall keeps 'reserved'/'reserved_for_direct_allotment' if it was
+    // already in one of those holds independent of having an application
+    // (e.g. awaiting an allotment-payment deadline on the SAME application
+    // that is about to move with it); otherwise it becomes 'allotted' when
+    // it gains a link, 'available' when it loses one.
     const nextStatus = (unit: UnitRow, incomingAppId: number | null): UnitRow['status'] => {
-      if (incomingAppId) return unit.status === 'reserved' ? 'reserved' : 'allotted'
+      if (incomingAppId) {
+        return unit.status === 'reserved' || unit.status === 'reserved_for_direct_allotment' ? unit.status : 'allotted'
+      }
 
       return 'available'
     }

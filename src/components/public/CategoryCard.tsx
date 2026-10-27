@@ -143,23 +143,21 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
 
   return (
     <div className='group relative flex h-full flex-col rounded-2xl border border-[#ebe4db] bg-white/95 p-6 shadow-xs transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--kdb-primary)]/40 hover:shadow-xl backdrop-blur-xs'>
-      {/* Top row: icon with a corner serial-number badge — the 2nd/3rd
-          cards show "2(A)"/"2(B)" (shared slot), every later card numbered
-          one lower than its raw displayIndex to account for that. */}
-      <div className='relative mb-4 inline-flex w-fit'>
+      {/* Icon */}
+      <div className='mb-4 inline-flex w-fit'>
         <div
           className={`flex size-14 shrink-0 items-center justify-center rounded-full text-white shadow-xs ring-4 ring-white transition duration-300 group-hover:scale-105 ${color}`}
         >
           <Icon className='size-7' strokeWidth={2} aria-hidden='true' />
         </div>
-        <span className='absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--kdb-primary)] px-1 text-[10px] font-black leading-none text-white shadow-xs'>
-          {getCardBadgeLabel(category.displayIndex)}
-        </span>
       </div>
 
-      {/* Title */}
-      <h3 className='mb-2 text-xl font-black leading-snug text-[#072448] transition-colors group-hover:text-[var(--kdb-primary)]'>
-        {title}
+      {/* Title — the 2nd/3rd cards show "2(A)"/"2(B)" (shared slot) next to
+          the name, every later card numbered one lower than its raw
+          displayIndex to account for that. */}
+      <h3 className='mb-2 flex items-baseline gap-1.5 text-xl font-black leading-snug text-[#072448] transition-colors group-hover:text-[var(--kdb-primary)]'>
+        <span className='shrink-0 text-base font-black text-[#072448]'>{getCardBadgeLabel(category.displayIndex)}.</span>
+        <span>{title}</span>
       </h3>
 
       {/* Available shops count — shown only when the category actually has available

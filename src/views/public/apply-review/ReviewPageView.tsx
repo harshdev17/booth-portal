@@ -386,6 +386,14 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
           >
             <ReviewRow label={lang === 'hi' ? 'पूरा नाम' : 'Full Name'} value={data.common.representativeName} />
             <ReviewRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={data.common.fatherName} />
+            <ReviewRow
+              label={lang === 'hi' ? 'थाने का नाम' : 'Police Station Name'}
+              value={data.common.policeStationName}
+            />
+            <ReviewRow
+              label={lang === 'hi' ? 'थाने का पता' : 'Police Station Address'}
+              value={data.common.policeStationAddress}
+            />
             <ReviewRow label={lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'} value={data.common.mobileNumber} />
             <ReviewRow label={lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile'} value={data.common.alternateMobile} />
             <ReviewRow label={lang === 'hi' ? 'ईमेल पता' : 'Email'} value={data.common.email} />

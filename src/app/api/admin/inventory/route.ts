@@ -131,6 +131,7 @@ export async function POST(request: Request) {
     let categoryId = categoryRows[0]?.id
     let categoryAllotmentPaise = categoryRows[0]?.allotment_amount_paise ? Number(categoryRows[0].allotment_amount_paise) : 0
     let categoryPaymentEnabled = Boolean(categoryRows[0]?.allotment_payment_enabled)
+    const isNewCategory = !categoryId
 
     if (!categoryId) {
       // Create new category on the fly
@@ -143,18 +144,26 @@ export async function POST(request: Request) {
       categoryAllotmentPaise = newCategoryFeePaise
       categoryPaymentEnabled = newCategoryFeePaise > 0
 
+      // status was previously passed as 'active'/'closed' — NEITHER is a
+      // valid categories.status enum value (it's 'draft' | 'open' | 'closed'
+      // | 'archived'), which MySQL was silently storing as an empty string
+      // instead of raising an error, confirmed live (a category created
+      // here had status = '' in the DB). A category created on the fly from
+      // this admin-only dialog should never be public/open regardless of
+      // the Direct Allotment toggle — 'draft' keeps it correctly hidden from
+      // the home page and un-appliable-to, same as the bulk-import "create
+      // on the fly" path (api/admin/inventory/import/route.ts).
       const newCatResult = await query<{ insertId: number }>(
         `INSERT INTO categories (
            event_id, slug, name, selection_method, status, fee_paise,
            allotment_amount_paise, allotment_payment_enabled, allotment_payment_deadline_at,
            is_direct_allotment, display_order
-         ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, DATE_ADD(NOW(), INTERVAL 3 DAY), ?, 9999)`,
+         ) VALUES (?, ?, ?, ?, 'draft', 0, ?, ?, DATE_ADD(NOW(), INTERVAL 3 DAY), ?, 9999)`,
         [
           eventId,
           slug,
           categoryName,
           isDirectAllotment ? 'manual' : 'lottery',
-          isDirectAllotment ? 'closed' : 'active',
           categoryAllotmentPaise,
           categoryPaymentEnabled ? 1 : 0,
           isDirectAllotment ? 1 : 0
@@ -355,10 +364,18 @@ export async function POST(request: Request) {
       }, { status: 201 })
     }
 
+    // A stall created under a category that was just auto-created here
+    // (non-public/draft, not one of the real homepage categories) is never
+    // "Available" — that category was never set up with the fees/
+    // guidelines/schedule a public applicant flow needs, so its stalls are
+    // for direct allotment only by definition (same rule as the bulk-import
+    // "create on the fly" path, api/admin/inventory/import/route.ts).
+    const newStatus = isNewCategory ? 'reserved_for_direct_allotment' : 'available'
+
     const result = await query<{ insertId: number }>(
       `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status)
-       VALUES (?, ?, ?, ?, ?, 'available')`,
-      [categoryId, stallNumber, shopType, direction, categoryAllotmentPaise || null]
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [categoryId, stallNumber, shopType, direction, categoryAllotmentPaise || null, newStatus]
     )
 
     await logAudit({
@@ -368,7 +385,7 @@ export async function POST(request: Request) {
       module: 'inventory',
       entityType: 'shop_unit',
       entityId: String(result.insertId),
-      newValue: { stallNumber, shopType, categoryName, direction, status: 'available' }
+      newValue: { stallNumber, shopType, categoryName, direction, status: newStatus }
     })
 
     return NextResponse.json({
@@ -378,7 +395,7 @@ export async function POST(request: Request) {
       shopType,
       direction,
       emdAmountPaise: categoryAllotmentPaise || null,
-      status: 'available',
+      status: newStatus,
       applicationNumber: null,
       isDirectAllotment: false,
       createdAt: new Date().toISOString()

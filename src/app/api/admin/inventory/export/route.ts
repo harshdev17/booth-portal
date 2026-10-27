@@ -14,7 +14,7 @@ export async function GET() {
     const session = await requirePermission('inventory:view')
 
     const rows = await query<ShopUnitExportRow[]>(
-      `SELECT su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise
+      `SELECT su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise, su.status
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        ORDER BY su.stall_number ASC`

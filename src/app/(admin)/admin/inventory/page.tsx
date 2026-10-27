@@ -27,9 +27,10 @@ type ShopUnitRow = {
   stall_number: string
   shop_type: 'single' | 'double'
   category_name: string
+  category_status: string
   direction: string | null
   emd_amount_paise: number | null
-  status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
+  status: 'available' | 'reserved' | 'reserved_for_direct_allotment' | 'allotted' | 'cancelled' | 'rejected'
   application_number: string | null
   application_id: number | null
   is_direct_allotment: number | boolean
@@ -58,7 +59,8 @@ type InventoryLogRow = {
 
 const STATUS_CONFIG: Record<ShopUnitRow['status'], { label: string; color: string }> = {
   available: { label: 'Available', color: 'bg-emerald-100 text-emerald-800' },
-  reserved: { label: 'Reserved', color: 'bg-amber-100 text-amber-800' },
+  reserved: { label: 'Reserved for Payment', color: 'bg-amber-100 text-amber-800' },
+  reserved_for_direct_allotment: { label: 'Reserved for Direct Allotment', color: 'bg-indigo-100 text-indigo-800' },
   allotted: { label: 'Allotted', color: 'bg-purple-100 text-purple-800' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
   rejected: { label: 'Rejected', color: 'bg-rose-100 text-rose-800' }
@@ -101,7 +103,7 @@ const InventoryAdminPage = async () => {
 
   const [rows, categories, logs] = await Promise.all([
     query<ShopUnitRow[]>(
-      `SELECT su.id, su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise,
+      `SELECT su.id, su.stall_number, su.shop_type, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
               su.status,
               COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
               COALESCE(a.id, da.application_id) AS application_id,
@@ -184,22 +186,37 @@ const InventoryAdminPage = async () => {
     byCategory.set(cat.name, 0)
   }
 
+  // direction is free text entered per-stall (no fixed list), so the same
+  // physical direction can be typed with different casing/whitespace across
+  // rows (e.g. "North" vs "north "). Group case/whitespace-insensitively and
+  // keep the first-seen casing as the display label, so the breakdown and
+  // filter dropdown each show one entry per direction instead of near-duplicates.
+  const directionDisplay = new Map<string, string>()
+
   for (const row of rows) {
     byCategory.set(row.category_name, (byCategory.get(row.category_name) ?? 0) + 1)
 
-    const directionKey = row.direction ?? 'Not Specified'
+    const rawDirection = row.direction?.trim() || null
+    const directionKey = rawDirection ? rawDirection.toLowerCase() : 'not specified'
+
+    if (!directionDisplay.has(directionKey)) {
+      directionDisplay.set(directionKey, rawDirection ?? 'Not Specified')
+    }
 
     byDirection.set(directionKey, (byDirection.get(directionKey) ?? 0) + 1)
   }
 
   const categoryBreakdown = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])
-  const directionBreakdown = Array.from(byDirection.entries()).sort((a, b) => b[1] - a[1])
+  const directionBreakdown = Array.from(byDirection.entries())
+    .map(([key, count]): [string, number] => [directionDisplay.get(key) ?? key, count])
+    .sort((a, b) => b[1] - a[1])
 
   const shopUnitRows: ShopUnitRowData[] = rows.map(row => ({
     id: encodeId(row.id),
     stallNumber: row.stall_number,
     shopType: row.shop_type,
     categoryName: row.category_name,
+    categoryIsPublic: row.category_status === 'open',
     direction: row.direction,
     emdAmountPaise: row.emd_amount_paise,
     status: row.status,

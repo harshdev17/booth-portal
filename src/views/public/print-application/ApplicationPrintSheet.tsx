@@ -13,6 +13,8 @@ export type PrintResult = {
   organisationName: string
   representativeName: string
   fatherName: string
+  policeStationName: string
+  policeStationAddress: string
   aadhaarNumber: string
   email: string
   mobileNumber: string
@@ -103,6 +105,14 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       )}
       <SummaryRow label={lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name'} value={result.representativeName} />
       <SummaryRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={result.fatherName} />
+      <SummaryRow
+        label={lang === 'hi' ? 'थाने का नाम' : 'Police Station Name'}
+        value={result.policeStationName}
+      />
+      <SummaryRow
+        label={lang === 'hi' ? 'थाने का पता' : 'Police Station Address'}
+        value={result.policeStationAddress}
+      />
       <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarNumber} />
       <SummaryRow label={lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'} value={result.mobileNumber} />
       {result.alternateMobile && (

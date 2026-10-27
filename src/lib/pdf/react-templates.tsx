@@ -143,6 +143,8 @@ export type ApplicationPdfData = {
   organisationName: string
   representativeName: string
   fatherName: string
+  policeStationName: string
+  policeStationAddress: string
   aadhaarNumber: string
   email: string
   mobileNumber: string
@@ -191,6 +193,8 @@ export async function renderApplicationPdf(data: ApplicationPdfData): Promise<Bu
           {data.organisationName && <Field label='Organisation / Firm Name' value={data.organisationName} />}
           <Field label='Applicant Name' value={data.representativeName} />
           <Field label="Father's Name" value={data.fatherName} />
+          <Field label='Police Station Name' value={data.policeStationName} />
+          <Field label='Police Station Address' value={data.policeStationAddress} full />
           <Field label='Aadhaar Number' value={data.aadhaarNumber} />
           <Field label='WhatsApp Number' value={data.mobileNumber} />
           {data.alternateMobile && <Field label='Alternate Mobile' value={data.alternateMobile} />}

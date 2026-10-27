@@ -325,6 +325,8 @@ const ApplicationFormOrchestrator = ({
             email: 'pending@pending.local',
             representativeName: 'Pending',
             fatherName: 'Pending',
+            policeStationName: 'Pending',
+            policeStationAddress: 'Pending - not yet filled in',
             aadhaarNumber: '222222222227', // placeholder only — checksum-valid so the silent draft passes validation
             address: 'Pending - not yet filled in',
             state: 'Pending',
@@ -414,6 +416,8 @@ const ApplicationFormOrchestrator = ({
           email: body.common.email,
           representativeName: body.common.representativeName,
           fatherName: body.common.fatherName,
+          policeStationName: body.common.policeStationName,
+          policeStationAddress: body.common.policeStationAddress,
           aadhaarNumber: body.common.aadhaarNumber,
           address: body.common.address,
           state: body.common.state,

@@ -10,6 +10,8 @@ export type ReviewData = {
     organisationName: string
     representativeName: string
     fatherName: string
+    policeStationName: string
+    policeStationAddress: string
     aadhaarNumber: string
     address: string
     state: string

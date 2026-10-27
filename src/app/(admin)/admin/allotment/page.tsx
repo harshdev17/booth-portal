@@ -12,7 +12,7 @@ const ShopAllotmentPage = async () => {
   await requirePermission('allotment:perform')
   const [categories, stalls, existing] = await Promise.all([
     query<Array<{ id: number; name: string }>>(`SELECT id, name FROM categories WHERE is_direct_allotment = 1 AND status != 'archived' ORDER BY name`),
-    query<Array<{ id: number; category_id: number; stall_number: string; shop_type: string; direction: string | null }>>(`SELECT id, category_id, stall_number, shop_type, direction FROM shop_units WHERE status = 'available' ORDER BY stall_number`),
+    query<Array<{ id: number; category_id: number; stall_number: string; shop_type: string; direction: string | null }>>(`SELECT id, category_id, stall_number, shop_type, direction FROM shop_units WHERE status IN ('available', 'reserved_for_direct_allotment') ORDER BY stall_number`),
     query<Array<{
       id: number
       application_id: number | null

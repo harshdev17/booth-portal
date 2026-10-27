@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
       const unit = units[0]
       if (!unit) throw new Error('Booth/Stall unit not found.')
-      if (unit.status !== 'available') {
+      if (unit.status !== 'available' && unit.status !== 'reserved_for_direct_allotment') {
         throw new Error(`Stall ${unit.stall_number} is currently "${unit.status}" and cannot be allotted. Cancel any existing allotment first.`)
       }
 

@@ -6,7 +6,11 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
 
-const EDITABLE_STATUSES = ['available', 'reserved', 'cancelled', 'rejected'] as const
+// 'reserved' (payment-pending) is deliberately excluded — it must only ever
+// be set by a real payment flow (direct-allot route, draw-service), never
+// picked by hand with no application behind it. See InventoryTable.tsx's
+// EDITABLE_EDIT_STATUSES comment for the bug this was fixed alongside.
+const EDITABLE_STATUSES = ['available', 'reserved_for_direct_allotment', 'cancelled', 'rejected'] as const
 
 type EditableStatus = (typeof EDITABLE_STATUSES)[number]
 
@@ -77,7 +81,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (body.status !== undefined && status === null) {
-      return NextResponse.json({ error: 'Status must be Available, Reserved, or Cancelled.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Status must be Available, Reserved for Direct Allotment, Cancelled, or Rejected.' },
+        { status: 400 }
+      )
     }
 
     const rows = await query<
@@ -112,8 +119,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       )
     }
 
-    const categoryRows = await query<Array<{ id: number }>>(
-      `SELECT id FROM categories
+    const categoryRows = await query<Array<{ id: number; status: string }>>(
+      `SELECT id, status FROM categories
        WHERE status != 'archived' AND (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(slug)) = LOWER(TRIM(?)))
        LIMIT 1`,
       [categoryName, categoryName]
@@ -123,6 +130,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (!categoryId) {
       return NextResponse.json({ error: `Unknown category: "${categoryName}".` }, { status: 400 })
+    }
+
+    // A non-public (draft) category's stalls are for Direct Allotment only
+    // by definition — never trust the client to have hidden "Available" in
+    // its own dropdown (CLAUDE.md §15); re-check here independently.
+    if (status === 'available' && categoryRows[0].status !== 'open') {
+      return NextResponse.json(
+        { error: 'This category is not public — its stalls cannot be set to Available. Use Reserved for Direct Allotment instead.' },
+        { status: 400 }
+      )
     }
 
     const duplicateRows = await query<Array<{ id: number }>>(

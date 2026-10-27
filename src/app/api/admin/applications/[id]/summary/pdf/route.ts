@@ -19,6 +19,8 @@ type ApplicationRow = {
   organisation_name: string
   representative_name: string
   father_name: string
+  police_station_name: string
+  police_station_address: string
   aadhaar_ciphertext: Buffer
   address: string
   state: string
@@ -60,7 +62,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const rows = await query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.mobile_number, a.alternate_mobile, a.email,
-              a.organisation_name, a.representative_name, a.father_name, a.aadhaar_ciphertext,
+              a.organisation_name, a.representative_name, a.father_name,
+              a.police_station_name, a.police_station_address, a.aadhaar_ciphertext,
               a.address, a.state, a.district, a.pin_code, a.work_purpose, a.achievement_experience,
               a.remarks, a.submitted_at, a.created_at,
               c.name AS category_name, c.name_hi AS category_name_hi, c.fee_paise,
@@ -114,6 +117,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           organisationName: application.organisation_name,
           representativeName: application.representative_name,
           fatherName: application.father_name,
+          policeStationName: application.police_station_name,
+          policeStationAddress: application.police_station_address,
           aadhaarNumber,
           email: application.email,
           mobileNumber,
@@ -145,6 +150,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       organisationName: application.organisation_name,
       representativeName: application.representative_name,
       fatherName: application.father_name,
+      policeStationName: application.police_station_name,
+      policeStationAddress: application.police_station_address,
       aadhaarNumber,
       email: application.email,
       mobileNumber,

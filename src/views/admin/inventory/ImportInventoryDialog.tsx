@@ -21,7 +21,13 @@ import {
 type RowError = { rowNumber: number; message: string }
 
 type ValidateResponse = { errors: RowError[]; rowCount: number }
-type ImportResponse = { errors: RowError[]; rowCount: number; inserted?: number; updated?: number; skippedAllotted?: number }
+type ImportResponse = {
+  errors: RowError[]
+  rowCount: number
+  inserted?: number
+  updated?: number
+  skippedAllotted?: number
+}
 
 type Step = 'select' | 'validated' | 'importing' | 'done'
 
@@ -175,14 +181,15 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               className='block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-semibold'
             />
             <p className='mt-2 text-xs text-muted-foreground'>
-              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, Stall Amount
-              (optional)
+              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, Status
+              (optional — Available or Reserved for Direct Allotment, defaults to Available). Stall Amount is set afterward in
+              the table, not via import.
             </p>
           </div>
 
           <div className='rounded-md border bg-muted/30 p-3'>
             <p className='mb-1.5 text-xs font-bold text-slate-700'>
-              The Category column must match one of these exactly (case-insensitive):
+              If the Category column matches one of these (case-insensitive), it's used directly:
             </p>
             <ul className='flex flex-wrap gap-1.5'>
               {validCategoryNames.map(name => (
@@ -191,6 +198,11 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
                 </li>
               ))}
             </ul>
+            <p className='mt-2 text-xs text-muted-foreground'>
+              Any other name creates a new, non-public category automatically — it won't appear on the home page or be
+              applicable to, and its stalls are imported as "Reserved for Direct Allotment" regardless of the Status
+              column.
+            </p>
           </div>
 
           {serverError && (

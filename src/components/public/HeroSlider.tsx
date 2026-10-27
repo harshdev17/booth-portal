@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
-import { formatDate } from '@/lib/format-date'
+import { formatDate, formatTime } from '@/lib/format-date'
 
 const SLIDE_IMAGES = ['/images/public/hero-slider/1.png', '/images/public/hero-slider/2.png', '/images/public/hero-slider/3.png']
 const AUTOPLAY_MS = 6000
@@ -74,10 +74,10 @@ const HeroSlider = ({
         {/* Content overlay — identical on every slide */}
         <div className='relative z-10 mx-auto flex min-h-[460px] sm:min-h-[520px] lg:min-h-[600px] max-w-7xl items-center px-6 py-16 sm:px-10 lg:px-12'>
           <div className='max-w-2xl text-white'>
-            <div className='mb-4 inline-flex items-center gap-2 rounded-full bg-[#d8891d] px-4 py-1.5 text-xs font-extrabold tracking-wide text-white uppercase shadow-sm'>
+            <div className='mb-4 inline-flex items-center gap-2 rounded-full bg-[#d8891d] px-4 py-1.5 text-xs font-extrabold tracking-wide text-white shadow-sm'>
               {lang === 'hi'
-                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू'
-                : 'Online Applications Open for International Gita Jayanti Mahotsav 2026 Booth/Stall'}
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 स्टॉल/बूथ हेतु ऑनलाइन आवेदन आमंत्रित किए जाते हैं'
+                : 'Online Applications are hereby invited for International Gita Jayanti Mahotsav 2026 Booth/Stall'}
             </div>
 
             <h1 className='mb-4 text-3xl leading-tight font-black sm:text-4xl lg:text-5xl'>
@@ -95,8 +95,8 @@ const HeroSlider = ({
             {applicationOpensAt && applicationClosesAt && (
               <p className='mb-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
                 {lang === 'hi'
-                  ? `ऑनलाइन आवेदन की अवधि: ${formatDate(applicationOpensAt, 'hi')} से ${formatDate(applicationClosesAt, 'hi')} तक (रात 11:59 बजे तक)।`
-                  : `Application Period: ${formatDate(applicationOpensAt, 'en')} to ${formatDate(applicationClosesAt, 'en')} (until 11:59 PM).`}
+                  ? `ऑनलाइन आवेदन की अवधि: ${formatDate(applicationOpensAt, 'hi')} से ${formatDate(applicationClosesAt, 'hi')} तक (${formatTime(applicationClosesAt)} तक)।`
+                  : `Application Period: ${formatDate(applicationOpensAt, 'en')} to ${formatDate(applicationClosesAt, 'en')} (until ${formatTime(applicationClosesAt)}).`}
               </p>
             )}
 

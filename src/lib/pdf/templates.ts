@@ -166,6 +166,8 @@ export type ApplicationPdfData = {
   organisationName: string
   representativeName: string
   fatherName: string
+  policeStationName: string
+  policeStationAddress: string
   aadhaarNumber: string
   email: string
   mobileNumber: string
@@ -207,6 +209,8 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
     data.organisationName ? field(lang === 'hi' ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
     field(lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name', data.representativeName),
     field(lang === 'hi' ? 'पिता का नाम' : "Father's Name", data.fatherName),
+    field(lang === 'hi' ? 'थाने का नाम' : 'Police Station Name', data.policeStationName),
+    field(lang === 'hi' ? 'थाने का पता' : 'Police Station Address', data.policeStationAddress, true),
     field(lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number', data.aadhaarNumber),
     field(lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number', data.mobileNumber),
     data.alternateMobile ? field(lang === 'hi' ? 'वैकल्पिक मोबाइल' : 'Alternate Mobile', data.alternateMobile) : '',

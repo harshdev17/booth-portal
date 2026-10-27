@@ -173,6 +173,17 @@ const StatusLookup = () => {
   const [allotmentPaymentError, setAllotmentPaymentError] = useState<string | null>(null)
   const [allotmentPaymentSuccess, setAllotmentPaymentSuccess] = useState(false)
 
+  // Registration (application) fee payment state — for an application still
+  // sitting in 'payment_pending' (submitted but the initial fee was never
+  // paid, or a previous attempt failed), looked up here the same OTP way as
+  // an already-paid application. Reuses the same order/verify API as the
+  // apply-flow's own payment page (purpose defaults to 'registration'
+  // server-side), just driven inline here instead of redirecting, since this
+  // page already has the OTP-verified access token in `result.accessToken`.
+  const [isPayingRegistration, setIsPayingRegistration] = useState(false)
+  const [registrationPaymentError, setRegistrationPaymentError] = useState<string | null>(null)
+  const [registrationPaymentSuccess, setRegistrationPaymentSuccess] = useState(false)
+
   const [isDownloadingAllotmentLetter, setIsDownloadingAllotmentLetter] = useState(false)
   const [allotmentLetterError, setAllotmentLetterError] = useState<string | null>(null)
 
@@ -191,9 +202,6 @@ const StatusLookup = () => {
   // becomes available, silently leaving the field blank.
   useEffect(() => {
     const appNo = searchParams.get('appNo')
-
-    // eslint-disable-next-line no-console
-    console.warn('[KDB-DEBUG] prefill effect ran', { appNo, raw: searchParams.toString() })
 
     if (appNo) {
       form.setValue('applicationNumber', appNo, { shouldDirty: true, shouldTouch: true, shouldValidate: false })
@@ -452,6 +460,113 @@ const StatusLookup = () => {
     }
   }
 
+  // Registration (application) fee payment via Razorpay — mirrors
+  // handlePayAllotmentFee above, but omits `purpose` so the order route
+  // takes its default 'registration' branch instead of 'pay_now'.
+  const handlePayRegistrationFee = async () => {
+    if (!result || !result.applicationId) return
+
+    setIsPayingRegistration(true)
+    setRegistrationPaymentError(null)
+
+    try {
+      const loaded = await loadRazorpayCheckoutScript()
+      if (!loaded) {
+        setRegistrationPaymentError(
+          lang === 'hi'
+            ? 'पेमेंट गेटवे लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+            : 'Could not load payment gateway. Please check your internet connection.'
+        )
+        setIsPayingRegistration(false)
+        return
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
+      const orderRes = await fetch(`/api/applications/${result.applicationId}/payment/order`, {
+        method: 'POST',
+        headers
+      })
+
+      const orderData = await orderRes.json()
+
+      if (!orderRes.ok) {
+        setRegistrationPaymentError(
+          orderData.error ?? (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate payment.')
+        )
+        setIsPayingRegistration(false)
+        return
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const razorpay = new (window as any).Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amountPaise,
+        currency: orderData.currency || 'INR',
+        order_id: orderData.orderId,
+        name: 'Kurukshetra Development Board',
+        description:
+          lang === 'hi'
+            ? `आवेदन शुल्क — ${orderData.applicationNumber}`
+            : `Application Fee — ${orderData.applicationNumber}`,
+        theme: { color: '#0c2847' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            })
+
+            const verifyData = await verifyRes.json()
+
+            if (!verifyRes.ok) {
+              setRegistrationPaymentError(
+                verifyData.error ??
+                  (lang === 'hi'
+                    ? 'भुगतान सत्यापन विफल रहा। यदि राशि कट गई है तो सहायता से संपर्क करें।'
+                    : 'Payment verification failed. If amount was deducted, please contact support.')
+              )
+              setIsPayingRegistration(false)
+              return
+            }
+
+            setRegistrationPaymentSuccess(true)
+            setResult(prev => (prev ? { ...prev, status: 'under_review' } : null))
+            setIsPayingRegistration(false)
+          } catch {
+            setRegistrationPaymentError(
+              lang === 'hi'
+                ? 'सत्यापन के दौरान त्रुटि हुई। कृपया सहायता से संपर्क करें।'
+                : 'Error verifying payment. Please contact support.'
+            )
+            setIsPayingRegistration(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPayingRegistration(false)
+          }
+        }
+      })
+
+      razorpay.open()
+    } catch {
+      setRegistrationPaymentError(
+        lang === 'hi' ? 'भुगतान शुरू करने में समस्या आई।' : 'An error occurred while starting payment.'
+      )
+      setIsPayingRegistration(false)
+    }
+  }
+
   // Downloads the official allotment letter PDF directly — same data/HTML
   // template as the admin panel's download (src/lib/allotment/allotment-letter-pdf.ts),
   // so applicant and admin always see identical content, always in English.
@@ -672,6 +787,92 @@ const StatusLookup = () => {
                       ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आप नीचे दिए गए बटन से अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
                       : 'Your booth/stall has been successfully allotted. You can download your official Allotment Letter below.'}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {registrationPaymentSuccess && (
+              <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
+                <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+                <div className='text-sm'>
+                  <p className='font-bold text-emerald-900'>
+                    {lang === 'hi' ? 'आवेदन शुल्क भुगतान सफल!' : 'Application Fee Payment Successful!'}
+                  </p>
+                  <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
+                    {lang === 'hi'
+                      ? 'आपका आवेदन अब समीक्षा के लिए भेज दिया गया है।'
+                      : 'Your application has now been sent for review.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Registration Fee Payment Pending Alert Card */}
+            {effectiveStatus === 'payment_pending' && !registrationPaymentSuccess && (
+              <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
+                    <CreditCardIcon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-lg font-bold text-amber-950'>
+                        {lang === 'hi' ? 'आवेदन शुल्क भुगतान लंबित' : 'Application Fee Payment Pending'}
+                      </h2>
+                      <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
+                        {lang === 'hi' ? 'भुगतान लंबित' : 'Payment Pending'}
+                      </span>
+                    </div>
+
+                    <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
+                      {lang === 'hi'
+                        ? 'आपका आवेदन जमा हो चुका है, लेकिन आवेदन शुल्क का भुगतान अभी पूरा नहीं हुआ है। समीक्षा शुरू होने के लिए कृपया नीचे भुगतान पूरा करें।'
+                        : 'Your application has been submitted, but the application fee payment is not complete yet. Please complete the payment below so your application can be reviewed.'}
+                    </p>
+
+                    {result.feePaise !== null && (
+                      <div className='mt-4 rounded-lg bg-white/90 p-3.5 text-sm border border-amber-200/80 flex items-center justify-between shadow-2xs'>
+                        <span className='text-slate-500 font-medium text-xs'>
+                          {lang === 'hi' ? 'देय आवेदन शुल्क' : 'Application Fee Payable'}
+                        </span>
+                        <span className='text-base font-extrabold text-amber-950'>
+                          ₹{(Number(result.feePaise) / 100).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    )}
+
+                    {registrationPaymentError && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>{registrationPaymentError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
+                    <div className='mt-4'>
+                      <Button
+                        type='button'
+                        onClick={handlePayRegistrationFee}
+                        disabled={isPayingRegistration}
+                        className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
+                      >
+                        {isPayingRegistration ? (
+                          <>
+                            <Loader2Icon className='size-4 animate-spin mr-2' />
+                            {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCardIcon className='size-4 mr-2' />
+                            {lang === 'hi'
+                              ? `आवेदन शुल्क का भुगतान करें${result.feePaise !== null ? ` (₹${(Number(result.feePaise) / 100).toLocaleString('en-IN')})` : ''}`
+                              : `Pay Application Fee${result.feePaise !== null ? ` (₹${(Number(result.feePaise) / 100).toLocaleString('en-IN')})` : ''}`}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

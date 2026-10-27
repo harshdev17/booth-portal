@@ -33,6 +33,7 @@ type PoliceAllottedItem = {
   representative_name: string
   organisation_name: string
   father_name: string
+  police_station_name: string
   mobile_number: string
   state: string
   district: string
@@ -116,7 +117,7 @@ export default async function PoliceDashboardPage({
 
   const allottedApps = await query<PoliceAllottedItem[]>(
     `SELECT a.id, a.application_number, a.representative_name, a.organisation_name,
-            a.father_name, a.mobile_number, a.state, a.district, a.aadhaar_last4,
+            a.father_name, a.police_station_name, a.mobile_number, a.state, a.district, a.aadhaar_last4,
             a.status, a.submitted_at,
             c.name AS category_name, c.slug AS category_slug,
             su.stall_number, su.shop_type, su.direction,
@@ -258,6 +259,7 @@ export default async function PoliceDashboardPage({
                           <p className='text-xs text-slate-500 mt-0.5'>{item.organisation_name}</p>
                         )}
                         <p className='text-[11px] text-slate-400 mt-0.5'>S/O, D/O: {item.father_name}</p>
+                        <p className='text-[11px] text-slate-400 mt-0.5'>PS: {item.police_station_name}</p>
                       </td>
 
                       {/* Category */}

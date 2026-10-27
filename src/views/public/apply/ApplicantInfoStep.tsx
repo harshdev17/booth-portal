@@ -171,6 +171,54 @@ const ApplicantInfoStep = ({
       />
 
       <Controller
+        name='common.policeStationName'
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel htmlFor={field.name}>
+              {lang === 'hi' ? 'थाने का नाम *' : 'Police Station Name *'}
+            </FieldLabel>
+            <Input
+              {...field}
+              id={field.name}
+              autoComplete='off'
+              placeholder={lang === 'hi' ? 'थाने का नाम' : 'Name of the police station'}
+              aria-invalid={fieldState.invalid}
+            />
+            <FieldDescription>
+              {lang === 'hi'
+                ? 'आपके क्षेत्र के थाने का नाम'
+                : 'The police station under your area'}
+            </FieldDescription>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+
+      <Controller
+        name='common.policeStationAddress'
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel htmlFor={field.name}>
+              {lang === 'hi' ? 'थाने का पता *' : 'Police Station Address *'}
+            </FieldLabel>
+            <Input
+              {...field}
+              id={field.name}
+              autoComplete='off'
+              placeholder={lang === 'hi' ? 'थाने का पूरा पता' : 'Full address of the police station'}
+              aria-invalid={fieldState.invalid}
+            />
+            <FieldDescription>
+              {lang === 'hi' ? 'थाने का पूरा पता दर्ज करें' : 'Enter the full address of the police station'}
+            </FieldDescription>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+
+      <Controller
         name='common.mobileNumber'
         control={control}
         render={({ field, fieldState }) => (

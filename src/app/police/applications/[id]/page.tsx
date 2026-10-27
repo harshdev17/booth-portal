@@ -36,6 +36,8 @@ type PoliceAppDetailRow = {
   organisation_name: string
   representative_name: string
   father_name: string
+  police_station_name: string
+  police_station_address: string
   aadhaar_last4: string
   aadhaar_ciphertext: Buffer
   address: string
@@ -83,7 +85,8 @@ export default async function PoliceApplicationDetailPage({
   const [appRows, documents, fieldValues] = await Promise.all([
     query<PoliceAppDetailRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
-              a.father_name, a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code,
+              a.father_name, a.police_station_name, a.police_station_address,
+              a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code,
               a.mobile_number, a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks,
               a.submitted_at, a.created_at,
               c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
@@ -213,6 +216,17 @@ export default async function PoliceApplicationDetailPage({
               <div>
                 <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Father&apos;s Name</span>
                 <span className='font-semibold text-slate-800 text-sm'>{app.father_name}</span>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-2 gap-3 pb-3 border-b border-slate-100'>
+              <div>
+                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Name</span>
+                <span className='font-semibold text-slate-800 text-sm'>{app.police_station_name}</span>
+              </div>
+              <div>
+                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Address</span>
+                <span className='font-medium text-slate-800 text-sm'>{app.police_station_address}</span>
               </div>
             </div>
 

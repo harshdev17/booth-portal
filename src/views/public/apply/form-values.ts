@@ -76,6 +76,8 @@ export const APPLICATION_FORM_DEFAULT_VALUES: ApplicationFormValues = {
     email: '',
     representativeName: '',
     fatherName: '',
+    policeStationName: '',
+    policeStationAddress: '',
     aadhaarNumber: '',
     address: '',
     state: '',

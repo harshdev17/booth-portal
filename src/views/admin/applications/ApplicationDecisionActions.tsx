@@ -10,22 +10,31 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import ApproveApplicationDialog, { type DialogHandle } from '@/views/admin/applications/ApproveApplicationDialog'
 
 type Props = {
   applicationId: string
   canApprove: boolean
   canReject: boolean
+  /** Shown in a tooltip on the Approve button when canApprove is false. */
+  approveDisabledReason?: string
+  /** Shown in a tooltip on the Reject button when canReject is false. */
+  rejectDisabledReason?: string
   nowrap?: boolean
 }
 
 export const RejectButton = ({
   applicationId,
   hideTrigger,
+  disabled,
+  disabledReason,
   ref
 }: {
   applicationId: string
   hideTrigger?: boolean
+  disabled?: boolean
+  disabledReason?: string
   ref?: Ref<DialogHandle>
 }) => {
   const router = useRouter()
@@ -63,14 +72,31 @@ export const RejectButton = ({
     }
   }
 
+  const trigger = (
+    <Button
+      type='button'
+      size='sm'
+      variant='destructive'
+      className='whitespace-nowrap'
+      disabled={disabled}
+      onClick={() => setOpen(true)}
+    >
+      <XIcon />
+      Reject
+    </Button>
+  )
+
   return (
     <>
-      {!hideTrigger && (
-        <Button type='button' size='sm' variant='destructive' className='whitespace-nowrap' onClick={() => setOpen(true)}>
-          <XIcon />
-          Reject
-        </Button>
-      )}
+      {!hideTrigger &&
+        (disabled && disabledReason ? (
+          <Tooltip>
+            <TooltipTrigger render={<span tabIndex={0} className='inline-flex' />}>{trigger}</TooltipTrigger>
+            <TooltipContent>{disabledReason}</TooltipContent>
+          </Tooltip>
+        ) : (
+          trigger
+        ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -106,21 +132,24 @@ export const RejectButton = ({
 }
 
 /**
- * Decision actions shown only when the application is "Under Review" (or,
- * for Reject, also "Query Raised") — the only stages from which these
- * transitions are valid per .ai/APPLICATION_FLOW.md Section 3. Both server
- * routes independently re-verify status/permission/document-verification,
- * so this component being rendered is a UI convenience only, never the real
- * gate. Used both on the Application Detail page and inline in the
- * Applications list table's Actions column.
+ * Approve/Reject are always rendered; each is disabled (with a tooltip
+ * explaining why) when the application isn't in a valid stage for that
+ * transition per .ai/APPLICATION_FLOW.md Section 3. Both server routes
+ * independently re-verify status/permission/document-verification, so this
+ * component's disabled state is a UI convenience only, never the real gate.
  */
-const ApplicationDecisionActions = ({ applicationId, canApprove, canReject, nowrap }: Props) => {
-  if (!canApprove && !canReject) return null
-
+const ApplicationDecisionActions = ({
+  applicationId,
+  canApprove,
+  canReject,
+  approveDisabledReason,
+  rejectDisabledReason,
+  nowrap
+}: Props) => {
   return (
     <div className={`flex gap-2 ${nowrap ? 'flex-nowrap' : 'flex-wrap'}`}>
-      {canApprove && <ApproveApplicationDialog applicationId={applicationId} />}
-      {canReject && <RejectButton applicationId={applicationId} />}
+      <ApproveApplicationDialog applicationId={applicationId} disabled={!canApprove} disabledReason={approveDisabledReason} />
+      <RejectButton applicationId={applicationId} disabled={!canReject} disabledReason={rejectDisabledReason} />
     </div>
   )
 }

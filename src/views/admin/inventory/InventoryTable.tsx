@@ -62,9 +62,14 @@ export type ShopUnitRowData = {
   stallNumber: string
   shopType: 'single' | 'double'
   categoryName: string
+  // false for a category that was auto-created on the fly (status='draft',
+  // never shown on the home page / appliable-to) — used to hide "Available"
+  // from this row's Status dropdown, since such a category's stalls are for
+  // direct allotment only by definition (see the 2026-10-28 changelog entry).
+  categoryIsPublic?: boolean
   direction: string | null
   emdAmountPaise: number | null
-  status: 'available' | 'reserved' | 'allotted' | 'cancelled' | 'rejected'
+  status: 'available' | 'reserved' | 'reserved_for_direct_allotment' | 'allotted' | 'cancelled' | 'rejected'
   applicationNumber: string | null
   applicationId: number | null
   isDirectAllotment?: boolean
@@ -79,7 +84,8 @@ export type ShopUnitRowData = {
 
 const STATUS_CONFIG: Record<ShopUnitRowData['status'], { label: string; color: string }> = {
   available: { label: 'Available', color: 'bg-emerald-100 text-emerald-800' },
-  reserved: { label: 'Reserved', color: 'bg-amber-100 text-amber-800' },
+  reserved: { label: 'Reserved for Payment', color: 'bg-amber-100 text-amber-800' },
+  reserved_for_direct_allotment: { label: 'Reserved for Direct Allotment', color: 'bg-indigo-100 text-indigo-800' },
   allotted: { label: 'Allotted', color: 'bg-purple-100 text-purple-800' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
   rejected: { label: 'Rejected', color: 'bg-rose-100 text-rose-800' }
@@ -171,9 +177,16 @@ const EMPTY_ADD_FORM: AddStallFormState = {
 // 'allotted' is never admin-settable here, same reasoning as the DELETE
 // guard above: that transition belongs to the Allotment module. 'cancelled'
 // was dropped from this editable set per explicit request ("cancelled ki
-// need nahi hai, bas 2 hi rakho") — only Available/Reserved remain settable
-// from the UI; the enum value itself is untouched in the DB/schema.
-const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved', 'rejected']
+// need nahi hai, bas 2 hi rakho"). Plain 'reserved' is ALSO excluded here
+// (2026-10-28) — it means "payment pending on a real application" and must
+// only ever be set by that actual payment flow (direct-allot route,
+// draw-service), never picked by hand with no application behind it, which
+// is exactly the bug this exclusion fixes: an admin had manually set a
+// stall to 'reserved' via this dropdown with no application/direct_allotment
+// row at all, leaving it stuck with no way to cancel (no allottee to
+// cancel) and no way back to Available. 'reserved_for_direct_allotment' is
+// the correct manual hold status for that use case instead.
+const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', 'reserved_for_direct_allotment', 'rejected']
 
 /**
  * Owns the shop-unit row list client-side so delete (single or bulk)
@@ -315,6 +328,13 @@ const InventoryTable = ({
   const [cancelSendNotification, setCancelSendNotification] = useState(true)
   const [isCancellingAllotment, setIsCancellingAllotment] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+
+  // Shown right after a cancel succeeds, offering to immediately re-allocate
+  // the now-freed stall — per explicit request, instead of the admin having
+  // to separately find the row again and open "Re-allocate" from its Actions
+  // menu. Declining (or closing) leaves the stall simply Available, same as
+  // before this prompt existed.
+  const [justCancelledRow, setJustCancelledRow] = useState<ShopUnitRowData | null>(null)
 
   // Interchange state
   const [interchangeDialogOpen, setInterchangeDialogOpen] = useState(false)
@@ -465,15 +485,36 @@ const InventoryTable = ({
         return
       }
 
+      let releasedRow: ShopUnitRowData | null = null
+
       setRows(current =>
-        current.map(r =>
-          r.id === cancellingAllotmentRow.id
-            ? { ...r, status: 'available', applicationNumber: null, isDirectAllotment: false }
-            : r
-        )
+        current.map(r => {
+          if (r.id !== cancellingAllotmentRow.id) return r
+
+          // isCancelled must be set here too, not just status — the
+          // "Re-allocate" action is gated on isCancelled (see canReallocate
+          // below), and status alone becomes 'available' (the stall itself
+          // isn't withdrawn, just freed), not 'cancelled'. Missing this
+          // previously left the row with neither "Cancel" nor "Re-allocate"
+          // showing until the admin refreshed the page.
+          releasedRow = {
+            ...r,
+            status: 'available',
+            applicationNumber: null,
+            applicationId: null,
+            isDirectAllotment: false,
+            isCancelled: true,
+            paymentStatus: null,
+            paymentAmountPaise: null,
+            isPaymentOverdue: false
+          }
+
+          return releasedRow
+        })
       )
 
       setCancellingAllotmentRow(null)
+      if (releasedRow) setJustCancelledRow(releasedRow)
     } catch {
       setCancelError('Network error while cancelling allotment.')
     } finally {
@@ -596,7 +637,11 @@ const InventoryTable = ({
       if (categoryFilter !== ALL && row.categoryName !== categoryFilter) return false
       if (statusFilter !== ALL && row.status !== statusFilter) return false
       if (typeFilter !== ALL && row.shopType !== typeFilter) return false
-      if (directionFilter !== ALL && (row.direction ?? 'Not Specified') !== directionFilter) return false
+      if (
+        directionFilter !== ALL &&
+        (row.direction?.trim().toLowerCase() || 'not specified') !== directionFilter.trim().toLowerCase()
+      )
+        return false
 
       return true
     })
@@ -917,7 +962,9 @@ const InventoryTable = ({
       return
     }
 
-    const isDoingDirectAllotment = editForm.isDirectAllotment && editingRow.status === 'available'
+    const isDoingDirectAllotment =
+      editForm.isDirectAllotment &&
+      (editingRow.status === 'available' || editingRow.status === 'reserved_for_direct_allotment')
 
     if (isDoingDirectAllotment) {
       if (!editForm.allotteeName.trim()) {
@@ -1736,7 +1783,7 @@ const InventoryTable = ({
 
             <Select value={directionFilter} onValueChange={value => setDirectionFilter(value ?? ALL)}>
               <SelectTrigger size='sm' className='w-36'>
-                <SelectValue>{directionFilter === ALL ? 'All Directions' : directionFilter}</SelectValue>
+                <span className='truncate'>{directionFilter === ALL ? 'All Directions' : directionFilter}</span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All Directions</SelectItem>
@@ -1932,7 +1979,17 @@ const InventoryTable = ({
                           )
                           const hasApplication = Boolean(row.applicationId)
                           const canReallocate = row.isCancelled || row.status === 'cancelled'
-                          const canCancel = row.status === 'allotted' && !row.isCancelled
+
+                          // A stall "Reserved for Payment" with an active
+                          // direct allotment (payment still pending) must
+                          // also be cancellable — not just a fully
+                          // 'allotted' one — otherwise an admin can never
+                          // back out of a direct allotment before its
+                          // payment completes.
+                          const canCancel =
+                            !row.isCancelled &&
+                            row.status !== 'cancelled' &&
+                            (row.status === 'allotted' || (row.status === 'reserved' && Boolean(row.applicationId)))
                           const canRemind = Boolean(
                             row.applicationId &&
                               !row.isCancelled &&
@@ -2310,7 +2367,14 @@ const InventoryTable = ({
                     <SelectValue>{STATUS_CONFIG[editForm.status].label}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {EDITABLE_EDIT_STATUSES.map(status => (
+                    {/* "Available" is hidden for a non-public (auto-created,
+                        draft) category's stall — such a category's stalls
+                        are for Direct Allotment only by definition, since it
+                        was never set up with the fees/guidelines/schedule a
+                        public application needs. */}
+                    {EDITABLE_EDIT_STATUSES.filter(
+                      status => status !== 'available' || editingRow?.categoryIsPublic !== false
+                    ).map(status => (
                       <SelectItem key={status} value={status}>
                         {STATUS_CONFIG[status].label}
                       </SelectItem>
@@ -2320,8 +2384,12 @@ const InventoryTable = ({
               </div>
             )}
 
-            {/* Direct Allotment Section for Available Stalls */}
-            {editingRow?.status === 'available' && !editingRow?.isDirectAllotment && (
+            {/* Direct Allotment Section — shown for Available stalls, and for
+                stalls already marked "Reserved for Direct Allotment" (that
+                status exists specifically so this section stays reachable
+                for them, per explicit request). */}
+            {(editingRow?.status === 'available' || editingRow?.status === 'reserved_for_direct_allotment') &&
+              !editingRow?.isDirectAllotment && (
               <div className='rounded-lg border p-3.5 bg-slate-50/80 dark:bg-slate-900/40 space-y-3'>
                 <div className='flex items-center justify-between gap-3'>
                   <div className='space-y-0.5'>
@@ -2573,6 +2641,38 @@ const InventoryTable = ({
             >
               {isCancellingAllotment && <Loader2Icon className='mr-1.5 size-4 animate-spin' />}
               Confirm Cancel Allotment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post-cancel "re-allocate now?" prompt — offered immediately after a
+          cancel succeeds so the admin doesn't have to separately find the
+          row again and open Re-allocate from its Actions menu. */}
+      <Dialog open={justCancelledRow !== null} onOpenChange={open => !open && setJustCancelledRow(null)}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Allotment Cancelled</DialogTitle>
+            <DialogDescription>
+              Booth/Stall <span className='font-bold text-foreground'>{justCancelledRow?.stallNumber}</span> has been
+              released and is now Available. Allot it to someone else right now?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setJustCancelledRow(null)}>
+              Not Now
+            </Button>
+            <Button
+              type='button'
+              onClick={() => {
+                const row = justCancelledRow
+
+                setJustCancelledRow(null)
+                if (row) openDirectAllotRowDialog(row)
+              }}
+            >
+              <UserPlusIcon className='size-3.5' /> Re-allocate Now
             </Button>
           </DialogFooter>
         </DialogContent>

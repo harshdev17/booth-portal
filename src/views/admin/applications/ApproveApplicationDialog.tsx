@@ -9,6 +9,7 @@ import { AlertTriangleIcon, CheckCircle2Icon, CheckIcon, Loader2Icon } from 'luc
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type ChecklistField = { key: string; label: string; checked: boolean }
 
@@ -33,12 +34,16 @@ export type DialogHandle = { open: () => void }
 const ApproveApplicationDialog = ({
   applicationId,
   hideTrigger,
+  disabled,
+  disabledReason,
   ref
 }: {
   applicationId: string
 
   /** Row-action menus open the dialog through `ref` instead of rendering their own button. */
   hideTrigger?: boolean
+  disabled?: boolean
+  disabledReason?: string
   ref?: Ref<DialogHandle>
 }) => {
   const router = useRouter()
@@ -95,19 +100,30 @@ const ApproveApplicationDialog = ({
     }
   }
 
+  const trigger = (
+    <Button
+      type='button'
+      size='sm'
+      disabled={disabled}
+      onClick={openDialog}
+      className='whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white'
+    >
+      <CheckIcon />
+      Approve
+    </Button>
+  )
+
   return (
     <>
-      {!hideTrigger && (
-        <Button
-          type='button'
-          size='sm'
-          onClick={openDialog}
-          className='whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white'
-        >
-          <CheckIcon />
-          Approve
-        </Button>
-      )}
+      {!hideTrigger &&
+        (disabled && disabledReason ? (
+          <Tooltip>
+            <TooltipTrigger render={<span tabIndex={0} className='inline-flex' />}>{trigger}</TooltipTrigger>
+            <TooltipContent>{disabledReason}</TooltipContent>
+          </Tooltip>
+        ) : (
+          trigger
+        ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

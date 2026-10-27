@@ -71,3 +71,12 @@ export function formatDateTime(value: string | Date, lang: 'hi' | 'en'): string 
 
   return `${formatDate(value, lang)}, ${hour12}:${String(p.minute).padStart(2, '0')} ${suffix}`
 }
+
+/** "11:59 pm" — the time-of-day portion only, IST. */
+export function formatTime(value: string | Date): string {
+  const p = istParts(value)
+  const hour12 = p.hour % 12 === 0 ? 12 : p.hour % 12
+  const suffix = p.hour >= 12 ? 'pm' : 'am'
+
+  return `${hour12}:${String(p.minute).padStart(2, '0')} ${suffix}`
+}

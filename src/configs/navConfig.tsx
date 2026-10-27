@@ -96,6 +96,12 @@ export const navItems: NavItem[] = [
         permission: 'inventory:view'
       },
       {
+        icon: 'Map',
+        label: 'Booth/Stall Locations',
+        href: '/admin/settings/maps',
+        permission: 'config:manage'
+      },
+      {
         icon: 'Shuffle',
         label: 'Draw Process',
         href: '/admin/draw',
@@ -140,7 +146,6 @@ export const navItems: NavItem[] = [
           { label: 'Homepage Notices', href: '/admin/settings/notices' },
           { label: 'reCAPTCHA', href: '/admin/settings/recaptcha' },
           { label: 'Contact & Social', href: '/admin/settings/contact' },
-          { label: 'Stall/Booth Location Maps', href: '/admin/settings/maps' },
           { label: 'Coming Soon Mode', href: '/admin/settings/coming-soon' }
         ]
       }

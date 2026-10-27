@@ -15,8 +15,8 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
     hi: 'सभी Category में पहले दस्तावेजों का सत्यापन किया जाता है — केवल Verified एवं Eligible आवेदकों को ही Allotment Process (Direct Allotment, Draw, अथवा Brand Promotion Tender प्रक्रिया) में शामिल किया जाएगा।'
   },
   {
-    en: 'Wherever eligible applications exceed the available booths/stalls, a transparent Draw of Lots is used to decide the allotment — except Brand Promotion (handled by the Tender-selected agency) and Refreshment Food Booth/Stall (handled by draw).',
-    hi: 'जहां भी पात्र आवेदन उपलब्ध Booths/Stalls से अधिक होते हैं, वहां Transparent Draw of Lots के माध्यम से Allotment तय किया जाता है — Brand Promotion (Tender द्वारा चयनित Agency के माध्यम से) एवं Refreshment Food Booth/Stall (Draw के माध्यम से) को छोड़कर।'
+    en: 'Wherever eligible applications exceed the available booths/stalls, a transparent Draw of Lots is used to decide the allotment — except Brand Promotion (handled by the Tender-selected agency) and Refreshment and Ice Cream Booth/Stall (handled by draw).',
+    hi: 'जहां भी पात्र आवेदन उपलब्ध Booths/Stalls से अधिक होते हैं, वहां Transparent Draw of Lots के माध्यम से Allotment तय किया जाता है — Brand Promotion (Tender द्वारा चयनित Agency के माध्यम से) एवं Refreshment and Ice Cream Booth/Stall (Draw के माध्यम से) को छोड़कर।'
   },
   {
     en: 'The Application Fee of ₹236 (₹200 + 18% GST) applies to every category that charges one, and is non-refundable under any circumstances — whether the application is rejected, the applicant is found ineligible, or a booth/stall is not allotted.',
@@ -31,8 +31,8 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
     hi: 'KDB अथवा अधिकृत अधिकारी द्वारा समय-समय पर Booth/Stall की जाँच/Inspection की जा सकती है। गलत जानकारी, फर्जी दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आबंटन को किसी भी चरण पर निरस्त किया जा सकता है।'
   },
   {
-    en: 'For the Refreshment Food Booth/Stall category: the last date to apply is 6 November 2026 (11:59 PM), the draw is on 7 and 8 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
-    hi: 'Refreshment Food Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 06 नवंबर 2026 (रात्रि 11:59 बजे), Draw 07 एवं 08 नवंबर 2026 को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
+    en: 'For the Refreshment and Ice Cream Booth/Stall category: the last date to apply is 6 November 2026 (11:59 PM), the draw is on 7 and 8 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
+    hi: 'Refreshment and Ice Cream Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 06 नवंबर 2026 (रात्रि 11:59 बजे), Draw 07 एवं 08 नवंबर 2026 को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
   },
   {
     en: 'All applications must be submitted online through this portal — no offline or by-hand application will be accepted.',
@@ -111,13 +111,13 @@ const GuidelinesView = ({
                 key={cat.slug}
                 className='scroll-mt-24 overflow-hidden rounded-2xl border border-[#eaddc0] bg-[#fffbf2] transition-colors duration-200'
               >
-                <button
-                  type='button'
-                  onClick={() => handleToggle(cat.slug)}
-                  aria-expanded={isOpen}
-                  className='flex w-full items-center justify-between gap-4 p-5 text-left sm:p-6'
-                >
-                  <div className='flex items-center gap-4'>
+                <div className='flex w-full items-center justify-between gap-4 p-5 sm:p-6'>
+                  <button
+                    type='button'
+                    onClick={() => handleToggle(cat.slug)}
+                    aria-expanded={isOpen}
+                    className='flex flex-1 items-center gap-4 text-left'
+                  >
                     <span className={`text-4xl font-extrabold text-[#c88718] sm:text-5xl`}>{number}</span>
                     <div>
                       <h2 className='text-lg font-extrabold text-[#0c2847] sm:text-2xl'>
@@ -127,25 +127,30 @@ const GuidelinesView = ({
                         {lang === 'hi' ? cat.descriptionHi : cat.description}
                       </p>
                     </div>
-                  </div>
-                  <ChevronDownIcon
-                    className={`size-5 shrink-0 text-[#8c5711] transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
+                  </button>
 
-                {isOpen && (
-                  <div className='border-t border-[#eaddc0] p-6 sm:p-8'>
+                  <div className='flex shrink-0 items-center gap-3'>
                     {mapPdfBySlug[cat.slug] && (
                       <a
                         href={mapPdfBySlug[cat.slug]}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='mb-4 inline-flex items-center gap-1.5 rounded-lg border border-[#c88718] px-4 py-2 text-sm font-bold text-[#8c5711] transition hover:bg-[#c88718] hover:text-white'
+                        className='inline-flex items-center gap-1.5 rounded-lg bg-[#c88718] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#b07512] sm:px-5 sm:py-3 sm:text-base'
                       >
-                        <MapIcon className='size-4' />
+                        <MapIcon className='size-4 sm:size-5' />
                         {lang === 'hi' ? 'मानचित्र देखें' : 'View Map'}
                       </a>
                     )}
+                    <button type='button' onClick={() => handleToggle(cat.slug)} aria-expanded={isOpen} aria-label='Toggle details'>
+                      <ChevronDownIcon
+                        className={`size-5 shrink-0 text-[#8c5711] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className='border-t border-[#eaddc0] p-6 sm:p-8'>
                     <div className='flex flex-col'>
                       {cat.body.map((line, i) => {
                         const rawText = lang === 'hi' ? line.hi : line.en
