@@ -421,8 +421,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'वैध FSSAI लाइसेंस'
       },
       {
-        en: 'Clear photographs of the sweets / special food items proposed for sale',
-        hi: 'बिक्री हेतु प्रस्तावित मिष्ठान/विशेष खाद्य वस्तुओं की स्पष्ट तस्वीरें'
+        en: 'Clear photographs of the sweets / special items proposed for sale',
+        hi: 'बिक्री हेतु प्रस्तावित मिष्ठान/विशेष वस्तुओं की स्पष्ट तस्वीरें'
       }
     ],
     bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
@@ -448,12 +448,12 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'FSSAI लाइसेंस वैध होना चाहिए और आवेदन की अंतिम तिथि तक वैध रहना चाहिए।'
       },
       {
-        en: 'Upload photographs of the sweets / special food items proposed for sale only. Images taken from the internet will not be accepted.',
-        hi: 'केवल बिक्री हेतु प्रस्तावित मिष्ठान/विशेष खाद्य वस्तुओं की तस्वीरें ही अपलोड करें। इंटरनेट से ली गई तस्वीरें स्वीकार नहीं की जाएंगी।'
+        en: 'Upload photographs of the sweets / special items proposed for sale only. Images taken from the internet will not be accepted.',
+        hi: 'केवल बिक्री हेतु प्रस्तावित मिष्ठान/विशेष वस्तुओं की तस्वीरें ही अपलोड करें। इंटरनेट से ली गई तस्वीरें स्वीकार नहीं की जाएंगी।'
       },
       {
-        en: 'Only pre-made, ready-to-sell sweets and special food items (e.g. barfi and similar items prepared off-site/at the vendor\'s own premises) may be sold. Cooking, frying, heating, or any kind of food preparation at the booth/stall during the Mahotsav is strictly not permitted.',
-        hi: 'केवल पहले से बनी हुई, बिक्री हेतु तैयार मिष्ठान एवं विशेष खाद्य वस्तुएं (जैसे बर्फी और इसी प्रकार की अन्य वस्तुएं, जो स्टॉल के बाहर/विक्रेता के अपने परिसर में तैयार की गई हों) ही बेची जा सकती हैं। महोत्सव के दौरान बूथ/स्टॉल पर खाना पकाना, तलना, गर्म करना या किसी भी प्रकार की खाद्य तैयारी करना सख्त वर्जित है।'
+        en: 'Only pre-made, ready-to-sell sweets and special items (e.g. barfi and similar items prepared off-site/at the vendor\'s own premises) may be sold. Cooking, frying, heating, or any kind of food preparation at the booth/stall during the Mahotsav is strictly not permitted.',
+        hi: 'केवल पहले से बनी हुई, बिक्री हेतु तैयार मिष्ठान एवं विशेष वस्तुएं (जैसे बर्फी और इसी प्रकार की अन्य वस्तुएं, जो स्टॉल के बाहर/विक्रेता के अपने परिसर में तैयार की गई हों) ही बेची जा सकती हैं। महोत्सव के दौरान बूथ/स्टॉल पर खाना पकाना, तलना, गर्म करना या किसी भी प्रकार की खाद्य तैयारी करना सख्त वर्जित है।'
       },
       {
         en: 'Review all details and documents carefully before submitting your application, as changes cannot be made after submission.',
