@@ -44,9 +44,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'feature.support.sub': 'हेल्पलाइन एवं मार्गदर्शन',
 
     // Categories
-    'categories.badge': 'गीता जयंती महोत्सव 2026 व्यावसायिक स्थान',
-    'categories.heading': 'बूथ/स्टॉल श्रेणियां एवं आबंटन',
-    'categories.desc': 'ब्रह्मसरोवर मेला क्षेत्र में अपनी पसंदीदा बूथ/स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
+    'categories.badge': 'गीता जयंती महोत्सव 2026 उपलब्ध बूथ/स्टॉल स्थान',
+    'categories.heading': 'बूथ/स्टॉल श्रेणियां एवं आबंटन प्रक्रिया',
+    'categories.desc': 'ब्रह्म सरोवर, कुरुक्षेत्र में अपनी पसंदीदा बूथ/स्टॉल श्रेणी चुनें और ऑनलाइन आवेदन प्रस्तुत करें।',
     'categories.empty': 'वर्तमान में कोई बूथ/स्टॉल श्रेणी आवेदन के लिए खुली नहीं है। कृपया शीघ्र जांचें।',
     'categories.apply_now': 'आवेदन करें',
     'categories.view_details': 'विवरण और पात्रता',
@@ -129,9 +129,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'feature.support.sub': '& Helpline',
 
     // Categories
-    'categories.badge': 'Geeta Jayanti Mahotsav 2026 Commercial Spaces',
-    'categories.heading': 'Booth/Stall Categories & Allotment',
-    'categories.desc': 'Select your preferred commercial booth/stall category at Brahma Sarovar, Kurukshetra and submit your official application.',
+    'categories.badge': 'Geeta Jayanti Mahotsav 2026 Available Booth/Stall Spaces',
+    'categories.heading': 'Booth/Stall Categories & Allotment Process',
+    'categories.desc': 'Select your preferred booth/stall category at Brahma Sarovar, Kurukshetra and submit your application online.',
     'categories.empty': 'No booth/stall categories are currently open for application. Official notification will be released soon.',
     'categories.apply_now': 'Apply Now',
     'categories.view_details': 'View Details & Criteria',

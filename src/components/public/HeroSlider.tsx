@@ -88,22 +88,22 @@ const HeroSlider = ({
 
             <p className='mb-6 max-w-xl text-base leading-relaxed text-slate-100 sm:text-lg'>
               {lang === 'hi'
-                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में स्टॉल/बूथ के लिए ऑनलाइन आवेदन शुरू हो गए हैं। सभी इच्छुक आवेदक अपनी श्रेणी की पात्रता और दिशानिर्देशों को ध्यानपूर्वक पढ़कर ऑनलाइन आवेदन कर सकते हैं।'
-                : 'Online applications are now open for stalls/booths at International Gita Jayanti Mahotsav 2026. Interested applicants can apply online after checking the eligibility criteria and guidelines for their chosen category.'}
+                ? 'अंतरराष्ट्रीय गीता जयंती महोत्सव 2026 में सामाजिक संगठन/व्यक्तिगत/फर्म/कंपनियों/एजेंसियों/सरकारी विभागों/बोर्डों/निगमों के स्टॉल/बूथ के लिए ऑनलाइन आवेदन आमंत्रित किए जाते हैं। सभी इच्छुक आवेदक अपनी श्रेणी की पात्रता और दिशानिर्देशों को ध्यानपूर्वक पढ़कर ऑनलाइन आवेदन कर सकते हैं।'
+                : 'Online Applications are hereby invited for Social Organisation/Individuals/Firms/Companies/Agencies/Government/Boards/Corporations stalls/booths at International Gita Jayanti Mahotsav 2026. Interested applicants can apply online after checking the eligibility criteria and guidelines for their chosen category.'}
             </p>
 
             {applicationOpensAt && applicationClosesAt && (
               <p className='mb-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#f0af3d]/40 bg-[#f0af3d]/15 px-4 py-2 text-base font-extrabold tracking-wide text-[#f0af3d] shadow-sm backdrop-blur-xs sm:text-lg'>
                 {lang === 'hi'
-                  ? `ऑनलाइन आवेदन की अवधि: ${formatDate(applicationOpensAt, 'hi')} से ${formatDate(applicationClosesAt, 'hi')} तक (${formatTime(applicationClosesAt)} तक)।`
-                  : `Application Period: ${formatDate(applicationOpensAt, 'en')} to ${formatDate(applicationClosesAt, 'en')} (until ${formatTime(applicationClosesAt)}).`}
+                  ? `ऑनलाइन आवेदन की अवधि: ${formatDate(applicationOpensAt, 'hi')}, ${formatTime(applicationOpensAt)} से ${formatDate(applicationClosesAt, 'hi')} तक (${formatTime(applicationClosesAt)} तक)।`
+                  : `Application Period: ${formatDate(applicationOpensAt, 'en')}, ${formatTime(applicationOpensAt)} to ${formatDate(applicationClosesAt, 'en')} (until ${formatTime(applicationClosesAt)}).`}
               </p>
             )}
 
             <p className='mb-8 max-w-xl text-sm leading-relaxed text-slate-200 sm:text-base'>
               {lang === 'hi'
                 ? 'आवेदन करने से पहले: अपनी श्रेणी की पात्रता, आवश्यक दस्तावेजों, आवेदन शुल्क और स्टॉल/बूथ आबंटन से संबंधित दिशानिर्देशों को अवश्य पढ़ें।'
-                : 'Before Applying: Please read the guidelines for your category carefully, including eligibility criteria, required documents, application fees, and stall/booth allotment details.'}
+                : 'Before Applying: Please read the guidelines for your category carefully, including eligibility criteria, documents required, application fees and stall/booth allotment details.'}
             </p>
 
             <div className='flex flex-wrap items-center gap-3.5'>
