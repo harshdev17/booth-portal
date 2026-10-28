@@ -76,7 +76,6 @@ export async function listOpenCategories(): Promise<CategoryRow[]> {
   return query<CategoryRow[]>(
     `SELECT * FROM categories
      WHERE status = 'open'
-       AND show_on_homepage = 1
        AND (application_opens_at IS NULL OR application_opens_at <= NOW())
        AND (application_closes_at IS NULL OR application_closes_at >= NOW())
      ORDER BY display_order ASC`
