@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { getCategoryById } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
+import { parseIstDateTime } from '@/lib/format-date'
 import { createRazorpayOrder, getRazorpayKeyId, RazorpayApiError } from '@/lib/payments/razorpay'
 import { recordOrderCreated } from '@/lib/payments/payment-records'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
@@ -113,7 +114,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
 
         if (category.allotment_payment_deadline_at) {
-          const deadline = new Date(category.allotment_payment_deadline_at)
+          // allotment_payment_deadline_at is a plain DB DATETIME string
+          // already representing IST wall-clock time — must go through
+          // parseIstDateTime, not a bare `new Date(...)`, which parses it
+          // in the server process's own local timezone and was confirmed
+          // live to silently shift this deadline by 5.5 hours on a
+          // UTC-timezone host (same root cause as isCategoryAcceptingApplications).
+          const deadline = parseIstDateTime(category.allotment_payment_deadline_at)
           if (Date.now() > deadline.getTime()) {
             return NextResponse.json(
               { error: 'Allotment payment deadline has passed. Please contact the administration.' },

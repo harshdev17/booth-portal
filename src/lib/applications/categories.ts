@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { query } from '@/lib/db/client'
+import { parseIstDateTime } from '@/lib/format-date'
 
 export type CategoryRow = {
   id: number
@@ -156,12 +157,22 @@ export function getFeeBreakdown(category: CategoryRow): FeeBreakdown | null {
   }
 }
 
-/** True if `now` falls within the category's application window (or the window is unbounded). */
+/**
+ * True if `now` falls within the category's application window (or the
+ * window is unbounded). `application_opens_at`/`application_closes_at`
+ * come back from the DB as plain "YYYY-MM-DD HH:mm:ss" strings already
+ * representing IST wall-clock time (dateStrings: true, see lib/db/client.ts)
+ * — they must go through parseIstDateTime, not a bare `new Date(...)`,
+ * which is parsed in the server process's own local timezone and was
+ * confirmed live to silently break this check by 5.5 hours on a
+ * UTC-timezone host (Hostinger) even though the exact same DB values and
+ * code worked correctly on a locally-IST dev machine.
+ */
 export function isCategoryAcceptingApplications(category: CategoryRow, now: Date = new Date()): boolean {
   if (category.status !== 'open') return false
 
-  if (category.application_opens_at && new Date(category.application_opens_at) > now) return false
-  if (category.application_closes_at && new Date(category.application_closes_at) < now) return false
+  if (category.application_opens_at && parseIstDateTime(category.application_opens_at) > now) return false
+  if (category.application_closes_at && parseIstDateTime(category.application_closes_at) < now) return false
 
   return true
 }
