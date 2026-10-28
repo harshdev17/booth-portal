@@ -23,6 +23,9 @@ export type CategoryRow = {
   auction_venue: string | null
   auction_venue_hi: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
+
+  /** 0 keeps this category reachable by direct URL / in admin, but out of the homepage category grid. */
+  show_on_homepage: 0 | 1
   display_order: number
 
   /** 0 hides the "Other Remarks" box on this category's form. */
@@ -73,6 +76,7 @@ export async function listOpenCategories(): Promise<CategoryRow[]> {
   return query<CategoryRow[]>(
     `SELECT * FROM categories
      WHERE status = 'open'
+       AND show_on_homepage = 1
        AND (application_opens_at IS NULL OR application_opens_at <= NOW())
        AND (application_closes_at IS NULL OR application_closes_at >= NOW())
      ORDER BY display_order ASC`
