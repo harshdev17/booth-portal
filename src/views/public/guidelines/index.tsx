@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import { ChevronDownIcon, MapIcon } from 'lucide-react'
 
+import GuidelineBodyText from '@/components/public/GuidelineBodyText'
 import { useLanguage } from '@/context/LanguageContext'
 import { CATEGORY_GUIDELINES, parseGuidelineBullet, substituteGuidelineDates } from '@/lib/content/category-guidelines'
 import { formatDateTime } from '@/lib/format-date'
@@ -31,8 +32,8 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
     hi: 'KDB अथवा अधिकृत अधिकारी द्वारा समय-समय पर Booth/Stall की जाँच/Inspection की जा सकती है। गलत जानकारी, फर्जी दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आबंटन को किसी भी चरण पर निरस्त किया जा सकता है।'
   },
   {
-    en: 'For the Refreshment and Ice Cream Booth/Stall category: the last date to apply is 6 November 2026 (11:59 PM), the draw is on 7 and 8 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
-    hi: 'Refreshment and Ice Cream Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 06 नवंबर 2026 (रात्रि 11:59 बजे), Draw 07 एवं 08 नवंबर 2026 को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
+    en: 'For the Refreshment and Ice Cream Booth/Stall category: the last date to apply is 7 November 2026 (5:00 PM), the auction is on 13 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
+    hi: 'Refreshment and Ice Cream Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 07 नवंबर 2026 (शाम 5:00 बजे), नीलामी 13 नवंबर 2026 को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
   },
   {
     en: 'All applications must be submitted online through this portal — no offline or by-hand application will be accepted.',
@@ -47,11 +48,13 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
 const GuidelinesView = ({
   mapPdfBySlug,
   applicationOpensAt,
-  applicationClosesAt
+  applicationClosesAt,
+  importantDatesBySlug
 }: {
   mapPdfBySlug: Record<string, string>
   applicationOpensAt: string | null
   applicationClosesAt: string | null
+  importantDatesBySlug: Record<string, { note: string | null; noteHi: string | null }>
 }) => {
   const { lang } = useLanguage()
   const applicationOpensDisplay = applicationOpensAt ? formatDateTime(applicationOpensAt, lang) : null
@@ -151,6 +154,41 @@ const GuidelinesView = ({
 
                 {isOpen && (
                   <div className='border-t border-[#eaddc0] p-6 sm:p-8'>
+                    {(() => {
+                      const dates = importantDatesBySlug[cat.slug]
+                      const note = lang === 'hi' ? dates?.noteHi : dates?.note
+
+                      if (!note) return null
+
+                      const lines = note.split('\n').filter(line => line.trim() !== '')
+                      const bulletItems = lines
+                        .filter(line => line.trim().startsWith('•'))
+                        .map(line => line.trim().replace(/^•\s*/, ''))
+
+                      return (
+                        <div className='mb-6 rounded-xl border border-[#eaddc0] bg-[#fdfbf7] p-5 sm:p-6'>
+                          <p className='mb-3 text-base font-extrabold text-[#0c2847] sm:text-lg'>
+                            {lang === 'hi' ? 'महत्वपूर्ण तिथियां एवं समय-सीमा' : 'Important Dates & Deadlines'}
+                          </p>
+                          {bulletItems.length > 0 ? (
+                            <ul className='space-y-2'>
+                              {bulletItems.map((item, i) => (
+                                <li key={i} className='flex items-baseline gap-2.5 text-sm text-[#334155] sm:text-base'>
+                                  <span className='mt-1 size-1.5 shrink-0 rounded-full bg-[#c88718]' />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            lines.map((line, i) => (
+                              <p key={i} className='text-sm text-[#334155] sm:text-base'>
+                                {line.trim()}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      )
+                    })()}
                     <div className='flex flex-col'>
                       {cat.body.map((line, i) => {
                         const rawText = lang === 'hi' ? line.hi : line.en
@@ -164,7 +202,11 @@ const GuidelinesView = ({
                             </span>
                             <div>
                               {parsed.title && <p className='mb-1 text-lg font-bold text-[#0c2847] sm:text-xl'>{parsed.title}</p>}
-                              <p className='text-base leading-relaxed whitespace-pre-line text-[#334155] sm:text-lg'>{parsed.text}</p>
+                              <GuidelineBodyText
+                                text={parsed.text}
+                                className='text-base leading-relaxed whitespace-pre-line text-[#334155] sm:text-lg'
+                                headingClassName='font-bold text-[#0c2847]'
+                              />
                             </div>
                           </div>
                         )

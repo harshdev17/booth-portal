@@ -122,6 +122,8 @@ const ApplyPage = async ({
       auctionDate: category.auction_date,
       auctionVenue: category.auction_venue,
       auctionVenueHi: category.auction_venue_hi,
+      importantDatesNote: category.important_dates_note,
+      importantDatesNoteHi: category.important_dates_note_hi,
       isAcceptingApplications: true,
       showRemarks: Number(category.show_remarks) === 1,
       formNotice: category.form_notice,

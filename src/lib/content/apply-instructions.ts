@@ -297,8 +297,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदन और दस्तावेजों का सत्यापन होने के बाद आवेदन स्वीकार या अस्वीकार होने की सूचना आपके दिए गए WhatsApp नंबर पर भेजी जाएगी। यदि तकनीकी कारण से आपको सूचना नहीं मिलती है, तो आवेदन जमा करने के 48 घंटे बाद वेबसाइट पर अपने आवेदन की स्थिति चेक करें।'
       },
       {
-        en: 'Only applicants verified and declared eligible by the Kurukshetra Development Board (KDB) will be allowed to participate in the physical auction. Eligible applicants must submit an auction participation fee of ₹50,000 through a Demand Draft (DD). This amount will be refunded according to the prescribed procedure to applicants who are not allotted a booth/stall.',
-        hi: 'केवल कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा सत्यापित और पात्र घोषित आवेदक ही प्रत्यक्ष नीलामी में भाग ले सकेंगे। पात्र आवेदकों को ₹50,000 नीलामी भागीदारी शुल्क डिमांड ड्राफ्ट (DD) के माध्यम से जमा करना होगा। जिन आवेदकों को बूथ/स्टॉल आबंटित नहीं होगा, उन्हें यह राशि निर्धारित प्रक्रिया के अनुसार वापस कर दी जाएगी।'
+        en: 'Applicants whose applications are approved following successful verification will be eligible to participate in the auction. Eligible applicants must pay an auction participation fee of ₹50,000 online between 9 November 2026 (12:00 PM Noon) and 11 November 2026 (11:00 PM), as per KDB\'s instructions. If a bidder is unsuccessful and is not allotted a booth/stall, this fee will be refunded to the same bank account used to make the payment, subject to KDB\'s applicable refund process.',
+        hi: 'जिन आवेदकों के आवेदन सफल सत्यापन के बाद स्वीकृत किए जाते हैं, वे ही नीलामी में भाग लेने के पात्र होंगे। पात्र आवेदकों को KDB के निर्देशों के अनुसार 9 नवंबर 2026 (दोपहर 12:00 बजे) से 11 नवंबर 2026 (रात 11:00 बजे) तक ₹50,000 की नीलामी भागीदारी राशि ऑनलाइन जमा करनी होगी। यदि किसी बोलीदाता की बोली सफल नहीं होती और उसे बूथ/स्टॉल आबंटित नहीं होता, तो यह राशि KDB की लागू वापसी प्रक्रिया के अधीन, भुगतान में उपयोग किए गए उसी बैंक खाते में वापस कर दी जाएगी।'
       },
       {
         en: 'For the successful bidder, the ₹50,000 participation fee will serve as the security deposit. No additional security deposit of ₹50,000 will be required.',
@@ -351,12 +351,12 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
           {
-            en: 'Draw / Result Date: 5 November 2026',
-            hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026'
+            en: 'Result Declaration Date: 9 November 2026',
+            hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026'
           },
           {
-            en: 'Payment Deadline: 10 November 2026',
-            hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026'
+            en: 'Payment Deadline: 13 November 2026',
+            hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026'
           }
         ]
       }
@@ -485,8 +485,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदक का आधार कार्ड या वैध पहचान पत्र'
       },
       {
-        en: 'Valid National or State Award Certificate',
-        hi: 'वैध राष्ट्रीय या राज्य पुरस्कार प्रमाणपत्र'
+        en: 'Valid National Award Certificate',
+        hi: 'वैध राष्ट्रीय पुरस्कार प्रमाणपत्र'
       },
       {
         en: 'Passport-size photograph of the applicant',
@@ -501,8 +501,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       {
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
-          { en: 'Draw / Result Date: 5 November 2026', hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026' },
-          { en: 'Payment Deadline: 10 November 2026', hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026' }
+          { en: 'Result Declaration Date: 9 November 2026', hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026' },
+          { en: 'Payment Deadline: 13 November 2026', hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026' }
         ]
       }
     ],
@@ -726,8 +726,8 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       {
         title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
         items: [
-          { en: 'Draw / Result Date: 5 November 2026', hi: 'ड्रॉ / परिणाम की तिथि: 5 नवंबर 2026' },
-          { en: 'Payment Deadline: 10 November 2026', hi: 'भुगतान की अंतिम तिथि: 10 नवंबर 2026' }
+          { en: 'Result Declaration Date: 9 November 2026', hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026' },
+          { en: 'Payment Deadline: 13 November 2026', hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026' }
         ]
       }
     ],

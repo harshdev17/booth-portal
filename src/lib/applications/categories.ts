@@ -17,6 +17,8 @@ export type CategoryRow = {
   allotment_amount_paise: number | null
   allotment_amount_note: string | null
   allotment_amount_note_hi: string | null
+  important_dates_note: string | null
+  important_dates_note_hi: string | null
   application_opens_at: string | null
   application_closes_at: string | null
   auction_date: string | null
@@ -71,11 +73,21 @@ export type DocumentDefinitionRow = {
   display_order: number
 }
 
-/** Public listing: only categories currently open for application. */
+/**
+ * Public listing: only categories currently open for application AND meant
+ * to appear as a homepage card. This is deliberately a SEPARATE condition
+ * from `status = 'open'` (checked independently in getCategoryBySlug's
+ * caller, src/app/(public)/apply/[category]/page.tsx) — show_on_homepage
+ * only controls this grid listing, never whether a category can be applied
+ * to via its direct URL. khadi-other-reserved is the first category using
+ * `show_on_homepage = 0` for exactly that: open for direct application, but
+ * intentionally absent from the homepage grid (migration 0064).
+ */
 export async function listOpenCategories(): Promise<CategoryRow[]> {
   return query<CategoryRow[]>(
     `SELECT * FROM categories
      WHERE status = 'open'
+       AND show_on_homepage = 1
        AND (application_opens_at IS NULL OR application_opens_at <= NOW())
        AND (application_closes_at IS NULL OR application_closes_at >= NOW())
      ORDER BY display_order ASC`
@@ -176,4 +188,28 @@ export async function getPortalApplicationSchedule(): Promise<{
   const row = rows[0] ?? { application_opens_at: null, application_closes_at: null }
 
   return { applicationOpensAt: row.application_opens_at, applicationClosesAt: row.application_closes_at }
+}
+
+export type CategoryImportantDatesRow = {
+  slug: string
+  importantDatesNote: string | null
+  importantDatesNoteHi: string | null
+}
+
+/**
+ * Every active category's "Important Dates & Deadlines" free-text note
+ * (English/Hindi, migration 0068), keyed by slug — used by the Guidelines
+ * page, which otherwise has no live DB category data at all (it renders
+ * from the static CATEGORY_GUIDELINES content file).
+ */
+export async function listCategoryImportantDates(): Promise<CategoryImportantDatesRow[]> {
+  const rows = await query<Array<{ slug: string; important_dates_note: string | null; important_dates_note_hi: string | null }>>(
+    `SELECT slug, important_dates_note, important_dates_note_hi FROM categories WHERE status != 'archived'`
+  )
+
+  return rows.map(row => ({
+    slug: row.slug,
+    importantDatesNote: row.important_dates_note,
+    importantDatesNoteHi: row.important_dates_note_hi
+  }))
 }

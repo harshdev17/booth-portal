@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
-import { listCategoryMaps } from '@/lib/settings/category-maps'
+import { listCategoryMaps, listOpenCategoriesWithMaps } from '@/lib/settings/category-maps'
 import StallBoothLocationsView from '@/views/public/stall-booth-locations'
 
 export const metadata: Metadata = {
@@ -14,12 +14,12 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const StallBoothLocationsPage = async () => {
-  const { fullMap, byCategory } = await listCategoryMaps()
+  const [{ fullMap }, categories] = await Promise.all([listCategoryMaps(), listOpenCategoriesWithMaps()])
 
   return (
     <>
       <PublicHeader />
-      <StallBoothLocationsView fullMap={fullMap} categoryMaps={byCategory} />
+      <StallBoothLocationsView fullMap={fullMap} categories={categories} />
       <PublicFooter />
     </>
   )

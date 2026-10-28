@@ -105,14 +105,6 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       )}
       <SummaryRow label={lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name'} value={result.representativeName} />
       <SummaryRow label={lang === 'hi' ? 'पिता का नाम' : "Father's Name"} value={result.fatherName} />
-      <SummaryRow
-        label={lang === 'hi' ? 'थाने का नाम' : 'Police Station Name'}
-        value={result.policeStationName}
-      />
-      <SummaryRow
-        label={lang === 'hi' ? 'थाने का पता' : 'Police Station Address'}
-        value={result.policeStationAddress}
-      />
       <SummaryRow label={lang === 'hi' ? 'आधार संख्या' : 'Aadhaar Number'} value={result.aadhaarNumber} />
       <SummaryRow label={lang === 'hi' ? 'व्हाट्सएप नंबर' : 'WhatsApp Number'} value={result.mobileNumber} />
       {result.alternateMobile && (
@@ -123,6 +115,14 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       <SummaryRow label={lang === 'hi' ? 'राज्य' : 'State'} value={result.state} />
       <SummaryRow label={lang === 'hi' ? 'ज़िला' : 'District'} value={result.district} />
       <SummaryRow label={lang === 'hi' ? 'पिन कोड' : 'PIN Code'} value={result.pinCode} />
+      <SummaryRow
+        label={lang === 'hi' ? 'थाने का नाम' : 'Police Station Name'}
+        value={result.policeStationName}
+      />
+      <SummaryRow
+        label={lang === 'hi' ? 'थाने का पता' : 'Police Station Address'}
+        value={result.policeStationAddress}
+      />
       {result.shopOptionLabel && (
         <SummaryRow label={lang === 'hi' ? 'बूथ/स्टॉल विकल्प' : 'Booth/Stall Option'} value={result.shopOptionLabel} />
       )}

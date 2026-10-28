@@ -221,17 +221,6 @@ export default async function PoliceApplicationDetailPage({
 
             <div className='grid grid-cols-2 gap-3 pb-3 border-b border-slate-100'>
               <div>
-                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Name</span>
-                <span className='font-semibold text-slate-800 text-sm'>{app.police_station_name}</span>
-              </div>
-              <div>
-                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Address</span>
-                <span className='font-medium text-slate-800 text-sm'>{app.police_station_address}</span>
-              </div>
-            </div>
-
-            <div className='grid grid-cols-2 gap-3 pb-3 border-b border-slate-100'>
-              <div>
                 <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Aadhaar Number</span>
                 <span className='font-mono font-bold text-slate-900 text-sm bg-slate-100 px-2 py-0.5 rounded'>
                   {aadhaarNumber}
@@ -289,6 +278,17 @@ export default async function PoliceApplicationDetailPage({
               <div>
                 <span className='text-slate-400 block text-[11px] uppercase font-semibold'>PIN Code</span>
                 <span className='font-mono font-bold text-slate-900'>{app.pin_code}</span>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-2 gap-3 pt-2 border-t border-slate-100'>
+              <div>
+                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Name</span>
+                <span className='font-semibold text-slate-800 text-sm'>{app.police_station_name}</span>
+              </div>
+              <div>
+                <span className='text-slate-400 block text-[11px] uppercase font-semibold'>Police Station Address</span>
+                <span className='font-medium text-slate-800 text-sm'>{app.police_station_address}</span>
               </div>
             </div>
 

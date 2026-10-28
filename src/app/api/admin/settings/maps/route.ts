@@ -100,3 +100,53 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to upload the map file.' }, { status: 500 })
   }
 }
+
+/**
+ * Removes one Stall/Booth Locations map (either the single "Full Map" row,
+ * categoryId omitted/null, or one specific category's map). This is the
+ * single switch that hides the "View Stall/Booth Location" banner on the
+ * apply page, category detail page, and Guidelines page all at once (per
+ * explicit request, 2026-10-28) — each of those pages shows the banner only
+ * when a map row exists for that category, so deleting the row here is the
+ * one place that turns it off everywhere, and re-uploading turns it back on
+ * everywhere. The uploaded file itself is intentionally left on disk (not
+ * deleted) — same reasoning as other soft-removal patterns in this codebase:
+ * cheap to keep, and re-uploading replaces it anyway.
+ */
+export async function DELETE(request: Request) {
+  try {
+    const session = await requirePermission('config:manage')
+
+    const body = (await request.json().catch(() => ({}))) as { categoryId?: unknown }
+    const categoryId = body.categoryId !== undefined && body.categoryId !== null ? Number(body.categoryId) : null
+
+    if (categoryId !== null && (!Number.isInteger(categoryId) || categoryId <= 0)) {
+      return NextResponse.json({ error: 'Invalid category.' }, { status: 400 })
+    }
+
+    const result = await query<{ affectedRows: number }>(
+      categoryId === null
+        ? `DELETE FROM category_maps WHERE category_id IS NULL`
+        : `DELETE FROM category_maps WHERE category_id = ?`,
+      categoryId === null ? [] : [categoryId]
+    )
+
+    await logAudit({
+      actorUserId: session.userId,
+      actorRoleKey: session.role.key,
+      action: 'settings.category_map_removed',
+      module: 'settings',
+      entityType: 'category_maps',
+      entityId: categoryId === null ? 'full-map' : String(categoryId),
+      newValue: { categoryId }
+    })
+
+    clearCategoryMapsCache()
+
+    return NextResponse.json({ success: true, affectedRows: result.affectedRows ?? 0 })
+  } catch (error) {
+    logServerError('api.admin.settings.maps.delete', error)
+
+    return NextResponse.json({ error: 'Failed to remove the map.' }, { status: 500 })
+  }
+}

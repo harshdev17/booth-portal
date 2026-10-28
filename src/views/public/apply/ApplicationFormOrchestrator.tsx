@@ -1061,31 +1061,80 @@ const ApplicationFormOrchestrator = ({
           </Link>
         </div>
 
-        {/* Links directly to this category's map PDF (or stall-booth-locations if not uploaded) */}
-        <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
-          <div className='flex items-start gap-2.5'>
-            <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
-            <div>
-              <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
-                {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
+        {/* "Important Dates & Deadlines" — shown only when an admin has
+            filled it in for this category (/admin/settings/general, new
+            importantDatesNote/_hi field, migration 0068). Nothing invented
+            for a category with none supplied. */}
+        {(() => {
+          const note = lang === 'hi' ? config.category.importantDatesNoteHi : config.category.importantDatesNote
+
+          if (!note) return null
+
+          const lines = note.split('\n').filter(line => line.trim() !== '')
+          const bulletItems = lines
+            .filter(line => line.trim().startsWith('•'))
+            .map(line => line.trim().replace(/^•\s*/, ''))
+
+          return (
+            <div className='mb-6 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-5 py-4'>
+              <p className='mb-2 text-sm sm:text-base font-extrabold text-[#1e3a8a]'>
+                {lang === 'hi' ? 'महत्वपूर्ण तिथियां एवं समय-सीमा' : 'Important Dates & Deadlines'}
               </p>
-              <p className='text-xs sm:text-sm text-[#9a3412]/80'>
-                {lang === 'hi'
-                  ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
-                  : 'Check the stall/booth layout and location map for this category at Brahma Sarovar before applying.'}
-              </p>
+              {bulletItems.length > 0 ? (
+                <ul className='space-y-1.5'>
+                  {bulletItems.map((item, idx) => (
+                    <li key={idx} className='flex items-baseline gap-2 text-xs sm:text-sm text-[#1e40af]'>
+                      <span className='mt-1 size-1 shrink-0 rounded-full bg-[#1e40af]' />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                lines.map((line, idx) => (
+                  <p key={idx} className='text-xs sm:text-sm text-[#1e40af]'>
+                    {line.trim()}
+                  </p>
+                ))
+              )}
             </div>
+          )
+        })()}
+
+        {/* Links to this category's own map PDF — shown only when an admin
+            has actually uploaded one for this category
+            (/admin/settings/maps). No fallback to the general
+            stall-booth-locations page: uploading a map makes this banner
+            appear everywhere it's used (apply page, category detail,
+            Guidelines), removing it hides the banner everywhere, with
+            nothing else to separately toggle (per explicit request,
+            2026-10-28 — matches category-detail/index.tsx and
+            guidelines/index.tsx, both already gated the same way). */}
+        {config.mapPdfPath && (
+          <div className='mb-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
+            <div className='flex items-start gap-2.5'>
+              <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
+              <div>
+                <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
+                  {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
+                </p>
+                <p className='text-xs sm:text-sm text-[#9a3412]/80'>
+                  {lang === 'hi'
+                    ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
+                    : 'Check the stall/booth layout and location map for this category at Brahma Sarovar before applying.'}
+                </p>
+              </div>
+            </div>
+            <a
+              href={config.mapPdfPath}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
+            >
+              <MapIcon className='size-4' />
+              {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
+            </a>
           </div>
-          <a
-            href={config.mapPdfPath || '/stall-booth-locations'}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
-          >
-            <MapIcon className='size-4' />
-            {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
-          </a>
-        </div>
+        )}
 
         {draftError ? (
           <div className='rounded-2xl border border-[#e2e8f0] bg-white p-10 text-center shadow-sm'>

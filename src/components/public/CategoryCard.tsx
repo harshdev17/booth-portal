@@ -183,7 +183,7 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
             {lang === 'hi' ? 'बूथ/स्टॉल आबंटन राशि' : 'Allotment Amount'}
           </dt>
-          <dd className='text-base font-bold text-[#072448]'>{allotmentText}</dd>
+          <AllotmentAmountValue text={allotmentText} />
         </div>
         <div>
           <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
@@ -262,6 +262,48 @@ const CategoryCardDescription = ({ slug, text, readMoreLabel }: { slug: string; 
         </Link>
       )}
     </div>
+  )
+}
+
+/**
+ * Renders the "Allotment Amount" value — most categories' text is one short
+ * line/figure, shown as plain bold text same as before. A multi-line note
+ * authored with "• " bullet lines (e.g. Brand Promotion's "Rs. 1 Lakh and
+ * Rs. 1.5 Lakh\n• Small Booth: ...\n• Large Booth: ...\nNote: ...",
+ * migration 0065/0066) instead renders as a real bulleted list — reported
+ * live: without this, the raw "\n"-joined text ran together on one line
+ * ("Rs. 1 Lakh and Rs. 1.5 Lakh • Small Booth: ... • Large Booth: ... Note:
+ * ..."), unreadable. Mirrors the same fix already applied to the category
+ * detail page's AllotmentAmountNote (src/views/public/category-detail/index.tsx).
+ */
+const AllotmentAmountValue = ({ text }: { text: string }) => {
+  const lines = text.split('\n').filter(line => line.trim() !== '')
+  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
+
+  if (bulletItems.length === 0) {
+    return <dd className='text-base font-bold text-[#072448]'>{text}</dd>
+  }
+
+  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+  const [headline, ...captionLines] = plainLines
+
+  return (
+    <dd className='space-y-1.5'>
+      {headline && <p className='text-base font-bold text-[#072448]'>{headline}</p>}
+      <ul className='space-y-0.5'>
+        {bulletItems.map((item, idx) => (
+          <li key={idx} className='flex items-baseline gap-1.5 text-sm font-bold text-[#072448]'>
+            <span className='text-xs text-[var(--kdb-saffron)]'>●</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      {captionLines.map((line, idx) => (
+        <p key={idx} className='text-xs font-medium text-[#8a95a3]'>
+          {line.trim()}
+        </p>
+      ))}
+    </dd>
   )
 }
 

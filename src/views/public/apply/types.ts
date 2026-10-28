@@ -12,6 +12,8 @@ export type CategoryDetail = {
   auctionDate: string | null
   auctionVenue: string | null
   auctionVenueHi: string | null
+  importantDatesNote: string | null
+  importantDatesNoteHi: string | null
   isAcceptingApplications: boolean
   showRemarks: boolean
   formNotice: string | null

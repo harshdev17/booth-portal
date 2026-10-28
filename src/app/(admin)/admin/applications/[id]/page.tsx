@@ -300,22 +300,6 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   canCheck={canVerifyDocuments}
                   initiallyChecked={checkedFieldKeys.has('father_name')}
                 />
-                <ApplicationFieldRow
-                  applicationId={id}
-                  fieldKey='police_station_name'
-                  label='Police Station Name'
-                  value={app.police_station_name}
-                  canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('police_station_name')}
-                />
-                <ApplicationFieldRow
-                  applicationId={id}
-                  fieldKey='police_station_address'
-                  label='Police Station Address'
-                  value={app.police_station_address}
-                  canCheck={canVerifyDocuments}
-                  initiallyChecked={checkedFieldKeys.has('police_station_address')}
-                />
                 {app.organisation_name && (
                   <ApplicationFieldRow
                     applicationId={id}
@@ -401,6 +385,22 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   value={app.state}
                   canCheck={canVerifyDocuments}
                   initiallyChecked={checkedFieldKeys.has('state')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='police_station_name'
+                  label='Police Station Name'
+                  value={app.police_station_name}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('police_station_name')}
+                />
+                <ApplicationFieldRow
+                  applicationId={id}
+                  fieldKey='police_station_address'
+                  label='Police Station Address'
+                  value={app.police_station_address}
+                  canCheck={canVerifyDocuments}
+                  initiallyChecked={checkedFieldKeys.has('police_station_address')}
                 />
               </div>
             </CardContent>

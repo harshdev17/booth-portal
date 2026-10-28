@@ -13,14 +13,20 @@ export type CategoryMapRow = {
   updatedAt: string | null
 }
 
-let cachedCategoryMaps: { fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] } | null = null
-let categoryMapsCachedAt = 0
-const CATEGORY_MAPS_TTL_MS = 60_000
-
-export function clearCategoryMapsCache(): void {
-  cachedCategoryMaps = null
-  categoryMapsCachedAt = 0
-}
+// clearCategoryMapsCache is kept as a no-op export so existing callers
+// (the upload/remove API routes) don't need changes. The actual in-memory
+// TTL cache was removed (2026-10-28) — it caused a real, reported bug: a
+// map removed via the admin page (DELETE /api/admin/settings/maps) kept
+// showing its "View Stall/Booth Location" banner on the apply and category
+// detail pages for up to 60s afterward, because this module can be loaded
+// as a separate instance per Next.js dev-server bundle (API route handler
+// vs. page render), so clearing one instance's cached value left the
+// other's stale copy intact until its own TTL happened to expire. This data
+// is read infrequently (one query per category/apply page view) and
+// changes only when an admin uploads/removes a map, so caching it at all
+// bought negligible performance at the cost of this very visible
+// consistency bug — simpler and correct to just query every time.
+export function clearCategoryMapsCache(): void {}
 
 /**
  * Stall/Booth location maps: one optional PDF per open category, plus a
@@ -33,11 +39,6 @@ export function clearCategoryMapsCache(): void {
  * list — there's nothing to invent per the no-assumptions rule.
  */
 export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] }> {
-  const now = Date.now()
-
-  if (cachedCategoryMaps && now - categoryMapsCachedAt < CATEGORY_MAPS_TTL_MS) {
-    return cachedCategoryMaps
-  }
 
   const rows = await query<
     Array<{
@@ -69,15 +70,10 @@ export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | nu
     updatedAt: row.updated_at
   }))
 
-  const result = {
+  return {
     fullMap: mapped.find(row => row.categoryId === null) ?? null,
     byCategory: mapped.filter((row): row is CategoryMapRow & { categoryId: number } => row.categoryId !== null)
   }
-
-  cachedCategoryMaps = result
-  categoryMapsCachedAt = now
-
-  return result
 }
 
 /** The map PDF for one specific category, if an admin has uploaded one. */

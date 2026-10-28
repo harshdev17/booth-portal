@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { MapIcon, MapPinIcon } from 'lucide-react'
 
+import GuidelineBodyText from '@/components/public/GuidelineBodyText'
 import type { CategoryRow, DocumentDefinitionRow } from '@/lib/applications/categories'
 import { useLanguage } from '@/context/LanguageContext'
 import { getCategoryGuideline, parseGuidelineBullet, substituteGuidelineDates } from '@/lib/content/category-guidelines'
@@ -82,46 +83,63 @@ const CategoryDetail = ({
           <dt className='mb-1 text-sm font-bold tracking-wide text-[var(--kdb-muted)] uppercase'>
             {lang === 'hi' ? 'बूथ/स्टॉल आबंटन राशि' : 'Booth/Stall Allotment Amount'}
           </dt>
-          <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>
-            {category.allotment_amount_paise !== null
-              ? category.allotment_amount_paise === 0
+          {category.allotment_amount_paise !== null ? (
+            <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>
+              {category.allotment_amount_paise === 0
                 ? lang === 'hi'
                   ? 'निःशुल्क बूथ/स्टॉल'
                   : 'Free Booth/Stall'
                 : lang === 'hi'
                   ? `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')} (जीएसटी सहित)`
-                  : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')} (including GST)`
-              : (lang === 'hi' ? category.allotment_amount_note_hi : category.allotment_amount_note) ??
-                (lang === 'hi' ? 'जल्द घोषित' : 'To be confirmed')}
-          </dd>
+                  : `₹${(category.allotment_amount_paise / 100).toLocaleString('en-IN')} (including GST)`}
+            </dd>
+          ) : (
+            <AllotmentAmountNote
+              note={(lang === 'hi' ? category.allotment_amount_note_hi : category.allotment_amount_note) ?? null}
+              fallback={lang === 'hi' ? 'जल्द घोषित' : 'To be confirmed'}
+            />
+          )}
         </div>
       </dl>
 
-      {/* Links directly to this category's map PDF (or stall-booth-locations if not uploaded) */}
-      <div className='mb-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
-        <div className='flex items-start gap-2.5'>
-          <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
-          <div>
-            <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
-              {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
-            </p>
-            <p className='text-xs sm:text-sm text-[#9a3412]/80'>
-              {lang === 'hi'
-                ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
-                : 'Check the stall/booth layout and location map for this category at Brahma Sarovar.'}
-            </p>
+      {/* Links to this category's own map PDF — shown only when an admin has
+          actually uploaded one for this category (/admin/settings/maps).
+          No fallback to the general stall-booth-locations page: uploading a
+          map there makes this banner appear everywhere it's used (apply
+          page, category detail, Guidelines), and removing it hides the
+          banner everywhere, with nothing else to toggle per explicit
+          request (2026-10-28). */}
+      {mapPdfPath && (
+        <div className='mb-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-5 py-4 sm:flex-row sm:items-center'>
+          <div className='flex items-start gap-2.5'>
+            <MapPinIcon className='mt-0.5 size-5 shrink-0 text-[#ea580c]' />
+            <div>
+              <p className='text-sm sm:text-base font-extrabold text-[#9a3412]'>
+                {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें!' : 'View Stall/Booth Location!'}
+              </p>
+              <p className='text-xs sm:text-sm text-[#9a3412]/80'>
+                {lang === 'hi'
+                  ? 'आयोजन स्थल (ब्रह्म सरोवर) पर इस श्रेणी के स्टॉल/बूथ के स्थान और लेआउट की जानकारी के लिए मानचित्र देखें।'
+                  : 'Check the stall/booth layout and location map for this category at Brahma Sarovar.'}
+              </p>
+            </div>
           </div>
+          <a
+            href={mapPdfPath}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
+          >
+            <MapIcon className='size-4' />
+            {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
+          </a>
         </div>
-        <a
-          href={mapPdfPath || '/stall-booth-locations'}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#c2410c]'
-        >
-          <MapIcon className='size-4' />
-          {lang === 'hi' ? 'स्टॉल/बूथ लोकेशन देखें' : 'View Stall/Booth Location'}
-        </a>
-      </div>
+      )}
+
+      <ImportantDatesSection
+        note={(lang === 'hi' ? category.important_dates_note_hi : category.important_dates_note) ?? null}
+        lang={lang}
+      />
 
       {(docOverride?.length ?? documents.length) > 0 && (
         <div className='mb-8'>
@@ -161,7 +179,11 @@ const CategoryDetail = ({
                     {parsed.title && (
                       <p className='mb-1 text-lg font-bold text-[var(--kdb-primary)] sm:text-xl'>{parsed.title}</p>
                     )}
-                    <p className='text-base leading-relaxed whitespace-pre-line text-[var(--kdb-text)] sm:text-lg'>{parsed.text}</p>
+                    <GuidelineBodyText
+                      text={parsed.text}
+                      className='text-base leading-relaxed whitespace-pre-line text-[var(--kdb-text)] sm:text-lg'
+                      headingClassName='font-bold text-[var(--kdb-primary)]'
+                    />
                   </div>
                 </li>
               )
@@ -192,6 +214,96 @@ const CategoryDetail = ({
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Renders a category's allotment-amount note (used when there's no single
+ * `allotment_amount_paise` figure — e.g. Brand Promotion's two named tiers).
+ * Most categories' notes are one short line, rendered as plain bold stat
+ * text same as before. A note authored with "• " bullet lines (e.g. Brand
+ * Promotion's "Small Booth: ...\n• Large Booth: ...\n\nNote: ...", migration
+ * 0065) instead renders as a real bulleted list, with any non-bullet lines
+ * (the first summary line, the trailing "Note:" line) shown as plain text
+ * above/below — matching how the same text already reads on the Guidelines
+ * page, which this compact stat card previously didn't.
+ */
+const AllotmentAmountNote = ({ note, fallback }: { note: string | null; fallback: string }) => {
+  if (!note) {
+    return <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>{fallback}</dd>
+  }
+
+  const lines = note.split('\n').filter(line => line.trim() !== '')
+  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
+  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+
+  if (bulletItems.length === 0) {
+    return <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>{note}</dd>
+  }
+
+  // First plain line (e.g. "Rs. 1 Lakh and Rs. 1.5 Lakh") is the headline
+  // figure, shown big like every other stat in this card; any later plain
+  // line (e.g. a trailing "Note: ...") is a smaller caption underneath the
+  // list, not another headline.
+  const [headline, ...captionLines] = plainLines
+
+  return (
+    <dd className='space-y-2'>
+      {headline && <p className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>{headline}</p>}
+      <ul className='space-y-1'>
+        {bulletItems.map((item, idx) => (
+          <li key={idx} className='flex items-baseline gap-2 text-base font-bold text-[var(--kdb-primary)]'>
+            <span className='text-sm text-[var(--kdb-saffron)]'>●</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      {captionLines.map((line, idx) => (
+        <p key={idx} className='text-sm font-medium text-[var(--kdb-muted)]'>
+          {line.trim()}
+        </p>
+      ))}
+    </dd>
+  )
+}
+
+/**
+ * "Important Dates & Deadlines" section, shown only when an admin has
+ * filled it in for this category (/admin/settings/general — new
+ * `important_dates_note`/`_hi` field, migration 0068). Renders nothing if
+ * empty — nothing invented for a category with no supplied dates (per
+ * CLAUDE.md §21). "• " bullet lines render as a real list, same parsing as
+ * AllotmentAmountNote below; a non-bullet line renders as plain text.
+ */
+const ImportantDatesSection = ({ note, lang }: { note: string | null; lang: 'en' | 'hi' }) => {
+  if (!note) return null
+
+  const lines = note.split('\n').filter(line => line.trim() !== '')
+  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
+  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+
+  return (
+    <div className='mb-8 rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6 sm:p-8'>
+      <h2 className='mb-4 text-2xl font-extrabold text-[var(--kdb-primary)] sm:text-3xl'>
+        {lang === 'hi' ? 'महत्वपूर्ण तिथियां एवं समय-सीमा' : 'Important Dates & Deadlines'}
+      </h2>
+      {bulletItems.length > 0 ? (
+        <ul className='space-y-2.5'>
+          {bulletItems.map((item, idx) => (
+            <li key={idx} className='flex items-baseline gap-2.5 text-base text-[var(--kdb-text)] sm:text-lg'>
+              <span className='mt-1 size-1.5 shrink-0 rounded-full bg-[var(--kdb-saffron)]' />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        plainLines.map((line, idx) => (
+          <p key={idx} className='text-base text-[var(--kdb-text)] sm:text-lg'>
+            {line.trim()}
+          </p>
+        ))
+      )}
     </div>
   )
 }

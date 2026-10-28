@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
-import { getPortalApplicationSchedule } from '@/lib/applications/categories'
+import { getPortalApplicationSchedule, listCategoryImportantDates } from '@/lib/applications/categories'
 import { listCategoryMaps } from '@/lib/settings/category-maps'
 import GuidelinesView from '@/views/public/guidelines'
 
@@ -15,8 +15,15 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const GuidelinesPage = async () => {
-  const [{ byCategory }, schedule] = await Promise.all([listCategoryMaps(), getPortalApplicationSchedule()])
+  const [{ byCategory }, schedule, importantDates] = await Promise.all([
+    listCategoryMaps(),
+    getPortalApplicationSchedule(),
+    listCategoryImportantDates()
+  ])
   const mapPdfBySlug = Object.fromEntries(byCategory.map(row => [row.categorySlug, row.pdfPath]))
+  const importantDatesBySlug = Object.fromEntries(
+    importantDates.map(row => [row.slug, { note: row.importantDatesNote, noteHi: row.importantDatesNoteHi }])
+  )
 
   return (
     <>
@@ -25,6 +32,7 @@ const GuidelinesPage = async () => {
         mapPdfBySlug={mapPdfBySlug}
         applicationOpensAt={schedule.applicationOpensAt}
         applicationClosesAt={schedule.applicationClosesAt}
+        importantDatesBySlug={importantDatesBySlug}
       />
       <PublicFooter />
     </>

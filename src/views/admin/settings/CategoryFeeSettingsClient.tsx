@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
   CoinsIcon,
   CopyIcon,
+  FileTextIcon,
   Loader2Icon,
   SaveIcon
 } from 'lucide-react'
@@ -25,6 +26,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 type CategoryFeeItem = {
   id: number
@@ -44,6 +46,13 @@ type CategoryFeeItem = {
   allotment_amount_paise?: number | null
   allotment_payment_enabled?: number | boolean
   allotment_payment_deadline_at?: string | null
+  description: string | null
+  description_hi: string | null
+  allotment_amount_note: string | null
+  allotment_amount_note_hi: string | null
+  important_dates_note: string | null
+  important_dates_note_hi: string | null
+  show_on_homepage: number | boolean
 }
 
 /** MySQL DATETIME ("2026-11-10 23:59:00") -> <input type="datetime-local"> value ("2026-11-10T23:59"). */
@@ -67,6 +76,7 @@ export default function CategoryFeeSettingsClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [expandedContentId, setExpandedContentId] = useState<number | null>(null)
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
@@ -310,6 +320,49 @@ export default function CategoryFeeSettingsClient({
     }
   }
 
+  const handleSaveContent = async (cat: CategoryFeeItem) => {
+    if (!cat.name.trim() || !cat.name_hi?.trim()) {
+      setErrorMessage('Category name (English and Hindi) cannot be empty.')
+      return
+    }
+
+    setSavingId(cat.id)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/categories/content', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: cat.id,
+          name: cat.name.trim(),
+          nameHi: cat.name_hi.trim(),
+          description: cat.description,
+          descriptionHi: cat.description_hi,
+          allotmentAmountNote: cat.allotment_amount_note,
+          allotmentAmountNoteHi: cat.allotment_amount_note_hi,
+          importantDatesNote: cat.important_dates_note,
+          importantDatesNoteHi: cat.important_dates_note_hi,
+          showOnHomepage: Boolean(cat.show_on_homepage)
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccessMessage(data.message ?? `Content for "${cat.name}" updated successfully!`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update category content.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   return (
     <div className='flex flex-col gap-6'>
       {successMessage && (
@@ -482,6 +535,7 @@ export default function CategoryFeeSettingsClient({
                   const totalRs = cat.fee_paise !== null ? (cat.fee_paise / 100).toLocaleString('en-IN') : 'Free / Not Set'
                   const isSaving = savingId === cat.id
                   const isExpanded = expandedId === cat.id
+                  const isContentExpanded = expandedContentId === cat.id
                   const hasAllotmentPayment = Boolean(cat.allotment_payment_enabled)
 
                   return (
@@ -541,6 +595,18 @@ export default function CategoryFeeSettingsClient({
                             <Button
                               size='sm'
                               variant='outline'
+                              onClick={() => setExpandedContentId(isContentExpanded ? null : cat.id)}
+                              className='text-xs font-bold rounded-lg border border-slate-300'
+                            >
+                              <FileTextIcon className='size-3.5 mr-1.5' />
+                              Content
+                              <ChevronDownIcon
+                                className={`size-3.5 ml-1 transition-transform ${isContentExpanded ? 'rotate-180' : ''}`}
+                              />
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='outline'
                               onClick={() => setExpandedId(isExpanded ? null : cat.id)}
                               className={`text-xs font-bold rounded-lg border ${
                                 hasAllotmentPayment
@@ -570,6 +636,195 @@ export default function CategoryFeeSettingsClient({
                           </div>
                         </td>
                       </tr>
+
+                      {isContentExpanded && (
+                        <tr key={`${cat.id}-content`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <FileTextIcon className='size-3.5 text-slate-600' />
+                                  Content for &ldquo;{cat.name}&rdquo; (श्रेणी सामग्री)
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  Name, description, and allotment-amount note shown on the home page and category pages —
+                                  changes here go live immediately.
+                                </p>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Category Name (English)</label>
+                                  <Input
+                                    value={cat.name}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, name: e.target.value } : c))
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Category Name (Hindi)</label>
+                                  <Input
+                                    value={cat.name_hi ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, name_hi: e.target.value } : c))
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Description (English)</label>
+                                  <Textarea
+                                    value={cat.description ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, description: e.target.value } : c))
+                                      )
+                                    }
+                                    rows={3}
+                                    className='text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Description (Hindi)</label>
+                                  <Textarea
+                                    value={cat.description_hi ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, description_hi: e.target.value } : c))
+                                      )
+                                    }
+                                    rows={3}
+                                    className='text-sm'
+                                  />
+                                </div>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>
+                                    Allotment Amount Note (English)
+                                  </label>
+                                  <Textarea
+                                    value={cat.allotment_amount_note ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, allotment_amount_note: e.target.value } : c
+                                        )
+                                      )
+                                    }
+                                    rows={3}
+                                    placeholder='Shown only when there is no single fixed allotment amount, e.g. "Small Booth: Rs. 1,00,000 · Large Booth: Rs. 1,50,000". Use a "• " prefix on a line to show it as a bullet.'
+                                    className='text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>
+                                    Allotment Amount Note (Hindi)
+                                  </label>
+                                  <Textarea
+                                    value={cat.allotment_amount_note_hi ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, allotment_amount_note_hi: e.target.value } : c
+                                        )
+                                      )
+                                    }
+                                    rows={3}
+                                    className='text-sm'
+                                  />
+                                </div>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>
+                                    Important Dates &amp; Deadlines (English)
+                                  </label>
+                                  <Textarea
+                                    value={cat.important_dates_note ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, important_dates_note: e.target.value } : c
+                                        )
+                                      )
+                                    }
+                                    rows={5}
+                                    placeholder='One line per deadline, prefixed with "• " to show as a bullet, e.g. "• Application Start Date: 29 October 2026, at 10:00 AM". Shown on the Apply form, Category Detail page, and Guidelines page.'
+                                    className='text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>
+                                    Important Dates &amp; Deadlines (Hindi)
+                                  </label>
+                                  <Textarea
+                                    value={cat.important_dates_note_hi ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, important_dates_note_hi: e.target.value } : c
+                                        )
+                                      )
+                                    }
+                                    rows={5}
+                                    className='text-sm'
+                                  />
+                                </div>
+                              </div>
+
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-2'>
+                                  <input
+                                    type='checkbox'
+                                    id={`show-on-homepage-${cat.id}`}
+                                    checked={Boolean(cat.show_on_homepage)}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, show_on_homepage: e.target.checked ? 1 : 0 } : c
+                                        )
+                                      )
+                                    }
+                                    className='size-4 rounded border-slate-300 text-[#0c2847] focus:ring-[#0c2847]'
+                                  />
+                                  <label
+                                    htmlFor={`show-on-homepage-${cat.id}`}
+                                    className='text-xs font-bold text-slate-800 cursor-pointer'
+                                  >
+                                    Show as a card on the home page
+                                  </label>
+                                </div>
+
+                                <Button
+                                  size='sm'
+                                  disabled={isSaving}
+                                  onClick={() => handleSaveContent(cat)}
+                                  className='bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
+                                >
+                                  {isSaving ? (
+                                    <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                  ) : (
+                                    <SaveIcon className='size-3.5 mr-1.5' />
+                                  )}
+                                  Save Content
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
 
                       {isExpanded && (
                         <tr key={`${cat.id}-allotment`} className='bg-slate-50/80'>
