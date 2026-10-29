@@ -32,7 +32,7 @@ const PublicHeader = () => {
 
   const navItemDefs: Array<{ label: string; href: string; external?: boolean }> = [
     { label: t('nav.home'), href: '/' },
-    { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about' },
+    { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about-us' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
@@ -43,7 +43,7 @@ const PublicHeader = () => {
     // Links to the Stall/Booth Locations page (Full Map + category-wise
     // maps), not directly to a PDF — a normal in-app route.
     { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },
-    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact' }
+    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact-us' }
   ]
 
   const navItems = navItemDefs.map(item => ({

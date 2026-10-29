@@ -50,12 +50,12 @@ const PublicFooter = () => {
 
   const quickLinks = [
     { label: lang === 'hi' ? 'मुख्य पृष्ठ' : 'Home', href: '/' },
-    { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about' },
+    { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about-us' },
     { label: lang === 'hi' ? 'बूथ/स्टॉल श्रेणियां' : 'Booth/Stall Categories', href: '/#categories' },
     { label: lang === 'hi' ? 'आवेदन की स्थिति' : 'Track Application Status', href: '/#status-check' },
     { label: lang === 'hi' ? 'आबंटन प्रक्रिया' : 'Allotment Procedure', href: '/#how-it-works' },
     { label: lang === 'hi' ? 'सामान्य प्रश्न' : 'Frequently Asked Questions', href: '/#faq' },
-    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact' }
+    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact-us' }
   ]
 
   const relatedPortals = [
