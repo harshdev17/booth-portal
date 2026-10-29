@@ -1374,7 +1374,13 @@ const ApplicationFormOrchestrator = ({
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle className='text-xl font-black text-[#0c2847]'>
-              {lang === 'hi' ? 'अपना मोबाइल नंबर सत्यापित करें' : 'Verify your Mobile Number'}
+              {otpWhatsappEnabled
+                ? lang === 'hi'
+                  ? 'अपना मोबाइल नंबर सत्यापित करें'
+                  : 'Verify your Mobile Number'
+                : lang === 'hi'
+                  ? 'अपना विवरण सत्यापित करें'
+                  : 'Verify your Details'}
             </DialogTitle>
             <DialogDescription>
               {otpPhase === 'sending'
