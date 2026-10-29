@@ -38,10 +38,11 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
+
     // Links to the Stall/Booth Locations page (Full Map + category-wise
     // maps), not directly to a PDF — a normal in-app route.
     { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },
-    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/#contact' }
+    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact' }
   ]
 
   const navItems = navItemDefs.map(item => ({
