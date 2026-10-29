@@ -34,6 +34,7 @@ const PrintApplication = () => {
   const [phase, setPhase] = useState<Phase>('lookup')
   const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
+  const [otpWhatsappEnabled, setOtpWhatsappEnabled] = useState(true)
   const [otpCode, setOtpCode] = useState('')
   const [result, setResult] = useState<PrintResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -127,6 +128,7 @@ const PrintApplication = () => {
 
       setApplicationNumber(values.applicationNumber)
       setMaskedMobile(body.maskedMobile)
+      setOtpWhatsappEnabled(body.whatsappEnabled !== false)
       setOtpCode('')
       setPhase('otp')
     } catch {
@@ -182,9 +184,13 @@ const PrintApplication = () => {
         </h1>
         <p className='mb-8 text-[var(--kdb-muted)]'>
           {phase === 'otp'
-            ? lang === 'hi'
-              ? `आपके व्हाट्सएप नंबर पर भेजा गया 6-अंकों का कोड दर्ज करें (...${maskedMobile.slice(-4)})।`
-              : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
+            ? otpWhatsappEnabled
+              ? lang === 'hi'
+                ? `आपके व्हाट्सएप नंबर पर भेजा गया 6-अंकों का कोड दर्ज करें (...${maskedMobile.slice(-4)})।`
+                : `Enter the 6-digit code sent to your WhatsApp number ending ${maskedMobile.slice(-4)}.`
+              : lang === 'hi'
+                ? `आपके मोबाइल नंबर (...${maskedMobile.slice(-4)}) से जुड़े ईमेल पर भेजा गया 6-अंकों का कोड दर्ज करें।`
+                : `Enter the 6-digit code emailed to the address linked to your mobile number ending ${maskedMobile.slice(-4)}.`
             : lang === 'hi'
               ? 'अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
               : "Enter your application number. We'll send a verification code to your registered mobile number."}

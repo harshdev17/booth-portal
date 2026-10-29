@@ -25,7 +25,8 @@ const testMessageSchema = z.object({
     'stall_interchanged',
     'reminder'
   ]),
-  mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
+  mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  email: z.string().trim().email().optional().or(z.literal(''))
 })
 
 // Realistic sample values matching each category's real call site
@@ -82,7 +83,8 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
 export async function sendTestNotification(_prevState: SendTestMessageState, formData: FormData): Promise<SendTestMessageState> {
   const parsed = testMessageSchema.safeParse({
     category: formData.get('category'),
-    mobileNumber: formData.get('mobileNumber')
+    mobileNumber: formData.get('mobileNumber'),
+    email: formData.get('email')
   })
 
   if (!parsed.success) {
@@ -99,7 +101,8 @@ export async function sendTestNotification(_prevState: SendTestMessageState, for
     destination,
     userName: 'Test Applicant',
     templateParams,
-    buttonParam
+    buttonParam,
+    email: parsed.data.email || undefined
   })
 
   await logAudit({

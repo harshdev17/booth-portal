@@ -94,6 +94,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
   const [otpError, setOtpError] = useState<string | null>(null)
   const [otpDialogOpen, setOtpDialogOpen] = useState(false)
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null)
+  const [otpWhatsappEnabled, setOtpWhatsappEnabled] = useState(true)
 
   // Only required once NEXT_PUBLIC_RECAPTCHA_SITE_KEY is actually configured
   // (RecaptchaWidget renders nothing until then) — see .ai/OPEN_QUESTIONS.md.
@@ -170,6 +171,7 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
 
       setOtpCode('')
       setMaskedEmail(typeof body.maskedEmail === 'string' ? body.maskedEmail : null)
+      setOtpWhatsappEnabled(body.whatsappEnabled !== false)
       setOtpPhase('sent')
     } catch {
       setOtpError(
@@ -574,9 +576,36 @@ const ReviewPageView = ({ categorySlug, applicationId }: { categorySlug: string;
                 ? lang === 'hi'
                   ? 'कोड भेजा जा रहा है...'
                   : 'Sending the code...'
-                : lang === 'hi'
-                  ? `हमने 6 अंकों का कोड आपके व्हाट्सएप (${data.common.mobileNumber})${maskedEmail ? ` और ईमेल (${maskedEmail})` : ''} पर भेजा है। नीचे दर्ज करें।`
-                  : `We sent a 6-digit code to your WhatsApp (${data.common.mobileNumber})${maskedEmail ? ` and your email (${maskedEmail})` : ''}. Enter it below.`}
+                : (() => {
+                    // Admin-toggled (/admin/settings/notifications) — when
+                    // WhatsApp is off, sendNotification() skips it entirely
+                    // and only email goes out, so this wording must not
+                    // claim a WhatsApp send that never happened.
+                    const channels: string[] = []
+
+                    if (otpWhatsappEnabled) {
+                      channels.push(
+                        lang === 'hi'
+                          ? `आपके व्हाट्सएप (${data.common.mobileNumber})`
+                          : `your WhatsApp (${data.common.mobileNumber})`
+                      )
+                    }
+
+                    if (maskedEmail) {
+                      channels.push(lang === 'hi' ? `ईमेल (${maskedEmail})` : `email (${maskedEmail})`)
+                    }
+
+                    const channelText =
+                      channels.length > 0
+                        ? channels.join(lang === 'hi' ? ' और ' : ' and ')
+                        : lang === 'hi'
+                          ? 'आपके संपर्क विवरण'
+                          : 'your contact details'
+
+                    return lang === 'hi'
+                      ? `हमने 6 अंकों का कोड ${channelText} पर भेजा है। नीचे दर्ज करें।`
+                      : `We sent a 6-digit code to ${channelText}. Enter it below.`
+                  })()}
             </DialogDescription>
           </DialogHeader>
 

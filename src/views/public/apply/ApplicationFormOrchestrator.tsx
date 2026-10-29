@@ -277,6 +277,7 @@ const ApplicationFormOrchestrator = ({
   const [otpCode, setOtpCode] = useState('')
   const [otpError, setOtpError] = useState<string | null>(null)
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null)
+  const [otpWhatsappEnabled, setOtpWhatsappEnabled] = useState(true)
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false)
   const [submittedMobile, setSubmittedMobile] = useState<string>('')
 
@@ -574,6 +575,7 @@ const ApplicationFormOrchestrator = ({
 
       setOtpCode('')
       setMaskedEmail(typeof body.maskedEmail === 'string' ? body.maskedEmail : null)
+      setOtpWhatsappEnabled(body.whatsappEnabled !== false)
       setOtpPhase('sent')
 
       return true
@@ -1379,9 +1381,34 @@ const ApplicationFormOrchestrator = ({
                 ? lang === 'hi'
                   ? 'सत्यापन कोड भेजा जा रहा है...'
                   : 'Sending the verification code...'
-                : lang === 'hi'
-                  ? `हमने 6 अंकों का कोड आपके व्हाट्सएप (${submittedMobile})${maskedEmail ? ` और ईमेल (${maskedEmail})` : ''} पर भेजा है। नीचे दर्ज करें।`
-                  : `We sent a 6-digit code to your WhatsApp (${submittedMobile})${maskedEmail ? ` and your email (${maskedEmail})` : ''}. Enter it below.`}
+                : (() => {
+                    // Admin-toggled (config.whatsappEnabled, migration 0071) —
+                    // when WhatsApp is off, sendNotification() skips it
+                    // entirely and only email goes out, so this wording must
+                    // not claim a WhatsApp send that never happened.
+                    const channels: string[] = []
+
+                    if (otpWhatsappEnabled) {
+                      channels.push(
+                        lang === 'hi' ? `आपके व्हाट्सएप (${submittedMobile})` : `your WhatsApp (${submittedMobile})`
+                      )
+                    }
+
+                    if (maskedEmail) {
+                      channels.push(lang === 'hi' ? `ईमेल (${maskedEmail})` : `email (${maskedEmail})`)
+                    }
+
+                    const channelText =
+                      channels.length > 0
+                        ? channels.join(lang === 'hi' ? ' और ' : ' and ')
+                        : lang === 'hi'
+                          ? 'आपके संपर्क विवरण'
+                          : 'your contact details'
+
+                    return lang === 'hi'
+                      ? `हमने 6 अंकों का कोड ${channelText} पर भेजा है। नीचे दर्ज करें।`
+                      : `We sent a 6-digit code to ${channelText}. Enter it below.`
+                  })()}
             </DialogDescription>
           </DialogHeader>
 

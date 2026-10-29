@@ -1,77 +1,115 @@
 import 'server-only'
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
-import { dirname, join, normalize, resolve } from 'node:path'
+
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 /**
- * Local-disk storage for uploaded documents, kept entirely outside
- * `public/` so nothing here is ever web-servable by a static file route —
- * the only way to read a file back is through an authorized API handler
- * that calls readStoredFile() after its own permission check (see
- * .ai/STORAGE.md, .ai/SECURITY.md Section 6).
+ * Cloudflare R2 (S3-compatible) storage for uploaded documents. Replaces the
+ * previous local-disk implementation (UPLOADS_DIR) — Hostinger's Business
+ * Web Hosting confirmed (2026-10-29 support ticket) that its managed
+ * Node.js deployment filesystem is NOT persistent across redeploys, so
+ * every uploaded applicant document was silently lost on the next deploy.
+ * R2 was chosen for its free tier (10GB storage, zero egress fees) — see
+ * .ai/DECISIONS.md.
  *
- * Chosen for this phase per the interim storage decision recorded in
- * .ai/DECISIONS.md; the small surface here (store/read/delete by an opaque
- * relative path) is deliberately the only thing callers depend on, so
- * swapping to an S3-compatible provider later does not require touching
- * any calling code — only this file.
+ * The public API (generateStoragePath/storeFile/readStoredFile/
+ * deleteStoredFile) is unchanged so no caller needed to change — only this
+ * file's internals moved from local disk to R2.
  */
 
-function getUploadsRoot(): string {
-  const configured = process.env.UPLOADS_DIR
+// Reused across calls within the same server process instead of
+// reconstructing per-request — a new S3Client otherwise pays a fresh
+// TCP/TLS handshake to R2 on every single upload/read/delete, which was a
+// large, avoidable chunk of upload latency.
+let cachedClient: S3Client | null = null
 
-  if (!configured) {
-    throw new Error('UPLOADS_DIR must be set.')
+function getR2Client(): S3Client {
+  if (cachedClient) return cachedClient
+
+  const accountId = process.env.R2_ACCOUNT_ID
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
+
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error('R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY must be set.')
   }
 
-  return resolve(configured)
+  cachedClient = new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey }
+  })
+
+  return cachedClient
+}
+
+function getBucketName(): string {
+  const bucket = process.env.R2_BUCKET_NAME
+
+  if (!bucket) {
+    throw new Error('R2_BUCKET_NAME must be set.')
+  }
+
+  return bucket
 }
 
 /**
- * Resolves a stored relative path against the uploads root and verifies the
- * result cannot escape that root — defense in depth against path traversal
- * even though storagePath values are always server-generated, never
- * user-supplied, in normal operation.
- */
-function resolveSafePath(storagePath: string): string {
-  const root = getUploadsRoot()
-  const resolved = normalize(join(root, storagePath))
-
-  if (!resolved.startsWith(root)) {
-    throw new Error('Resolved upload path escapes the uploads root — refusing to proceed.')
-  }
-
-  return resolved
-}
-
-/**
- * Generates a random, non-guessable relative storage path, namespaced by
- * application id so files for one application are grouped without ever
- * exposing that grouping in a public URL. The extension is derived from the
+ * Generates a random, non-guessable object key, namespaced by application
+ * id so files for one application are grouped without ever exposing that
+ * grouping in a public URL. The extension is derived from the
  * server-detected file type, never the client-supplied filename.
  */
 export function generateStoragePath(applicationId: number, extension: 'pdf' | 'jpg' | 'png'): string {
-  return join(String(applicationId), `${randomUUID()}.${extension}`)
+  return `${applicationId}/${randomUUID()}.${extension}`
 }
 
 export async function storeFile(storagePath: string, content: Buffer): Promise<void> {
-  const fullPath = resolveSafePath(storagePath)
+  const client = getR2Client()
 
-  await mkdir(dirname(fullPath), { recursive: true })
-  await writeFile(fullPath, content, { mode: 0o600 })
+  await client.send(
+    new PutObjectCommand({
+      Bucket: getBucketName(),
+      Key: storagePath,
+      Body: content
+    })
+  )
 }
 
 export async function readStoredFile(storagePath: string): Promise<Buffer> {
-  return readFile(resolveSafePath(storagePath))
+  const client = getR2Client()
+
+  const result = await client.send(
+    new GetObjectCommand({
+      Bucket: getBucketName(),
+      Key: storagePath
+    })
+  )
+
+  const byteArray = await result.Body?.transformToByteArray()
+
+  if (!byteArray) {
+    throw new Error(`Object body empty for key: ${storagePath}`)
+  }
+
+  return Buffer.from(byteArray)
 }
 
 export async function deleteStoredFile(storagePath: string): Promise<void> {
+  const client = getR2Client()
+
   try {
-    await unlink(resolveSafePath(storagePath))
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: getBucketName(),
+        Key: storagePath
+      })
+    )
   } catch (error) {
-    // Best-effort cleanup (e.g. failed/temporary uploads) — a missing file
-    // is not itself an error worth surfacing to the caller.
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    // Best-effort cleanup (e.g. failed/temporary uploads) — mirrors the
+    // previous local-disk implementation's ENOENT tolerance. R2's delete
+    // is idempotent (no error for a missing key), so this only guards
+    // against genuine network/auth failures being swallowed silently.
+    throw error
   }
 }

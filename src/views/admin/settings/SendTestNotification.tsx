@@ -40,8 +40,8 @@ const SendTestNotification = () => {
       <CardHeader className='border-b bg-muted/40 py-4'>
         <CardTitle className='text-base font-bold text-[#0c2847]'>Send Test Message</CardTitle>
         <CardDescription className='text-xs'>
-          Sends a real WhatsApp message using sample data, to a number you provide — verifies the category&apos;s
-          template/campaign actually works, the same way a real notification would send.
+          Sends a real WhatsApp message (and, if an email is entered, an email too) using sample data — verifies the
+          category&apos;s template/campaign actually works, the same way a real notification would send.
         </CardDescription>
       </CardHeader>
       <CardContent className='pt-6'>
@@ -78,6 +78,11 @@ const SendTestNotification = () => {
                   title='Enter a valid 10-digit Indian mobile number'
                 />
               </div>
+            </div>
+
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-slate-700'>Email (optional)</label>
+              <Input name='email' type='email' placeholder='name@example.com' />
             </div>
           </div>
 

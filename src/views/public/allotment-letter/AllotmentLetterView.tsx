@@ -57,6 +57,7 @@ const AllotmentLetterView = () => {
   const [phase, setPhase] = useState<Phase>('lookup')
   const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
+  const [otpWhatsappEnabled, setOtpWhatsappEnabled] = useState(true)
   const [otpCode, setOtpCode] = useState('')
   const [statusData, setStatusData] = useState<StatusApiResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -97,6 +98,7 @@ const AllotmentLetterView = () => {
 
       setApplicationNumber(values.applicationNumber)
       setMaskedMobile(body.maskedMobile)
+      setOtpWhatsappEnabled(body.whatsappEnabled !== false)
       setOtpCode('')
       setPhase('otp')
     } catch {
@@ -230,9 +232,13 @@ const AllotmentLetterView = () => {
       {phase === 'otp' && (
         <div className='print:hidden max-w-xl rounded-xl border border-[var(--kdb-border)] bg-white p-6 shadow-xs flex flex-col gap-4'>
           <p className='text-xs text-[var(--kdb-muted)]'>
-            {lang === 'hi'
-              ? `आपके व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का कोड दर्ज करें:`
-              : `Enter the 6-digit code sent to your WhatsApp number ending ${(maskedMobile || '').slice(-4)}:`}
+            {otpWhatsappEnabled
+              ? lang === 'hi'
+                ? `आपके व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का कोड दर्ज करें:`
+                : `Enter the 6-digit code sent to your WhatsApp number ending ${(maskedMobile || '').slice(-4)}:`
+              : lang === 'hi'
+                ? `आपके मोबाइल नंबर (...${(maskedMobile || '').slice(-4)}) से जुड़े ईमेल पर भेजा गया 6-अंकों का कोड दर्ज करें:`
+                : `Enter the 6-digit code emailed to the address linked to your mobile number ending ${(maskedMobile || '').slice(-4)}:`}
           </p>
 
           <Field>

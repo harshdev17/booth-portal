@@ -7,6 +7,7 @@ import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
+import { getNotificationSettings } from '@/lib/settings/notification-settings'
 
 const printLookupSchema = z.object({
   applicationNumber: z
@@ -143,7 +144,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: sent.error }, { status: 502 })
       }
 
-      return NextResponse.json({ otpRequired: true, maskedMobile: maskMobile(application.mobile_number) })
+      const { whatsappEnabled } = await getNotificationSettings()
+
+      return NextResponse.json({
+        otpRequired: true,
+        maskedMobile: maskMobile(application.mobile_number),
+        whatsappEnabled
+      })
     }
 
     // Phase 2: verify the code before releasing any application data.

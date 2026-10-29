@@ -6,6 +6,7 @@ import { requestOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
+import { getNotificationSettings } from '@/lib/settings/notification-settings'
 
 const requestSchema = z.object({
   mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
@@ -72,8 +73,9 @@ export async function POST(request: Request) {
     }
 
     const maskedEmail = email ? email.replace(/^(.).*(@.*)$/, (_m, first: string, domain: string) => `${first}•••${domain}`) : null
+    const { whatsappEnabled } = await getNotificationSettings()
 
-    return NextResponse.json({ sent: true, maskedEmail })
+    return NextResponse.json({ sent: true, maskedEmail, whatsappEnabled })
   } catch (error) {
     logServerError('api.otp.request', error)
 

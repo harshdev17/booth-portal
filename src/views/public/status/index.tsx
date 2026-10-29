@@ -159,6 +159,7 @@ const StatusLookup = () => {
   const [phase, setPhase] = useState<Phase>('lookup')
   const [applicationNumber, setApplicationNumber] = useState('')
   const [maskedMobile, setMaskedMobile] = useState('')
+  const [otpWhatsappEnabled, setOtpWhatsappEnabled] = useState(true)
   const [otpCode, setOtpCode] = useState('')
   const [result, setResult] = useState<StatusResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -231,6 +232,7 @@ const StatusLookup = () => {
       if (body.otpRequired) {
         setApplicationNumber(values.applicationNumber)
         setMaskedMobile(body.maskedMobile || '')
+        setOtpWhatsappEnabled(body.whatsappEnabled !== false)
         setOtpCode('')
         setPhase('otp')
       } else {
@@ -636,9 +638,13 @@ const StatusLookup = () => {
           </h1>
           <p className='text-sm text-[var(--kdb-muted)] leading-relaxed'>
             {phase === 'otp'
-              ? lang === 'hi'
-                ? `आपके पंजीकृत मोबाइल/व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का सत्यापन कोड दर्ज करें।`
-              : `Enter the 6-digit verification code sent to your registered WhatsApp number ending ${(maskedMobile || '').slice(-4)}.`
+              ? otpWhatsappEnabled
+                ? lang === 'hi'
+                  ? `आपके पंजीकृत मोबाइल/व्हाट्सएप नंबर (...${(maskedMobile || '').slice(-4)}) पर भेजा गया 6-अंकों का सत्यापन कोड दर्ज करें।`
+                  : `Enter the 6-digit verification code sent to your registered WhatsApp number ending ${(maskedMobile || '').slice(-4)}.`
+                : lang === 'hi'
+                  ? `आपके पंजीकृत मोबाइल नंबर (...${(maskedMobile || '').slice(-4)}) से जुड़े ईमेल पर भेजा गया 6-अंकों का सत्यापन कोड दर्ज करें।`
+                  : `Enter the 6-digit verification code emailed to the address linked to your registered mobile number ending ${(maskedMobile || '').slice(-4)}.`
               : lang === 'hi'
                 ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
                 : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
