@@ -4,6 +4,7 @@ import { query } from '@/lib/db/client'
 import { AiSensyNotificationService } from '@/lib/notifications/aisensy'
 import { getContactSettings } from '@/lib/settings/contact-settings'
 import { buildEmailContent, isEmailConfigured, sendEmail } from '@/lib/notifications/email'
+import { getNotificationSettings } from '@/lib/settings/notification-settings'
 import type { NotificationService, SendTemplateMessageInput } from '@/lib/notifications/types'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -58,8 +59,26 @@ function applyTestRedirect(input: SendTemplateMessageInput): { input: SendTempla
 
 export async function sendNotification(original: SendTemplateMessageInput): Promise<boolean> {
   const { input, redirected } = applyTestRedirect(original)
+  const { whatsappEnabled } = await getNotificationSettings()
 
   const waTask = (async () => {
+    if (!whatsappEnabled) {
+      // Admin has turned WhatsApp off (migration 0071) — skip the AiSensy
+      // call entirely rather than attempting and failing. Still logged, so
+      // this stays visible in notification_log alongside real failures.
+      try {
+        await query(
+          `INSERT INTO notification_log (channel, provider, category, application_id, destination, campaign_name, status, error_message)
+           VALUES ('whatsapp', 'aisensy', ?, ?, ?, NULL, 'failed', 'WhatsApp notifications are turned off by admin.')`,
+          [input.category, input.applicationId ?? null, input.destination]
+        )
+      } catch (error) {
+        logServerError('notifications.log-write', error)
+      }
+
+      return false
+    }
+
     const result = await getService()
       .sendTemplateMessage(input)
       .catch(error => ({ ok: false as const, error: error instanceof Error ? error.message : 'Unknown provider error.' }))
@@ -85,7 +104,8 @@ export async function sendNotification(original: SendTemplateMessageInput): Prom
   })()
 
   const emailTask = (async () => {
-    if (!input.email) return
+    if (!input.email) return false
+
     try {
       const contact = await getContactSettings()
       const content = buildEmailContent(input.category, input.templateParams, contact)
@@ -109,12 +129,21 @@ export async function sendNotification(original: SendTemplateMessageInput): Prom
           emailResult.ok ? null : emailResult.error.slice(0, 512)
         ]
       )
+
+      return emailResult.ok
     } catch (error) {
       logServerError('notifications.email', error, { configured: isEmailConfigured() })
+
+      return false
     }
   })()
 
-  const [waOk] = await Promise.all([waTask, emailTask])
+  const [waOk, emailOk] = await Promise.all([waTask, emailTask])
 
-  return waOk
+  // Success if EITHER channel delivered — previously this returned waOk
+  // alone, so a caller that gates on the result (e.g. the OTP flow) would
+  // report failure to the applicant even when email went through fine,
+  // whether because WhatsApp is intentionally off or just had a transient
+  // failure.
+  return waOk || emailOk
 }

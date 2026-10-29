@@ -5,8 +5,10 @@ import { CheckCircle2Icon, MessageSquareIcon, XCircleIcon } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { isEmailConfigured } from '@/lib/notifications/email'
 import { requirePermission } from '@/lib/rbac/authorize'
+import { getNotificationSettings } from '@/lib/settings/notification-settings'
 import SendTestEmail from '@/views/admin/settings/SendTestEmail'
 import SendTestNotification from '@/views/admin/settings/SendTestNotification'
+import WhatsappToggle from '@/views/admin/settings/WhatsappToggle'
 
 export const metadata: Metadata = {
   title: 'WhatsApp / SMS Settings — IGM Admin Portal'
@@ -38,6 +40,7 @@ const NotificationSettingsPage = async () => {
 
   const apiKeyConfigured = !!process.env.AISENSY_API_KEY
   const emailConfigured = isEmailConfigured()
+  const { whatsappEnabled } = await getNotificationSettings()
 
   const rows = CATEGORY_ENV_MAP.map(row => ({
     ...row,
@@ -49,8 +52,9 @@ const NotificationSettingsPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>WhatsApp / SMS Settings</h1>
         <p className='text-sm text-muted-foreground'>
-          Status of each WhatsApp notification sent to applicants. These are set up by the technical team and cannot
-          be edited here.
+          Status of each WhatsApp notification sent to applicants. The campaign setup below is done by the technical
+          team and cannot be edited here — the WhatsApp Notifications switch is the only setting on this page you can
+          change.
         </p>
       </div>
 
@@ -69,6 +73,20 @@ const NotificationSettingsPage = async () => {
                 : 'Not connected — no WhatsApp message will be sent until the technical team completes the setup.'}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardContent className='flex items-center justify-between gap-3 pt-6'>
+          <div>
+            <p className='text-sm font-semibold text-slate-800'>WhatsApp Notifications</p>
+            <p className='text-xs text-muted-foreground'>
+              {whatsappEnabled
+                ? 'ON — applicants receive WhatsApp messages (including OTP) in addition to email.'
+                : 'OFF — every notification, including OTP, is sent by email only. No WhatsApp message is attempted.'}
+            </p>
+          </div>
+          <WhatsappToggle enabled={whatsappEnabled} />
         </CardContent>
       </Card>
 
