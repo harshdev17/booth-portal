@@ -1061,45 +1061,6 @@ const ApplicationFormOrchestrator = ({
           </Link>
         </div>
 
-        {/* "Important Dates & Deadlines" — shown only when an admin has
-            filled it in for this category (/admin/settings/general, new
-            importantDatesNote/_hi field, migration 0068). Nothing invented
-            for a category with none supplied. */}
-        {(() => {
-          const note = lang === 'hi' ? config.category.importantDatesNoteHi : config.category.importantDatesNote
-
-          if (!note) return null
-
-          const lines = note.split('\n').filter(line => line.trim() !== '')
-          const bulletItems = lines
-            .filter(line => line.trim().startsWith('•'))
-            .map(line => line.trim().replace(/^•\s*/, ''))
-
-          return (
-            <div className='mb-6 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-5 py-4'>
-              <p className='mb-2 text-sm sm:text-base font-extrabold text-[#1e3a8a]'>
-                {lang === 'hi' ? 'महत्वपूर्ण तिथियां एवं समय-सीमा' : 'Important Dates & Deadlines'}
-              </p>
-              {bulletItems.length > 0 ? (
-                <ul className='space-y-1.5'>
-                  {bulletItems.map((item, idx) => (
-                    <li key={idx} className='flex items-baseline gap-2 text-xs sm:text-sm text-[#1e40af]'>
-                      <span className='mt-1 size-1 shrink-0 rounded-full bg-[#1e40af]' />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                lines.map((line, idx) => (
-                  <p key={idx} className='text-xs sm:text-sm text-[#1e40af]'>
-                    {line.trim()}
-                  </p>
-                ))
-              )}
-            </div>
-          )
-        })()}
-
         {/* Links to this category's own map PDF — shown only when an admin
             has actually uploaded one for this category
             (/admin/settings/maps). No fallback to the general

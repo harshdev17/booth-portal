@@ -17,10 +17,26 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
   const { lang } = useLanguage()
   const { documents, category } = config
   const auctionVenue = lang === 'hi' && category.auctionVenueHi ? category.auctionVenueHi : category.auctionVenue
+  const applyInstructions = getApplyInstructions(category.slug)
+
+  // Important Dates & Deadlines — admin-configured per category
+  // (importantDatesNote/_hi, migration 0068). Previously shown in a
+  // separate blue box above this step; merged into this single "Before
+  // You Start" schedule box per explicit request (2026-10-29) so dates
+  // only appear in one place on the apply form.
+  const importantDatesNote = lang === 'hi' ? category.importantDatesNoteHi : category.importantDatesNote
+  const importantDatesLines = importantDatesNote
+    ? importantDatesNote.split('\n').filter(line => line.trim() !== '')
+    : []
+  const importantDatesBullets = importantDatesLines
+    .filter(line => line.trim().startsWith('•'))
+    .map(line => line.trim().replace(/^•\s*/, ''))
+
   const hasAuctionDetails =
     !getApplyInstructions(category.slug)?.hideScheduleBox &&
-    !!(category.applicationOpensAt || category.applicationClosesAt || (category.auctionDate && auctionVenue))
-  const applyInstructions = getApplyInstructions(category.slug)
+    (importantDatesBullets.length > 0 ||
+      importantDatesLines.length > 0 ||
+      !!(category.applicationOpensAt || category.applicationClosesAt || (category.auctionDate && auctionVenue)))
   const categoryInstructions = applyInstructions?.bullets
   const docOverride = applyInstructions?.requiredDocuments
   const importantOverride = applyInstructions?.importantInstructions
@@ -88,42 +104,60 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
 
       {hasAuctionDetails && (
         <ul className='flex flex-col gap-2 rounded-xl border border-[#fbd38d] bg-[#fffaf0] p-4'>
-          {category.applicationOpensAt && (
-            <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
-              <span>•</span>
-              <span>
-                {lang === 'hi' ? 'आवेदन प्रारंभ तिथि: ' : 'Application start date: '}
-                {formatDateTime(category.applicationOpensAt, lang)}
-              </span>
-            </li>
-          )}
-          {category.applicationClosesAt && (
-            <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
-              <span>•</span>
-              <span>
-                {lang === 'hi' ? 'आवेदन की अंतिम तिथि: ' : 'Last date to apply: '}
-                {formatDateTime(category.applicationClosesAt, lang)}
-              </span>
-            </li>
-          )}
-          {category.auctionDate && auctionVenue && (
-            <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
-              <span>•</span>
-              <span>
-                {category.selectionMethod === 'auction'
-                  ? lang === 'hi'
-                    ? 'नीलामी की तिथि: '
-                    : 'Auction Date: '
-                  : lang === 'hi'
-                    ? 'ड्रॉ: '
-                    : 'Draw: '}
-                {formatDateTime(category.auctionDate, lang)}
-                {' — '}
-                {category.selectionMethod === 'auction' ? (lang === 'hi' ? 'नीलामी का स्थान: ' : 'Auction Venue: ') : ''}
-                {auctionVenue}
-              </span>
-            </li>
-          )}
+          {importantDatesBullets.length > 0
+            ? importantDatesBullets.map((item, idx) => (
+                <li key={idx} className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+                  <span>•</span>
+                  <span>{item}</span>
+                </li>
+              ))
+            : importantDatesLines.length > 0
+              ? importantDatesLines.map((line, idx) => (
+                  <li key={idx} className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+                    <span>•</span>
+                    <span>{line.trim()}</span>
+                  </li>
+                ))
+              : (
+                <>
+                  {category.applicationOpensAt && (
+                    <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+                      <span>•</span>
+                      <span>
+                        {lang === 'hi' ? 'आवेदन प्रारंभ तिथि: ' : 'Application start date: '}
+                        {formatDateTime(category.applicationOpensAt, lang)}
+                      </span>
+                    </li>
+                  )}
+                  {category.applicationClosesAt && (
+                    <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+                      <span>•</span>
+                      <span>
+                        {lang === 'hi' ? 'आवेदन की अंतिम तिथि: ' : 'Last date to apply: '}
+                        {formatDateTime(category.applicationClosesAt, lang)}
+                      </span>
+                    </li>
+                  )}
+                  {category.auctionDate && auctionVenue && (
+                    <li className='flex items-baseline gap-2 text-base font-bold text-[#8c5711]'>
+                      <span>•</span>
+                      <span>
+                        {category.selectionMethod === 'auction'
+                          ? lang === 'hi'
+                            ? 'नीलामी की तिथि: '
+                            : 'Auction Date: '
+                          : lang === 'hi'
+                            ? 'ड्रॉ: '
+                            : 'Draw: '}
+                        {formatDateTime(category.auctionDate, lang)}
+                        {' — '}
+                        {category.selectionMethod === 'auction' ? (lang === 'hi' ? 'नीलामी का स्थान: ' : 'Auction Venue: ') : ''}
+                        {auctionVenue}
+                      </span>
+                    </li>
+                  )}
+                </>
+              )}
         </ul>
       )}
 
