@@ -196,7 +196,8 @@ const SuccessPageView = ({
   const hasFee = (details?.feePaise ?? 0) > 0
   const awaitingPayment = hasFee && (details?.status === 'payment_pending' || details?.status === 'payment_failed')
   const isPaymentSuccess = hasFee && (details?.paymentStatus === 'success' || (details?.status !== 'payment_pending' && details?.status !== 'payment_failed'))
-  const canShowReceipt = hasFee && isPaymentSuccess
+  // Receipt is reserved exclusively for stall allotment fee payment, and hidden for initial registration
+  const canShowReceipt = false
 
   const categoryDisplayName =
     lang === 'hi'

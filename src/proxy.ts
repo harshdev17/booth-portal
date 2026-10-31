@@ -154,6 +154,26 @@ function buildContentSecurityPolicy(nonce: string, allowSelfFraming: boolean): s
 const COMING_SOON_MODE = process.env.COMING_SOON_MODE === 'true'
 
 export async function proxy(request: NextRequest) {
+  // Canonical www -> non-www 301 permanent redirect
+  const rawHost =
+    request.headers.get('x-forwarded-host') ||
+    request.headers.get('host') ||
+    request.nextUrl.hostname
+
+  if (rawHost) {
+    const hostWithoutPort = rawHost.split(':')[0].trim().toLowerCase()
+
+    if (hostWithoutPort.startsWith('www.')) {
+      const nonWwwHost = hostWithoutPort.replace(/^www\./, '')
+      const redirectUrl = new URL(
+        request.nextUrl.pathname + request.nextUrl.search,
+        `https://${nonWwwHost}`
+      )
+
+      return NextResponse.redirect(redirectUrl, 301)
+    }
+  }
+
   const { pathname } = request.nextUrl
 
   if (COMING_SOON_MODE && pathname !== '/coming-soon') {

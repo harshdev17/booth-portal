@@ -66,6 +66,19 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400
   },
+  redirects: async () => [
+    {
+      source: '/:path*',
+      has: [
+        {
+          type: 'host',
+          value: 'www.thanesarinfo.com'
+        }
+      ],
+      destination: 'https://thanesarinfo.com/:path*',
+      permanent: true
+    }
+  ],
   headers: async () => [
     {
       source: '/:path*',

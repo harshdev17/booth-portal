@@ -42,7 +42,7 @@ export async function findReceiptRow(where: 'a.id = ?' | 'a.application_number =
               ORDER BY pt.created_at DESC LIMIT 1) AS paid_at
      FROM applications a
      JOIN categories c ON c.id = a.category_id
-     LEFT JOIN payments p ON p.application_id = a.id AND p.purpose IN ('registration', 'pay_now') AND p.status = 'success'
+     LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now' AND p.status = 'success'
      WHERE ${where}
      ORDER BY p.id DESC
      LIMIT 1`,

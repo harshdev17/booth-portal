@@ -25,8 +25,9 @@ const baseStyles = `
     src: url(data:font/ttf;base64,${getDevanagariFontBoldBase64()}) format('truetype');
   }
   * { box-sizing: border-box; }
+  dl, dt, dd { margin: 0; padding: 0; }
   body {
-    font-family: 'Noto Sans Devanagari', sans-serif;
+    font-family: 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 10pt;
     color: #000;
     background: #fff;
@@ -43,7 +44,7 @@ const baseStyles = `
   }
   .letterhead img { width: 40pt; height: 40pt; object-fit: contain; }
   .letterhead h1 { font-size: 13pt; margin: 0; }
-  .letterhead p { font-size: 8pt; margin: 2pt 0 0; }
+  .letterhead p { font-size: 8pt; margin: 2pt 0 0; color: #444; }
   .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14pt; }
   .title-row h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.5pt; margin: 0; }
   .badge { font-size: 8pt; font-weight: bold; border: 1pt solid #000; border-radius: 10pt; padding: 3pt 8pt; }
@@ -53,6 +54,28 @@ const baseStyles = `
   .field dt { font-size: 7pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3pt; color: #333; margin: 0; }
   .field dd { font-size: 10pt; font-weight: bold; margin: 2pt 0 0; word-break: break-word; }
   .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1pt solid #000; padding-top: 8pt; margin-top: 16pt; font-size: 8pt; }
+  .payment-box {
+    margin-top: 12pt;
+    border: 1pt solid #000;
+    border-radius: 4pt;
+    padding: 8pt 8pt 0 8pt;
+  }
+  .payment-box-title {
+    font-size: 8pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    border-bottom: 0.5pt solid #888;
+    padding-bottom: 4pt;
+    margin-bottom: 8pt;
+  }
+  @media print {
+    body {
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
 `
 
 const letterhead = (lang: 'hi' | 'en') => `
@@ -123,7 +146,8 @@ export type ReceiptPdfData = {
   paidAt: string | null
 }
 
-const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
+const formatRupees = (paise: number, lang: 'hi' | 'en' = 'en') =>
+  `${lang === 'hi' ? '₹' : 'Rs. '}${(paise / 100).toLocaleString('en-IN')}`
 
 // Mirrors ReceiptPageView.tsx's on-screen layout field-for-field.
 export function receiptHtml(data: ReceiptPdfData, lang: 'hi' | 'en'): string {
@@ -132,7 +156,7 @@ export function receiptHtml(data: ReceiptPdfData, lang: 'hi' | 'en'): string {
     field(lang === 'hi' ? 'श्रेणी' : 'Category', lang === 'hi' ? (data.categoryNameHi ?? data.categoryName) : data.categoryName),
     data.organisationName ? field(lang === 'hi' ? 'संस्था / फर्म का नाम' : 'Organisation / Firm Name', data.organisationName) : '',
     field(lang === 'hi' ? 'आवेदक का नाम' : 'Applicant Name', data.representativeName),
-    data.amountPaise !== null ? field(lang === 'hi' ? 'भुगतान राशि' : 'Amount Paid', formatRupees(data.amountPaise)) : '',
+    data.amountPaise !== null ? field(lang === 'hi' ? 'भुगतान राशि' : 'Amount Paid', formatRupees(data.amountPaise, lang)) : '',
     data.razorpayPaymentId ? field(lang === 'hi' ? 'भुगतान आईडी' : 'Payment ID', data.razorpayPaymentId) : '',
     data.razorpayOrderId ? field(lang === 'hi' ? 'ऑर्डर आईडी' : 'Order ID', data.razorpayOrderId) : '',
     data.paidAt
@@ -180,6 +204,12 @@ export type ApplicationPdfData = {
   achievementExperience: string
   remarks: string | null
   fieldValues: ApplicationPdfFieldValue[]
+  // New fields for payment statuses and details
+  registrationPaymentStatus?: string | null
+  registrationAmountPaise?: number | null
+  registrationPaymentId?: string | null
+  registrationPaidAt?: string | null
+  allotmentPaymentStatus?: string | null
 }
 
 // Same bilingual status vocabulary as print-application/index.tsx — kept as
@@ -220,7 +250,6 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
     field(lang === 'hi' ? 'थाने का नाम' : 'Police Station Name', data.policeStationName),
     field(lang === 'hi' ? 'थाने का पता' : 'Police Station Address', data.policeStationAddress, true),
     data.shopOptionLabel ? field(lang === 'hi' ? 'बूथ/स्टॉल विकल्प' : 'Booth/Stall Option', data.shopOptionLabel) : '',
-    data.feePaise !== null ? field(lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee', formatRupees(data.feePaise)) : '',
     data.workPurpose ? field(lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work', data.workPurpose, true) : '',
     data.achievementExperience
       ? field(lang === 'hi' ? 'उपलब्धि/अनुभव' : 'Achievement / Experience', data.achievementExperience, true)
@@ -232,6 +261,23 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
       : ''
   ].join('')
 
+  const paymentFields = [
+    data.feePaise !== null ? field(lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee', formatRupees(data.feePaise, lang)) : '',
+    data.registrationPaymentStatus === 'success'
+      ? [
+          field(lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status', lang === 'hi' ? 'भुगतान प्राप्त (सफल)' : 'Payment Received (Success)'),
+          data.registrationPaymentId ? field(lang === 'hi' ? 'भुगतान आईडी / संदर्भ' : 'Payment ID / Ref', data.registrationPaymentId) : '',
+          data.registrationPaidAt ? field(lang === 'hi' ? 'भुगतान तिथि व समय' : 'Payment Date & Time', new Date(data.registrationPaidAt).toLocaleString('en-IN')) : ''
+        ].join('')
+      : data.registrationPaymentStatus === 'pending'
+        ? field(lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status', lang === 'hi' ? 'भुगतान लंबित' : 'Payment Pending / Awaited')
+        : data.registrationPaymentStatus === 'failed'
+          ? field(lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status', lang === 'hi' ? 'भुगतान विफल' : 'Payment Failed')
+          : data.feePaise && data.feePaise > 0
+            ? field(lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status', lang === 'hi' ? 'भुगतान लंबित / अपूर्ण' : 'Payment Pending / Not Completed')
+            : field(lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status', lang === 'hi' ? 'निःशुल्क / छूट' : 'Exempted / Free')
+  ].join('')
+
   const statusLabel = lang === 'hi' ? (STATUS_LABEL[data.status]?.hi ?? data.status) : (STATUS_LABEL[data.status]?.en ?? data.status)
 
   const body = `
@@ -241,6 +287,10 @@ export function applicationHtml(data: ApplicationPdfData, lang: 'hi' | 'en'): st
       <span class="badge">${escapeHtml(statusLabel)}</span>
     </div>
     <div class="grid">${fields}</div>
+    <div class="payment-box">
+      <div class="payment-box-title">${lang === 'hi' ? 'भुगतान विवरण' : 'Payment Details'}</div>
+      <div class="grid">${paymentFields}</div>
+    </div>
     ${footer(lang)}
   `
 
@@ -268,7 +318,7 @@ export function allotmentLetterHtml(data: AllotmentLetterPdfData, lang: 'hi' | '
   const isHi = lang === 'hi'
   const isPaid = (data.allotmentAmountPaise ?? 0) > 0
   const feeLabel = isPaid
-    ? formatRupees(data.allotmentAmountPaise!)
+    ? formatRupees(data.allotmentAmountPaise!, lang)
     : isHi
       ? 'निःशुल्क (Exempt / Free)'
       : 'Exempt / Free'

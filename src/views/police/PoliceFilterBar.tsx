@@ -1,71 +1,92 @@
 'use client'
 
+import { useRef, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { SearchIcon, XIcon } from 'lucide-react'
+import { Loader2Icon, SearchIcon, XIcon } from 'lucide-react'
+
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+
+const SEARCH_DEBOUNCE_MS = 400
 
 export default function PoliceFilterBar({
   categories
 }: {
-  categories: Array<{ id: number; name: string; slug: string }>
+  categories: Array<{ id: number; name: string; slug: string; is_direct_allotment?: number | boolean }>
 }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentQ = searchParams.get('q') ?? ''
   const currentCategory = searchParams.get('category') ?? ''
 
-  function updateSearch(name: string, value: string) {
+  const navigate = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString())
-    if (value) {
-      params.set(name, value)
-    } else {
-      params.delete(name)
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === '' || value === 'all') params.delete(key)
+      else params.set(key, value)
     }
-    params.set('page', '1')
-    router.push(`${pathname}?${params.toString()}`)
+
+    params.delete('page')
+    startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
-  function clearAll() {
-    router.push(pathname)
+  const onSearchChange = (value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => navigate({ q: value }), SEARCH_DEBOUNCE_MS)
   }
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    navigate({ q: e.currentTarget.value })
+  }
+
+  const hasFilters = Boolean(currentQ || currentCategory)
 
   return (
-    <div className='flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs'>
-      <div className='flex flex-1 flex-col sm:flex-row gap-3 w-full sm:w-auto'>
-        <div className='relative flex-1'>
-          <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400' />
-          <Input
-            placeholder='Search Allottee Name, App No, Mobile, Booth/Stall No...'
-            defaultValue={currentQ}
-            onChange={e => updateSearch('q', e.target.value)}
-            className='pl-9 h-10 border-slate-300 text-sm focus:border-blue-600'
-          />
-        </div>
-
-        <select
-          value={currentCategory}
-          onChange={e => updateSearch('category', e.target.value)}
-          aria-label='Filter by Category'
-          className='h-10 px-3 text-sm rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:border-blue-600'
-        >
-          <option value=''>All Categories</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+    <div className='flex flex-col gap-3 sm:flex-row'>
+      <div className='relative flex-1'>
+        <SearchIcon className='absolute left-3 top-3 size-4 text-muted-foreground' />
+        <Input
+          key={currentQ}
+          defaultValue={currentQ}
+          onChange={e => onSearchChange(e.target.value)}
+          onKeyDown={onSearchKeyDown}
+          placeholder='Search by Allottee Name, App Number, Mobile, Booth/Stall No, Police Station...'
+          className='pl-9 pr-9'
+        />
+        {isPending && <Loader2Icon className='absolute right-3 top-3 size-4 animate-spin text-muted-foreground' />}
       </div>
 
-      {(currentQ || currentCategory) && (
+      <select
+        value={currentCategory || 'all'}
+        onChange={e => navigate({ category: e.target.value === 'all' ? null : e.target.value })}
+        aria-label='Filter by Category'
+        className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background'
+      >
+        <option value='all'>All Categories (Commercial &amp; Custom)</option>
+        {categories.map(c => (
+          <option key={c.id} value={c.slug}>
+            {c.name} {c.is_direct_allotment ? ' • [Custom / Direct]' : ''}
+          </option>
+        ))}
+      </select>
+
+      {hasFilters && (
         <Button
           variant='ghost'
           size='sm'
-          onClick={clearAll}
-          className='text-slate-500 hover:text-slate-900 text-xs flex items-center gap-1.5'
+          onClick={() => {
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            startTransition(() => router.push(pathname))
+          }}
+          className='text-muted-foreground hover:text-foreground text-xs flex items-center gap-1.5 h-10 px-3'
         >
           <XIcon className='size-3.5' /> Clear Filters
         </Button>

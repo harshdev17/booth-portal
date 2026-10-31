@@ -22,7 +22,7 @@ import { query } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
-import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
+import PolicePrintDossierButton from '@/views/police/PolicePrintDossierButton'
 
 export const metadata: Metadata = {
   title: 'Police Verification — Candidate Full Dossier'
@@ -192,7 +192,7 @@ export default async function PoliceApplicationDetailPage({
           )}
 
           <div className='pt-1'>
-            <ApplicationPdfDownloads applicationId={id} />
+            <PolicePrintDossierButton />
           </div>
         </div>
       </div>

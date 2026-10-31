@@ -66,7 +66,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 ORDER BY pt.created_at DESC LIMIT 1) AS paid_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
-       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose IN ('registration', 'pay_now') AND p.status = 'success'
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now' AND p.status = 'success'
        WHERE a.id = ?
        ORDER BY p.id DESC
        LIMIT 1`,

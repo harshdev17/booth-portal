@@ -65,7 +65,26 @@ const styles = StyleSheet.create({
     borderRadius: 4
   },
   noteBoxTitle: { fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 },
-  noteBoxItem: { marginBottom: 2, lineHeight: 1.4 }
+  noteBoxItem: { marginBottom: 2, lineHeight: 1.4 },
+  paymentBox: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 4,
+    paddingTop: 8,
+    paddingHorizontal: 8,
+    paddingBottom: 2
+  },
+  paymentBoxTitle: {
+    fontSize: 8,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#888',
+    paddingBottom: 4,
+    marginBottom: 8
+  }
 })
 
 const Watermark = () => <Image src={`data:image/png;base64,${getLogoBase64()}`} style={styles.watermark} fixed />
@@ -157,6 +176,11 @@ export type ApplicationPdfData = {
   achievementExperience: string
   remarks: string | null
   fieldValues: ApplicationPdfFieldValue[]
+  registrationPaymentStatus?: string | null
+  registrationAmountPaise?: number | null
+  registrationPaymentId?: string | null
+  registrationPaidAt?: string | null
+  allotmentPaymentStatus?: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -204,7 +228,6 @@ export async function renderApplicationPdf(data: ApplicationPdfData): Promise<Bu
           <Field label='Police Station Name' value={data.policeStationName} />
           <Field label='Police Station Address' value={data.policeStationAddress} full />
           {data.shopOptionLabel && <Field label='Booth/Stall Option' value={data.shopOptionLabel} />}
-          {data.feePaise !== null && <Field label='Application Fee' value={formatRupees(data.feePaise)} />}
           {data.workPurpose && <Field label='Purpose of Work' value={data.workPurpose} full />}
           {data.achievementExperience && (
             <Field label='Achievement / Experience' value={data.achievementExperience} full />
@@ -216,6 +239,29 @@ export async function renderApplicationPdf(data: ApplicationPdfData): Promise<Bu
           {data.submittedAt && (
             <Field label='Submitted On' value={new Date(data.submittedAt).toLocaleString('en-IN')} />
           )}
+        </View>
+        <View style={styles.paymentBox}>
+          <Text style={styles.paymentBoxTitle}>Payment Details</Text>
+          <View style={styles.grid}>
+            {data.feePaise !== null && <Field label='Application Fee' value={formatRupees(data.feePaise)} />}
+            {data.registrationPaymentStatus === 'success' ? (
+              <>
+                <Field label='Payment Status' value='Payment Received (Success)' />
+                {data.registrationPaymentId && <Field label='Payment ID / Ref' value={data.registrationPaymentId} />}
+                {data.registrationPaidAt && (
+                  <Field label='Payment Date & Time' value={new Date(data.registrationPaidAt).toLocaleString('en-IN')} />
+                )}
+              </>
+            ) : data.registrationPaymentStatus === 'pending' ? (
+              <Field label='Payment Status' value='Payment Pending / Awaited' />
+            ) : data.registrationPaymentStatus === 'failed' ? (
+              <Field label='Payment Status' value='Payment Failed' />
+            ) : data.feePaise && data.feePaise > 0 ? (
+              <Field label='Payment Status' value='Payment Pending / Not Completed' />
+            ) : (
+              <Field label='Payment Status' value='Exempted / Free' />
+            )}
+          </View>
         </View>
         <Footer />
       </Page>

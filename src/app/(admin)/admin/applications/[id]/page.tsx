@@ -17,10 +17,11 @@ import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
-import ApplicationAllotmentPaymentCard from '@/views/admin/applications/ApplicationAllotmentPaymentCard'
+import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
+import ApplicationRegistrationPaymentTab from '@/views/admin/applications/ApplicationRegistrationPaymentTab'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 import PersonalDocumentCard from '@/views/admin/documents/PersonalDocumentCard'
 
@@ -55,6 +56,9 @@ type ApplicationRow = {
   category_name: string
   category_slug: string
   selection_method: string
+  fee_amount_paise: number
+  gst_percent: number
+  allotment_amount_note: string | null
   shop_option_label: string | null
   stall_number: string | null
   allotment_amount_paise: number | null
@@ -71,16 +75,30 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   if (applicationId === null) notFound()
 
-  const [rows, fieldValues, checkedFieldRows, documents, auditEntries, permissions, approvalChecklist] = await Promise.all([
+  const [
+    rows,
+    fieldValues,
+    checkedFieldRows,
+    documents,
+    auditEntries,
+    permissions,
+    approvalChecklist,
+    paymentRows,
+    transactionRows,
+    drawAllocationRows
+  ] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
               a.father_name, a.police_station_name, a.police_station_address,
               a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
               a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
               c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
+              COALESCE(c.fee_base_paise, c.fee_paise, 0) AS fee_amount_paise,
+              COALESCE(c.gst_percent, 18.00) AS gst_percent,
+              c.allotment_amount_note,
               so.label AS shop_option_label,
               COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
-              COALESCE(p.amount_paise, da.payment_amount_paise) AS allotment_amount_paise,
+              COALESCE(p.amount_paise, da.payment_amount_paise, c.allotment_amount_paise) AS allotment_amount_paise,
               COALESCE(p.status, da.payment_status) AS allotment_payment_status,
               (SELECT pt.created_at FROM payment_transactions pt
                 WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
@@ -149,7 +167,69 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
       [String(applicationId)]
     ),
     getCurrentUserPermissions(),
-    getApprovalChecklist(applicationId)
+    getApprovalChecklist(applicationId),
+    query<
+      Array<{
+        id: number
+        purpose: 'registration' | 'pay_now'
+        amount_paise: number
+        status: string
+        razorpay_order_id: string | null
+        created_at: string
+        updated_at: string
+      }>
+    >(
+      `SELECT id, purpose, amount_paise, status, razorpay_order_id, created_at, updated_at
+       FROM payments
+       WHERE application_id = ?
+       ORDER BY id ASC`,
+      [applicationId]
+    ),
+    query<
+      Array<{
+        id: number
+        payment_id: number
+        purpose: 'registration' | 'pay_now'
+        type: string
+        amount_paise: number
+        razorpay_order_id: string | null
+        razorpay_payment_id: string | null
+        signature_valid: number | null
+        failure_reason: string | null
+        source: string
+        webhook_event_id: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT pt.id, pt.payment_id, p.purpose, pt.type, pt.amount_paise, pt.razorpay_order_id,
+              pt.razorpay_payment_id, pt.signature_valid, pt.failure_reason, pt.source,
+              pt.webhook_event_id, pt.created_at
+       FROM payment_transactions pt
+       JOIN payments p ON p.id = pt.payment_id
+       WHERE p.application_id = ?
+       ORDER BY pt.created_at DESC`,
+      [applicationId]
+    ),
+    query<
+      Array<{
+        id: number
+        draw_event_id: number
+        draw_position: number
+        allocation_type: string
+        status: string
+        draw_code: string
+        round_number: number
+        completed_at: string | null
+      }>
+    >(
+      `SELECT da.id, da.draw_event_id, da.draw_position, da.allocation_type, da.status,
+              de.draw_code, de.round_number, de.completed_at
+       FROM draw_allocations da
+       JOIN draw_events de ON de.id = da.draw_event_id
+       WHERE da.application_id = ?
+       LIMIT 1`,
+      [applicationId]
+    )
   ])
 
   const app = rows[0]
@@ -203,8 +283,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const approvalBlockedByDocs =
     isReviewStage && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
 
-  // Group category dynamic field values by section while preserving display order
-  const categorySectionsMap = new Map<string, typeof fieldValues>()
+  const [categorySectionsMap] = [new Map<string, typeof fieldValues>()]
   for (const fv of fieldValues) {
     const sectionName = fv.section?.trim() || 'Category Details'
     const list = categorySectionsMap.get(sectionName) ?? []
@@ -212,6 +291,26 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     categorySectionsMap.set(sectionName, list)
   }
   const categorySections = Array.from(categorySectionsMap.entries())
+
+  const registrationPayment = paymentRows.find(p => p.purpose === 'registration') ?? null
+  const allotmentPayment = paymentRows.find(p => p.purpose === 'pay_now') ?? null
+  const registrationTransactions = transactionRows.filter(t => t.purpose === 'registration')
+  const allotmentTransactions = transactionRows.filter(t => t.purpose === 'pay_now')
+  const drawAllocationRow = drawAllocationRows[0] ?? null
+
+  const regIsPaid = registrationPayment?.status === 'success' || registrationPayment?.status === 'paid'
+  const regIsFree = app.fee_amount_paise === 0 || registrationPayment?.status === 'exempt'
+
+  const allotPaymentStatus = allotmentPayment?.status ?? app.allotment_payment_status
+  const allotIsPaid = allotPaymentStatus === 'success' || allotPaymentStatus === 'paid'
+  const allotIsFree =
+    (app.allotment_amount_paise === 0 || app.allotment_amount_note?.toLowerCase().includes('free')) && !allotIsPaid
+
+  const hasSelectionOrAllotment =
+    Boolean(app.stall_number) ||
+    Boolean(drawAllocationRow) ||
+    Boolean(allotmentPayment) ||
+    ['selected', 'allotted', 'payment_required', 're_allotted'].includes(app.status)
 
   return (
     <div className='flex flex-col gap-6'>
@@ -223,7 +322,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           <ArrowLeftIcon className='size-4' /> Back to Applications
         </Link>
 
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
           <div>
             <h1 className='flex items-center gap-3 text-2xl font-bold tracking-tight text-[#0c2847]'>
               {app.application_number}
@@ -235,19 +334,25 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               {[app.representative_name, app.organisation_name, app.category_name].filter(Boolean).join(' · ')}
             </p>
           </div>
-        </div>
 
-        <ApplicationPdfDownloads
-          applicationId={id}
-          hasAllotment={
-            Boolean(app.stall_number) &&
-            (app.status === 'allotted' || app.status === 'payment_required' || app.status === 're_allotted')
-          }
-          hasReceipt={
-            (app.status === 'allotted' || app.status === 'payment_required' || app.status === 're_allotted') &&
-            (app.registration_payment_status === 'success' || app.allotment_payment_status === 'success')
-          }
-        />
+          <div className='shrink-0'>
+            <ApplicationPdfDownloads
+              applicationId={id}
+              hasRegistrationReceipt={
+                regIsPaid || app.registration_payment_status === 'success' || regIsFree
+              }
+              hasAllotment={
+                Boolean(app.stall_number) ||
+                app.status === 'allotted' ||
+                app.status === 'payment_required' ||
+                app.status === 're_allotted'
+              }
+              hasAllotmentReceipt={
+                allotIsPaid || app.allotment_payment_status === 'success'
+              }
+            />
+          </div>
+        </div>
 
         {approvalBlockedByDocs && (
           <p className='text-xs font-medium text-amber-700'>
@@ -268,11 +373,44 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
       </div>
 
       <Tabs defaultValue='personal'>
-        <TabsList>
+        <TabsList className='flex flex-wrap h-auto gap-1.5 p-1'>
           <TabsTrigger value='personal'>Personal</TabsTrigger>
           <TabsTrigger value='application'>Application</TabsTrigger>
           <TabsTrigger value='documents'>Documents ({documents.length})</TabsTrigger>
-          <TabsTrigger value='selection'>Selection & Allotment</TabsTrigger>
+          <TabsTrigger value='registration-payment' className='flex items-center gap-1.5'>
+            Registration Payment
+            {regIsPaid ? (
+              <span className='rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800'>
+                Paid
+              </span>
+            ) : regIsFree ? (
+              <span className='rounded-full bg-blue-100 px-1.5 py-0.2 text-[10px] font-bold text-blue-800'>
+                Free
+              </span>
+            ) : (
+              <span className='rounded-full bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-800'>
+                Pending
+              </span>
+            )}
+          </TabsTrigger>
+          {hasSelectionOrAllotment && (
+            <TabsTrigger value='allotment-payment' className='flex items-center gap-1.5'>
+              Allotment Payment
+              {allotIsPaid ? (
+                <span className='rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800'>
+                  Paid
+                </span>
+              ) : allotIsFree ? (
+                <span className='rounded-full bg-blue-100 px-1.5 py-0.2 text-[10px] font-bold text-blue-800'>
+                  Exempt
+                </span>
+              ) : app.stall_number ? (
+                <span className='rounded-full bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-800'>
+                  Due
+                </span>
+              ) : null}
+            </TabsTrigger>
+          )}
           <TabsTrigger value='audit'>Audit Trail</TabsTrigger>
         </TabsList>
 
@@ -518,41 +656,40 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           <ApplicationDocumentsSection documents={documents} canVerifyDocuments={canVerifyDocuments} />
         </TabsContent>
 
-        <TabsContent value='selection'>
-          <div className='flex flex-col gap-6'>
-            <ApplicationAllotmentPaymentCard
+        <TabsContent value='registration-payment'>
+          <ApplicationRegistrationPaymentTab
+            applicationId={id}
+            applicationNumber={app.application_number}
+            applicantName={app.representative_name || app.organisation_name}
+            mobileNumber={app.mobile_number}
+            email={app.email}
+            categoryName={app.category_name}
+            categoryFeePaise={app.fee_amount_paise}
+            gstPercent={app.gst_percent}
+            payment={registrationPayment}
+            transactions={registrationTransactions}
+            canManage={!!permissions?.has('payment:view')}
+          />
+        </TabsContent>
+
+        {hasSelectionOrAllotment && (
+          <TabsContent value='allotment-payment'>
+            <ApplicationAllotmentPaymentTab
               applicationId={id}
               applicationNumber={app.application_number}
+              categoryName={app.category_name}
+              selectionMethod={app.selection_method}
               stallNumber={app.stall_number}
               status={app.status}
-              paymentAmountPaise={app.allotment_amount_paise}
-              paymentStatus={app.allotment_payment_status}
-              allotmentPaidAt={app.allotment_paid_at}
+              expectedAmountPaise={app.allotment_amount_paise}
+              allotmentAmountNote={app.allotment_amount_note}
+              payment={allotmentPayment}
+              transactions={allotmentTransactions}
+              drawAllocation={drawAllocationRow}
               canManage={!!permissions?.has('allotment:perform') || !!permissions?.has('application:approve')}
             />
-
-            <Card className='shadow-xs'>
-              <CardHeader>
-                <CardTitle className='text-base'>Selection & Allotment Information</CardTitle>
-              </CardHeader>
-              <CardContent className='space-y-3 text-sm'>
-                <p className='text-sm text-muted-foreground'>
-                  Current status: <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
-                </p>
-                <div className='grid gap-4 sm:grid-cols-2 pt-2'>
-                  <div>
-                    <span className='text-xs font-bold uppercase text-muted-foreground'>Selection Method</span>
-                    <p className='font-semibold text-slate-800 capitalize'>{app.selection_method.replace('_', ' ')}</p>
-                  </div>
-                  <div>
-                    <span className='text-xs font-bold uppercase text-muted-foreground'>Assigned Booth / Stall</span>
-                    <p className='font-mono font-bold text-blue-700'>{app.stall_number || 'Not yet allocated'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
 
         <TabsContent value='audit'>
           <Card className='shadow-xs'>

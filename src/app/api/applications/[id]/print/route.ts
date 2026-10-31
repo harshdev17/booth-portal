@@ -34,6 +34,9 @@ type PrintRow = {
   category_name_hi: string | null
   shop_option_label: string | null
   fee_paise: number | null
+  registration_payment_status: string | null
+  registration_payment_id: string | null
+  registration_paid_at: string | null
 }
 
 /**
@@ -72,10 +75,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
               a.address, a.state, a.district, a.pin_code, a.work_purpose, a.achievement_experience,
               a.remarks, a.submitted_at,
               c.name AS category_name, c.name_hi AS category_name_hi, c.fee_paise,
-              cso.label AS shop_option_label
+              cso.label AS shop_option_label,
+              reg_p.status AS registration_payment_status,
+              (SELECT pt.razorpay_payment_id FROM payment_transactions pt WHERE pt.payment_id = reg_p.id AND pt.razorpay_payment_id IS NOT NULL ORDER BY pt.created_at DESC LIMIT 1) AS registration_payment_id,
+              (SELECT pt.created_at FROM payment_transactions pt WHERE pt.payment_id = reg_p.id AND pt.type IN ('checkout_success', 'webhook_confirmed') ORDER BY pt.created_at DESC LIMIT 1) AS registration_paid_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN category_shop_options cso ON cso.id = a.shop_option_id
+       LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
        WHERE ${isAppNumber ? 'a.application_number = ?' : 'a.id = ?'}
        LIMIT 1`,
       [isAppNumber ? id : applicationId]
@@ -142,6 +149,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       workPurpose: application.work_purpose,
       achievementExperience: application.achievement_experience,
       remarks: application.remarks,
+      registrationPaymentStatus: application.registration_payment_status,
+      registrationPaymentId: application.registration_payment_id,
+      registrationPaidAt: application.registration_paid_at,
       fieldValues
     })
   } catch (error) {

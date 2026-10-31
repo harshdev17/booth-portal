@@ -68,7 +68,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 ORDER BY pt.created_at DESC LIMIT 1) AS paid_at
        FROM applications a
        JOIN categories c ON c.id = a.category_id
-       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'registration'
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
        WHERE ${isAppNumber ? 'a.application_number = ?' : 'a.id = ?'}
        LIMIT 1`,
       [isAppNumber ? id : applicationId]

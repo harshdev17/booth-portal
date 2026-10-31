@@ -35,7 +35,6 @@ const PublicHeader = () => {
     { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about-us' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
-    { label: lang === 'hi' ? 'रसीद डाउनलोड' : 'Download Receipt', href: '/download-receipt' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },

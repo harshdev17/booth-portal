@@ -27,6 +27,9 @@ export type PrintResult = {
   achievementExperience: string
   remarks: string | null
   fieldValues: FieldValue[]
+  registrationPaymentStatus?: string | null
+  registrationPaymentId?: string | null
+  registrationPaidAt?: string | null
 }
 
 // Same bilingual status vocabulary as the Check Application Status page.
@@ -126,9 +129,6 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
       {result.shopOptionLabel && (
         <SummaryRow label={lang === 'hi' ? 'बूथ/स्टॉल विकल्प' : 'Booth/Stall Option'} value={result.shopOptionLabel} />
       )}
-      {result.feePaise !== null && (
-        <SummaryRow label={lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'} value={formatRupees(result.feePaise)} />
-      )}
       {result.workPurpose && (
         <SummaryRow label={lang === 'hi' ? 'कार्य का उद्देश्य' : 'Purpose of Work'} value={result.workPurpose} span />
       )}
@@ -150,6 +150,58 @@ const ApplicationPrintSheet = ({ result, lang }: { result: PrintResult; lang: 'e
         />
       )}
     </dl>
+
+    {/* Dedicated Payment Details Section at Bottom */}
+    <div className='mt-6 rounded border border-black p-4'>
+      <h4 className='mb-3 border-b border-gray-300 pb-2 text-xs font-bold uppercase tracking-wider text-black'>
+        {lang === 'hi' ? 'भुगतान विवरण' : 'Payment Details'}
+      </h4>
+      <dl className='grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2'>
+        {result.feePaise !== null && (
+          <SummaryRow label={lang === 'hi' ? 'आवेदन शुल्क' : 'Application Fee'} value={formatRupees(result.feePaise)} />
+        )}
+        {result.registrationPaymentStatus === 'success' ? (
+          <>
+            <SummaryRow
+              label={lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status'}
+              value={lang === 'hi' ? 'भुगतान प्राप्त (सफल)' : 'Payment Received (Success)'}
+            />
+            {result.registrationPaymentId && (
+              <SummaryRow
+                label={lang === 'hi' ? 'भुगतान आईडी / संदर्भ' : 'Payment ID / Ref'}
+                value={result.registrationPaymentId}
+              />
+            )}
+            {result.registrationPaidAt && (
+              <SummaryRow
+                label={lang === 'hi' ? 'भुगतान तिथि व समय' : 'Payment Date & Time'}
+                value={new Date(result.registrationPaidAt).toLocaleString('en-IN')}
+              />
+            )}
+          </>
+        ) : result.registrationPaymentStatus === 'pending' ? (
+          <SummaryRow
+            label={lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status'}
+            value={lang === 'hi' ? 'भुगतान लंबित' : 'Payment Pending / Awaited'}
+          />
+        ) : result.registrationPaymentStatus === 'failed' ? (
+          <SummaryRow
+            label={lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status'}
+            value={lang === 'hi' ? 'भुगतान विफल' : 'Payment Failed'}
+          />
+        ) : result.feePaise && result.feePaise > 0 ? (
+          <SummaryRow
+            label={lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status'}
+            value={lang === 'hi' ? 'भुगतान लंबित / अपूर्ण' : 'Payment Pending / Not Completed'}
+          />
+        ) : (
+          <SummaryRow
+            label={lang === 'hi' ? 'भुगतान स्थिति' : 'Payment Status'}
+            value={lang === 'hi' ? 'निःशुल्क / छूट' : 'Exempted / Free'}
+          />
+        )}
+      </dl>
+    </div>
 
     <div className='mt-8 border-t border-black/30 pt-4 text-xs text-black'>
       <p className='font-bold mb-1'>{lang === 'hi' ? 'घोषणा / Declaration:' : 'Declaration:'}</p>

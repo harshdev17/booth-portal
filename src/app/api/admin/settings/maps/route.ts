@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 
 import { NextResponse } from 'next/server'
 
@@ -10,13 +8,16 @@ import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { clearCategoryMapsCache } from '@/lib/settings/category-maps'
 import { detectFileType } from '@/lib/uploads/file-signature'
+import { storeFile } from '@/lib/uploads/storage'
 
-// Public-facing assets (any site visitor may open these without logging in,
-// same as any other static file), so — unlike applicant document uploads —
-// these are written under public/ rather than the private uploads root.
-// They're still never trusted on filename/Content-Type: the real file
-// bytes are magic-byte checked below, same rule as every other upload path.
-const MAP_DIR = join(process.cwd(), 'public', 'images', 'public', 'map')
+// Public-facing assets (any site visitor may open these without logging
+// in), served through /api/maps/[key] (src/app/api/maps/[key]/route.ts)
+// rather than gated like applicant documents. Stored in R2 under a "maps/"
+// prefix — moved off local disk (public/images/public/map/) for the same
+// reason applicant documents were (2026-10-29/31): Hostinger's Business Web
+// Hosting filesystem is not persistent across redeploys. Never trusted on
+// filename/Content-Type: the real file bytes are magic-byte checked below,
+// same rule as every other upload path.
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024 // 15 MB — a scanned A3/A4 layout can run large
 
 // A map may be supplied as a PDF or as a plain image (a photographed/scanned
@@ -65,13 +66,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid category.' }, { status: 400 })
     }
 
-    await mkdir(MAP_DIR, { recursive: true })
-
     const filename = `${randomUUID()}.${extension}`
 
-    await writeFile(join(MAP_DIR, filename), buffer)
+    await storeFile(`maps/${filename}`, buffer)
 
-    const filePath = `/images/public/map/${filename}`
+    const filePath = `/api/maps/${filename}`
 
     await query(
       `INSERT INTO category_maps (category_id, pdf_path, original_filename, updated_by_user_id)
