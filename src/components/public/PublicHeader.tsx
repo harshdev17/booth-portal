@@ -33,6 +33,7 @@ const PublicHeader = () => {
   const navItemDefs: Array<{ label: string; href: string; external?: boolean }> = [
     { label: t('nav.home'), href: '/' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
+    { label: lang === 'hi' ? 'आवेदन की स्थिति ट्रैक करें' : 'Track Application Status', href: '/status' },
     { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
