@@ -1,0 +1,9 @@
+Booth/Stall No.,Single/Double,Category,Direction,Status,Allottee Name,Contact Person,Father Name,Mobile Number,Aadhaar Number,Address,Police Station,Email,Work Purpose,Stall Amount
+TEST-101,Single,Refreshment and Ice Cream Booth/Stall,North-Facing Main Entry,,Garg Sweets & Refreshments,Harsh Garg,Sh. Ramesh Garg,7404302678,123456789012,"Shop No 5, Near Gate No. 2, Kurukshetra","City Police Station, Thanesar",harshgarg1009@gmail.com,Artisan Ice Cream & Special Sweets,0
+TEST-102,Double,"Sweets, Bakers and Special Food Items",South-East,,Kurukshetra Special Bakers,Harsh Garg (Proprietor),Sh. Ramesh Garg,7404302678,987654321098,"Brahma Sarovar Road, Kurukshetra",Krishna Gate Police Station,harshgarg1009@gmail.com,Bakery Items & Special Sweets,7500
+TEST-103,Single,Artisan Card Holders,West Gate,,,,,,,,,,,
+TEST-104,Single,Refreshment and Ice Cream Booth/Stall,North-Facing,Reserved for Direct Allotment,,,,,,,,,,
+TEST-201,Single,VIP Cultural Pavilion,South,,Haryana Heritage Foundation,Harsh Garg,Sh. Ramesh Garg,7404302678,112233445566,"Plot 14, Sector 7, Urban Estate, Kurukshetra",Sector 7 Police Station,harshgarg1009@gmail.com,Cultural Exhibition Stall,0
+TEST-202,Double,Commercial Brand Lounge,North-East,,Garg Mega Brands Pvt Ltd,Harsh Garg,Sh. Ramesh Garg,7404302678,665544332211,"Main Commercial Complex, Kurukshetra","City Police Station, Thanesar",harshgarg1009@gmail.com,Brand Promotion & Product Display,12000
+TEST-203,Double,Corporate Expo Center,South-West Plaza,,,,,,,,,,,
+TEST-301,Single,Refreshment and Ice Cream Booth/Stall,North Gate,Available,,,,,,,,,,

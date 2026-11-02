@@ -20,13 +20,22 @@ import {
 
 type RowError = { rowNumber: number; message: string }
 
-type ValidateResponse = { errors: RowError[]; rowCount: number }
+type ValidateResponse = {
+  errors: RowError[]
+  rowCount: number
+  directAllottedCount?: number
+  reservedPaymentCount?: number
+  availableCount?: number
+}
+
 type ImportResponse = {
   errors: RowError[]
   rowCount: number
   inserted?: number
   updated?: number
-  skippedAllotted?: number
+  directAllotted?: number
+  reservedForPayment?: number
+  availableCount?: number
 }
 
 type Step = 'select' | 'validated' | 'importing' | 'done'
@@ -34,9 +43,7 @@ type Step = 'select' | 'validated' | 'importing' | 'done'
 /**
  * "Download template → select file → validate → import" wizard, matching
  * the reference UI pattern given (a timesheet-style bulk-import dialog).
- * Validation is a separate server round-trip from import (never the same
- * call) so the admin sees every row error before anything is written — see
- * /api/admin/inventory/import's `mode: 'validate' | 'import'`.
+ * Supports standard shop unit imports as well as direct allotment.
  */
 const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: string[] }) => {
   const router = useRouter()
@@ -48,9 +55,13 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
   const [errors, setErrors] = useState<RowError[]>([])
   const [rowCount, setRowCount] = useState(0)
 
-  const [importSummary, setImportSummary] = useState<{ inserted: number; updated: number; skippedAllotted: number } | null>(
-    null
-  )
+  const [importSummary, setImportSummary] = useState<{
+    inserted: number
+    updated: number
+    directAllotted: number
+    reservedPayment: number
+    available: number
+  } | null>(null)
 
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -128,7 +139,9 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
       setImportSummary({
         inserted: body.inserted ?? 0,
         updated: body.updated ?? 0,
-        skippedAllotted: body.skippedAllotted ?? 0
+        directAllotted: body.directAllotted ?? 0,
+        reservedPayment: body.reservedForPayment ?? 0,
+        available: body.availableCount ?? 0
       })
       setStep('done')
       router.refresh()
@@ -147,7 +160,9 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>Import Booth/Stall Inventory</DialogTitle>
-          <DialogDescription>Bulk-add or update booth/stall numbers from a CSV file.</DialogDescription>
+          <DialogDescription>
+            Bulk-add, update stalls, or import direct allotments directly from a CSV file.
+          </DialogDescription>
         </DialogHeader>
 
         <div className='flex flex-col gap-5'>
@@ -181,15 +196,13 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               className='block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-semibold'
             />
             <p className='mt-2 text-xs text-muted-foreground'>
-              Supported: .csv · Max 10 MB · Header row required · Booth/Stall No., Single/Double, Category, Direction, Status
-              (optional — Available or Reserved for Direct Allotment, defaults to Available). Stall Amount is set afterward in
-              the table, not via import.
+              Supported: .csv · Max 10 MB · Direct Allotment columns are optional. If Allottee Name is provided with Amount 0, status is Allotted. If Amount &gt; 0, status is Reserved for Payment. Unallotted stalls default to Available (Main Categories) or Reserved for Direct Allotment (Custom Categories).
             </p>
           </div>
 
           <div className='rounded-md border bg-muted/30 p-3'>
             <p className='mb-1.5 text-xs font-bold text-slate-700'>
-              If the Category column matches one of these (case-insensitive), it's used directly:
+              Available Active Categories:
             </p>
             <ul className='flex flex-wrap gap-1.5'>
               {validCategoryNames.map(name => (
@@ -199,9 +212,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               ))}
             </ul>
             <p className='mt-2 text-xs text-muted-foreground'>
-              Any other name creates a new, non-public category automatically — it won't appear on the home page or be
-              applicable to, and its stalls are imported as "Reserved for Direct Allotment" regardless of the Status
-              column.
+              Any other category name automatically creates a custom category for direct allotment. Re-uploading an updated file updates existing stalls and direct allotments.
             </p>
           </div>
 
@@ -245,8 +256,14 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
             <Alert className='border-emerald-200 bg-emerald-50 text-emerald-800'>
               <CheckCircle2Icon className='size-4' />
               <AlertDescription>
-                Import complete — {importSummary.inserted} added, {importSummary.updated} updated
-                {importSummary.skippedAllotted > 0 && `, ${importSummary.skippedAllotted} skipped (already allotted)`}.
+                <div className='font-bold text-sm'>
+                  Import complete — {importSummary.inserted} created, {importSummary.updated} updated.
+                </div>
+                <div className='mt-1 text-xs space-y-0.5 text-emerald-700'>
+                  {importSummary.directAllotted > 0 && <p>• {importSummary.directAllotted} stall(s) directly allotted (Amount: ₹0)</p>}
+                  {importSummary.reservedPayment > 0 && <p>• {importSummary.reservedPayment} stall(s) reserved for payment (Amount &gt; ₹0)</p>}
+                  {importSummary.available > 0 && <p>• {importSummary.available} stall(s) available for draw/allotment</p>}
+                </div>
               </AlertDescription>
             </Alert>
           )}

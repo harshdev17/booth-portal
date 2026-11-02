@@ -24,6 +24,7 @@ import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDo
 import ApplicationRegistrationPaymentTab from '@/views/admin/applications/ApplicationRegistrationPaymentTab'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 import PersonalDocumentCard from '@/views/admin/documents/PersonalDocumentCard'
+import EditApplicationDialog, { type EditableCategoryField, type EditableField } from '@/views/admin/applications/EditApplicationDialog'
 
 export const metadata: Metadata = {
   title: 'Application Detail — IGM Admin Portal'
@@ -139,24 +140,32 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     ]),
     query<
       Array<{
-        id: number
+        id: number | null
         document_key: string
         label: string
-        original_filename: string
-        verification_status: string
+        original_filename: string | null
+        verification_status: string | null
         verification_remarks: string | null
         verified_at: string | null
         reuploaded_at: string | null
-        created_at: string
+        created_at: string | null
       }>
     >(
+      // LEFT JOIN from the category's own required document definitions —
+      // not just the documents actually uploaded — so a document the
+      // applicant never uploaded at all still shows up here as a visible
+      // "not uploaded yet" row, instead of silently not existing on this
+      // page with no indication anything is still outstanding. Reported
+      // live: an admin had no way to see that "Work/Product Photographs"
+      // was still pending for an application sitting in query_raised.
       `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
               ad.verified_at, ad.reuploaded_at, ad.created_at
-       FROM application_documents ad
-       JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
-       WHERE ad.application_id = ?
+       FROM category_document_definitions cdd
+       LEFT JOIN application_documents ad
+         ON ad.document_definition_id = cdd.id AND ad.application_id = ?
+       WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
        ORDER BY cdd.display_order ASC`,
-      [applicationId]
+      [applicationId, applicationId]
     ),
     query<Array<{ id: number; action: string; actor_role_key: string | null; new_value: string | null; created_at: string }>>(
       `SELECT id, action, actor_role_key, new_value, created_at
@@ -277,8 +286,46 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
       ? 'You do not have permission to reject applications.'
       : `Reject is only available while the application is under review or has a query raised (current status: ${statusCfg.label}).`
   const canVerifyDocuments = !!permissions?.has('document:verify')
+  const canEditApplication = !!permissions?.has('application:edit')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
-  const aadhaarDocument = documents.find(d => d.document_key === 'aadhaar_card') ?? null
+
+  // Must stay in sync with EDITABLE_COLUMNS in
+  // api/admin/applications/[id]/edit/route.ts — the route is the
+  // authoritative allow-list; this just needs to offer the matching inputs.
+  const editableFields: EditableField[] = [
+    { key: 'representative_name', label: 'Representative Name', value: app.representative_name },
+    { key: 'organisation_name', label: 'Organisation / Firm Name', value: app.organisation_name },
+    { key: 'father_name', label: "Father's Name", value: app.father_name },
+    { key: 'email', label: 'Email', value: app.email },
+    { key: 'mobile_number', label: 'Mobile Number', value: app.mobile_number },
+    { key: 'alternate_mobile', label: 'Alternate Mobile', value: app.alternate_mobile },
+    { key: 'address', label: 'Address', value: app.address, multiline: true },
+    { key: 'state', label: 'State', value: app.state },
+    { key: 'district', label: 'District', value: app.district },
+    { key: 'pin_code', label: 'PIN Code', value: app.pin_code },
+    { key: 'police_station_name', label: 'Police Station Name', value: app.police_station_name },
+    { key: 'police_station_address', label: 'Police Station Address', value: app.police_station_address, multiline: true },
+    { key: 'work_purpose', label: 'Work Purpose', value: app.work_purpose, multiline: true },
+    { key: 'achievement_experience', label: 'Achievement / Experience', value: app.achievement_experience, multiline: true },
+    { key: 'remarks', label: 'Remarks', value: app.remarks, multiline: true }
+  ]
+
+  const editableCategoryFields: EditableCategoryField[] = fieldValues.map(f => ({
+    fieldDefinitionId: f.field_definition_id,
+    label: f.label,
+    value: f.value,
+    inputType: f.input_type
+  }))
+  // documents now includes a row per required document DEFINITION (not
+  // just actually-uploaded ones, see the LEFT JOIN above) — a document the
+  // applicant never uploaded has id: null, so it must be excluded here or
+  // PersonalDocumentCard would render with a null id (broken preview link,
+  // broken DocumentDecisionActions).
+  const uploadedDocuments = documents.filter(
+    (d): d is typeof d & { id: number; original_filename: string; verification_status: string } => d.id !== null
+  )
+  const missingDocuments = documents.filter(d => d.id === null)
+  const aadhaarDocument = uploadedDocuments.find(d => d.document_key === 'aadhaar_card') ?? null
 
   const approvalBlockedByDocs =
     isReviewStage && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
@@ -298,8 +345,32 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const allotmentTransactions = transactionRows.filter(t => t.purpose === 'pay_now')
   const drawAllocationRow = drawAllocationRows[0] ?? null
 
+  // Application-level query history (queryApplicationAction's own audit
+  // entries) — shown in the Documents tab's empty state so a reviewer can
+  // see what was already asked for instead of the button just silently
+  // working with no visible trail. new_value comes back as an already-
+  // parsed object (mysql2 auto-parses JSON columns), not a string, despite
+  // auditEntries' own type declaring it `string | null`.
+  const applicationQueryHistory = auditEntries
+    .filter(entry => entry.action === 'application.query_raised')
+    .map(entry => {
+      const value = entry.new_value as unknown as { remarks?: string } | null
+
+      return { id: entry.id, remarks: value?.remarks ?? '', createdAt: entry.created_at }
+    })
+
   const regIsPaid = registrationPayment?.status === 'success' || registrationPayment?.status === 'paid'
-  const regIsFree = app.fee_amount_paise === 0 || registrationPayment?.status === 'exempt'
+
+  // app.fee_amount_paise comes back from a raw COALESCE() over a numeric
+  // column, which mysql2 surfaces as a string (e.g. "0", not 0) despite the
+  // ApplicationRow type declaring it `number` — a strict `=== 0` comparison
+  // against it was always false, so a genuinely free category (e.g.
+  // Government Departments, fee_paise = 0) still showed "Registration
+  // Payment: Pending" instead of "Free". Normalized once here so every
+  // downstream use (this check, and categoryFeePaise passed to
+  // ApplicationRegistrationPaymentTab below) gets a real number.
+  const feeAmountPaise = Number(app.fee_amount_paise)
+  const regIsFree = feeAmountPaise === 0 || registrationPayment?.status === 'exempt'
 
   const allotPaymentStatus = allotmentPayment?.status ?? app.allotment_payment_status
   const allotIsPaid = allotPaymentStatus === 'success' || allotPaymentStatus === 'paid'
@@ -363,13 +434,22 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           </p>
         )}
 
-        <ApplicationDecisionActions
-          applicationId={id}
-          canApprove={canApprove}
-          canReject={canReject}
-          approveDisabledReason={approveDisabledReason}
-          rejectDisabledReason={rejectDisabledReason}
-        />
+        <div className='flex flex-wrap items-center gap-2'>
+          <ApplicationDecisionActions
+            applicationId={id}
+            canApprove={canApprove}
+            canReject={canReject}
+            approveDisabledReason={approveDisabledReason}
+            rejectDisabledReason={rejectDisabledReason}
+          />
+          {canEditApplication && (
+            <EditApplicationDialog
+              applicationId={app.id}
+              fields={editableFields}
+              categoryFields={editableCategoryFields}
+            />
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue='personal'>
@@ -653,7 +733,16 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         </TabsContent>
 
         <TabsContent value='documents'>
-          <ApplicationDocumentsSection documents={documents} canVerifyDocuments={canVerifyDocuments} />
+          <ApplicationDocumentsSection
+            documents={documents}
+            canVerifyDocuments={canVerifyDocuments}
+            canEditApplication={canEditApplication}
+            applicationId={app.id}
+            canRaiseApplicationQuery={
+              canVerifyDocuments && (isReviewStage || app.status === 'query_raised')
+            }
+            applicationQueryHistory={applicationQueryHistory}
+          />
         </TabsContent>
 
         <TabsContent value='registration-payment'>
@@ -664,7 +753,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             mobileNumber={app.mobile_number}
             email={app.email}
             categoryName={app.category_name}
-            categoryFeePaise={app.fee_amount_paise}
+            categoryFeePaise={feeAmountPaise}
             gstPercent={app.gst_percent}
             payment={registrationPayment}
             transactions={registrationTransactions}

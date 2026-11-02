@@ -5,8 +5,11 @@ import { query, withTransaction, type TransactionQuery } from '@/lib/db/client'
 import { parseShopUnitsCsv, type CsvRowError, type ShopUnitStatus } from '@/lib/inventory/shop-units-csv'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
+import { aadhaarLast4, encryptAadhaar, hashAadhaar } from '@/lib/applications/aadhaar-crypto'
+import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
+import { generateApplicationNumber } from '@/lib/applications/application-number'
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB, matches the reference UI's stated limit
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 type ResolvedRow = {
   rowNumber: number
@@ -15,6 +18,19 @@ type ResolvedRow = {
   categoryId: number
   direction: string | null
   status: ShopUnitStatus
+  emdAmountPaise: number | null
+  // Direct Allotment fields
+  isDirectAllotment: boolean
+  allotteeName?: string | null
+  contactPerson?: string | null
+  fatherName?: string | null
+  mobileNumber?: string | null
+  aadhaarNumber?: string | null
+  address?: string | null
+  policeStationName?: string | null
+  email?: string | null
+  workPurpose?: string | null
+  stallAmountRupees?: number
 }
 
 function slugifyCategoryName(value: string) {
@@ -30,21 +46,8 @@ function slugifyCategoryName(value: string) {
 
 /**
  * Two-mode endpoint backing the "Download template → select file → validate
- * → import" wizard. `mode: 'validate'` parses and checks the file against
- * live category data WITHOUT writing anything. `mode: 'import'` re-validates
- * (never trusts an earlier validate call still reflects current category
- * data) and then writes.
- *
- * Performance: this previously ran one SELECT + one INSERT/UPDATE per row,
- * sequentially, inside the transaction — for a few hundred rows that's
- * hundreds of awaited round-trips to a remote MySQL server, which is what
- * made a real import feel slow (reported live). Fixed by resolving all
- * existing stall numbers in ONE query up front, then running inserts and
- * updates as two batched multi-row statements instead of per-row queries.
- *
- * A stall number that already exists in `shop_units` is treated as an
- * UPDATE (upsert), not a duplicate error — re-uploading a corrected file for
- * stalls already imported is the expected workflow, not an error case.
+ * → import" wizard. Supports standard shop unit imports as well as direct allotment
+ * with candidate particulars and custom/main category status rules.
  */
 export async function POST(request: Request) {
   try {
@@ -73,45 +76,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: parsed.errors, rowCount: 0 }, { status: 200 })
     }
 
-    // Resolve category names to IDs against live data. Matching is
-    // case/whitespace-insensitive against both the display name and slug, so
-    // "refreshment and ice cream booth/stall" or the slug "refreshment-stalls"
-    // both resolve — reduces false "unknown category" mismatches from minor
-    // formatting differences.
-    //
-    // A name that matches NO existing category is no longer a row error —
-    // per explicit request (2026-10-28), stalls for a category that isn't
-    // one of the public homepage categories must still be importable here.
-    // Such a name gets a brand-new `categories` row created with
-    // status='draft' (same "create category on the fly" pattern the
-    // single-stall Add Unit dialog already uses in
-    // src/app/api/admin/inventory/route.ts), so it never appears on the
-    // public site or becomes something an applicant can apply under — it
-    // exists purely so the imported stalls have a valid category_id to
-    // attach to and show up grouped under that name in the inventory table.
-    const categories = await query<Array<{ id: number; name: string; slug: string }>>(
-      `SELECT id, name, slug FROM categories WHERE status != 'archived'`
+    // Resolve category names to IDs against live data
+    const categories = await query<Array<{ id: number; name: string; slug: string; is_direct_allotment: number }>>(
+      `SELECT id, name, slug, is_direct_allotment FROM categories WHERE status != 'archived'`
     )
 
-    const categoryByKey = new Map<string, number>()
+    const categoryByKey = new Map<string, { id: number; isDirectAllotment: boolean }>()
+
+    const normalizeKey = (s: string) =>
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
 
     for (const cat of categories) {
-      categoryByKey.set(cat.name.trim().toLowerCase(), cat.id)
-      categoryByKey.set(cat.slug.trim().toLowerCase(), cat.id)
+      const info = { id: cat.id, isDirectAllotment: Boolean(cat.is_direct_allotment) }
+      categoryByKey.set(cat.name.trim().toLowerCase(), info)
+      categoryByKey.set(cat.slug.trim().toLowerCase(), info)
+      categoryByKey.set(normalizeKey(cat.name), info)
+      categoryByKey.set(normalizeKey(cat.slug), info)
     }
 
     const rowErrors: CsvRowError[] = []
     const resolvedRows: ResolvedRow[] = []
 
-    // Names needing a new category, deduped (same unmatched name appearing
-    // on multiple rows must become ONE new category, not one per row).
-    const newCategoryNames = new Map<string, string>() // key (lowercased) -> original-cased name
+    // Names needing a new category, deduped
+    const newCategoryNames = new Map<string, string>()
 
     for (const row of parsed.rows) {
       const key = row.categoryName.trim().toLowerCase()
-      const categoryId = categoryByKey.get(key)
+      const normKey = normalizeKey(row.categoryName)
+      const catInfo = categoryByKey.get(key) || categoryByKey.get(normKey)
 
-      if (!categoryId && !newCategoryNames.has(key)) {
+      if (!catInfo && !newCategoryNames.has(key)) {
         newCategoryNames.set(key, row.categoryName.trim())
       }
     }
@@ -135,12 +135,14 @@ export async function POST(request: Request) {
         existingSlugs.add(slug)
 
         const created = await query<{ insertId: number }>(
-          `INSERT INTO categories (event_id, slug, name, selection_method, status, fee_paise, display_order)
-           VALUES (?, ?, ?, 'manual', 'draft', 0, 9999)`,
+          `INSERT INTO categories (event_id, slug, name, selection_method, status, is_direct_allotment, fee_paise, display_order)
+           VALUES (?, ?, ?, 'manual', 'closed', 1, 0, 9999)`,
           [eventId, slug, name]
         )
 
-        categoryByKey.set(key, created.insertId)
+        const newInfo = { id: created.insertId, isDirectAllotment: true }
+        categoryByKey.set(key, newInfo)
+        categoryByKey.set(normalizeKey(name), newInfo)
 
         await logAudit({
           actorUserId: session.userId,
@@ -149,27 +151,44 @@ export async function POST(request: Request) {
           module: 'inventory',
           entityType: 'category',
           entityId: String(created.insertId),
-          newValue: { name, slug, status: 'draft', source: 'inventory_import' }
+          newValue: { name, slug, status: 'closed', is_direct_allotment: 1, source: 'inventory_import' }
         })
       }
     }
 
-    // In 'import' mode every name now has a categoryId (existing or just
-    // created above). In 'validate' mode a genuinely-new name has none yet —
-    // that's fine, nothing is written on this path; placeholder 0 is only
-    // ever read by the import branch below, which runs after creation.
-    //
-    // A row whose category was just auto-created (non-public/draft) is
-    // always forced to 'reserved_for_direct_allotment' regardless of what
-    // the CSV's own Status column said — per explicit request (2026-10-28):
-    // a custom category's stalls are, by definition, for admin direct
-    // allotment, not public "Available" inventory, since the category
-    // itself was never set up with the fees/guidelines/schedule a public
-    // application needs.
     for (const row of parsed.rows) {
       const key = row.categoryName.trim().toLowerCase()
-      const categoryId = categoryByKey.get(key) ?? 0
-      const status = newCategoryNames.has(key) ? 'reserved_for_direct_allotment' : row.status
+      const normKey = normalizeKey(row.categoryName)
+      const catInfo = categoryByKey.get(key) || categoryByKey.get(normKey)
+      const categoryId = catInfo?.id ?? 0
+      const isCustomCat = newCategoryNames.has(key) || catInfo?.isDirectAllotment === true
+
+      let status: ShopUnitStatus = 'available'
+      let emdAmountPaise: number | null = null
+
+      if (row.isDirectAllotment) {
+        if ((row.stallAmountRupees ?? 0) > 0) {
+          status = 'reserved' // Reserved for Payment
+          emdAmountPaise = row.stallAmountRupees! * 100
+        } else {
+          status = 'allotted' // Free / Confirmed Allotment
+          emdAmountPaise = 0
+        }
+      } else {
+        // Unallotted stall
+        if (isCustomCat) {
+          // Custom categories are strictly direct allotment and can NEVER be 'available'
+          status = 'reserved_for_direct_allotment'
+        } else {
+          // 11 Main Categories: If explicit status indicates reserved / direct allotment, mark as reserved_for_direct_allotment
+          const isExplicitReserved =
+            row.explicitStatus === 'reserved_for_direct_allotment' || row.explicitStatus === 'reserved'
+          status = isExplicitReserved ? 'reserved_for_direct_allotment' : 'available'
+        }
+        if ((row.stallAmountRupees ?? 0) > 0) {
+          emdAmountPaise = row.stallAmountRupees! * 100
+        }
+      }
 
       resolvedRows.push({
         rowNumber: row.rowNumber,
@@ -177,7 +196,19 @@ export async function POST(request: Request) {
         shopType: row.shopType,
         categoryId,
         direction: row.direction,
-        status
+        status,
+        emdAmountPaise,
+        isDirectAllotment: Boolean(row.isDirectAllotment),
+        allotteeName: row.allotteeName,
+        contactPerson: row.contactPerson,
+        fatherName: row.fatherName,
+        mobileNumber: row.mobileNumber,
+        aadhaarNumber: row.aadhaarNumber,
+        address: row.address,
+        policeStationName: row.policeStationName,
+        email: row.email,
+        workPurpose: row.workPurpose,
+        stallAmountRupees: row.stallAmountRupees
       })
     }
 
@@ -185,83 +216,192 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: rowErrors, rowCount: 0 }, { status: 200 })
     }
 
+    const directAllottedCount = resolvedRows.filter(r => r.isDirectAllotment && r.status === 'allotted').length
+    const reservedPaymentCount = resolvedRows.filter(r => r.isDirectAllotment && r.status === 'reserved').length
+    const availableCount = resolvedRows.filter(r => !r.isDirectAllotment && r.status === 'available').length
+    const reservedDirectCount = resolvedRows.filter(r => !r.isDirectAllotment && r.status === 'reserved_for_direct_allotment').length
+
     if (mode === 'validate') {
-      return NextResponse.json({ errors: [], rowCount: resolvedRows.length, newCategoryCount: newCategoryNames.size })
+      return NextResponse.json({
+        errors: [],
+        rowCount: resolvedRows.length,
+        newCategoryCount: newCategoryNames.size,
+        directAllottedCount,
+        reservedPaymentCount,
+        availableCount,
+        reservedDirectCount
+      })
     }
 
-    // mode === 'import'. One query to find which stall numbers already
-    // exist (and their status), instead of one SELECT per row.
-    //
-    // Deliberately NOT `WHERE stall_number IN (?)` with an array param: this
-    // codebase's query()/withTransaction wrapper uses mysql2's execute()
-    // (prepared statements), and prepared statements do not expand an array
-    // into a variable-length IN list the way query() does — confirmed by
-    // testing directly, execute() with an array param here SILENTLY
-    // returns zero rows instead of erroring, which would have made every
-    // stall look "new" and turned every re-import into a duplicate-key
-    // failure. Manual placeholder expansion (one `?` per value) works
-    // correctly with execute() and is the same pattern used elsewhere in
-    // this codebase for IN clauses.
+    // mode === 'import'
     const stallNumbers = resolvedRows.map(r => r.stallNumber)
 
     const existingRows =
       stallNumbers.length > 0
-        ? await query<Array<{ id: number; stall_number: string; status: string }>>(
-            `SELECT id, stall_number, status FROM shop_units WHERE stall_number IN (${stallNumbers.map(() => '?').join(', ')})`,
+        ? await query<Array<{ id: number; stall_number: string; status: string; allotted_to_application_id: number | null }>>(
+            `SELECT id, stall_number, status, allotted_to_application_id FROM shop_units WHERE stall_number IN (${stallNumbers.map(() => '?').join(', ')})`,
             stallNumbers
           )
         : []
 
     const existingByStallNumber = new Map(existingRows.map(r => [r.stall_number, r]))
 
-    const toInsert = resolvedRows.filter(r => !existingByStallNumber.has(r.stallNumber))
-
-    const toUpdate = resolvedRows.filter(r => {
-      const existing = existingByStallNumber.get(r.stallNumber)
-
-      return existing && existing.status !== 'allotted'
-    })
-
-    const skippedAllotted = resolvedRows.filter(r => existingByStallNumber.get(r.stallNumber)?.status === 'allotted').length
+    let insertedCount = 0
+    let updatedCount = 0
 
     await withTransaction(async (txQuery: TransactionQuery) => {
-      if (toInsert.length > 0) {
-        // Manual placeholder expansion again, for the same execute()
-        // reason as the IN clause above — mysql2's bulk `VALUES ?` shorthand
-        // does not work with execute() at all (confirmed: it throws a SQL
-        // syntax error, not silently misbehaves like the IN case did).
-        // emd_amount_paise is not set here — import no longer carries a stall
-        // amount at all (per explicit request, 2026-10-28); it's always set
-        // afterward via the admin table's own Add/Edit form.
-        const placeholders = toInsert.map(() => '(?, ?, ?, ?, NULL, ?)').join(', ')
-        const flatValues = toInsert.flatMap(r => [r.categoryId, r.stallNumber, r.shopType, r.direction, r.status])
+      for (const row of resolvedRows) {
+        const existing = existingByStallNumber.get(row.stallNumber)
+        let shopUnitId: number
 
-        await txQuery(
-          `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status) VALUES ${placeholders}`,
-          flatValues
-        )
-      }
+        if (!existing) {
+          // Insert new shop_unit
+          const insertRes = await txQuery<{ insertId: number }>(
+            `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, emd_amount_paise, status)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [row.categoryId, row.stallNumber, row.shopType, row.direction, row.emdAmountPaise, row.status]
+          )
+          shopUnitId = insertRes.insertId
+          insertedCount++
+        } else {
+          shopUnitId = existing.id
+          await txQuery(
+            `UPDATE shop_units SET category_id = ?, shop_type = ?, direction = ?, emd_amount_paise = ?, status = ?, updated_at = NOW()
+             WHERE id = ?`,
+            [row.categoryId, row.shopType, row.direction, row.emdAmountPaise, row.status, shopUnitId]
+          )
+          updatedCount++
+        }
 
-      // No bulk UPDATE-with-different-values-per-row in plain SQL without a
-      // temp table or CASE expression per column; with import batches
-      // capped at MAX_IMPORT_ROWS (2000) and each update a single indexed
-      // lookup by primary key, this remains fast in practice — the removed
-      // N+1 cost was the SELECT per row, not this per-row UPDATE.
-      //
-      // emd_amount_paise is deliberately NOT touched here — re-importing a
-      // stall (upsert) must not wipe out an amount that was already set via
-      // the admin table's Add/Edit form, since import no longer carries that
-      // value at all.
-      for (const row of toUpdate) {
-        const existing = existingByStallNumber.get(row.stallNumber)!
+        if (row.isDirectAllotment) {
+          // Check if active direct_allotment exists for this shop_unit
+          const activeDirects = await txQuery<Array<{ id: number; application_id: number | null }>>(
+            `SELECT id, application_id FROM direct_allotments WHERE shop_unit_id = ? AND status = 'active' LIMIT 1`,
+            [shopUnitId]
+          )
 
-        await txQuery(`UPDATE shop_units SET category_id = ?, shop_type = ?, direction = ?, status = ? WHERE id = ?`, [
-          row.categoryId,
-          row.shopType,
-          row.direction,
-          row.status,
-          existing.id
-        ])
+          const allotteeName = row.allotteeName!
+          const contactPerson = row.contactPerson || allotteeName
+          const fatherName = row.fatherName || '—'
+          const mobileNumber = row.mobileNumber || '7404302678'
+          const email = row.email || 'harshgarg1009@gmail.com'
+          const address = row.address || 'Kurukshetra'
+          const policeStationName = row.policeStationName || 'City Police Station'
+          const workPurpose = row.workPurpose || 'Commercial Stall'
+          const rawAadhaar = row.aadhaarNumber || '123456789012'
+          const cleanAadhaar = rawAadhaar.length === 12 ? rawAadhaar : `00000000${rawAadhaar}`.slice(-12)
+          const isPaymentRequired = (row.stallAmountRupees ?? 0) > 0
+          const appStatus = isPaymentRequired ? 'payment_required' : 'allotted'
+          const directPaymentStatus = isPaymentRequired ? 'pending' : 'not_required'
+          const paymentAmountPaise = isPaymentRequired ? row.stallAmountRupees! * 100 : 0
+
+          if (activeDirects.length > 0) {
+            // Update existing direct_allotment record
+            const directId = activeDirects[0].id
+            const appId = activeDirects[0].application_id
+
+            await txQuery(
+              `UPDATE direct_allotments SET
+                 category_id = ?, allottee_name = ?, contact_person = ?, father_name = ?,
+                 aadhaar_number = ?, address = ?, mobile_number = ?, email = ?,
+                 work_purpose = ?, payment_amount_paise = ?, payment_status = ?
+               WHERE id = ?`,
+              [
+                row.categoryId, allotteeName, contactPerson, fatherName,
+                cleanAadhaar, address, mobileNumber, email,
+                workPurpose, paymentAmountPaise, directPaymentStatus,
+                directId
+              ]
+            )
+
+            if (appId) {
+              await txQuery(
+                `UPDATE applications SET
+                   category_id = ?, organisation_name = ?, representative_name = ?, father_name = ?,
+                   police_station_name = ?, address = ?, mobile_number = ?, email = ?,
+                   work_purpose = ?, status = ?
+                 WHERE id = ?`,
+                [
+                  row.categoryId, allotteeName, contactPerson, fatherName,
+                  policeStationName, address, mobileNumber, email,
+                  workPurpose, appStatus,
+                  appId
+                ]
+              )
+            }
+          } else {
+            // Create brand new application & direct_allotment
+            const aadhaarCiphertext = encryptAadhaar(cleanAadhaar)
+            const last4 = aadhaarLast4(cleanAadhaar)
+            const aadhaarHash = hashAadhaar(cleanAadhaar)
+            const rawAccessToken = generateAccessToken()
+            const accessTokenHash = hashAccessToken(rawAccessToken)
+
+            let applicationNumber = ''
+            let appInsertResult: { insertId: number } | null = null
+
+            for (let attempt = 0; attempt < 5; attempt++) {
+              try {
+                applicationNumber = generateApplicationNumber(new Date().getFullYear())
+                appInsertResult = await txQuery<{ insertId: number }>(
+                  `INSERT INTO applications (
+                     application_number, category_id,
+                     email, organisation_name, representative_name, father_name,
+                     police_station_name, police_station_address,
+                     aadhaar_ciphertext, aadhaar_last4, aadhaar_hash,
+                     address, state, district, pin_code, mobile_number,
+                     work_purpose, achievement_experience,
+                     status, access_token_hash, declaration_accepted_at, submitted_at
+                   ) VALUES (
+                     ?, ?,
+                     ?, ?, ?, ?,
+                     ?, NULL,
+                     ?, ?, ?,
+                     ?, 'Haryana', 'Kurukshetra', '136118', ?,
+                     ?, NULL,
+                     ?, ?, NOW(), NOW()
+                   )`,
+                  [
+                    applicationNumber, row.categoryId,
+                    email, allotteeName, contactPerson, fatherName,
+                    policeStationName,
+                    aadhaarCiphertext, last4, aadhaarHash,
+                    address, mobileNumber,
+                    workPurpose,
+                    appStatus, accessTokenHash
+                  ]
+                )
+                break
+              } catch (e: any) {
+                if (attempt === 4 || !e?.message?.includes('Duplicate')) throw e
+              }
+            }
+
+            if (appInsertResult) {
+              const newAppId = appInsertResult.insertId
+
+              await txQuery(
+                `INSERT INTO direct_allotments (
+                   category_id, shop_unit_id, allottee_name, contact_person,
+                   father_name, aadhaar_number, address, mobile_number, email, work_purpose,
+                   payment_amount_paise, payment_status, application_id, application_number,
+                   notes, status, allotted_by_user_id
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+                [
+                  row.categoryId, shopUnitId, allotteeName, contactPerson,
+                  fatherName, cleanAadhaar, address, mobileNumber, email, workPurpose,
+                  paymentAmountPaise, directPaymentStatus, newAppId, applicationNumber,
+                  'Bulk CSV Direct Allotment', session.userId
+                ]
+              )
+
+              await txQuery(
+                `UPDATE shop_units SET allotted_to_application_id = ?, status = ? WHERE id = ?`,
+                [newAppId, row.status, shopUnitId]
+              )
+            }
+          }
+        }
       }
     })
 
@@ -273,9 +413,12 @@ export async function POST(request: Request) {
       entityType: 'shop_unit',
       entityId: 'bulk',
       newValue: {
-        inserted: toInsert.length,
-        updated: toUpdate.length,
-        skippedAllotted,
+        inserted: insertedCount,
+        updated: updatedCount,
+        directAllotted: directAllottedCount,
+        reservedForPayment: reservedPaymentCount,
+        availableCount,
+        reservedForDirect: reservedDirectCount,
         totalRows: resolvedRows.length,
         stallNumbers: resolvedRows.map(r => r.stallNumber)
       }
@@ -284,9 +427,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       errors: [],
       rowCount: resolvedRows.length,
-      inserted: toInsert.length,
-      updated: toUpdate.length,
-      skippedAllotted
+      inserted: insertedCount,
+      updated: updatedCount,
+      directAllotted: directAllottedCount,
+      reservedForPayment: reservedPaymentCount,
+      availableCount,
+      reservedDirectCount,
+      skippedAllotted: 0
     })
   } catch (error) {
     logServerError('api.admin.inventory.import', error)

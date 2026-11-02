@@ -180,28 +180,62 @@ export async function POST(request: Request) {
 
     const documents = await query<
       Array<{
+        documentId: number | null
         documentKey: string
         label: string
         labelHi: string | null
+        isRequired: number
+        allowedMimeTypes: string
+        maxSizeBytes: number
         verificationStatus: string
         verificationRemarks: string | null
         originalFilename: string | null
       }>
     >(
-      `SELECT cdd.document_key AS documentKey, cdd.label, cdd.label_hi AS labelHi, ad.verification_status AS verificationStatus,
+      `SELECT ad.id AS documentId, cdd.document_key AS documentKey, cdd.label, cdd.label_hi AS labelHi,
+              cdd.is_required AS isRequired, cdd.allowed_mime_types AS allowedMimeTypes, cdd.max_size_bytes AS maxSizeBytes,
+              ad.verification_status AS verificationStatus,
               ad.verification_remarks AS verificationRemarks, ad.original_filename AS originalFilename
        FROM category_document_definitions cdd
        LEFT JOIN application_documents ad
          ON ad.document_definition_id = cdd.id AND ad.application_id = ?
-       WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?)
+       WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
        ORDER BY cdd.display_order ASC`,
       [application.id, application.id]
+    )
+
+    // Full query history — every time a reviewer raised a query, whether
+    // application-level (queryApplicationAction, no document to attach it
+    // to) or document-level (decideDocument's 'query' decision) — not just
+    // the latest one. Per explicit feedback (2026-11-03): only the single
+    // latest application-level remark was ever shown, so a second or third
+    // round of back-and-forth silently lost everything before it.
+    const queryHistory = await query<
+      Array<{
+        documentLabel: string | null
+        remarks: string
+        createdAt: string
+      }>
+    >(
+      `(SELECT NULL AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
+        FROM audit_logs al
+        WHERE al.entity_type = 'application' AND al.entity_id = ? AND al.action = 'application.query_raised')
+       UNION ALL
+       (SELECT cdd.label AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
+        FROM audit_logs al
+        JOIN application_documents ad ON ad.id = al.entity_id
+        JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
+        WHERE al.entity_type = 'application_document' AND al.action = 'document.query' AND ad.application_id = ?)
+       ORDER BY createdAt DESC`,
+      [String(application.id), application.id]
     )
 
     return NextResponse.json({
       applicationId: application.id,
       accessToken: freshAccessToken,
       status: application.status,
+      applicationQueryRemarks: queryHistory.find(q => q.documentLabel === null)?.remarks ?? null,
+      queryHistory,
       stallNumber: application.stall_number ?? null,
       allotmentPaymentEnabled: Boolean(application.allotment_payment_enabled),
       allotmentAmountPaise: application.allotment_payment_amount_paise ?? application.allotment_amount_paise ?? null,

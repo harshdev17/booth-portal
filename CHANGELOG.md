@@ -2,6 +2,44 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.5.0 (2026-11-01)
+
+### Added
+- **Bulk CSV Inventory Import with Direct Allotment Support (`src/lib/inventory/shop-units-csv.ts`, `src/app/api/admin/inventory/import/route.ts`)**:
+  - Extended bulk inventory import with 10 direct allotment columns: `Allottee Name`, `Contact Person`, `Father Name`, `Mobile Number`, `Aadhaar Number`, `Address`, `Police Station`, `Email`, `Work Purpose`, and `Stall Amount`.
+  - Added intelligent keyword-based column detection (`findCol`) supporting arbitrary column order, case-insensitivity, and flexible header aliases.
+  - Implemented automated application and direct allotment creation within atomic database transactions, linking `shop_units.allotted_to_application_id` automatically.
+  - Support for Custom Categories: automatically detected, created, flagged as `is_direct_allotment = 1`, and closed to public applicant submissions.
+  - Re-upload correction support: safely updates existing stalls, directions, amounts, and direct allotment details without creating duplicate stall records.
+- **Dedicated Police Department Verification View (`src/views/admin/police/PoliceStallView.tsx`, `src/app/(admin)/admin/police/page.tsx`, `src/app/api/admin/police/stalls/route.ts`)**:
+  - Introduced dedicated law enforcement view displaying verified allottee data for all occupied stalls across both draw allocations and direct allotments.
+  - Displays verified allottee particulars: Stall No., Category, Allottee Name, Contact Person, Father's Name, Verified Mobile Number, Masked Aadhaar Number, Full Residential Address, Police Station, Email, and Work Purpose.
+  - Strictly omits all financial/payment figures (Stall Amount, EMD, payment status, transaction IDs) per security requirements.
+  - Dedicated CSV export endpoint for police field personnel (`/api/admin/police/stalls/export`).
+  - Added role permission mapping (`inventory.view_police` / `requirePoliceAccess`) for law enforcement accounts.
+
+### Changed
+- **Allotment Status Workflow Automation (`src/app/api/admin/inventory/import/route.ts`)**:
+  - **11 Main Categories**:
+    - Direct Allotment with `Stall Amount = 0`: sets status immediately to `Allotted` (Free / Confirmed Allotment).
+    - Direct Allotment with `Stall Amount > 0`: sets status to `Reserved for Payment` (`reserved`).
+    - Unallotted stall with blank status: defaults to `Available`.
+    - Unallotted stall with explicit status `Reserved for Allotment` (or `Direct Allotment` / `Hold`): sets status to `Reserved for Direct Allotment` (Hold for administrative manual allotment).
+  - **Custom Categories**:
+    - Custom categories are strictly for direct allotment and can **NEVER** be set to `Available`.
+    - Direct Allotment with `Stall Amount = 0`: sets status to `Allotted` (Free / Confirmed Allotment).
+    - Direct Allotment with `Stall Amount > 0`: sets status to `Reserved for Payment` (`reserved`).
+    - Unallotted stall (regardless of status column): strictly set to **`Reserved for Direct Allotment`** (`reserved_for_direct_allotment`).
+- **Payment Receipt Download Policy (`src/views/public/apply-success/SuccessPageView.tsx`)**:
+  - Restricted payment receipt generation exclusively to applications where allotment has occurred and payment has been made; hidden for unallotted applications.
+
+### Fixed
+- **RFC 4180 CSV Field Escaping & Excel Column Shift Resolution (`src/lib/inventory/shop-units-csv.ts`, `test-sheets/`)**:
+  - Fixed unquoted commas in category names (such as `"Sweets, Bakers and Special Food Items"`) that caused Microsoft Excel to split category strings across multiple columns and shift subsequent cell data.
+  - Ensured all generated and exported CSV fields with commas, quotes, or newlines are properly enclosed in double quotes.
+  - Enhanced Aadhaar number parsing to sanitize input (`replace(/\D/g, '')`, stripping leading/trailing quotes and scientific notation artifacts) ensuring resilient 12-digit validation.
+  - Added UTF-8 Byte Order Mark (BOM) stripping (`replace(/^\uFEFF/, '')`) to prevent invisible character parse errors from Windows/Excel CSV exports.
+
 ## v1.4.0 (2026-10-20)
 
 ### Fixed

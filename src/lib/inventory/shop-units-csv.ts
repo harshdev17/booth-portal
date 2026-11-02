@@ -15,14 +15,30 @@ import 'server-only'
 // (labeled "Stall Amount" — it's the same emd_amount_paise column/value,
 // previously mislabeled "EMD Amount" in this CSV) so admins can see existing
 // amounts when reviewing the current inventory.
-export const IMPORT_CSV_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Status'] as const
+export const STANDARD_IMPORT_CSV_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Status'] as const
+
+export const DIRECT_ALLOTMENT_CSV_COLUMNS = [
+  'Booth/Stall No.',
+  'Single/Double',
+  'Category',
+  'Direction',
+  'Status',
+  'Allottee Name',
+  'Contact Person',
+  'Father Name',
+  'Mobile Number',
+  'Aadhaar Number',
+  'Address',
+  'Police Station',
+  'Email',
+  'Work Purpose',
+  'Stall Amount'
+] as const
+
+export const IMPORT_CSV_COLUMNS = DIRECT_ALLOTMENT_CSV_COLUMNS
 export const EXPORT_CSV_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Stall Amount', 'Status'] as const
 
-// 'reserved' (payment-pending) is deliberately not importable — it only ever
-// arises from a real application/direct-allotment payment flow, never from a
-// bulk import. Import can only mark a stall Available or hold it for Direct
-// Allotment (per explicit request, 2026-10-28).
-export type ShopUnitStatus = 'available' | 'reserved_for_direct_allotment'
+export type ShopUnitStatus = 'available' | 'reserved_for_direct_allotment' | 'allotted' | 'reserved'
 
 export type ShopUnitCsvRow = {
   rowNumber: number
@@ -31,6 +47,19 @@ export type ShopUnitCsvRow = {
   categoryName: string
   direction: string | null
   status: ShopUnitStatus
+  explicitStatus?: string | null
+  // Direct Allotment optional fields
+  allotteeName?: string | null
+  contactPerson?: string | null
+  fatherName?: string | null
+  mobileNumber?: string | null
+  aadhaarNumber?: string | null
+  address?: string | null
+  policeStationName?: string | null
+  email?: string | null
+  workPurpose?: string | null
+  stallAmountRupees?: number
+  isDirectAllotment?: boolean
 }
 
 export type CsvRowError = { rowNumber: number; message: string }
@@ -62,21 +91,83 @@ export function buildCsv(rows: string[][]): string {
 }
 
 /**
- * The downloadable blank template — header row, one example row per real
- * category (so the Category column's exact expected spelling is obvious
- * from the template itself rather than discovered only via a validation
- * error).
+ * The downloadable blank template — header row, with example rows showing
+ * available stalls, direct allotment with amount 0 (allotted), and direct allotment with amount > 0 (reserved).
  */
 export function buildTemplateCsv(categoryNames: string[]): string {
-  const exampleRows = categoryNames.map((name, idx) => [
-    `S-${100 + idx}`,
-    idx % 2 === 0 ? 'Single' : 'Double',
-    name,
-    '',
-    'Available'
+  const exampleRows: string[][] = []
+
+  // Sample row 1: Main Category, unallotted (Available)
+  exampleRows.push([
+    'S-101',
+    'Single',
+    categoryNames[0] || 'Refreshment and Ice Cream Booth/Stall',
+    'North',
+    'Available',
+    '', '', '', '', '', '', '', '', '', ''
   ])
 
-  return buildCsv([[...IMPORT_CSV_COLUMNS], ...exampleRows])
+  // Sample row 2: Main Category, Direct Allotted with Amount = 0 (Free/Fully Allotted)
+  exampleRows.push([
+    'S-102',
+    'Single',
+    categoryNames[0] || 'Refreshment and Ice Cream Booth/Stall',
+    'North',
+    '',
+    'KDB Quality Refreshments',
+    'Harsh Gupta',
+    'Sh. Rajesh Gupta',
+    '7404302678',
+    '123456789012',
+    'Shop No 5, Near Gate 2, Kurukshetra',
+    'City Police Station, Thanesar',
+    'harshgarg1009@gmail.com',
+    'Special Ice Cream & Cold Drinks',
+    '0'
+  ])
+
+  // Sample row 3: Main Category, Direct Allotted with Amount > 0 (Reserved for Payment)
+  exampleRows.push([
+    'S-103',
+    'Double',
+    categoryNames[1] || 'Sweets, Bakers and Special Food Items',
+    'East',
+    '',
+    'Royal Sweets & Bakers',
+    'Amit Kumar',
+    'Sh. Suresh Kumar',
+    '7404302678',
+    '987654321098',
+    'Brahma Sarovar Road, Kurukshetra',
+    'Krishna Gate Police Station',
+    'harshgarg1009@gmail.com',
+    'Traditional Sweets & Bakery',
+    '5000'
+  ])
+
+  // Sample row 4: Custom Category, Unallotted (defaults to Reserved for Direct Allotment)
+  exampleRows.push([
+    'C-201',
+    'Double',
+    'VIP Exhibition Pavilion',
+    'West',
+    '',
+    '', '', '', '', '', '', '', '', '', ''
+  ])
+
+  // Remaining categories as standard template rows
+  categoryNames.slice(2).forEach((name, idx) => {
+    exampleRows.push([
+      `S-${200 + idx}`,
+      idx % 2 === 0 ? 'Single' : 'Double',
+      name,
+      '',
+      '',
+      '', '', '', '', '', '', '', '', '', ''
+    ])
+  })
+
+  return buildCsv([[...DIRECT_ALLOTMENT_CSV_COLUMNS], ...exampleRows])
 }
 
 /** Parses one CSV line respecting double-quoted fields (which may contain commas). */
@@ -123,37 +214,73 @@ const MAX_IMPORT_ROWS = 2000
  * live lookup, not something this pure parsing function should own.
  */
 export function parseShopUnitsCsv(text: string): ParsedCsv {
-  const lines = text.split(/\r\n|\r|\n/).filter(line => line.trim() !== '')
+  // Strip UTF-8 BOM if present
+  const cleanedText = text.replace(/^\uFEFF/, '').trim()
+  const lines = cleanedText.split(/\r\n|\r|\n/).filter(line => line.trim() !== '')
 
   if (lines.length === 0) {
     return { rows: [], errors: [{ rowNumber: 0, message: 'The file is empty.' }] }
   }
 
-  const header = parseCsvLine(lines[0]).map(h => h.trim())
-  const expectedHeader = IMPORT_CSV_COLUMNS as readonly string[]
-  // The first column used to be called "Stall No." — files with either name
-  // are accepted. A file still using the old 6-column format (with an
-  // EMD/Stall Amount column before Status) is also accepted — that column is
-  // simply ignored, since the amount is no longer set via import at all; its
-  // value is skipped by shifting what "Status" is read from accordingly.
-  const first4Match = expectedHeader.slice(0, 4).every((col, idx) => {
-    const got = header[idx]?.toLowerCase()
-
-    return got === col.toLowerCase() || (idx === 0 && got === 'stall no.')
+  const rawHeaders = parseCsvLine(lines[0]).map(h => h.replace(/^\uFEFF/, '').trim())
+  const colIndex = new Map<string, number>()
+  rawHeaders.forEach((h, idx) => {
+    const rawClean = h.toLowerCase().trim()
+    const stripped = rawClean.replace(/[^\w\s/.-]/g, '').trim()
+    colIndex.set(rawClean, idx)
+    colIndex.set(stripped, idx)
   })
 
-  const hasOldAmountColumn = (header[4]?.toLowerCase() ?? '') === 'stall amount' || (header[4]?.toLowerCase() ?? '') === 'emd amount'
-  const statusColumnIndex = hasOldAmountColumn ? 5 : 4
-  const hasStatusColumn = (header[statusColumnIndex]?.toLowerCase() ?? '') === 'status'
-  const headerMatches = first4Match && (header.length === 4 || hasStatusColumn)
+  // Intelligent column matcher by keywords & regex
+  const findCol = (keywords: string[]): number => {
+    for (const kw of keywords) {
+      const lowerKw = kw.toLowerCase()
+      for (const [key, idx] of colIndex.entries()) {
+        if (key === lowerKw) return idx
+      }
+    }
+    for (const kw of keywords) {
+      const lowerKw = kw.toLowerCase()
+      for (const [key, idx] of colIndex.entries()) {
+        if (key.includes(lowerKw)) return idx
+      }
+    }
+    return -1
+  }
 
-  if (!headerMatches) {
+  // Detect columns in ANY order
+  const stallCol = findCol([
+    'booth/stall no.', 'booth/stall no', 'stall no.', 'stall no', 'booth no.', 'booth no',
+    'stall number', 'booth number', 'stall', 'booth', 'shop no.', 'shop no', 'unit no'
+  ])
+  const typeCol = findCol(['single/double', 'single or double', 'shop type', 'booth type', 'type', 'size'])
+  const catCol = findCol(['category', 'category name', 'cat', 'trade'])
+  const dirCol = findCol(['direction', 'facing', 'side'])
+  const statusCol = findCol(['status', 'stall status', 'allotment status'])
+
+  // Direct allotment columns
+  const allotteeCol = findCol([
+    'allottee name', 'allottee', 'organisation name', 'organization name', 'organisation',
+    'vendor name', 'vendor', 'applicant name', 'applicant', 'firm name', 'firm', 'party name', 'name'
+  ])
+  const contactCol = findCol(['contact person', 'representative name', 'representative', 'contact', 'authorized person'])
+  const fatherCol = findCol(['father name', "father's name", 'guardian name', 'father', 's/o', 'd/o'])
+  const mobileCol = findCol(['mobile number', 'mobile no.', 'mobile no', 'mobile', 'phone number', 'phone no.', 'phone', 'whatsapp'])
+  const aadhaarCol = findCol(['aadhaar number', 'aadhaar no.', 'aadhaar no', 'aadhaar', 'aadhar number', 'aadhar no', 'aadhar', 'uid'])
+  const addressCol = findCol(['address', 'full address', 'residence', 'location'])
+  const policeCol = findCol(['police station', 'police station name', 'thana', 'police thana', 'ps'])
+  const emailCol = findCol(['email', 'email id', 'email address', 'e-mail'])
+  const workCol = findCol(['work purpose', 'craft', 'purpose', 'craft / work purpose', 'item', 'items', 'business', 'activity'])
+  const amountCol = findCol(['stall amount', 'stall amount (rs)', 'stall amount in rs', 'amount', 'fee', 'allotment fee', 'rate', 'price', 'emd amount'])
+
+  // Check required core headers (at least stall and category)
+  if (stallCol === -1 || catCol === -1) {
     return {
       rows: [],
       errors: [
         {
           rowNumber: 1,
-          message: `Header row must be exactly: ${expectedHeader.join(', ')} (Status column is optional).`
+          message: `Could not identify "Booth/Stall No." or "Category" columns. Please verify column headers.`
         }
       ]
     }
@@ -173,65 +300,115 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
   const seenStallNumbers = new Set<string>()
 
   dataLines.forEach((line, idx) => {
-    const rowNumber = idx + 2 // +1 for 0-index, +1 for header row
+    const rowNumber = idx + 2
     const fields = parseCsvLine(line)
-    const [stallNumberRaw, shopTypeRaw, categoryNameRaw, directionRaw] = fields
-    const statusRaw = fields[statusColumnIndex]
 
-    const stallNumber = (stallNumberRaw ?? '').trim()
-    const shopTypeText = (shopTypeRaw ?? '').trim().toLowerCase()
-    const categoryName = (categoryNameRaw ?? '').trim()
-    const direction = (directionRaw ?? '').trim()
-    const statusText = (statusRaw ?? '').trim().toLowerCase()
+    const stallNumber = stallCol !== -1 ? (fields[stallCol] ?? '').trim() : ''
+    const shopTypeRaw = typeCol !== -1 ? (fields[typeCol] ?? '').trim().toLowerCase() : ''
+    const categoryName = catCol !== -1 ? (fields[catCol] ?? '').trim().replace(/\s+/g, ' ') : ''
+    const direction = dirCol !== -1 ? (fields[dirCol] ?? '').trim() : ''
+    const statusRaw = statusCol !== -1 ? (fields[statusCol] ?? '').trim() : ''
+    const statusText = statusRaw.toLowerCase()
 
     if (!stallNumber) {
       errors.push({ rowNumber, message: 'Booth/Stall No. is required.' })
-
       return
     }
 
     if (seenStallNumbers.has(stallNumber.toLowerCase())) {
       errors.push({ rowNumber, message: `Duplicate Booth/Stall No. "${stallNumber}" within this file.` })
-
       return
     }
 
     seenStallNumbers.add(stallNumber.toLowerCase())
 
-    if (shopTypeText !== 'single' && shopTypeText !== 'double') {
-      errors.push({ rowNumber, message: 'Single/Double must be exactly "Single" or "Double".' })
-
-      return
-    }
-
     if (!categoryName) {
       errors.push({ rowNumber, message: 'Category is required.' })
-
       return
     }
 
-    let status: ShopUnitStatus = 'available' // the caller overrides this to 'reserved_for_direct_allotment' for a custom/auto-created category's rows
+    // Normalize Single/Double: defaults to single if not specified
+    let shopType: 'single' | 'double' = 'single'
+    if (shopTypeRaw.includes('double') || shopTypeRaw === 'd') {
+      shopType = 'double'
+    } else if (shopTypeRaw.includes('single') || shopTypeRaw === 's') {
+      shopType = 'single'
+    }
 
-    if (statusText !== '' && statusText !== 'available') {
-      if (statusText !== 'reserved for direct allotment') {
-        errors.push({
-          rowNumber,
-          message: 'Status must be "Available" or "Reserved for Direct Allotment", or left blank.'
-        })
+    // Direct Allotment fields
+    const allotteeName = allotteeCol !== -1 ? (fields[allotteeCol] ?? '').trim() : ''
+    const contactPerson = contactCol !== -1 ? (fields[contactCol] ?? '').trim() : ''
+    const fatherName = fatherCol !== -1 ? (fields[fatherCol] ?? '').trim() : ''
+    const mobileRaw = mobileCol !== -1 ? (fields[mobileCol] ?? '').trim() : ''
+    const aadhaarRaw = aadhaarCol !== -1 ? (fields[aadhaarCol] ?? '').trim().replace(/^['"=]+|['"]+$/g, '').replace(/\D/g, '') : ''
+    const address = addressCol !== -1 ? (fields[addressCol] ?? '').trim() : ''
+    const policeStationName = policeCol !== -1 ? (fields[policeCol] ?? '').trim() : ''
+    const email = emailCol !== -1 ? (fields[emailCol] ?? '').trim().toLowerCase() : ''
+    const workPurpose = workCol !== -1 ? (fields[workCol] ?? '').trim() : ''
+    const amountRaw = amountCol !== -1 ? (fields[amountCol] ?? '').trim().replace(/[^\d.]/g, '') : ''
+    const stallAmountRupees = Math.max(0, Math.round(Number(amountRaw) || 0))
 
+    const isDirectAllotment = Boolean(allotteeName)
+
+    if (isDirectAllotment) {
+      const cleanMobile = mobileRaw.replace(/\D/g, '').slice(-10)
+      if (cleanMobile && cleanMobile.length !== 10) {
+        errors.push({ rowNumber, message: 'Mobile number must be a valid 10-digit number for direct allotment.' })
         return
       }
+      if (aadhaarRaw && !/^\d{4}$|^\d{12}$/.test(aadhaarRaw)) {
+        errors.push({ rowNumber, message: 'Aadhaar number must be exactly 12 digits or last 4 digits.' })
+        return
+      }
+    }
 
-      status = 'reserved_for_direct_allotment'
+    // Flexible Status Detection (supports "Reserved for Allotment", "Direct Allotment", etc.)
+    let status: ShopUnitStatus = 'available'
+    let explicitStatus: string | null = null
+
+    if (statusText) {
+      if (statusText.includes('available') || statusText === 'open') {
+        status = 'available'
+        explicitStatus = 'available'
+      } else if (
+        statusText.includes('reserved for direct') ||
+        statusText.includes('reserved for allotment') ||
+        statusText.includes('direct allotment') ||
+        statusText.includes('reserved_for_direct') ||
+        statusText === 'reserved' ||
+        statusText === 'direct' ||
+        statusText === 'hold'
+      ) {
+        status = 'reserved_for_direct_allotment'
+        explicitStatus = 'reserved_for_direct_allotment'
+      } else if (statusText.includes('allotted')) {
+        status = 'allotted'
+        explicitStatus = 'allotted'
+      } else if (statusText.includes('payment')) {
+        status = 'reserved'
+        explicitStatus = 'reserved'
+      }
     }
 
     rows.push({
       rowNumber,
       stallNumber,
-      shopType: shopTypeText,
+      shopType,
       categoryName,
       direction: direction || null,
-      status
+      status,
+      explicitStatus,
+      allotteeName: allotteeName || null,
+      contactPerson: contactPerson || null,
+      fatherName: fatherName || null,
+      mobileNumber: mobileRaw.replace(/\D/g, '').slice(-10) || null,
+      aadhaarNumber: aadhaarRaw || null,
+      address: address || null,
+      policeStationName: policeStationName || null,
+      email: email || null,
+      workPurpose: workPurpose || null,
+      stallAmountRupees,
+      isDirectAllotment
     })
   })
 

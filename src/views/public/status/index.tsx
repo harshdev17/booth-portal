@@ -32,6 +32,9 @@ import { useLanguage } from '@/context/LanguageContext'
 import { formatDate } from '@/lib/format-date'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { downloadBlob } from '@/lib/browser/download-blob'
+import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
+import type { CategoryDocumentDto } from '@/views/public/apply/types'
+import { clearStatusSession, readStatusSession, storeStatusSession } from '@/views/public/status/status-session'
 
 const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
 
@@ -76,18 +79,26 @@ const lookupSchema = z.object({
 type LookupValues = z.infer<typeof lookupSchema>
 
 type DocumentRow = {
+  documentId: number | null
   documentKey: string
   label: string
   labelHi: string | null
+  isRequired: number
+  allowedMimeTypes: string
+  maxSizeBytes: number
   verificationStatus: string | null
   verificationRemarks: string | null
   originalFilename: string | null
 }
 
+type QueryHistoryEntry = { documentLabel: string | null; remarks: string; createdAt: string }
+
 type StatusResult = {
   applicationId: number
   accessToken?: string
   status: string
+  applicationQueryRemarks?: string | null
+  queryHistory?: QueryHistoryEntry[]
   stallNumber: string | null
   allotmentPaymentEnabled: boolean
   allotmentAmountPaise: number | null
@@ -167,7 +178,7 @@ const StatusLookup = () => {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [uploadMessage, setUploadMessage] = useState<string | null>(null)
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null)
-  const [reuploadedKeys, setReuploadedKeys] = useState<string[]>([])
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
 
   // Allotment payment state
   const [isPayingAllotment, setIsPayingAllotment] = useState(false)
@@ -209,6 +220,50 @@ const StatusLookup = () => {
     }
   }, [searchParams, form])
 
+  // Restores the verified result on a refresh, for up to 5 minutes after
+  // the last successful OTP verify — see status-session.ts's doc comment
+  // for why this is time-boxed and why it's a UX convenience, not a new
+  // security boundary (GET /api/applications/[id]/status independently
+  // re-verifies the token server-side on every call). Runs once on mount;
+  // an invalid/expired/missing session just leaves the page on its default
+  // 'lookup' phase, same as before this existed.
+  useEffect(() => {
+    const session = readStatusSession()
+
+    if (!session) return
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const response = await fetch(`/api/applications/${session.applicationId}/status`, {
+          headers: { Authorization: `Bearer ${session.accessToken}` }
+        })
+
+        if (cancelled) return
+
+        if (!response.ok) {
+          clearStatusSession()
+
+          return
+        }
+
+        const body = await response.json()
+
+        setApplicationNumber(session.applicationNumber)
+        setResult(body)
+        setPhase('result')
+      } catch {
+        // Network failure on restore — leave the page on 'lookup' rather
+        // than showing an error for what's just a convenience feature.
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Phase 1: application number triggers a WhatsApp OTP to mobile on file
   const requestOtpForLookup = async (values: LookupValues) => {
     setError(null)
@@ -239,6 +294,10 @@ const StatusLookup = () => {
         setApplicationNumber(values.applicationNumber)
         setResult(body)
         setPhase('result')
+
+        if (body.accessToken) {
+          storeStatusSession(body.applicationId, body.accessToken, values.applicationNumber)
+        }
       }
     } catch {
       setError(
@@ -275,6 +334,10 @@ const StatusLookup = () => {
 
       setResult(body)
       setPhase('result')
+
+      if (body.accessToken) {
+        storeStatusSession(body.applicationId, body.accessToken, applicationNumber)
+      }
     } catch {
       setError(
         lang === 'hi'
@@ -289,8 +352,26 @@ const StatusLookup = () => {
   const respondToQuery = async (documentKey: string, file: File) => {
     if (!result) return
 
+    // DocumentsStep's own client-side max-size check attaches this instead
+    // of calling the server (see DocumentsStep.tsx's handleFileSelect) —
+    // mirrors ApplicationFormOrchestrator.tsx's handleUpload handling of
+    // the same case for the apply form.
+    if ('__clientError' in file && typeof (file as unknown as { __clientError?: string }).__clientError === 'string') {
+      setUploadErrors(prev => ({ ...prev, [documentKey]: (file as unknown as { __clientError: string }).__clientError }))
+
+      return
+    }
+
     setUploadMessage(null)
     setUploadedFilename(null)
+    setUploadErrors(prev => {
+      if (!(documentKey in prev)) return prev
+
+      const next = { ...prev }
+      delete next[documentKey]
+
+      return next
+    })
     setUploadingKey(documentKey)
 
     try {
@@ -313,13 +394,15 @@ const StatusLookup = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setUploadMessage(body.error ?? (lang === 'hi' ? 'दस्तावेज़ अपलोड विफल रहा।' : 'Upload failed.'))
+        const message = body.error ?? (lang === 'hi' ? 'दस्तावेज़ अपलोड विफल रहा।' : 'Upload failed.')
+
+        setUploadMessage(message)
+        setUploadErrors(prev => ({ ...prev, [documentKey]: message }))
 
         return
       }
 
       setUploadedFilename(file.name)
-      setReuploadedKeys(prev => (prev.includes(documentKey) ? prev : [...prev, documentKey]))
 
       setResult(prev => {
         if (!prev) return null
@@ -328,17 +411,25 @@ const StatusLookup = () => {
           ...prev,
           documents: prev.documents.map(d =>
             d.documentKey === documentKey
-              ? { ...d, verificationStatus: 'pending', verificationRemarks: null, originalFilename: file.name }
+              ? {
+                  ...d,
+                  documentId: body.documentId ?? d.documentId,
+                  verificationStatus: 'pending',
+                  verificationRemarks: null,
+                  originalFilename: file.name
+                }
               : d
           )
         }
       })
     } catch {
-      setUploadMessage(
+      const message =
         lang === 'hi'
           ? 'सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।'
           : 'Could not reach the server. Please try again.'
-      )
+
+      setUploadMessage(message)
+      setUploadErrors(prev => ({ ...prev, [documentKey]: message }))
     } finally {
       setUploadingKey(null)
     }
@@ -606,14 +697,69 @@ const StatusLookup = () => {
     }
   }
 
-  // Once the last open query is answered the server moves the application
-  // back to Under Review; mirror that locally since re-fetching needs a new OTP.
-  const hasOpenQuery = result?.documents.some(doc => doc.verificationStatus === 'query') ?? false
+  // Once the last open document-level query is answered the server moves
+  // the application back to Under Review; mirror that locally since
+  // re-fetching needs a new OTP. result.documents is always non-empty (it's
+  // every required document DEFINITION for the category, LEFT JOINed
+  // against any actually-uploaded row — see api/applications/status's
+  // query), so `.length === 0` never fires.
+  //
+  // An application-level query (queryApplicationAction, no
+  // application_documents rows at all when it's raised) shows up here as
+  // every document having a null/falsy verificationStatus. The query is
+  // resolved only once EVERY document has been uploaded (some truthy
+  // status) — checking "at least one" instead of "every one" was the bug
+  // reported live via screenshot: after uploading just 2 of 4 required
+  // documents, `.some()` was already true (2 truthy out of 4), so the page
+  // flipped to "Under Review" and hid the upload option for the 2 still
+  // genuinely missing documents.
+  const allDocumentsUploaded = result?.documents.every(doc => !!doc.verificationStatus) ?? false
+  const hasOpenQuery = !allDocumentsUploaded || (result?.documents.some(doc => doc.verificationStatus === 'query') ?? false)
 
   const effectiveStatus =
     result && result.status === 'query_raised' && !hasOpenQuery ? 'under_review' : (result?.status ?? '')
 
   const statusText = STATUS_LABEL[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en'] ?? effectiveStatus
+
+  // DocumentsStep (shared with the apply form) always allows upload/replace
+  // on whatever it's given — it has no concept of "locked unless a query is
+  // open," which is correct for the apply form (pre-submission, everything
+  // is always editable) but not here, where a document should only be
+  // actionable while this specific status page is responding to a raised
+  // query. Only documents actually needing a response go through it;
+  // everything else stays a compact read-only line (no accidental re-upload
+  // outside of a query).
+  const actionableDocuments: DocumentRow[] = []
+  const readOnlyDocuments: DocumentRow[] = []
+
+  for (const doc of result?.documents ?? []) {
+    const needsResponse =
+      doc.verificationStatus === 'query' || (effectiveStatus === 'query_raised' && !doc.verificationStatus)
+
+    ;(needsResponse ? actionableDocuments : readOnlyDocuments).push(doc)
+  }
+
+  const documentsForStep: CategoryDocumentDto[] = actionableDocuments.map(doc => ({
+    key: doc.documentKey,
+    label: doc.label,
+    labelHi: doc.labelHi,
+    required: Boolean(doc.isRequired),
+    allowedMimeTypes: doc.allowedMimeTypes ? doc.allowedMimeTypes.split(',') : ['application/pdf', 'image/jpeg', 'image/png'],
+    maxSizeBytes: doc.maxSizeBytes || 5 * 1024 * 1024
+  }))
+
+  const uploadStateForStep: DocumentUploadState = Object.fromEntries(
+    actionableDocuments.map(doc => [
+      doc.documentKey,
+      uploadErrors[doc.documentKey]
+        ? { status: 'error' as const, error: uploadErrors[doc.documentKey] }
+        : uploadingKey === doc.documentKey
+          ? { status: 'uploading' as const }
+          : doc.verificationStatus
+            ? { status: 'uploaded' as const, fileName: doc.originalFilename ?? undefined, documentId: doc.documentId ?? undefined }
+            : { status: 'idle' as const }
+    ])
+  )
   const hint = STATUS_HINT[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en']
 
   const isResult = phase === 'result' && !!result
@@ -673,6 +819,7 @@ const StatusLookup = () => {
               variant='outline'
               size='sm'
               onClick={() => {
+                clearStatusSession()
                 setPhase('lookup')
                 setError(null)
               }}
@@ -781,6 +928,74 @@ const StatusLookup = () => {
         <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
           {/* Main / Primary Column */}
           <div className='lg:col-span-7 xl:col-span-8 flex flex-col gap-5'>
+            {/* Query Raised Alert — moved to the very top of the page per
+                explicit feedback (2026-11-02): this previously only showed
+                as a muted blue info-line at the bottom of the Application
+                Details card, easy to miss entirely when the applicant had
+                already scrolled past the "No action needed" assumption.
+                An open query is the single most important thing on this
+                page when it exists — it blocks the application from moving
+                forward until the applicant responds — so it now gets the
+                same prominent alert-card treatment already used for
+                Payment Pending / Payment Required below. */}
+            {effectiveStatus === 'query_raised' && (
+              <div className='overflow-hidden rounded-xl border border-amber-300 bg-amber-50 shadow-xs'>
+                <div className='flex items-start gap-3 p-4 sm:p-5'>
+                  <InfoIcon className='mt-0.5 size-5 shrink-0 text-amber-700' />
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-base font-bold text-amber-950'>
+                        {lang === 'hi' ? 'कार्रवाई आवश्यक: स्पष्टीकरण' : 'Action Needed: Query Raised'}
+                      </h2>
+                      {(result.queryHistory?.length ?? 0) > 1 && (
+                        <span className='rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900'>
+                          {result.queryHistory?.length}{' '}
+                          {lang === 'hi' ? 'टिप्पणियाँ' : result.queryHistory!.length === 1 ? 'note' : 'notes'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Every query raised so far — not just the latest —
+                        per explicit feedback (2026-11-03): a second or
+                        third round of back-and-forth previously lost
+                        everything before the most recent remark. */}
+                    {result.queryHistory && result.queryHistory.length > 0 ? (
+                      <ul className='mt-2.5 flex flex-col gap-2'>
+                        {result.queryHistory.map((entry, idx) => (
+                          <li key={idx} className='rounded-lg bg-white/70 px-3 py-2 text-xs sm:text-sm text-amber-900'>
+                            {entry.documentLabel && (
+                              <span className='mr-1.5 font-bold'>{entry.documentLabel}:</span>
+                            )}
+                            <span className='leading-relaxed'>{entry.remarks}</span>
+                            <span className='ml-2 text-[11px] text-amber-700/80'>
+                              {new Date(entry.createdAt).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className='mt-2 text-xs sm:text-sm text-amber-900 leading-relaxed'>
+                        {lang === 'hi'
+                          ? 'समीक्षा टीम को एक सही दस्तावेज़ की आवश्यकता है। कृपया नीचे दिए गए अनुभाग में अपलोड करें।'
+                          : 'The review team needs a corrected document. Please upload it in the section below.'}
+                      </p>
+                    )}
+
+                    <a
+                      href='#documents-status'
+                      className='mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
+                    >
+                      <UploadIcon className='size-3.5' />
+                      {lang === 'hi' ? 'दस्तावेज़ अपलोड करने के लिए जाएं' : 'Go to Upload Documents'}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {allotmentPaymentSuccess && (
               <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
                 <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
@@ -1138,13 +1353,100 @@ const StatusLookup = () => {
                   </div>
                 )}
               </dl>
-              {hint && (
+              {/* query_raised's hint is shown via the prominent top-of-page
+                  alert card instead (see above) — showing it again here
+                  as a muted info-line would be a duplicate, and was the
+                  original problem being fixed. */}
+              {hint && effectiveStatus !== 'query_raised' && (
                 <div className='border-t border-slate-200 bg-blue-50/40 px-5 py-3 text-xs sm:text-sm text-slate-700 flex items-start gap-2.5'>
                   <InfoIcon className='size-4 text-blue-600 shrink-0 mt-0.5' />
                   <span>{hint}</span>
                 </div>
               )}
             </div>
+
+            {/* Documents Verification Status Card — reuses the exact same
+                DocumentsStep component the apply form uses, rather than a
+                separate hand-rolled list, per explicit request (2026-11-02:
+                "jo doc ab form mai uplaod karwa re hai, vahi options aane
+                chahiye in mai bhi"). Gives consistent upload/replace
+                buttons, file-type/size hints, drag-and-drop, and an in-page
+                preview — not just a bare file input. Moved into this wide
+                main column (was the narrow sidebar) per a further request
+                (2026-11-03) — DocumentsStep's table layout needs more width
+                than the sidebar column gives it; labels were truncating. */}
+            {result.documents.length > 0 && (
+              <div id='documents-status' className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs scroll-mt-4'>
+                <div className='border-b border-slate-200 px-5 py-3.5 bg-slate-50/60'>
+                  <p className='text-xs font-bold text-[#0c2847] uppercase tracking-wider'>
+                    {lang === 'hi' ? 'संलग्न दस्तावेज़ स्थिति' : 'Attached Documents Status'}
+                  </p>
+                </div>
+
+                <div className='p-4 sm:p-5'>
+                  {/* Per-document remarks — the full query history (every
+                      round, application-level and document-level) already
+                      shows at the top of the page; this is deliberately
+                      scoped to just the documents actually listed below, so
+                      it reads as "here's what to fix on THIS document"
+                      rather than repeating the same messages twice. */}
+                  {actionableDocuments.some(doc => doc.verificationRemarks) && (
+                    <div className='mb-4 flex flex-col gap-2'>
+                      {actionableDocuments
+                        .filter(doc => doc.verificationRemarks)
+                        .map(doc => (
+                          <div key={doc.documentKey} className='rounded-lg border border-amber-200 bg-amber-50/60 p-3'>
+                            <p className='text-xs leading-relaxed text-amber-950'>
+                              <span className='font-bold'>
+                                {lang === 'hi' ? doc.labelHi || doc.label : doc.label}:{' '}
+                              </span>
+                              {doc.verificationRemarks}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {actionableDocuments.length > 0 && (
+                    <DocumentsStep
+                      documents={documentsForStep}
+                      uploadState={uploadStateForStep}
+                      onUpload={respondToQuery}
+                      accessToken={result.accessToken ?? null}
+                    />
+                  )}
+
+                  {readOnlyDocuments.length > 0 && (
+                    <ul className={`divide-y divide-slate-100 ${actionableDocuments.length > 0 ? 'mt-4 border-t border-slate-100 pt-2' : ''}`}>
+                      {readOnlyDocuments.map(doc => {
+                        const cfg = doc.verificationStatus
+                          ? getDocumentStatusConfig(doc.verificationStatus)
+                          : { label: '', color: 'bg-gray-100 text-gray-700' }
+
+                        const statusLabel = doc.verificationStatus
+                          ? lang === 'hi'
+                            ? (DOCUMENT_STATUS_HI[doc.verificationStatus] ?? cfg.label)
+                            : cfg.label
+                          : lang === 'hi'
+                            ? 'अपलोड नहीं हुआ'
+                            : 'Not uploaded'
+
+                        return (
+                          <li key={doc.documentKey} className='flex items-center justify-between gap-3 py-2.5 text-xs sm:text-sm'>
+                            <span className='font-medium text-slate-800'>
+                              {lang === 'hi' ? doc.labelHi || doc.label : doc.label}
+                            </span>
+                            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cfg.color}`}>
+                              {statusLabel}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Side / Secondary Column */}
@@ -1196,85 +1498,6 @@ const StatusLookup = () => {
                 </Link>
               </div>
             </div>
-
-            {/* Documents Verification Status Card */}
-            {result.documents.length > 0 && (
-              <div className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs'>
-                <div className='border-b border-slate-200 px-5 py-3.5 bg-slate-50/60'>
-                  <p className='text-xs font-bold text-[#0c2847] uppercase tracking-wider'>
-                    {lang === 'hi' ? 'संलग्न दस्तावेज़ स्थिति' : 'Attached Documents Status'}
-                  </p>
-                </div>
-                <ul className='divide-y divide-slate-100'>
-                  {result.documents.map(doc => {
-                    const needsResponse = doc.verificationStatus === 'query'
-
-                    const cfg = doc.verificationStatus
-                      ? getDocumentStatusConfig(doc.verificationStatus)
-                      : { label: '', color: 'bg-gray-100 text-gray-700' }
-
-                    const statusLabel = doc.verificationStatus
-                      ? lang === 'hi'
-                        ? (DOCUMENT_STATUS_HI[doc.verificationStatus] ?? cfg.label)
-                        : cfg.label
-                      : lang === 'hi'
-                        ? 'अपलोड नहीं हुआ'
-                        : 'Not uploaded'
-
-                    return (
-                      <li key={doc.documentKey} className='px-5 py-3.5 text-xs sm:text-sm'>
-                        <div className='flex items-start justify-between gap-3'>
-                          <span className='font-medium text-slate-800'>
-                            {lang === 'hi' ? (doc.labelHi || doc.label) : doc.label}
-                          </span>
-                          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cfg.color}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
-
-                        {needsResponse && (
-                          <div className='mt-2.5 rounded-lg border-l-4 border-amber-500 bg-amber-50/60 p-2.5'>
-                            {doc.verificationRemarks && (
-                              <p className='text-xs text-amber-950 mb-2'>
-                                <span className='font-bold'>{lang === 'hi' ? 'समीक्षक टिप्पणी: ' : 'Reviewer note: '}</span>
-                                {doc.verificationRemarks}
-                              </p>
-                            )}
-                            <label className='inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#0c2847] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#071a2f] shadow-2xs transition'>
-                              {uploadingKey === doc.documentKey ? (
-                                <Loader2Icon className='size-3.5 animate-spin' />
-                              ) : (
-                                <UploadIcon className='size-3.5' />
-                              )}
-                              {lang === 'hi' ? 'सही फ़ाइल अपलोड करें' : 'Upload corrected file'}
-                              <input
-                                type='file'
-                                className='hidden'
-                                accept='.pdf,.jpg,.jpeg,.png'
-                                disabled={uploadingKey === doc.documentKey}
-                                onChange={e => {
-                                  const file = e.target.files?.[0]
-
-                                  if (file) void respondToQuery(doc.documentKey, file)
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )}
-
-                        {reuploadedKeys.includes(doc.documentKey) && !needsResponse && (
-                          <p className='mt-1.5 flex items-center gap-1 text-xs text-emerald-700 font-medium'>
-                            <CheckCircle2Icon className='size-3.5' />
-                            {lang === 'hi' ? 'नई फ़ाइल जमा हो गई, समीक्षा लंबित।' : 'New file submitted, awaiting review.'}
-                          </p>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       )}

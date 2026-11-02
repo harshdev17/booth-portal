@@ -124,6 +124,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Once submitted, a document can only be replaced in direct response to a
     // reviewer's query — never to silently overwrite one still pending review
     // or already verified. See .ai/DOCUMENT_VERIFICATION.md Section 5.
+    //
+    // An application in query_raised with NO row at all for this document
+    // (existingRows[0] undefined) is an application-level query
+    // (queryApplicationAction — no document rows exist because the
+    // applicant never uploaded anything to begin with) rather than a
+    // specific document being sent back. That's a first upload, not a
+    // replace, so it's allowed through the same way isPreSubmission's
+    // uploads are — the existingStatus !== 'query' check only applies when
+    // a document row actually exists to compare against.
     let isQueryResponse = false
 
     if (isUnderReview) {
@@ -134,14 +143,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       const existingStatus = existingRows[0]?.verification_status
 
-      if (existingStatus !== 'query') {
+      if (existingRows.length > 0 && existingStatus !== 'query') {
         return NextResponse.json(
           { error: 'This document is not awaiting your response and cannot be replaced.' },
           { status: 409 }
         )
       }
 
-      isQueryResponse = true
+      isQueryResponse = application.status === 'query_raised'
     }
 
     if (file.size > definition.max_size_bytes) {
@@ -201,13 +210,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Last open query answered -> the application goes back to plain
     // "Under Review" so the reviewer sees it is ready for another look.
+    //
+    // For an application-level query (no document ever has
+    // verification_status = 'query', since none were ever uploaded — see
+    // the isQueryResponse assignment above), "answered" must mean every
+    // required document now has SOME row, not just that none happen to be
+    // literally in 'query'. Without this, uploading just the first of
+    // several missing documents flipped the whole application back to
+    // Under Review and silently removed the upload option for every
+    // document still missing — reported live via screenshot (two of four
+    // required documents uploaded, the other two stuck on "Not uploaded"
+    // with no way to add them).
     if (isQueryResponse) {
       const [open] = await query<Array<{ n: number }>>(
         `SELECT COUNT(*) AS n FROM application_documents WHERE application_id = ? AND verification_status = 'query'`,
         [applicationId]
       )
 
-      if (Number(open.n) === 0) {
+      const [missing] = await query<Array<{ n: number }>>(
+        `SELECT COUNT(*) AS n
+         FROM category_document_definitions cdd
+         LEFT JOIN application_documents ad
+           ON ad.document_definition_id = cdd.id AND ad.application_id = ?
+         WHERE cdd.category_id = ? AND cdd.status = 'active' AND ad.id IS NULL`,
+        [applicationId, application.category_id]
+      )
+
+      if (Number(open.n) === 0 && Number(missing.n) === 0) {
         await query(`UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`, [applicationId])
       }
     }

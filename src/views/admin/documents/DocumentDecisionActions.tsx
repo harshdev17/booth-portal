@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 
-import { queryDocumentAction, verifyDocumentAction, type DocumentActionState } from '@/app/server/document-actions'
+import { queryApplicationAction, queryDocumentAction, verifyDocumentAction, type DocumentActionState } from '@/app/server/document-actions'
 
 const initialState: DocumentActionState = {}
 
@@ -102,5 +102,67 @@ const DocumentDecisionActions = ({ documentId, currentStatus }: { documentId: nu
     <RaiseQueryButton documentId={documentId} />
   </div>
 )
+
+/**
+ * Application-level equivalent of RaiseQueryButton, for an application with
+ * no document rows at all to attach a per-document query to (e.g. a
+ * backfilled/imported application that never went through the normal
+ * upload flow). Moves the application straight to 'query_raised' via
+ * queryApplicationAction instead of a specific document's verification
+ * status.
+ */
+export const RaiseApplicationQueryButton = ({ applicationId }: { applicationId: number }) => {
+  const [state, formAction, isPending] = useActionState(queryApplicationAction, initialState)
+  const [open, setOpen] = useState(false)
+  const [submittedAt, setSubmittedAt] = useState(0)
+
+  const isDialogOpen = open && !(submittedAt && state.success)
+
+  const openDialog = () => {
+    setSubmittedAt(0)
+    setOpen(true)
+  }
+
+  return (
+    <>
+      <Button type='button' size='sm' variant='outline' onClick={openDialog}>
+        <HelpCircleIcon />
+        Raise Query
+      </Button>
+
+      <Dialog open={isDialogOpen} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Raise Query</DialogTitle>
+            <DialogDescription>
+              This application has no uploaded documents to query individually. This remark applies to the
+              application as a whole and is shown in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+
+          {state.error && (
+            <Alert variant='destructive'>
+              <AlertDescription>{state.error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form action={formAction} onSubmit={() => setSubmittedAt(Date.now())} className='flex flex-col gap-3'>
+            <input type='hidden' name='applicationId' value={applicationId} />
+            <Textarea name='remarks' placeholder='Remark (required)' required maxLength={512} rows={3} />
+            <DialogFooter>
+              <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type='submit' disabled={isPending}>
+                {isPending && <Loader2Icon className='animate-spin' />}
+                Confirm
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
 
 export default DocumentDecisionActions

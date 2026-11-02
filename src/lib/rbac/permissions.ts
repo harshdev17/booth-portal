@@ -10,6 +10,7 @@ export const PERMISSIONS = [
   'application:approve',
   'application:reject',
   'application:cancel',
+  'application:edit',
   'document:view',
   'document:verify',
   'payment:view',

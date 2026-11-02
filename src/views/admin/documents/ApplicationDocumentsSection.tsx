@@ -1,18 +1,98 @@
 'use client'
 
-import { EyeIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
+
+import { EyeIcon, Loader2Icon, UploadIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
-import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
+import DocumentDecisionActions, { RaiseApplicationQueryButton } from '@/views/admin/documents/DocumentDecisionActions'
+
+/**
+ * Lets an authorized admin (application:edit) upload/replace a document on
+ * the applicant's behalf — e.g. the applicant can't manage it themselves
+ * and calls/emails the office directly — per explicit request (2026-11-03).
+ * Posts to the admin-only POST /api/admin/applications/[id]/documents route
+ * (separate from the applicant-facing one, which authorizes via access
+ * token/OTP, not an admin session).
+ */
+const AdminUploadButton = ({
+  applicationId,
+  documentKey,
+  isReplace,
+  onUploaded
+}: {
+  applicationId: number
+  documentKey: string
+  isReplace: boolean
+  onUploaded: () => void
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+
+    setError(null)
+    setIsUploading(true)
+
+    try {
+      const formData = new FormData()
+
+      formData.append('documentKey', documentKey)
+      formData.append('file', file)
+
+      const response = await fetch(`/api/admin/applications/${applicationId}/documents`, {
+        method: 'POST',
+        body: formData
+      })
+
+      const body = await response.json()
+
+      if (!response.ok) {
+        setError(body.error ?? 'Upload failed.')
+
+        return
+      }
+
+      onUploaded()
+    } catch {
+      setError('Could not reach the server.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  return (
+    <div className='flex flex-col items-end gap-1'>
+      <label className='inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'>
+        {isUploading ? <Loader2Icon className='size-3.5 animate-spin' /> : <UploadIcon className='size-3.5' />}
+        {isReplace ? 'Replace' : 'Upload'}
+        <input
+          ref={inputRef}
+          type='file'
+          accept='.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+          className='sr-only'
+          disabled={isUploading}
+          onChange={e => {
+            void handleFile(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {error && <p className='text-[11px] font-semibold text-red-600'>{error}</p>}
+    </div>
+  )
+}
 
 export type ApplicationDocumentRow = {
-  id: number
+  id: number | null
   document_key: string
   label: string
-  original_filename: string
-  verification_status: string
+  original_filename: string | null
+  verification_status: string | null
   verification_remarks: string | null
   reuploaded_at: string | null
 }
@@ -26,15 +106,32 @@ export type ApplicationDocumentRow = {
 // "Owner/Authorized Representative Aadhaar Card" are both aadhaar_card).
 const PERSONAL_DOCUMENT_KEYS = new Set(['aadhaar_card', 'passport_photo', 'representative_id'])
 
+export type ApplicationQueryHistoryEntry = { id: number; remarks: string; createdAt: string }
+
 const ApplicationDocumentsSection = ({
   documents,
-  canVerifyDocuments
+  canVerifyDocuments,
+  canEditApplication,
+  applicationId,
+  canRaiseApplicationQuery,
+  applicationQueryHistory
 }: {
   documents: ApplicationDocumentRow[]
   canVerifyDocuments: boolean
+  canEditApplication: boolean
+  applicationId: number
+  canRaiseApplicationQuery: boolean
+  applicationQueryHistory: ApplicationQueryHistoryEntry[]
 }) => {
+  const reloadAfterUpload = () => window.location.reload()
+
   const personalDocs = documents.filter(d => PERSONAL_DOCUMENT_KEYS.has(d.document_key))
   const applicationDocs = documents.filter(d => !PERSONAL_DOCUMENT_KEYS.has(d.document_key))
+
+  // documents now has one row per required document DEFINITION (uploaded
+  // or not — see the page's LEFT JOIN), so its length is no longer "how
+  // many were uploaded." Tracked separately for the card title/empty state.
+  const uploadedCount = documents.filter(d => d.id !== null).length
 
   const renderDocList = (docs: ApplicationDocumentRow[]) =>
     docs.length === 0 ? (
@@ -42,7 +139,37 @@ const ApplicationDocumentsSection = ({
     ) : (
       <div className='divide-y'>
         {docs.map(doc => {
-          const docCfg = getDocumentStatusConfig(doc.verification_status)
+          // A required document the applicant never uploaded at all (not
+          // just one pending review) — the category's document definitions
+          // are LEFT JOINed against application_documents, so this shows up
+          // as a row with no id instead of not appearing on this page at
+          // all. Reported live: an admin had no way to see that
+          // "Work/Product Photographs" was still outstanding for an
+          // application in query_raised.
+          if (doc.id === null) {
+            return (
+              <div key={doc.document_key} className='flex flex-col gap-1.5 py-3 sm:flex-row sm:items-center sm:justify-between'>
+                <div>
+                  <div className='flex items-center gap-2'>
+                    <p className='text-sm font-semibold text-slate-500'>{doc.label}</p>
+                    <span className='shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200'>
+                      Not uploaded
+                    </span>
+                  </div>
+                </div>
+                {canEditApplication && (
+                  <AdminUploadButton
+                    applicationId={applicationId}
+                    documentKey={doc.document_key}
+                    isReplace={false}
+                    onUploaded={reloadAfterUpload}
+                  />
+                )}
+              </div>
+            )
+          }
+
+          const docCfg = getDocumentStatusConfig(doc.verification_status!)
 
           return (
             <div key={doc.id} className='flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
@@ -74,7 +201,15 @@ const ApplicationDocumentsSection = ({
                   <EyeIcon className='size-3.5' /> Preview
                 </a>
                 {canVerifyDocuments && (
-                  <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status} />
+                  <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status!} />
+                )}
+                {canEditApplication && (
+                  <AdminUploadButton
+                    applicationId={applicationId}
+                    documentKey={doc.document_key}
+                    isReplace
+                    onUploaded={reloadAfterUpload}
+                  />
                 )}
               </div>
             </div>
@@ -84,25 +219,54 @@ const ApplicationDocumentsSection = ({
     )
 
   return (
-    <Card className='shadow-xs'>
-      <CardHeader>
-        <CardTitle className='text-base'>Uploaded Documents ({documents.length})</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {documents.length === 0 ? (
-          <p className='py-8 text-center text-sm text-muted-foreground'>No documents uploaded.</p>
-        ) : (
-          <Tabs defaultValue='personal'>
-            <TabsList>
-              <TabsTrigger value='personal'>Personal ({personalDocs.length})</TabsTrigger>
-              <TabsTrigger value='application'>Application ({applicationDocs.length})</TabsTrigger>
-            </TabsList>
-            <TabsContent value='personal'>{renderDocList(personalDocs)}</TabsContent>
-            <TabsContent value='application'>{renderDocList(applicationDocs)}</TabsContent>
-          </Tabs>
-        )}
-      </CardContent>
-    </Card>
+    <div className='flex flex-col gap-4'>
+      {(applicationQueryHistory.length > 0 || (uploadedCount === 0 && canRaiseApplicationQuery)) && (
+        <Card className='shadow-xs border-amber-200 bg-amber-50/40'>
+          <CardHeader>
+            <CardTitle className='text-base'>Application-Level Queries</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {applicationQueryHistory.length > 0 && (
+              <div className='mb-4 space-y-2'>
+                {applicationQueryHistory.map(entry => (
+                  <div key={entry.id} className='rounded-md border border-amber-200 bg-white px-3 py-2 text-sm'>
+                    <p className='text-[#0c2847]'>{entry.remarks}</p>
+                    <p className='mt-1 text-xs text-muted-foreground'>
+                      Raised {new Date(entry.createdAt).toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {canRaiseApplicationQuery && (
+              <RaiseApplicationQueryButton applicationId={applicationId} />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className='shadow-xs'>
+        <CardHeader>
+          <CardTitle className='text-base'>
+            Documents ({uploadedCount}/{documents.length} uploaded)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {documents.length === 0 ? (
+            <p className='py-8 text-center text-sm text-muted-foreground'>No documents required for this category.</p>
+          ) : (
+            <Tabs defaultValue='personal'>
+              <TabsList>
+                <TabsTrigger value='personal'>Personal ({personalDocs.length})</TabsTrigger>
+                <TabsTrigger value='application'>Application ({applicationDocs.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value='personal'>{renderDocList(personalDocs)}</TabsContent>
+              <TabsContent value='application'>{renderDocList(applicationDocs)}</TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

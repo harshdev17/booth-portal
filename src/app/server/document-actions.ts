@@ -162,3 +162,91 @@ export async function queryDocumentAction(
 ): Promise<DocumentActionState> {
   return decideDocument(prevState, formData, 'query')
 }
+
+const applicationQuerySchema = z.object({
+  applicationId: z.coerce.number().int().positive(),
+  remarks: z.string().trim().min(1, 'A remark is required.').max(512)
+})
+
+/**
+ * Raises a query directly against an application rather than a specific
+ * document — for the case where an application has no document rows at
+ * all (e.g. backfilled/imported applications never went through the
+ * upload flow) and the per-document RaiseQueryButton therefore has
+ * nothing to attach to. Moves the application straight to 'query_raised'
+ * and notifies the applicant the same way a document-level query does,
+ * just without a document_definition_id to reference.
+ */
+export async function queryApplicationAction(
+  _prevState: DocumentActionState,
+  formData: FormData
+): Promise<DocumentActionState> {
+  const parsed = applicationQuerySchema.safeParse({
+    applicationId: formData.get('applicationId'),
+    remarks: formData.get('remarks')
+  })
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid request.' }
+  }
+
+  const session = await requirePermission('document:verify')
+
+  const rows = await query<
+    Array<{
+      status: string
+      application_number: string
+      mobile_number: string
+      email: string
+      representative_name: string
+    }>
+  >(
+    `SELECT status, application_number, mobile_number, email, representative_name
+     FROM applications WHERE id = ?`,
+    [parsed.data.applicationId]
+  )
+
+  const current = rows[0]
+
+  if (!current) {
+    return { error: 'Application not found.' }
+  }
+
+  // query_raised is included so a reviewer can send a follow-up/second
+  // query while one is already outstanding — the applicant hasn't
+  // responded by re-uploading anything (there's nothing to upload), so
+  // there's no other event that would move this application out of
+  // query_raised on its own.
+  if (!['under_review', 'payment_success', 'query_raised'].includes(current.status)) {
+    return { error: `This application is "${current.status}" and cannot have a query raised against it.` }
+  }
+
+  await query(`UPDATE applications SET status = 'query_raised' WHERE id = ?`, [parsed.data.applicationId])
+
+  await logAudit({
+    actorUserId: session.userId,
+    actorRoleKey: session.role.key,
+    action: 'application.query_raised',
+    module: 'applications',
+    entityType: 'application',
+    entityId: String(parsed.data.applicationId),
+    previousValue: { status: current.status },
+    newValue: { status: 'query_raised', remarks: parsed.data.remarks }
+  })
+
+  revalidatePath('/admin/documents')
+
+  // Never let a notification failure block the query action itself —
+  // notifyDocumentQuery already swallows send errors.
+  await notifyDocumentQuery({
+    applicationId: parsed.data.applicationId,
+    applicationNumber: current.application_number,
+    mobileNumber: current.mobile_number,
+    email: current.email,
+    representativeName: current.representative_name,
+    documentLabel: 'Required Documents',
+    remarks: parsed.data.remarks
+  })
+
+  return { success: 'Query raised on application.' }
+}
