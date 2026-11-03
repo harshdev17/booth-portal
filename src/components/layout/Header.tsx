@@ -24,6 +24,13 @@ const Header = ({ user }: { user: HeaderUser }) => {
   const pathname = usePathname()
   const [applicationNumber, setApplicationNumber] = useState<string | null>(null)
 
+  // Police portal reuses this exact Header (per explicit request,
+  // 2026-11-03) but has no analog of /admin/account/profile (its own
+  // password-change page) and the role label there read oddly against the
+  // police-specific chrome — hide both only on /police routes, every other
+  // route keeps them exactly as before.
+  const isPolicePortal = pathname.startsWith('/police')
+
   const segments = pathname.split('/').filter(Boolean)
 
   useEffect(() => {
@@ -76,7 +83,7 @@ const Header = ({ user }: { user: HeaderUser }) => {
           </Breadcrumb>
         </div>
         <div className='flex items-center gap-1.5'>
-          <ProfileDropdown user={user} />
+          <ProfileDropdown user={user} hideRoleName={isPolicePortal} hideAccountLink={isPolicePortal} />
         </div>
       </div>
     </header>

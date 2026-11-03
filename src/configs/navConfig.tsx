@@ -76,6 +76,17 @@ export const navItems: NavItem[] = [
     ]
   },
   {
+    groupLabel: 'Verification',
+    items: [
+      {
+        icon: 'ShieldCheck',
+        label: 'Allotted Applications',
+        href: '/police/dashboard',
+        permission: 'police:view'
+      }
+    ]
+  },
+  {
     groupLabel: 'Payments',
     items: [
       {

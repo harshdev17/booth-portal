@@ -497,10 +497,37 @@ function injectCategoryDropdown(groups: NavItem[], categoryCounts: CategoryCount
 
 const SidebarLayout = ({
   permissions,
-  categoryCounts = []
+  categoryCounts = [],
+  excludeGroupLabels = [],
+  hrefOverrides = {}
 }: {
   permissions: string[]
   categoryCounts?: CategoryCount[]
+
+  /**
+   * Drops entire nav groups by label before permission-filtering — for an
+   * item with no `permission` key (e.g. "Overview" → Dashboard, always
+   * visible per filterNavByPermissions' own convention), permission
+   * filtering alone can't hide it for a role it doesn't apply to. Used by
+   * the police portal (src/app/police/layout.tsx) to hide the admin
+   * "Overview" → /admin/dashboard link for police_user, who gets redirected
+   * away from /admin/dashboard anyway (see (admin)/layout.tsx) and has its
+   * own dashboard at /police/dashboard (the "Verification" group's
+   * "Allotted Applications" item) instead.
+   */
+  excludeGroupLabels?: string[]
+
+  /**
+   * Rewrites a nav item's href when it matches a key here — used by the
+   * police portal to point "Inventory / Booths/Stalls" at /police/inventory
+   * instead of /admin/inventory (an otherwise-identical page/permission
+   * gate, see src/app/police/inventory/page.tsx) so the URL a police_user
+   * ends up on doesn't say "admin" in it, per explicit request
+   * (2026-11-03). Admin/super_admin viewing the police portal keep the
+   * /admin/inventory link, since this is only passed non-empty from
+   * police/layout.tsx for police_user specifically.
+   */
+  hrefOverrides?: Record<string, string>
 }) => {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -516,10 +543,26 @@ const SidebarLayout = ({
 
   // Nav groups rendered in the sidebar, scoped to the current user's permissions,
   // with the live per-category breakdown spliced into "All Applications".
-  const navGroups = useMemo(
-    () => injectCategoryDropdown(filterNavByPermissions(navItems, permissionSet), categoryCounts),
-    [permissionSet, categoryCounts]
-  )
+  const excludeSet = useMemo(() => new Set(excludeGroupLabels), [excludeGroupLabels])
+  const navGroups = useMemo(() => {
+    const filtered = filterNavByPermissions(
+      navItems.filter(group => !group.groupLabel || !excludeSet.has(group.groupLabel)),
+      permissionSet
+    )
+
+    if (Object.keys(hrefOverrides).length === 0) {
+      return injectCategoryDropdown(filtered, categoryCounts)
+    }
+
+    const remapped = filtered.map(group => ({
+      ...group,
+      items: group.items.map(item =>
+        'href' in item && item.href && hrefOverrides[item.href] ? { ...item, href: hrefOverrides[item.href] } : item
+      )
+    }))
+
+    return injectCategoryDropdown(remapped, categoryCounts)
+  }, [permissionSet, categoryCounts, excludeSet, hrefOverrides])
 
   const activeBranchKeys = useMemo(
     () => getActiveBranchKeys(navGroups, pathname, searchParams),

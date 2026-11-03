@@ -201,12 +201,23 @@ const InventoryTable = ({
   initialRows,
   canManage,
   categoryNames,
-  directions
+  directions,
+  simplifiedTabs = false
 }: {
   initialRows: ShopUnitRowData[]
   canManage: boolean
   categoryNames: string[]
   directions: string[]
+
+  /**
+   * Police portal only (per explicit request, 2026-11-03: "bas Allotted
+   * aur Free bas itna hi") — collapses the 6-tab admin view (All,
+   * Available, Allotted by Draw, Public/Draw Stalls, Direct Allotment,
+   * Cancelled) down to 3 (All, Allotted, Available), with "Allotted"
+   * combining both draw and direct allotments — police only needs to know
+   * whether a stall is occupied, not by which allotment method.
+   */
+  simplifiedTabs?: boolean
 }) => {
   const [rows, setRows] = useState(initialRows)
   const [availableCategories, setAvailableCategories] = useState<string[]>(categoryNames)
@@ -248,7 +259,13 @@ const InventoryTable = ({
     const publicStalls = rows.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
     const cancelled = rows.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled').length
 
-    return { total, available, allotted, direct, public: publicStalls, cancelled }
+    // Draw-allotted + direct-allotted combined — simplifiedTabs' single
+    // "Allotted" tab, since police only cares whether a stall is occupied.
+    const allottedCombined = rows.filter(
+      r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled'
+    ).length
+
+    return { total, available, allotted, direct, public: publicStalls, cancelled, allottedCombined }
   }, [rows])
 
   type HistoryItem = {
@@ -615,7 +632,13 @@ const InventoryTable = ({
       // Tab filter: all vs available vs allotted by draw vs public/draw vs direct entry vs cancelled
       if (stallCategoryTab === 'cancelled' && !row.isCancelled && row.status !== 'cancelled') return false
       if (stallCategoryTab === 'available' && (row.status !== 'available' || row.isCancelled)) return false
-      if (stallCategoryTab === 'allotted' && (row.status !== 'allotted' || row.isDirectAllotment || row.isCancelled)) return false
+      if (
+        stallCategoryTab === 'allotted' &&
+        (simplifiedTabs
+          ? !((row.status === 'allotted' || row.isDirectAllotment) && !row.isCancelled)
+          : row.status !== 'allotted' || row.isDirectAllotment || row.isCancelled)
+      )
+        return false
       if (stallCategoryTab === 'direct' && (!row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
       if (stallCategoryTab === 'public' && (row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
 
@@ -1160,64 +1183,68 @@ const InventoryTable = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Allotted by Draw
+            {simplifiedTabs ? 'Allotted' : 'Allotted by Draw'}
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
               stallCategoryTab === 'allotted' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'
             }`}>
-              {tabCounts.allotted}
+              {simplifiedTabs ? tabCounts.allottedCombined : tabCounts.allotted}
             </span>
           </button>
 
-          <button
-            type='button'
-            onClick={() => { setStallCategoryTab('public'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
-              stallCategoryTab === 'public'
-                ? 'border-[#0c2847] text-[#0c2847]'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Public / Draw Stalls
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-              stallCategoryTab === 'public' ? 'bg-[#0c2847] text-white' : 'bg-muted text-muted-foreground'
-            }`}>
-              {tabCounts.public}
-            </span>
-          </button>
+          {!simplifiedTabs && (
+            <>
+              <button
+                type='button'
+                onClick={() => { setStallCategoryTab('public'); setPage(1) }}
+                className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+                  stallCategoryTab === 'public'
+                    ? 'border-[#0c2847] text-[#0c2847]'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Public / Draw Stalls
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  stallCategoryTab === 'public' ? 'bg-[#0c2847] text-white' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {tabCounts.public}
+                </span>
+              </button>
 
-          <button
-            type='button'
-            onClick={() => { setStallCategoryTab('direct'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
-              stallCategoryTab === 'direct'
-                ? 'border-indigo-600 text-indigo-700 font-bold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Direct Allotment
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-              stallCategoryTab === 'direct' ? 'bg-indigo-700 text-white' : 'bg-indigo-100 text-indigo-800'
-            }`}>
-              {tabCounts.direct}
-            </span>
-          </button>
+              <button
+                type='button'
+                onClick={() => { setStallCategoryTab('direct'); setPage(1) }}
+                className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+                  stallCategoryTab === 'direct'
+                    ? 'border-indigo-600 text-indigo-700 font-bold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Direct Allotment
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  stallCategoryTab === 'direct' ? 'bg-indigo-700 text-white' : 'bg-indigo-100 text-indigo-800'
+                }`}>
+                  {tabCounts.direct}
+                </span>
+              </button>
 
-          <button
-            type='button'
-            onClick={() => { setStallCategoryTab('cancelled'); setPage(1) }}
-            className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
-              stallCategoryTab === 'cancelled'
-                ? 'border-red-600 text-red-700 font-bold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Cancelled
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-              stallCategoryTab === 'cancelled' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800'
-            }`}>
-              {tabCounts.cancelled}
-            </span>
-          </button>
+              <button
+                type='button'
+                onClick={() => { setStallCategoryTab('cancelled'); setPage(1) }}
+                className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+                  stallCategoryTab === 'cancelled'
+                    ? 'border-red-600 text-red-700 font-bold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Cancelled
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  stallCategoryTab === 'cancelled' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800'
+                }`}>
+                  {tabCounts.cancelled}
+                </span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

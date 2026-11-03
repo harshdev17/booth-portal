@@ -27,7 +27,17 @@ const initials = (fullName: string) =>
     .map(part => part[0]?.toUpperCase())
     .join('')
 
-const ProfileDropdown = ({ user }: { user: { fullName: string; email: string; roleName: string } }) => {
+const ProfileDropdown = ({
+  user,
+  hideRoleName = false,
+  hideAccountLink = false
+}: {
+  user: { fullName: string; email: string; roleName: string }
+
+  /** Police portal only (src/app/police/layout.tsx) — per explicit request (2026-11-03). */
+  hideRoleName?: boolean
+  hideAccountLink?: boolean
+}) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -47,19 +57,23 @@ const ProfileDropdown = ({ user }: { user: { fullName: string; email: string; ro
             <div className='flex flex-1 flex-col items-start'>
               <span className='text-foreground text-base font-semibold'>{user.fullName}</span>
               <span className='text-muted-foreground text-sm'>{user.email}</span>
-              <span className='text-muted-foreground text-xs'>{user.roleName}</span>
+              {!hideRoleName && <span className='text-muted-foreground text-xs'>{user.roleName}</span>}
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
+        {!hideAccountLink && (
+          <>
+            <DropdownMenuSeparator />
 
-        <DropdownMenuGroup>
-          <DropdownMenuItem render={<a href='/admin/account/profile' />}>
-            <UserIcon />
-            <span>My Account</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuItem render={<a href='/admin/account/profile' />}>
+                <UserIcon />
+                <span>My Account</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        )}
 
         <DropdownMenuSeparator />
 
