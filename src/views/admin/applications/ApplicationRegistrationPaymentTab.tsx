@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  BellRingIcon,
   CheckCircle2Icon,
   ClockIcon,
   CopyIcon,
@@ -11,6 +12,7 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   InfoIcon,
+  Loader2Icon,
   PrinterIcon,
   ShieldCheckIcon,
   XCircleIcon
@@ -70,6 +72,8 @@ export default function ApplicationRegistrationPaymentTab({
   const [copiedOrder, setCopiedOrder] = useState(false)
   const [copiedPayment, setCopiedPayment] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderMessage, setReminderMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -134,6 +138,27 @@ export default function ApplicationRegistrationPaymentTab({
       setError('Unable to contact server for receipt printing.')
     } finally {
       setPrinting(false)
+    }
+  }
+
+  const sendReminder = async () => {
+    setError(null)
+    setReminderMessage(null)
+    setSendingReminder(true)
+    try {
+      const res = await fetch(`/api/admin/applications/${applicationId}/send-payment-reminder`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to send reminder.')
+        return
+      }
+      setReminderMessage(data.message ?? 'Payment reminder sent successfully via WhatsApp and Email.')
+    } catch {
+      setError('Network error while sending reminder.')
+    } finally {
+      setSendingReminder(false)
     }
   }
 
@@ -330,6 +355,21 @@ export default function ApplicationRegistrationPaymentTab({
                     <ExternalLinkIcon className='size-3' />
                   </a>
                 </div>
+
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  disabled={sendingReminder}
+                  onClick={sendReminder}
+                  className='w-full text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
+                >
+                  {sendingReminder ? <Loader2Icon className='size-3.5 animate-spin' /> : <BellRingIcon className='size-3.5' />}
+                  Send Payment Reminder
+                </Button>
+                {reminderMessage && (
+                  <p className='text-[11px] font-semibold text-emerald-700'>{reminderMessage}</p>
+                )}
               </div>
             )}
           </CardContent>

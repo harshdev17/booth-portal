@@ -62,9 +62,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(app.application_number)}` : ''
 
     const isDirectAllotment = Boolean(app.direct_allotment_id)
+
+    // Dedicated reminder campaigns, separate from AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION
+    // / _DIRECT_ALLOTMENT_PAYMENT (those are sent automatically on
+    // draw/direct-allotment and are worded for that moment, not for "you
+    // still haven't paid, pay now" — this is an admin-triggered reminder,
+    // sent any time from the application's Registration/Allotment Payment
+    // tab). New campaigns, created 2026-11-05 in AiSensy, named
+    // (confirmed by user) literally "pay_now_activation" and
+    // "direct_allotment_payment" — NOT the same as the existing
+    // gita_mahotsav_draw_payment / gita_mahotsav_direct_allotment_pay_iavxd
+    // campaigns, despite the similar-sounding name.
     const campaignOverride = isDirectAllotment
-      ? (process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT || 'gita_mahotsav_direct_allotment_pay_iavxd')
-      : (process.env.AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION || 'gita_mahotsav_draw_payment')
+      ? (process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER || 'direct_allotment_payment')
+      : (process.env.AISENSY_CAMPAIGN_REGISTRATION_PAYMENT_REMINDER || 'pay_now_activation')
 
     // Fire notification in background so admin UI responds instantaneously (<100ms)
     // without waiting for Gmail SMTP and external WhatsApp API handshakes.

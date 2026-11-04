@@ -277,17 +277,16 @@ export default function ApplicationAllotmentPaymentCard({
                 </Button>
               )}
 
-              {/* Hidden per explicit request (2026-10-28) — the underlying
-                  WhatsApp template this sends ("Pay Now Activation (Draw)")
-                  was worded as if the booth/stall is already allotted and
-                  only the fee remains, which is wrong for an application
-                  still awaiting payment before allotment is final. Needs the
-                  AiSensy template content itself reviewed/corrected before
-                  this button comes back — that lives in AiSensy's own
-                  dashboard, not this codebase. sendReminder/sendingReminder
-                  are left in place, unused, so re-enabling later is a
-                  one-line change once the template is fixed. */}
-              {false && (
+              {/* Re-enabled 2026-11-04 — corrected Hindi-format templates for
+                  both registration-fee (pay_now_activation /
+                  gita_mahotsav_draw_payment) and allotment payment
+                  (direct_allotment_payment / gita_mahotsav_direct_allotment_pay_iavxd)
+                  reminders were approved in AiSensy under the same campaign
+                  names already configured in .env.local (confirmed directly
+                  by the user), so send-payment-reminder/route.ts needed no
+                  changes. Was hidden 2026-10-28 for wrong wording; see git
+                  history for that note. */}
+              {(
                 <Button
                   type='button'
                   size='sm'
