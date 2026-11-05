@@ -83,6 +83,7 @@ export default function ApplicationRegistrationPaymentTab({
   const [printing, setPrinting] = useState(false)
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderMessage, setReminderMessage] = useState<string | null>(null)
+  const [showAllReminders, setShowAllReminders] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -386,32 +387,6 @@ export default function ApplicationRegistrationPaymentTab({
                 {reminderMessage && (
                   <p className='text-[11px] font-semibold text-emerald-700'>{reminderMessage}</p>
                 )}
-
-                {reminderHistory.length > 0 && (
-                  <div className='pt-1 border-t space-y-1'>
-                    <p className='text-[11px] font-bold text-slate-600 pt-1'>Reminder History</p>
-                    {reminderHistory.map(entry => (
-                      <div key={entry.id} className='flex items-center justify-between gap-2 text-[11px]'>
-                        <span className='capitalize text-slate-700'>
-                          {entry.channel}
-                          {entry.status === 'failed' && (
-                            <span className='ml-1 font-semibold text-red-600' title={entry.error_message ?? undefined}>
-                              (failed)
-                            </span>
-                          )}
-                        </span>
-                        <span className='text-muted-foreground font-mono whitespace-nowrap'>
-                          {new Date(entry.created_at).toLocaleString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
@@ -515,6 +490,74 @@ export default function ApplicationRegistrationPaymentTab({
           )}
         </CardContent>
       </Card>
+
+      {/* Reminder History — per explicit request (2026-11-06), shown below
+          the Gateway Transactions table instead of living inside the
+          Receipt Actions card, so repeated sends don't crowd that card. */}
+      {reminderHistory.length > 0 && (
+        <Card className='border-slate-200 shadow-xs'>
+          <CardHeader className='pb-3'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <BellRingIcon className='size-4 text-[#8c5711]' />
+                <CardTitle className='text-base font-bold text-[#0c2847]'>
+                  Reminder History ({reminderHistory.length})
+                </CardTitle>
+              </div>
+              {reminderHistory.length > 5 && (
+                <button
+                  type='button'
+                  onClick={() => setShowAllReminders(v => !v)}
+                  className='text-xs font-semibold text-[#0c2847] hover:underline'
+                >
+                  {showAllReminders ? 'Show less' : 'Show all'}
+                </button>
+              )}
+            </div>
+            <CardDescription className='text-xs'>
+              Every "Send Payment Reminder" attempt (WhatsApp and email), most recent first.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='p-0'>
+            <div className={showAllReminders ? 'max-h-72 overflow-y-auto' : ''}>
+              <Table>
+                <TableHeader>
+                  <TableRow className='bg-slate-50/70'>
+                    <TableHead className='text-xs font-bold text-[#0c2847]'>Channel</TableHead>
+                    <TableHead className='text-xs font-bold text-[#0c2847]'>Status</TableHead>
+                    <TableHead className='text-xs font-bold text-[#0c2847]'>Sent At (IST)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(showAllReminders ? reminderHistory : reminderHistory.slice(0, 5)).map(entry => (
+                    <TableRow key={entry.id} className='text-xs'>
+                      <TableCell className='capitalize font-medium text-slate-800'>{entry.channel}</TableCell>
+                      <TableCell>
+                        {entry.status === 'failed' ? (
+                          <span className='font-semibold text-red-600' title={entry.error_message ?? undefined}>
+                            Failed
+                          </span>
+                        ) : (
+                          <span className='font-semibold text-emerald-700'>Sent</span>
+                        )}
+                      </TableCell>
+                      <TableCell className='font-mono whitespace-nowrap text-slate-600'>
+                        {new Date(entry.created_at).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
