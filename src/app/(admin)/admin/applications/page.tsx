@@ -6,14 +6,13 @@ import { CheckCircle2Icon, ClockIcon, FileTextIcon, ListOrderedIcon, ShieldCheck
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
-import StickyHorizontalTableScroll from '@/components/shared/StickyHorizontalTableScroll'
 import TablePagination from '@/components/shared/TablePagination'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
-import ApplicationRowActions from '@/views/admin/applications/ApplicationRowActions'
 import ApplicationsFilterBar from '@/views/admin/applications/ApplicationsFilterBar'
+import ApplicationsTableClient, { type ApplicationTableRow } from '@/views/admin/applications/ApplicationsTableClient'
 import ExportApplicationsButton from '@/views/admin/applications/ExportApplicationsButton'
 
 const DEFAULT_PAGE_SIZE = 25
@@ -43,6 +42,8 @@ type ApplicationItem = {
   allotted_at: string | null
   allotment_payment_status: string
   allotment_payment_amount_paise: number | null
+  registration_payment_status: string | null
+  is_direct_allotment: number
 }
 
 const STATUS_CONFIG: Record<
@@ -184,6 +185,8 @@ const ApplicationsAdminPage = async ({
               latest_draw.created_at AS allotted_at,
               COALESCE(allotment_payment.status, 'not_activated') AS allotment_payment_status,
               COALESCE(allotment_payment.amount_paise, c.allotment_amount_paise) AS allotment_payment_amount_paise,
+              registration_payment.status AS registration_payment_status,
+              (da.id IS NOT NULL) AS is_direct_allotment,
               (SELECT COUNT(*) FROM application_documents d
                 WHERE d.application_id = a.id AND d.verification_status = 'query') AS open_queries,
               (SELECT COUNT(*) FROM application_documents d
@@ -198,6 +201,9 @@ const ApplicationsAdminPage = async ({
        )
        LEFT JOIN payments allotment_payment
          ON allotment_payment.application_id = a.id AND allotment_payment.purpose = 'pay_now'
+       LEFT JOIN payments registration_payment
+         ON registration_payment.application_id = a.id AND registration_payment.purpose = 'registration'
+       LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
        ${whereClause}
        ORDER BY ${sortCol} ${sortDir}
        LIMIT ${limit} OFFSET ${offset}`,
@@ -258,18 +264,6 @@ const ApplicationsAdminPage = async ({
     sp.set('dir', nextDir)
 
     return `/admin/applications?${sp.toString()}`
-  }
-
-  const getSortIcon = (columnKey: string) => {
-    if (sort !== columnKey) {
-      return <span className='ml-1 opacity-30 select-none text-[11px]'>↕</span>
-    }
-
-    return dir === 'asc' ? (
-      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↑</span>
-    ) : (
-      <span className='ml-1 text-[#0c2847] font-bold select-none text-[11px]'>↓</span>
-    )
   }
 
   // Helper to generate quick status filter URLs
@@ -437,195 +431,60 @@ const ApplicationsAdminPage = async ({
         </CardHeader>
 
         <CardContent className='p-0'>
-          {applications.length === 0 ? (
-            <div className='py-12 text-center'>
-              <FileTextIcon className='mx-auto size-10 text-muted-foreground/50 mb-2' />
-              <p className='text-sm font-semibold text-muted-foreground'>No applications found.</p>
-              <p className='text-xs text-muted-foreground/80 mt-1'>
-                Try adjusting your search criteria or filter options.
-              </p>
-            </div>
-          ) : (
-            <StickyHorizontalTableScroll>
-              <table className='min-w-[1550px] w-full text-left text-sm'>
-                <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
-                  <tr>
-                    <th className='py-3 px-4'>
-                      <Link
-                        href={getSortUrl('app_no')}
-                        className='inline-flex items-center hover:text-[#0c2847] transition group'
-                        title='Click to sort by Application Number'
-                      >
-                        App Number
-                        {getSortIcon('app_no')}
-                      </Link>
-                    </th>
-                    <th className='py-3 px-4'>
-                      <Link
-                        href={getSortUrl('name')}
-                        className='inline-flex items-center hover:text-[#0c2847] transition group'
-                        title='Click to sort by Applicant Name'
-                      >
-                        Applicant / Firm
-                        {getSortIcon('name')}
-                      </Link>
-                    </th>
-                    <th className='py-3 px-4'>
-                      <Link
-                        href={getSortUrl('category')}
-                        className='inline-flex items-center hover:text-[#0c2847] transition group'
-                        title='Click to sort by Category'
-                      >
-                        Category
-                        {getSortIcon('category')}
-                      </Link>
-                    </th>
-                    <th className='py-3 px-4'>Contact</th>
-                    <th className='py-3 px-4'>Booth / Stall</th>
-                    <th className='py-3 px-4'>
-                      <Link
-                        href={getSortUrl('status')}
-                        className='inline-flex items-center hover:text-[#0c2847] transition group'
-                        title='Click to sort by Status'
-                      >
-                        Status
-                        {getSortIcon('status')}
-                      </Link>
-                    </th>
-                    <th className='py-3 px-4'>
-                      <Link
-                        href={getSortUrl('date')}
-                        className='inline-flex items-center hover:text-[#0c2847] transition group'
-                        title='Click to sort by Date'
-                      >
-                        Submitted At
-                        {getSortIcon('date')}
-                      </Link>
-                    </th>
-                    <th className='py-3 px-4'>Allotment Payment</th>
-                    <th className='py-3 px-4'>Created / Allotted</th>
-                    <th className='py-3 px-4 text-right'>Actions</th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y'>
-                  {applications.map(app => {
-                    const statusCfg = STATUS_CONFIG[app.status] ?? {
-                      label: app.status,
-                      color: 'bg-gray-100 text-gray-700'
-                    }
+          <ApplicationsTableClient
+            applications={applications.map(app => {
+              const statusCfg = STATUS_CONFIG[app.status] ?? {
+                label: app.status,
+                color: 'bg-gray-100 text-gray-700'
+              }
 
-                    const encodedId = encodeId(app.id)
-                    const canApprove = (app.status === 'under_review' || app.status === 'payment_success') && !!permissions?.has('application:approve')
+              const encodedId = encodeId(app.id)
+              const canApprove =
+                (app.status === 'under_review' || app.status === 'payment_success') &&
+                !!permissions?.has('application:approve')
+              const canReject =
+                (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'query_raised') &&
+                !!permissions?.has('application:reject')
 
-                    const canReject =
-                      (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'query_raised') &&
-                      !!permissions?.has('application:reject')
+              // Eligible for the bulk reminder exactly like the single-row
+              // button on the application detail page: registration fee not
+              // yet paid (covers payment_pending/payment_failed/draft-paid-
+              // state applications), OR a stall was allotted/direct-allotted
+              // and that allotment payment isn't paid yet either.
+              const registrationPending =
+                app.registration_payment_status !== 'success' &&
+                app.registration_payment_status !== 'paid' &&
+                app.registration_payment_status !== 'exempt'
+              const allotmentPending =
+                Boolean(app.is_direct_allotment) &&
+                app.allotment_payment_status !== 'success' &&
+                app.allotment_payment_status !== 'paid'
+              const isPaymentPending = registrationPending || allotmentPending
 
-                    return (
-                      <tr key={app.id} className='hover:bg-muted/30 transition'>
-                        <td className='py-3.5 px-4 font-mono font-bold text-[#0c2847]'>
-                          <Link href={`/admin/applications/${encodedId}`} className='hover:underline'>
-                            {app.application_number}
-                          </Link>
-                        </td>
-                        <td className='py-3.5 px-4'>
-                          <p className='font-bold text-[#0c2847]'>{app.representative_name}</p>
-                          <p className='text-xs text-muted-foreground'>{app.organisation_name}</p>
-                        </td>
-                        <td className='py-3.5 px-4'>
-                          <span className='inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800'>
-                            {app.category_name}
-                          </span>
-                        </td>
-                        <td className='py-3.5 px-4 text-xs space-y-0.5'>
-                          <p className='font-mono font-medium text-slate-800'>{app.mobile_number}</p>
-                          <p className='text-muted-foreground truncate max-w-[160px]'>{app.email}</p>
-                        </td>
-                        <td className='py-3.5 px-4 text-xs'>
-                          {app.stall_number ? (
-                            <p className='font-mono font-bold text-[#0c2847]'>{app.stall_number}</p>
-                          ) : app.draw_allocation_type === 'waitlist' ? (
-                            <p className='font-semibold text-amber-700'>Waitlist #{app.waitlist_position}</p>
-                          ) : (
-                            <span className='text-muted-foreground'>Not allotted</span>
-                          )}
-                        </td>
-                        <td className='py-3.5 px-4'>
-                          <span
-                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${statusCfg.color}`}
-                          >
-                            {statusCfg.label}
-                          </span>
-                          {Number(app.open_queries) > 0 && (
-                            <p className='mt-1 text-[11px] font-semibold text-orange-700'>
-                              {app.open_queries} document {Number(app.open_queries) === 1 ? 'query' : 'queries'} open
-                            </p>
-                          )}
-                          {Number(app.reuploaded_pending) > 0 && (
-                            <p className='mt-1 text-[11px] font-semibold text-emerald-700'>
-                              Re-uploaded · needs review
-                            </p>
-                          )}
-                          {app.draw_allocation_type === 'waitlist' && (
-                            <p className='mt-1 text-[11px] font-semibold text-amber-700'>Waitlist #{app.waitlist_position}</p>
-                          )}
-                        </td>
-                        <td className='py-3.5 px-4 text-xs text-muted-foreground'>
-                          {app.submitted_at
-                            ? new Date(app.submitted_at).toLocaleString('en-IN', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : new Date(app.created_at).toLocaleDateString('en-IN')}
-                        </td>
-                        <td className='py-3.5 px-4 text-xs'>
-                          <p className='font-semibold text-slate-800'>
-                            {app.allotment_payment_amount_paise === null
-                              ? 'Amount not set'
-                              : `₹${(Number(app.allotment_payment_amount_paise) / 100).toLocaleString('en-IN')}`}
-                          </p>
-                          <p className='text-muted-foreground'>
-                            {app.allotment_payment_status === 'not_activated'
-                              ? 'Not activated'
-                              : app.allotment_payment_status.replaceAll('_', ' ')}
-                          </p>
-                        </td>
-                        <td className='py-3.5 px-4 text-xs text-muted-foreground'>
-                          <p>
-                            Created: {new Date(app.created_at).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </p>
-                          <p className='mt-1'>
-                            Allotted:{' '}
-                            {app.allotted_at
-                              ? new Date(app.allotted_at).toLocaleString('en-IN', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              : '—'}
-                          </p>
-                        </td>
-                        <td className='py-3.5 px-4'>
-                          <div className='flex justify-end'>
-                            <ApplicationRowActions applicationId={encodedId} canApprove={canApprove} canReject={canReject} />
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </StickyHorizontalTableScroll>
-          )}
+              return {
+                ...app,
+                encodedId,
+                canApprove,
+                canReject,
+                statusCfg,
+                isPaymentPending
+              }
+            })}
+            sortLinks={{
+              appNo: getSortUrl('app_no'),
+              name: getSortUrl('name'),
+              category: getSortUrl('category'),
+              status: getSortUrl('status'),
+              date: getSortUrl('date')
+            }}
+            sortIcons={{
+              appNo: sort === 'app_no' ? (dir === 'asc' ? 'asc' : 'desc') : 'none',
+              name: sort === 'name' ? (dir === 'asc' ? 'asc' : 'desc') : 'none',
+              category: sort === 'category' ? (dir === 'asc' ? 'asc' : 'desc') : 'none',
+              status: sort === 'status' ? (dir === 'asc' ? 'asc' : 'desc') : 'none',
+              date: sort === 'date' ? (dir === 'asc' ? 'asc' : 'desc') : 'none'
+            }}
+          />
         </CardContent>
         <TablePagination
           page={page}

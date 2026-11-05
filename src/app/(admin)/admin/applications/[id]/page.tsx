@@ -86,7 +86,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     approvalChecklist,
     paymentRows,
     transactionRows,
-    drawAllocationRows
+    drawAllocationRows,
+    reminderLogRows
   ] = await Promise.all([
     query<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
@@ -237,6 +238,28 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
        JOIN draw_events de ON de.id = da.draw_event_id
        WHERE da.application_id = ?
        LIMIT 1`,
+      [applicationId]
+    ),
+    // "Send Payment Reminder" history, per explicit request — every
+    // WhatsApp/email reminder send attempt is already logged here by
+    // sendNotification() (src/lib/notifications/service.ts), one row per
+    // channel per attempt, success or failure — this just surfaces it on
+    // the Registration Payment tab instead of only in the DB/audit trail.
+    query<
+      Array<{
+        id: number
+        channel: 'whatsapp' | 'sms' | 'email'
+        status: 'sent' | 'failed'
+        campaign_name: string | null
+        error_message: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT id, channel, status, campaign_name, error_message, created_at
+       FROM notification_log
+       WHERE application_id = ? AND category = 'reminder'
+       ORDER BY created_at DESC
+       LIMIT 20`,
       [applicationId]
     )
   ])
@@ -444,7 +467,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           />
           {canEditApplication && (
             <EditApplicationDialog
-              applicationId={app.id}
+              applicationId={id}
               fields={editableFields}
               categoryFields={editableCategoryFields}
             />
@@ -758,6 +781,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             payment={registrationPayment}
             transactions={registrationTransactions}
             canManage={!!permissions?.has('payment:view')}
+            reminderHistory={reminderLogRows}
           />
         </TabsContent>
 

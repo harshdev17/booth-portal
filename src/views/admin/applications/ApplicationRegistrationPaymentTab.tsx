@@ -56,6 +56,14 @@ type Props = {
   } | null
   transactions: TransactionItem[]
   canManage: boolean
+  reminderHistory: Array<{
+    id: number
+    channel: 'whatsapp' | 'sms' | 'email'
+    status: 'sent' | 'failed'
+    campaign_name: string | null
+    error_message: string | null
+    created_at: string
+  }>
 }
 
 export default function ApplicationRegistrationPaymentTab({
@@ -66,7 +74,8 @@ export default function ApplicationRegistrationPaymentTab({
   gstPercent,
   payment,
   transactions,
-  canManage: _canManage
+  canManage: _canManage,
+  reminderHistory
 }: Props) {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedOrder, setCopiedOrder] = useState(false)
@@ -155,6 +164,13 @@ export default function ApplicationRegistrationPaymentTab({
         return
       }
       setReminderMessage(data.message ?? 'Payment reminder sent successfully via WhatsApp and Email.')
+
+      // Reloads so the reminder history list below (server-fetched from
+      // notification_log) picks up this send — the WhatsApp leg is fired
+      // in the background on the server and its log row can land a beat
+      // after this response, so an optimistic client-side entry could show
+      // "sent" before it's actually confirmed one way or the other.
+      setTimeout(() => window.location.reload(), 1500)
     } catch {
       setError('Network error while sending reminder.')
     } finally {
@@ -369,6 +385,32 @@ export default function ApplicationRegistrationPaymentTab({
                 </Button>
                 {reminderMessage && (
                   <p className='text-[11px] font-semibold text-emerald-700'>{reminderMessage}</p>
+                )}
+
+                {reminderHistory.length > 0 && (
+                  <div className='pt-1 border-t space-y-1'>
+                    <p className='text-[11px] font-bold text-slate-600 pt-1'>Reminder History</p>
+                    {reminderHistory.map(entry => (
+                      <div key={entry.id} className='flex items-center justify-between gap-2 text-[11px]'>
+                        <span className='capitalize text-slate-700'>
+                          {entry.channel}
+                          {entry.status === 'failed' && (
+                            <span className='ml-1 font-semibold text-red-600' title={entry.error_message ?? undefined}>
+                              (failed)
+                            </span>
+                          )}
+                        </span>
+                        <span className='text-muted-foreground font-mono whitespace-nowrap'>
+                          {new Date(entry.created_at).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

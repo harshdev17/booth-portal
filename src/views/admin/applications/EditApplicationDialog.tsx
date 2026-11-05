@@ -30,7 +30,7 @@ const EditApplicationDialog = ({
   fields,
   categoryFields
 }: {
-  applicationId: number
+  applicationId: string
   fields: EditableField[]
   categoryFields: EditableCategoryField[]
 }) => {
