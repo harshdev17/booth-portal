@@ -5,8 +5,9 @@ import PublicHeader from '@/components/public/PublicHeader'
 import PublicHome from '@/views/public/home'
 
 export const metadata: Metadata = {
-  title: 'Booth/Stall Allotment | International Geeta Jayanti Mahotsav 2026',
-  description: 'Official information regarding booth/stall categories, allotment and application for International Geeta Jayanti Mahotsav 2026, Kurukshetra Development Board.'
+  title: 'International Gita Jayanti Mahotsav 2026 Booth/Stall Online Application Portal',
+  description:
+    'Online Applications are hereby invited for Social Organisation/Individuals/Firms/Companies/Agencies/Government/Boards/Corporations stalls/booths at International Gita Jayanti Mahotsav 2026. Interested applicants can apply online after checking the eligibility criteria and guidelines for their chosen category.'
 }
 
 // Forced dynamic (not ISR): the CSP nonce proxy.ts sets per-request only
