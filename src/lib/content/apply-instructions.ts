@@ -346,21 +346,6 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
         hi: 'आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की स्पष्ट तस्वीरें'
       }
     ],
-    sections: [
-      {
-        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
-        items: [
-          {
-            en: 'Result Declaration Date: 9 November 2026',
-            hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026'
-          },
-          {
-            en: 'Payment Deadline: 13 November 2026',
-            hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026'
-          }
-        ]
-      }
-    ],
     bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
     bullets: [
       {
@@ -495,15 +480,6 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       {
         en: "Clear photographs of the applicant's own handicraft products or artwork",
         hi: 'आवेदक द्वारा स्वयं बनाए गए हस्तशिल्प या कलाकृतियों की स्पष्ट तस्वीरें'
-      }
-    ],
-    sections: [
-      {
-        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
-        items: [
-          { en: 'Result Declaration Date: 9 November 2026', hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026' },
-          { en: 'Payment Deadline: 13 November 2026', hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026' }
-        ]
       }
     ],
     bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
@@ -720,15 +696,6 @@ export const APPLY_INSTRUCTIONS: ApplyInstructions[] = [
       {
         en: 'Note: an Artisan Card or National/State Award Certificate is not required for this category.',
         hi: 'ध्यान दें: इस श्रेणी में आर्टिजन कार्ड या राष्ट्रीय/राज्य पुरस्कार प्रमाणपत्र की आवश्यकता नहीं है।'
-      }
-    ],
-    sections: [
-      {
-        title: { en: 'Key Dates', hi: 'महत्वपूर्ण तिथियां' },
-        items: [
-          { en: 'Result Declaration Date: 9 November 2026', hi: 'परिणाम घोषणा तिथि: 9 नवंबर 2026' },
-          { en: 'Payment Deadline: 13 November 2026', hi: 'भुगतान की अंतिम तिथि: 13 नवंबर 2026' }
-        ]
       }
     ],
     bulletsHeading: { en: 'Important Instructions Before Applying', hi: 'आवेदन करने से पहले महत्वपूर्ण निर्देश' },
