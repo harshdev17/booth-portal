@@ -25,18 +25,24 @@ const InstructionsStep = ({ config }: { config: CategoryConfigResponse }) => {
   // You Start" schedule box per explicit request (2026-10-29) so dates
   // only appear in one place on the apply form.
   const importantDatesNote = lang === 'hi' ? category.importantDatesNoteHi : category.importantDatesNote
+
   const importantDatesLines = importantDatesNote
     ? importantDatesNote.split('\n').filter(line => line.trim() !== '')
     : []
+
+
+  // Accept both "• " and "* " as bullet markers — see the identical fix in
+  // category-detail/index.tsx and guidelines/index.tsx.
   const importantDatesBullets = importantDatesLines
-    .filter(line => line.trim().startsWith('•'))
-    .map(line => line.trim().replace(/^•\s*/, ''))
+    .filter(line => /^[•*]/.test(line.trim()))
+    .map(line => line.trim().replace(/^[•*]\s*/, ''))
 
   const hasAuctionDetails =
     !getApplyInstructions(category.slug)?.hideScheduleBox &&
     (importantDatesBullets.length > 0 ||
       importantDatesLines.length > 0 ||
       !!(category.applicationOpensAt || category.applicationClosesAt || (category.auctionDate && auctionVenue)))
+
   const categoryInstructions = applyInstructions?.bullets
   const docOverride = applyInstructions?.requiredDocuments
   const importantOverride = applyInstructions?.importantInstructions

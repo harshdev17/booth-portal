@@ -64,6 +64,7 @@ const GuidelinesView = ({
   const handleToggle = (slug: string) => {
     if (openSlug === slug) {
       setOpenSlug(null)
+
       return
     }
 
@@ -73,6 +74,7 @@ const GuidelinesView = ({
     // then smoothly scroll the newly opened accordion item into comfortable view below sticky header
     setTimeout(() => {
       const el = document.getElementById(`guideline-${slug}`)
+
       if (el) {
         const stickyHeader = document.querySelector('.sticky.top-0') as HTMLElement | null
         const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 64
@@ -161,9 +163,14 @@ const GuidelinesView = ({
                       if (!note) return null
 
                       const lines = note.split('\n').filter(line => line.trim() !== '')
+
+                      // Accept both "• " and "* " as bullet markers — admin
+                      // notes mix them (e.g. "*Extended ..." lines), and
+                      // only matching "•" silently dropped every "*" line
+                      // whenever at least one "•" line was also present.
                       const bulletItems = lines
-                        .filter(line => line.trim().startsWith('•'))
-                        .map(line => line.trim().replace(/^•\s*/, ''))
+                        .filter(line => /^[•*]/.test(line.trim()))
+                        .map(line => line.trim().replace(/^[•*]\s*/, ''))
 
                       return (
                         <div className='mb-6 rounded-xl border border-[#eaddc0] bg-[#fdfbf7] p-5 sm:p-6'>

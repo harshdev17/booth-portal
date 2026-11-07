@@ -240,8 +240,15 @@ const AllotmentAmountNote = ({ note, fallback }: { note: string | null; fallback
   }
 
   const lines = note.split('\n').filter(line => line.trim() !== '')
-  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
-  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+
+  // Accept both "• " and "* " as bullet markers — admin-entered notes mix
+  // them (e.g. "*Extended ..." lines alongside "• ..." lines), and treating
+  // only "•" as a bullet silently dropped every "*" line whenever at least
+  // one "•" line was also present (reported live: English text had
+  // "*Extended Last Date..."/"*Extended Result..." lines that never
+  // rendered, while the Hindi version — written with "•" throughout — did).
+  const bulletItems = lines.filter(line => /^[•*]/.test(line.trim())).map(line => line.trim().replace(/^[•*]\s*/, ''))
+  const plainLines = lines.filter(line => !/^[•*]/.test(line.trim()))
 
   if (bulletItems.length === 0) {
     return <dd className='text-xl font-bold text-[var(--kdb-primary)] sm:text-2xl'>{note}</dd>
@@ -285,8 +292,11 @@ const ImportantDatesSection = ({ note, lang }: { note: string | null; lang: 'en'
   if (!note) return null
 
   const lines = note.split('\n').filter(line => line.trim() !== '')
-  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
-  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+
+  // Accept both "• " and "* " as bullet markers — see the identical comment
+  // on AllotmentAmountNote above for why.
+  const bulletItems = lines.filter(line => /^[•*]/.test(line.trim())).map(line => line.trim().replace(/^[•*]\s*/, ''))
+  const plainLines = lines.filter(line => !/^[•*]/.test(line.trim()))
 
   return (
     <div className='mb-8 rounded-xl border border-[var(--kdb-border)] bg-[var(--kdb-light-bg)] p-6 sm:p-8'>

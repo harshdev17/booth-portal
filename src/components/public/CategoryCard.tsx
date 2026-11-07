@@ -278,13 +278,16 @@ const CategoryCardDescription = ({ slug, text, readMoreLabel }: { slug: string; 
  */
 const AllotmentAmountValue = ({ text }: { text: string }) => {
   const lines = text.split('\n').filter(line => line.trim() !== '')
-  const bulletItems = lines.filter(line => line.trim().startsWith('•')).map(line => line.trim().replace(/^•\s*/, ''))
+
+  // Accept both "• " and "* " as bullet markers — see the identical fix in
+  // category-detail/index.tsx and guidelines/index.tsx.
+  const bulletItems = lines.filter(line => /^[•*]/.test(line.trim())).map(line => line.trim().replace(/^[•*]\s*/, ''))
 
   if (bulletItems.length === 0) {
     return <dd className='text-base font-bold text-[#072448]'>{text}</dd>
   }
 
-  const plainLines = lines.filter(line => !line.trim().startsWith('•'))
+  const plainLines = lines.filter(line => !/^[•*]/.test(line.trim()))
   const [headline, ...captionLines] = plainLines
 
   return (
