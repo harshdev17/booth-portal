@@ -37,8 +37,13 @@ const CategoryDetail = ({
 }) => {
   const { lang } = useLanguage()
   const displayName = lang === 'hi' && category.name_hi ? category.name_hi : category.name
-  const baseDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
-  const displayDescription = getCategoryGuideline(category.slug)?.intro?.[lang] ?? baseDescription
+
+  // Always the DB-configured description (admin-editable via
+  // /admin/settings/general), never the static per-category "intro" text —
+  // that static text used to override this unconditionally, so an admin's
+  // edit here never appeared on this page for the categories that happened
+  // to have one defined.
+  const displayDescription = lang === 'hi' && category.description_hi ? category.description_hi : category.description
   const guideline = getCategoryGuideline(category.slug)
   const methodLabel = guideline?.selectionMethod?.[lang] ?? SELECTION_METHOD_LABEL[category.selection_method][lang]
   const docOverride = guideline?.requiredDocuments

@@ -42,7 +42,7 @@ const PublicHeader = () => {
     // Links to the Stall/Booth Locations page (Full Map + category-wise
     // maps), not directly to a PDF — a normal in-app route.
     { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },
-    { label: lang === 'hi' ? 'सूचनाएं' : 'Notifications', href: '/notifications' }
+    { label: lang === 'hi' ? 'संशोधन/सूचनाएं' : 'Corrigendum/Notices', href: '/notifications' }
   ]
 
   const navItems = navItemDefs.map(item => ({
