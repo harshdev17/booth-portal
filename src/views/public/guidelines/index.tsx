@@ -32,8 +32,8 @@ const ADDITIONAL_GUIDELINES: Array<{ en: string; hi: string }> = [
     hi: 'KDB अथवा अधिकृत अधिकारी द्वारा समय-समय पर Booth/Stall की जाँच/Inspection की जा सकती है। गलत जानकारी, फर्जी दस्तावेज अथवा पात्रता से संबंधित तथ्य छिपाए जाने की स्थिति में आवेदन/आबंटन को किसी भी चरण पर निरस्त किया जा सकता है।'
   },
   {
-    en: 'For the Refreshment and Ice Cream Booth/Stall category: the last date to apply is 7 November 2026 (5:00 PM), the auction is on 13 November 2026, and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
-    hi: 'Refreshment and Ice Cream Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 07 नवंबर 2026 (शाम 5:00 बजे), नीलामी 13 नवंबर 2026 को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
+    en: 'For the Refreshment and Ice Cream Booth/Stall category: the last date to apply is 10 November 2026 (5:00 PM) (extended), the auction is on 16 November 2026 (extended), and a successful bidder’s Security Deposit will be refunded, per the prescribed process, before 31 January 2027.',
+    hi: 'Refreshment and Ice Cream Booth/Stall Category हेतु: आवेदन की अंतिम तिथि 10 नवंबर 2026 (शाम 5:00 बजे) (विस्तारित), नीलामी 16 नवंबर 2026 (विस्तारित) को, तथा Successful Bidder की Security Deposit निर्धारित प्रक्रिया के अनुसार 31 जनवरी 2027 से पहले वापस की जाएगी।'
   },
   {
     en: 'All applications must be submitted online through this portal — no offline or by-hand application will be accepted.',
