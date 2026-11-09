@@ -1,13 +1,47 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 
-import { EyeIcon, Loader2Icon, UploadIcon } from 'lucide-react'
+import { CheckCheckIcon, EyeIcon, Loader2Icon, UploadIcon } from 'lucide-react'
 
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
+import { verifyAllDocumentsAction, type DocumentActionState } from '@/app/server/document-actions'
 import DocumentDecisionActions, { RaiseApplicationQueryButton } from '@/views/admin/documents/DocumentDecisionActions'
+
+const verifyAllInitialState: DocumentActionState = {}
+
+/**
+ * Verifies every uploaded, not-yet-verified document on this application in
+ * one click — per explicit request, so an admin who already reviewed every
+ * document (e.g. outside the portal, or confirmed by phone) doesn't have to
+ * click "Verify" once per document one by one. Only shown when there's at
+ * least one eligible document (uploaded, not already verified, no open
+ * query) — see verifyAllDocumentsAction's own doc comment for exactly what
+ * it does and doesn't touch.
+ */
+const VerifyAllDocumentsButton = ({ applicationId }: { applicationId: number }) => {
+  const [state, formAction, isPending] = useActionState(verifyAllDocumentsAction, verifyAllInitialState)
+
+  return (
+    <form action={formAction} className='flex flex-col items-end gap-1.5'>
+      <input type='hidden' name='applicationId' value={applicationId} />
+      <Button type='submit' size='sm' variant='outline' disabled={isPending} className='border-emerald-300 text-emerald-700 hover:bg-emerald-50'>
+        {isPending ? <Loader2Icon className='animate-spin' /> : <CheckCheckIcon className='size-3.5' />}
+        Approve All Documents
+      </Button>
+      {state.error && (
+        <Alert variant='destructive' className='w-fit py-1.5'>
+          <AlertDescription className='text-xs'>{state.error}</AlertDescription>
+        </Alert>
+      )}
+      {state.success && <p className='text-[11px] font-medium text-emerald-700'>{state.success}</p>}
+    </form>
+  )
+}
 
 /**
  * Lets an authorized admin (application:edit) upload/replace a document on
@@ -23,7 +57,7 @@ const AdminUploadButton = ({
   isReplace,
   onUploaded
 }: {
-  applicationId: number
+  applicationId: string
   documentKey: string
   isReplace: boolean
   onUploaded: () => void
@@ -113,13 +147,17 @@ const ApplicationDocumentsSection = ({
   canVerifyDocuments,
   canEditApplication,
   applicationId,
+  numericApplicationId,
   canRaiseApplicationQuery,
   applicationQueryHistory
 }: {
   documents: ApplicationDocumentRow[]
   canVerifyDocuments: boolean
   canEditApplication: boolean
-  applicationId: number
+  /** Opaque-encoded id, for the admin upload route (decodeId()-based auth). */
+  applicationId: string
+  /** Raw numeric id, for RaiseApplicationQueryButton's server action (z.coerce.number(), not opaque-id based). */
+  numericApplicationId: number
   canRaiseApplicationQuery: boolean
   applicationQueryHistory: ApplicationQueryHistoryEntry[]
 }) => {
@@ -132,6 +170,14 @@ const ApplicationDocumentsSection = ({
   // or not — see the page's LEFT JOIN), so its length is no longer "how
   // many were uploaded." Tracked separately for the card title/empty state.
   const uploadedCount = documents.filter(d => d.id !== null).length
+
+  // Eligible for "Approve All Documents" — uploaded, not already verified,
+  // and not currently under an open query (same rule verifyAllDocumentsAction
+  // enforces server-side; mirrored here only to decide whether to show the
+  // button at all, not as the real gate).
+  const pendingVerificationCount = documents.filter(
+    d => d.id !== null && d.verification_status !== 'verified' && d.verification_status !== 'query'
+  ).length
 
   const renderDocList = (docs: ApplicationDocumentRow[]) =>
     docs.length === 0 ? (
@@ -239,17 +285,20 @@ const ApplicationDocumentsSection = ({
               </div>
             )}
             {canRaiseApplicationQuery && (
-              <RaiseApplicationQueryButton applicationId={applicationId} />
+              <RaiseApplicationQueryButton applicationId={numericApplicationId} />
             )}
           </CardContent>
         </Card>
       )}
 
       <Card className='shadow-xs'>
-        <CardHeader>
+        <CardHeader className='flex flex-row items-center justify-between gap-3'>
           <CardTitle className='text-base'>
             Documents ({uploadedCount}/{documents.length} uploaded)
           </CardTitle>
+          {canVerifyDocuments && pendingVerificationCount > 0 && (
+            <VerifyAllDocumentsButton applicationId={numericApplicationId} />
+          )}
         </CardHeader>
         <CardContent>
           {documents.length === 0 ? (

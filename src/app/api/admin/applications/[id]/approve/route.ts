@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { logAudit } from '@/lib/audit/log'
+import { notifyApplicationApproved } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -28,6 +29,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Not found.' }, { status: 404 })
   }
 
+  // Defaults to true (checked) — unchecking the "notify applicant" box in
+  // the confirm dialog skips the email/WhatsApp send entirely. Request body
+  // is optional (the dialog previously sent none at all), so a missing/
+  // malformed body still means "notify" rather than failing the approval.
+  let notify = true
+
+  try {
+    const body = await request.json()
+
+    if (body && typeof body.notify === 'boolean') notify = body.notify
+  } catch {
+    // No body sent — keep the default (notify).
+  }
+
   try {
     const checklist = await getApprovalChecklist(applicationId)
 
@@ -35,9 +50,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
 
-    if (!['under_review', 'payment_success'].includes(checklist.status)) {
+    // 'rejected' is included so an admin who rejected an application by
+    // mistake can still approve it afterward — per explicit request, this
+    // is a deliberate "undo a wrong rejection" path, not an open loophole:
+    // every other gate below (all documents verified, live permission
+    // check) still applies exactly as for a normal under_review approval.
+    if (!['under_review', 'payment_success', 'rejected'].includes(checklist.status)) {
       return NextResponse.json(
-        { error: `This application is "${checklist.status}", not "Under Review" — it cannot be approved from here.` },
+        { error: `This application is "${checklist.status}" — it cannot be approved from here.` },
         { status: 409 }
       )
     }
@@ -64,7 +84,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [applicationId])
+    await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success', 'rejected')`, [applicationId])
+
+    if (notify) {
+      const contactRows = await query<
+        Array<{ application_number: string; representative_name: string; mobile_number: string; email: string | null }>
+      >(
+        `SELECT application_number, representative_name, mobile_number, email FROM applications WHERE id = ?`,
+        [applicationId]
+      )
+      const contact = contactRows[0]
+
+      if (contact) {
+        await notifyApplicationApproved({
+          applicationId,
+          applicationNumber: contact.application_number,
+          mobileNumber: contact.mobile_number,
+          email: contact.email,
+          representativeName: contact.representative_name
+        })
+      }
+    }
 
     await logAudit({
       actorUserId: session.userId,
@@ -74,7 +114,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       entityType: 'application',
       entityId: String(applicationId),
       previousValue: { status: 'under_review' },
-      newValue: { status: 'approved', fieldsMarkedChecked: newlyCheckedKeys }
+      newValue: { status: 'approved', fieldsMarkedChecked: newlyCheckedKeys, notified: notify }
     })
 
     return NextResponse.json({ success: true })

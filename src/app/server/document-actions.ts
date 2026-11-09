@@ -163,6 +163,67 @@ export async function queryDocumentAction(
   return decideDocument(prevState, formData, 'query')
 }
 
+const verifyAllSchema = z.object({ applicationId: z.coerce.number().int().positive() })
+
+/**
+ * Verifies every uploaded document on an application in one step — per
+ * explicit request, so an admin who's already checked all the documents
+ * doesn't have to click "Verify" once per document. Only touches documents
+ * NOT already verified (an already-verified doc is left alone, same as
+ * clicking Verify on it individually would be a no-op); a document
+ * currently under query is also left untouched — a bulk "approve all" must
+ * never silently clear an open query the admin raised on purpose.
+ */
+export async function verifyAllDocumentsAction(
+  _prevState: DocumentActionState,
+  formData: FormData
+): Promise<DocumentActionState> {
+  const parsed = verifyAllSchema.safeParse({ applicationId: formData.get('applicationId') })
+
+  if (!parsed.success) {
+    return { error: 'Invalid request.' }
+  }
+
+  const session = await requirePermission('document:verify')
+
+  const rows = await query<Array<{ id: number; verification_status: string; original_filename: string }>>(
+    `SELECT id, verification_status, original_filename FROM application_documents
+     WHERE application_id = ? AND verification_status != 'verified' AND verification_status != 'query'`,
+    [parsed.data.applicationId]
+  )
+
+  if (rows.length === 0) {
+    return { success: 'Nothing to verify — every document is already verified (or has an open query).' }
+  }
+
+  const ids = rows.map(r => r.id)
+
+  await query(
+    `UPDATE application_documents
+     SET verification_status = 'verified', verification_remarks = NULL, verified_by_user_id = ?, verified_at = NOW()
+     WHERE id IN (${ids.map(() => '?').join(', ')})`,
+    [session.userId, ...ids]
+  )
+
+  for (const row of rows) {
+    // eslint-disable-next-line no-await-in-loop
+    await logAudit({
+      actorUserId: session.userId,
+      actorRoleKey: session.role.key,
+      action: 'document.verified',
+      module: 'documents',
+      entityType: 'application_document',
+      entityId: String(row.id),
+      previousValue: { verification_status: row.verification_status },
+      newValue: { verification_status: 'verified', filename: row.original_filename, bulk: true }
+    })
+  }
+
+  revalidatePath('/admin/documents')
+
+  return { success: `Verified ${rows.length} document${rows.length === 1 ? '' : 's'}.` }
+}
+
 const applicationQuerySchema = z.object({
   applicationId: z.coerce.number().int().positive(),
   remarks: z.string().trim().min(1, 'A remark is required.').max(512)

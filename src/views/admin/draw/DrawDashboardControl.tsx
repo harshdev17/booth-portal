@@ -49,8 +49,11 @@ export default function DrawDashboardControl({
   const [execState, execFormAction, isExecPending] = useActionState(executeDrawAction, initialActionState)
 
   const selectedCategory = categories.find(c => c.id === selectedCatId) || categories[0]
+  const eligibleCount = selectedCategory?.eligibleCount ?? 0
+  const availableStalls = selectedCategory?.availableStalls ?? 0
+  const unmetDemand = Math.max(0, eligibleCount - availableStalls)
   const calculatedWaitlistMax = allowWaitlist
-    ? Math.max(0, Math.floor((selectedCategory?.availableStalls ?? 0) * waitlistRatio))
+    ? Math.min(unmetDemand, Math.max(0, Math.floor(availableStalls * waitlistRatio)))
     : 0
 
   return (
@@ -259,7 +262,19 @@ export default function DrawDashboardControl({
                       If an allotted applicant declines, booth/stall passes sequentially to Waitlist #1, #2, etc.
                     </span>
                   </div>
-                ) : (
+                ) : null}
+
+                {allowWaitlist && (
+                  <div className='pt-2 border-t border-slate-200/80 text-[11px] text-slate-600 bg-white rounded-lg border border-slate-200 p-2.5'>
+                    <strong className='font-semibold text-slate-700'>How this is calculated: </strong>
+                    {eligibleCount} eligible applicant(s) − {availableStalls} available stall(s) ={' '}
+                    {unmetDemand} applicant(s) who can&apos;t be allotted directly. The {Math.round(waitlistRatio * 100)}% buffer allows up to{' '}
+                    {Math.max(0, Math.floor(availableStalls * waitlistRatio))} waitlist spot(s), capped at the {unmetDemand} who actually need one — so the final waitlist size here is{' '}
+                    <strong className='font-bold text-[#0c2847]'>{calculatedWaitlistMax}</strong>.
+                  </div>
+                )}
+
+                {!allowWaitlist && (
                   <div className='pt-2 border-t border-slate-200/80 text-[11px] text-slate-500 flex items-center gap-1.5'>
                     <BanIcon className='size-3.5 text-slate-400' />
                     <span>No waiting list candidates will be recorded. Extra candidates will be labeled Unallotted.</span>
@@ -479,6 +494,15 @@ export default function DrawDashboardControl({
                       <span className='text-xs text-slate-600 font-medium'>
                         = Max {calculatedWaitlistMax} waitlist candidate(s)
                       </span>
+                    </div>
+                  )}
+
+                  {allowWaitlist && (
+                    <div className='pt-2 border-t border-slate-100 text-[11px] text-slate-600'>
+                      <strong className='font-semibold text-slate-700'>Calculation: </strong>
+                      {eligibleCount} eligible − {availableStalls} stalls = {unmetDemand} need a spot. {Math.round(waitlistRatio * 100)}% of {availableStalls} stalls ={' '}
+                      {Math.max(0, Math.floor(availableStalls * waitlistRatio))}, capped at {unmetDemand} → final waitlist ={' '}
+                      <strong className='font-bold text-emerald-800'>{calculatedWaitlistMax}</strong>.
                     </div>
                   )}
                 </div>

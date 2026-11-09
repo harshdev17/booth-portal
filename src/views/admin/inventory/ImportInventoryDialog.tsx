@@ -19,9 +19,11 @@ import {
 } from '@/components/ui/dialog'
 
 type RowError = { rowNumber: number; message: string }
+type RowWarning = { rowNumber: number; message: string }
 
 type ValidateResponse = {
   errors: RowError[]
+  warnings?: RowWarning[]
   rowCount: number
   directAllottedCount?: number
   reservedPaymentCount?: number
@@ -30,6 +32,7 @@ type ValidateResponse = {
 
 type ImportResponse = {
   errors: RowError[]
+  warnings?: RowWarning[]
   rowCount: number
   inserted?: number
   updated?: number
@@ -53,6 +56,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
   const [step, setStep] = useState<Step>('select')
   const [file, setFile] = useState<File | null>(null)
   const [errors, setErrors] = useState<RowError[]>([])
+  const [warnings, setWarnings] = useState<RowWarning[]>([])
   const [rowCount, setRowCount] = useState(0)
 
   const [importSummary, setImportSummary] = useState<{
@@ -70,6 +74,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
     setStep('select')
     setFile(null)
     setErrors([])
+    setWarnings([])
     setRowCount(0)
     setImportSummary(null)
     setServerError(null)
@@ -87,6 +92,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
     setIsLoading(true)
     setServerError(null)
     setErrors([])
+    setWarnings([])
 
     try {
       const formData = new FormData()
@@ -104,6 +110,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
       }
 
       setErrors(body.errors)
+      setWarnings(body.warnings ?? [])
       setRowCount(body.rowCount)
       setStep('validated')
     } catch {
@@ -136,6 +143,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
         return
       }
 
+      setWarnings(body.warnings ?? [])
       setImportSummary({
         inserted: body.inserted ?? 0,
         updated: body.updated ?? 0,
@@ -196,7 +204,7 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
               className='block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-semibold'
             />
             <p className='mt-2 text-xs text-muted-foreground'>
-              Supported: .csv · Max 10 MB · Direct Allotment columns are optional. If Allottee Name is provided with Amount 0, status is Allotted. If Amount &gt; 0, status is Reserved for Payment. Unallotted stalls default to Available (Main Categories) or Reserved for Direct Allotment (Custom Categories).
+              Supported: .csv · Max 10 MB · Direct Allotment columns are optional. If Allottee Name is filled in, that stall is marked Allotted (Reserved for Payment instead, if a Stall Amount &gt; 0 is given). If Status says &quot;Reserved&quot; with no Allottee Name, the stall is marked Reserved for Direct Allotment. Unallotted stalls default to Available (Main Categories) or Reserved for Direct Allotment (Custom Categories). Mobile Number and Email are optional, but without them the allotment letter/payment link can&apos;t be sent automatically — you&apos;ll see a warning for those rows after validating.
             </p>
           </div>
 
@@ -242,6 +250,22 @@ const ImportInventoryDialog = ({ validCategoryNames }: { validCategoryNames: str
             <Alert className='border-emerald-200 bg-emerald-50 text-emerald-800'>
               <CheckCircle2Icon className='size-4' />
               <AlertDescription>{rowCount} row(s) validated successfully. Ready to import.</AlertDescription>
+            </Alert>
+          )}
+
+          {(step === 'validated' || step === 'done') && warnings.length > 0 && (
+            <Alert className='border-amber-200 bg-amber-50 text-amber-900'>
+              <AlertDescription>
+                <p className='mb-1.5 font-semibold'>{warnings.length} row(s) will import, but need attention:</p>
+                <ul className='max-h-40 space-y-0.5 overflow-y-auto text-xs'>
+                  {warnings.slice(0, 30).map((w, idx) => (
+                    <li key={idx}>
+                      Row {w.rowNumber}: {w.message}
+                    </li>
+                  ))}
+                  {warnings.length > 30 && <li>…and {warnings.length - 30} more.</li>}
+                </ul>
+              </AlertDescription>
             </Alert>
           )}
 

@@ -63,10 +63,12 @@ export type ShopUnitCsvRow = {
 }
 
 export type CsvRowError = { rowNumber: number; message: string }
+export type CsvRowWarning = { rowNumber: number; message: string }
 
 export type ParsedCsv = {
   rows: ShopUnitCsvRow[]
   errors: CsvRowError[]
+  warnings: CsvRowWarning[]
 }
 
 // Formula-injection guard matches src/lib/export/csv.ts's toCsvField() — a
@@ -219,7 +221,7 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
   const lines = cleanedText.split(/\r\n|\r|\n/).filter(line => line.trim() !== '')
 
   if (lines.length === 0) {
-    return { rows: [], errors: [{ rowNumber: 0, message: 'The file is empty.' }] }
+    return { rows: [], errors: [{ rowNumber: 0, message: 'The file is empty.' }], warnings: [] }
   }
 
   const rawHeaders = parseCsvLine(lines[0]).map(h => h.replace(/^\uFEFF/, '').trim())
@@ -282,7 +284,8 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
           rowNumber: 1,
           message: `Could not identify "Booth/Stall No." or "Category" columns. Please verify column headers.`
         }
-      ]
+      ],
+      warnings: []
     }
   }
 
@@ -291,12 +294,14 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
   if (dataLines.length > MAX_IMPORT_ROWS) {
     return {
       rows: [],
-      errors: [{ rowNumber: 0, message: `Too many rows (max ${MAX_IMPORT_ROWS} per import).` }]
+      errors: [{ rowNumber: 0, message: `Too many rows (max ${MAX_IMPORT_ROWS} per import).` }],
+      warnings: []
     }
   }
 
   const rows: ShopUnitCsvRow[] = []
   const errors: CsvRowError[] = []
+  const warnings: CsvRowWarning[] = []
   const seenStallNumbers = new Set<string>()
 
   dataLines.forEach((line, idx) => {
@@ -350,16 +355,24 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
 
     const isDirectAllotment = Boolean(allotteeName)
 
-    if (isDirectAllotment) {
-      const cleanMobile = mobileRaw.replace(/\D/g, '').slice(-10)
-      if (cleanMobile && cleanMobile.length !== 10) {
-        errors.push({ rowNumber, message: 'Mobile number must be a valid 10-digit number for direct allotment.' })
-        return
-      }
-      if (aadhaarRaw && !/^\d{4}$|^\d{12}$/.test(aadhaarRaw)) {
-        errors.push({ rowNumber, message: 'Aadhaar number must be exactly 12 digits or last 4 digits.' })
-        return
-      }
+    const cleanMobile = mobileRaw.replace(/\D/g, '').slice(-10)
+    if (cleanMobile && cleanMobile.length !== 10) {
+      errors.push({ rowNumber, message: 'Mobile number must be a valid 10-digit number if provided.' })
+      return
+    }
+    if (aadhaarRaw && !/^\d{4}$|^\d{12}$/.test(aadhaarRaw)) {
+      errors.push({ rowNumber, message: 'Aadhaar number must be exactly 12 digits or last 4 digits.' })
+      return
+    }
+
+    // Mobile/Email are optional — the allotment letter and payment link are
+    // sent via WhatsApp/email, so a row missing both can still be imported,
+    // but the admin needs to know nothing will reach the allottee.
+    if (isDirectAllotment && !cleanMobile && !email) {
+      warnings.push({
+        rowNumber,
+        message: `"${allotteeName}" has no Mobile Number or Email — the allotment letter will NOT be sent automatically. Add contact details later from the Direct Allotment edit form to send it.`
+      })
     }
 
     // Flexible Status Detection (supports "Reserved for Allotment", "Direct Allotment", etc.)
@@ -390,6 +403,22 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
       }
     }
 
+    // An allottee name always means this stall is allotted to them, no
+    // matter what (or whether) the Status column says — simplest, most
+    // predictable rule per explicit request: "Alloted To" having a name
+    // means allotted.
+    if (allotteeName) {
+      status = 'allotted'
+      explicitStatus = 'allotted'
+    }
+
+    if (amountRaw && Number(amountRaw) > 0 && !cleanMobile) {
+      warnings.push({
+        rowNumber,
+        message: `Stall amount is ₹${amountRaw} but no Mobile Number is provided — the payment link cannot be sent to "${allotteeName || stallNumber}". Add a mobile number to send it.`
+      })
+    }
+
     rows.push({
       rowNumber,
       stallNumber,
@@ -412,7 +441,7 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
     })
   })
 
-  return { rows, errors }
+  return { rows, errors, warnings }
 }
 
 export type ShopUnitExportRow = {

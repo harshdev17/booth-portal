@@ -290,24 +290,33 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   // 'payment_success' = legacy rows paid before payment moved straight to 'under_review'.
   const isReviewStage = app.status === 'under_review' || app.status === 'payment_success'
 
+  // 'rejected' is included so a mistaken rejection can be reversed by
+  // approving — deliberate "undo" path, same every-gate-still-applies rule
+  // as a normal approval (every required document must still be verified).
   const canApprove =
-    isReviewStage && !!permissions?.has('application:approve') && !!approvalChecklist?.allDocumentsVerified
+    (isReviewStage || app.status === 'rejected') &&
+    !!permissions?.has('application:approve') &&
+    !!approvalChecklist?.allDocumentsVerified
 
-  const canReject = (isReviewStage || app.status === 'query_raised') && !!permissions?.has('application:reject')
+  // 'approved' is included so a mistaken approval can be reversed by
+  // rejecting — same "undo" symmetry as approve now allowing 'rejected'.
+  const canReject =
+    (isReviewStage || app.status === 'query_raised' || app.status === 'approved') &&
+    !!permissions?.has('application:reject')
 
   const approveDisabledReason = canApprove
     ? undefined
     : !permissions?.has('application:approve')
       ? 'You do not have permission to approve applications.'
-      : !isReviewStage
-        ? `Approve is only available while the application is under review (current status: ${statusCfg.label}).`
+      : !isReviewStage && app.status !== 'rejected'
+        ? `Approve is only available while the application is under review, or was rejected by mistake (current status: ${statusCfg.label}).`
         : 'Every required document must be verified before this application can be approved.'
 
   const rejectDisabledReason = canReject
     ? undefined
     : !permissions?.has('application:reject')
       ? 'You do not have permission to reject applications.'
-      : `Reject is only available while the application is under review or has a query raised (current status: ${statusCfg.label}).`
+      : `Reject is only available while the application is under review, has a query raised, or was approved by mistake (current status: ${statusCfg.label}).`
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const canEditApplication = !!permissions?.has('application:edit')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
@@ -760,7 +769,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             documents={documents}
             canVerifyDocuments={canVerifyDocuments}
             canEditApplication={canEditApplication}
-            applicationId={app.id}
+            applicationId={id}
+            numericApplicationId={app.id}
             canRaiseApplicationQuery={
               canVerifyDocuments && (isReviewStage || app.status === 'query_raised')
             }

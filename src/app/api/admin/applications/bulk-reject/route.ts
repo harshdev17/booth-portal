@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { query } from '@/lib/db/client'
 import { logAudit } from '@/lib/audit/log'
+import { notifyApplicationRejected } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -19,10 +20,9 @@ const bodySchema = z.object({
  * Same single reason applies to every application in the batch (one prompt,
  * not one per row) — re-checks each id's current status server-side exactly
  * like the single-application route; an id no longer in a rejectable status
- * is skipped, not a fatal error for the whole batch. No notification of any
- * kind is sent here, same as the single-application route — rejection is
- * purely an internal status change, confirmed not to trigger email/WhatsApp
- * (see .ai/CHANGELOG.md 2026-11-05).
+ * is skipped, not a fatal error for the whole batch. Sends the same
+ * rejection notification (with the shared reason) as the single-application
+ * route (added 2026-11-10) per application rejected.
  */
 export async function POST(request: Request) {
   const session = await requirePermission('application:reject')
@@ -52,7 +52,9 @@ export async function POST(request: Request) {
   try {
     for (const applicationId of applicationIds) {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await query<Array<{ status: string }>>('SELECT status FROM applications WHERE id = ?', [applicationId])
+      const rows = await query<
+        Array<{ status: string; application_number: string; representative_name: string; mobile_number: string; email: string | null }>
+      >('SELECT status, application_number, representative_name, mobile_number, email FROM applications WHERE id = ?', [applicationId])
       const current = rows[0]
 
       if (!current) {
@@ -60,16 +62,26 @@ export async function POST(request: Request) {
         continue
       }
 
-      if (!['under_review', 'payment_success', 'query_raised'].includes(current.status)) {
+      if (!['under_review', 'payment_success', 'query_raised', 'approved'].includes(current.status)) {
         skipped.push({ applicationId, reason: `Status is "${current.status}", not decidable from here.` })
         continue
       }
 
       // eslint-disable-next-line no-await-in-loop
       await query(
-        `UPDATE applications SET status = 'rejected' WHERE id = ? AND status IN ('under_review', 'payment_success', 'query_raised')`,
+        `UPDATE applications SET status = 'rejected' WHERE id = ? AND status IN ('under_review', 'payment_success', 'query_raised', 'approved')`,
         [applicationId]
       )
+
+      // eslint-disable-next-line no-await-in-loop
+      await notifyApplicationRejected({
+        applicationId,
+        applicationNumber: current.application_number,
+        mobileNumber: current.mobile_number,
+        email: current.email,
+        representativeName: current.representative_name,
+        reason: parsed.data.reason
+      })
 
       // eslint-disable-next-line no-await-in-loop
       await logAudit({

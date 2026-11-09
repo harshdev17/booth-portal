@@ -1,8 +1,9 @@
 import 'server-only'
 
 import { query } from '@/lib/db/client'
+import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 
-export type ApprovalChecklistField = { key: string; label: string; checked: boolean }
+export type ApprovalChecklistField = { key: string; label: string; checked: boolean; value: string }
 
 export type ApprovalChecklist = {
   status: string
@@ -60,10 +61,26 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
       organisation_name: string | null
       work_purpose: string | null
       achievement_experience: string | null
+      representative_name: string
+      father_name: string
+      police_station_name: string
+      police_station_address: string
+      aadhaar_ciphertext: Buffer
+      email: string
+      mobile_number: string
+      alternate_mobile: string | null
+      pin_code: string
+      address: string
+      district: string
+      state: string
+      submitted_at: string | null
     }>
   >(
-    `SELECT id, status, category_id, remarks, organisation_name, work_purpose, achievement_experience
-     FROM applications WHERE id = ? LIMIT 1`,
+    `SELECT a.id, a.status, a.category_id, a.remarks, a.organisation_name, a.work_purpose, a.achievement_experience,
+            a.representative_name, a.father_name, a.police_station_name, a.police_station_address,
+            a.aadhaar_ciphertext, a.email, a.mobile_number, a.alternate_mobile, a.pin_code, a.address,
+            a.district, a.state, a.submitted_at
+     FROM applications a WHERE a.id = ? LIMIT 1`,
     [applicationId]
   )
 
@@ -71,7 +88,7 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
 
   if (!app) return null
 
-  const [missingDocs, dynamicFields, checkedRows] = await Promise.all([
+  const [missingDocs, categoryRow, dynamicFields, checkedRows] = await Promise.all([
     query<Array<{ label: string }>>(
       `SELECT cdd.label
        FROM category_document_definitions cdd
@@ -82,8 +99,12 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
        ORDER BY cdd.display_order ASC`,
       [applicationId, app.category_id]
     ),
-    query<Array<{ field_definition_id: number; label: string }>>(
-      `SELECT cfd.id AS field_definition_id, cfd.label
+    query<Array<{ name: string; selection_method: string }>>(
+      `SELECT name, selection_method FROM categories WHERE id = ? LIMIT 1`,
+      [app.category_id]
+    ),
+    query<Array<{ field_definition_id: number; label: string; value: string }>>(
+      `SELECT cfd.id AS field_definition_id, cfd.label, afv.value
        FROM application_field_values afv
        JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
        WHERE afv.application_id = ?
@@ -96,12 +117,36 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
   ])
 
   const checkedKeys = new Set(checkedRows.map(r => r.field_key))
+  const category = categoryRow[0]
+  const aadhaarNumber = decryptAadhaar(Buffer.from(app.aadhaar_ciphertext))
 
-  const fieldDefinitions: Array<{ key: string; label: string }> = [
-    ...STATIC_FIELDS,
-    ...LEGACY_FIELDS.filter(f => !!app[f.key]),
-    ...(app.remarks ? [{ key: 'remarks', label: 'Applicant Remarks' }] : []),
-    ...dynamicFields.map(f => ({ key: `dynamic:${f.field_definition_id}`, label: f.label }))
+  // Values for STATIC_FIELDS, keyed the same as their `key` — kept as a
+  // lookup rather than reshaping STATIC_FIELDS itself so that list stays
+  // the single source of truth for which fields exist/their order.
+  const staticValues: Record<string, string> = {
+    representative_name: app.representative_name,
+    father_name: app.father_name,
+    police_station_name: app.police_station_name,
+    police_station_address: app.police_station_address,
+    aadhaar_number: `${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`,
+    email: app.email,
+    mobile_number: app.mobile_number,
+    alternate_mobile: app.alternate_mobile || '—',
+    pin_code: app.pin_code,
+    address: app.address,
+    district: app.district,
+    state: app.state,
+    category: category?.name ?? '—',
+    selection_method: category?.selection_method ?? '—',
+    shop_option: '—', // Not resolved here — the detail page's own field row shows this; not critical for the approval checklist's quick glance.
+    submitted_at: app.submitted_at ? new Date(app.submitted_at).toLocaleString('en-IN') : '—'
+  }
+
+  const fieldDefinitions: Array<{ key: string; label: string; value: string }> = [
+    ...STATIC_FIELDS.map(f => ({ ...f, value: staticValues[f.key] ?? '—' })),
+    ...LEGACY_FIELDS.filter(f => !!app[f.key]).map(f => ({ ...f, value: app[f.key] as string })),
+    ...(app.remarks ? [{ key: 'remarks', label: 'Applicant Remarks', value: app.remarks }] : []),
+    ...dynamicFields.map(f => ({ key: `dynamic:${f.field_definition_id}`, label: f.label, value: f.value }))
   ]
 
   return {

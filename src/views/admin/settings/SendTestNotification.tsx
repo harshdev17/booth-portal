@@ -15,6 +15,8 @@ const CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'application_confirmation', label: 'Application Confirmation' },
   { value: 'payment_confirmation', label: 'Payment Confirmation' },
   { value: 'status_update', label: 'Status Update' },
+  { value: 'application_approved', label: 'Application Approved' },
+  { value: 'application_rejected', label: 'Application Rejected' },
   { value: 'document_query', label: 'Document Query' },
   { value: 'pay_now_activation', label: 'Pay Now Activation (Draw)' },
   { value: 'direct_allotment_payment', label: 'Direct Allotment Payment' },

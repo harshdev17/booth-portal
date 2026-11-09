@@ -158,6 +158,40 @@ export function buildEmailContent(
       }
       break
     }
+    case 'application_approved':
+      c = {
+        subject: `Application ${appNo} Approved`,
+        en: [
+          `Dear ${name},`,
+          `Your application ${appNo} has been approved for International Geeta Jayanti Mahotsav 2026 and will now proceed to the next step (draw / allotment process).`,
+          'You can check your application status anytime using the link below.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु आपका आवेदन ${appNo} स्वीकृत (Approved) कर दिया गया है और अब अगली प्रक्रिया (ड्रा/आवंटन) के लिए आगे बढ़ेगा।`,
+          'आप नीचे दिए गए लिंक से अपने आवेदन की स्थिति कभी भी देख सकते हैं।'
+        ],
+        link: statusUrl
+      }
+      break
+    case 'application_rejected':
+      c = {
+        subject: `Application ${appNo} Rejected`,
+        en: [
+          `Dear ${name},`,
+          `We regret to inform you that your application ${appNo} for International Geeta Jayanti Mahotsav 2026 has been rejected.`,
+          `Reason: ${third}`,
+          'For any clarification, please contact the helpdesk below.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `हमें सूचित करते हुए खेद है कि अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 हेतु आपका आवेदन ${appNo} अस्वीकृत (Rejected) कर दिया गया है।`,
+          `कारण: ${third}`,
+          'किसी भी स्पष्टीकरण हेतु कृपया नीचे दिए गए हेल्पडेस्क से संपर्क करें।'
+        ],
+        link: statusUrl
+      }
+      break
     case 'document_query': {
       // Two distinct cases share this one notification category:
       // 1. A specific uploaded document needs correcting (document-level

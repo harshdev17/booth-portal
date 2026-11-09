@@ -41,6 +41,7 @@ export const RejectButton = ({
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notify, setNotify] = useState(true)
 
   useImperativeHandle(ref, () => ({ open: () => setOpen(true) }))
 
@@ -52,7 +53,7 @@ export const RejectButton = ({
       const response = await fetch(`/api/admin/applications/${applicationId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: formData.get('reason') })
+        body: JSON.stringify({ reason: formData.get('reason'), notify })
       })
 
       const data = await response.json()
@@ -79,7 +80,10 @@ export const RejectButton = ({
       variant='destructive'
       className='whitespace-nowrap'
       disabled={disabled}
-      onClick={() => setOpen(true)}
+      onClick={() => {
+        setNotify(true)
+        setOpen(true)
+      }}
     >
       <XIcon />
       Reject
@@ -115,6 +119,15 @@ export const RejectButton = ({
 
           <form action={submit} className='flex flex-col gap-3'>
             <Textarea name='reason' placeholder='Reason for rejection (required)' required maxLength={512} rows={4} />
+            <label className='flex items-center gap-2 text-sm text-slate-700'>
+              <input
+                type='checkbox'
+                checked={notify}
+                onChange={e => setNotify(e.target.checked)}
+                className='size-4 rounded border-slate-300'
+              />
+              Notify applicant via Email &amp; WhatsApp (includes the reason above)
+            </label>
             <DialogFooter>
               <Button type='button' variant='outline' onClick={() => setOpen(false)}>
                 Cancel

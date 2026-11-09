@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { logAudit } from '@/lib/audit/log'
+import { notifyApplicationApproved } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -14,9 +15,8 @@ import { decodeId } from '@/lib/security/opaque-id'
  * single-application approve button (status must still be under_review/
  * payment_success, all required documents must still be verified) — an id
  * that fails either check is skipped, not treated as a fatal error for the
- * whole batch. No notification of any kind is sent here, same as the
- * single-application route — approval is purely an internal status change,
- * confirmed not to trigger email/WhatsApp (see .ai/CHANGELOG.md 2026-11-05).
+ * whole batch. Sends the same "approved, next process" notification as the
+ * single-application route (added 2026-11-10) per application approved.
  */
 export async function POST(request: Request) {
   const session = await requirePermission('application:approve')
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         continue
       }
 
-      if (!['under_review', 'payment_success'].includes(checklist.status)) {
+      if (!['under_review', 'payment_success', 'rejected'].includes(checklist.status)) {
         skipped.push({ applicationId, reason: `Status is "${checklist.status}", not Under Review.` })
         continue
       }
@@ -82,7 +82,27 @@ export async function POST(request: Request) {
       }
 
       // eslint-disable-next-line no-await-in-loop
-      await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [applicationId])
+      await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success', 'rejected')`, [applicationId])
+
+      // eslint-disable-next-line no-await-in-loop
+      const contactRows = await query<
+        Array<{ application_number: string; representative_name: string; mobile_number: string; email: string | null }>
+      >(
+        `SELECT application_number, representative_name, mobile_number, email FROM applications WHERE id = ?`,
+        [applicationId]
+      )
+      const contact = contactRows[0]
+
+      if (contact) {
+        // eslint-disable-next-line no-await-in-loop
+        await notifyApplicationApproved({
+          applicationId,
+          applicationNumber: contact.application_number,
+          mobileNumber: contact.mobile_number,
+          email: contact.email,
+          representativeName: contact.representative_name
+        })
+      }
 
       // eslint-disable-next-line no-await-in-loop
       await logAudit({

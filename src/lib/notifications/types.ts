@@ -9,6 +9,8 @@ export type NotificationCategory =
   | 'application_confirmation'
   | 'payment_confirmation'
   | 'status_update'
+  | 'application_approved'
+  | 'application_rejected'
   | 'document_query'
   | 'pay_now_activation'
   | 'direct_allotment_payment'

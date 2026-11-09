@@ -18,6 +18,8 @@ const testMessageSchema = z.object({
     'application_confirmation',
     'payment_confirmation',
     'status_update',
+    'application_approved',
+    'application_rejected',
     'document_query',
     'pay_now_activation',
     'direct_allotment_payment',
@@ -47,6 +49,10 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', '118'] }
     case 'status_update':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Under Review'] }
+    case 'application_approved':
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
+    case 'application_rejected':
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar number does not match uploaded document.'] }
     case 'document_query':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar Card', 'Please upload a clearer copy.'] }
     case 'pay_now_activation': {

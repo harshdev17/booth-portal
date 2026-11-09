@@ -440,10 +440,13 @@ const ApplicationsAdminPage = async ({
 
               const encodedId = encodeId(app.id)
               const canApprove =
-                (app.status === 'under_review' || app.status === 'payment_success') &&
+                (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'rejected') &&
                 !!permissions?.has('application:approve')
               const canReject =
-                (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'query_raised') &&
+                (app.status === 'under_review' ||
+                  app.status === 'payment_success' ||
+                  app.status === 'query_raised' ||
+                  app.status === 'approved') &&
                 !!permissions?.has('application:reject')
 
               // Eligible for the bulk reminder exactly like the single-row

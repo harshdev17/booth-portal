@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction, type TransactionQuery } from '@/lib/db/client'
-import { parseShopUnitsCsv, type CsvRowError, type ShopUnitStatus } from '@/lib/inventory/shop-units-csv'
+import { parseShopUnitsCsv, type CsvRowError, type CsvRowWarning, type ShopUnitStatus } from '@/lib/inventory/shop-units-csv'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { aadhaarLast4, encryptAadhaar, hashAadhaar } from '@/lib/applications/aadhaar-crypto'
@@ -73,8 +73,10 @@ export async function POST(request: Request) {
     const parsed = parseShopUnitsCsv(text)
 
     if (parsed.errors.length > 0) {
-      return NextResponse.json({ errors: parsed.errors, rowCount: 0 }, { status: 200 })
+      return NextResponse.json({ errors: parsed.errors, warnings: [], rowCount: 0 }, { status: 200 })
     }
+
+    const warnings: CsvRowWarning[] = parsed.warnings
 
     // Resolve category names to IDs against live data
     const categories = await query<Array<{ id: number; name: string; slug: string; is_direct_allotment: number }>>(
@@ -213,7 +215,7 @@ export async function POST(request: Request) {
     }
 
     if (rowErrors.length > 0) {
-      return NextResponse.json({ errors: rowErrors, rowCount: 0 }, { status: 200 })
+      return NextResponse.json({ errors: rowErrors, warnings: [], rowCount: 0 }, { status: 200 })
     }
 
     const directAllottedCount = resolvedRows.filter(r => r.isDirectAllotment && r.status === 'allotted').length
@@ -224,6 +226,7 @@ export async function POST(request: Request) {
     if (mode === 'validate') {
       return NextResponse.json({
         errors: [],
+        warnings,
         rowCount: resolvedRows.length,
         newCategoryCount: newCategoryNames.size,
         directAllottedCount,
@@ -426,6 +429,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       errors: [],
+      warnings,
       rowCount: resolvedRows.length,
       inserted: insertedCount,
       updated: updatedCount,

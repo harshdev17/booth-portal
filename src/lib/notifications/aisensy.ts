@@ -23,6 +23,8 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
   application_confirmation: 'AISENSY_CAMPAIGN_APPLICATION_CONFIRMATION',
   payment_confirmation: 'AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION',
   status_update: 'AISENSY_CAMPAIGN_STATUS_UPDATE',
+  application_approved: 'AISENSY_CAMPAIGN_APPLICATION_APPROVED',
+  application_rejected: 'AISENSY_CAMPAIGN_APPLICATION_REJECTED',
   document_query: 'AISENSY_CAMPAIGN_DOCUMENT_QUERY',
   pay_now_activation: 'AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION',
   direct_allotment_payment: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT',
@@ -38,6 +40,26 @@ function getCampaignName(category: NotificationCategory): string | null {
       process.env.AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION ||
       null
     )
+  }
+  if (category === 'application_approved') {
+    // Falls back to the Status Update campaign (which already covers an
+    // "Approved" status label) until AISENSY_CAMPAIGN_APPLICATION_APPROVED's
+    // own dedicated template — carrying the "next process" wording — is
+    // submitted and approved in the AiSensy dashboard.
+    return (
+      process.env.AISENSY_CAMPAIGN_APPLICATION_APPROVED ||
+      process.env.AISENSY_CAMPAIGN_STATUS_UPDATE ||
+      null
+    )
+  }
+  if (category === 'application_rejected') {
+    // No safe fallback: the rejection REASON is this template's whole point,
+    // and status_update's approved wording has no variable for it — sending
+    // through status_update would silently drop the reason. Until its own
+    // template is approved, this intentionally returns null so the send
+    // fails safely (logged, not thrown) instead of going out with the wrong
+    // wording.
+    return process.env.AISENSY_CAMPAIGN_APPLICATION_REJECTED || null
   }
   if (category === 'direct_allotment_confirmed') {
     return (

@@ -4,11 +4,16 @@ import { z } from 'zod'
 
 import { query } from '@/lib/db/client'
 import { logAudit } from '@/lib/audit/log'
+import { notifyApplicationRejected } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
 
-const bodySchema = z.object({ reason: z.string().trim().min(1).max(512) })
+const bodySchema = z.object({
+  reason: z.string().trim().min(1).max(512),
+  /** Defaults to true (checked) — unchecking in the dialog skips the email/WhatsApp send entirely, per explicit request. */
+  notify: z.boolean().optional().default(true)
+})
 
 /**
  * Rejects an application (under_review / query_raised -> rejected). Kept as
@@ -44,24 +49,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const rows = await query<Array<{ status: string }>>('SELECT status FROM applications WHERE id = ?', [applicationId])
+    const rows = await query<
+      Array<{ status: string; application_number: string; representative_name: string; mobile_number: string; email: string | null }>
+    >('SELECT status, application_number, representative_name, mobile_number, email FROM applications WHERE id = ?', [applicationId])
     const current = rows[0]
 
     if (!current) {
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
 
-    if (!['under_review', 'payment_success', 'query_raised'].includes(current.status)) {
+    // 'approved' is included so a mistaken approval can be reversed by
+    // rejecting — same "undo" symmetry as approve allowing 'rejected'.
+    if (!['under_review', 'payment_success', 'query_raised', 'approved'].includes(current.status)) {
       return NextResponse.json(
-        { error: `This application is "${current.status}", not "Under Review" — it cannot be decided from here.` },
+        { error: `This application is "${current.status}" — it cannot be rejected from here.` },
         { status: 409 }
       )
     }
 
     await query(
-      `UPDATE applications SET status = 'rejected' WHERE id = ? AND status IN ('under_review', 'payment_success', 'query_raised')`,
+      `UPDATE applications SET status = 'rejected' WHERE id = ? AND status IN ('under_review', 'payment_success', 'query_raised', 'approved')`,
       [applicationId]
     )
+
+    if (parsed.data.notify) {
+      await notifyApplicationRejected({
+        applicationId,
+        applicationNumber: current.application_number,
+        mobileNumber: current.mobile_number,
+        email: current.email,
+        representativeName: current.representative_name,
+        reason: parsed.data.reason
+      })
+    }
 
     await logAudit({
       actorUserId: session.userId,
@@ -71,7 +91,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       entityType: 'application',
       entityId: String(applicationId),
       previousValue: { status: current.status },
-      newValue: { status: 'rejected', reason: parsed.data.reason }
+      newValue: { status: 'rejected', reason: parsed.data.reason, notified: parsed.data.notify }
     })
 
     return NextResponse.json({ success: true })
