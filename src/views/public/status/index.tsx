@@ -134,10 +134,21 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
 }
 
 const DOCUMENT_STATUS_HI: Record<string, string> = {
-  pending: 'लंबित',
+  pending: 'जमा किया गया (समीक्षाधीन)',
   verified: 'सत्यापित',
   rejected: 'अस्वीकृत',
   query: 'स्पष्टीकरण आवश्यक'
+}
+
+// Public-facing override for the English "pending" label only — a document
+// sits at verification_status='pending' in the DB from the moment it's
+// uploaded until an admin reviews it, so showing it as plain "Pending" here
+// reads as if the applicant still needs to act, even though the upload is
+// already done and nothing is outstanding. Admin-side views keep the shared
+// getDocumentStatusConfig() "Pending" label as-is — that one really is a
+// to-do item for the reviewing admin.
+const DOCUMENT_STATUS_LABEL_EN: Record<string, string> = {
+  pending: 'Submitted (Under Review)'
 }
 
 // One plain-language line under the status, so the applicant knows what (if
@@ -1426,7 +1437,7 @@ const StatusLookup = () => {
                         const statusLabel = doc.verificationStatus
                           ? lang === 'hi'
                             ? (DOCUMENT_STATUS_HI[doc.verificationStatus] ?? cfg.label)
-                            : cfg.label
+                            : (DOCUMENT_STATUS_LABEL_EN[doc.verificationStatus] ?? cfg.label)
                           : lang === 'hi'
                             ? 'अपलोड नहीं हुआ'
                             : 'Not uploaded'
