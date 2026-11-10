@@ -4,6 +4,7 @@ import { ShieldCheckIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { query } from '@/lib/db/client'
+import { getPermissionGroup, getPermissionLabel, PERMISSION_GROUP_ORDER } from '@/lib/rbac/permission-labels'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import PermissionToggle from '@/views/admin/roles/PermissionToggle'
 
@@ -67,29 +68,46 @@ const RolesAdminPage = async () => {
               </tr>
             </thead>
             <tbody className='divide-y'>
-              {permissions.map(permission => (
-                <tr key={permission.id} className='hover:bg-muted/30 transition'>
-                  <td className='sticky left-0 bg-white py-2.5 px-4'>
-                    <p className='font-mono text-xs font-bold text-[#0c2847]'>{permission.key}</p>
-                    <p className='text-xs text-muted-foreground'>{permission.description}</p>
-                  </td>
-                  {roles.map(role => {
-                    const granted = grantSet.has(`${role.id}:${permission.id}`)
-                    const isSuperAdmin = role.key === 'super_admin'
+              {PERMISSION_GROUP_ORDER.flatMap(group => {
+                const groupPermissions = permissions.filter(p => getPermissionGroup(p.key) === group)
 
-                    return (
-                      <td key={role.id} className='py-2.5 px-4 text-center'>
-                        <PermissionToggle
-                          roleId={role.id}
-                          permissionId={permission.id}
-                          granted={granted}
-                          disabled={!canManage || isSuperAdmin}
-                        />
+                if (groupPermissions.length === 0) return []
+
+                return [
+                  <tr key={`group-${group}`} className='bg-muted/10'>
+                    <td
+                      colSpan={roles.length + 1}
+                      className='sticky left-0 bg-muted/10 py-1.5 px-4 text-[11px] font-bold uppercase tracking-wide text-muted-foreground'
+                    >
+                      {group}
+                    </td>
+                  </tr>,
+                  ...groupPermissions.map(permission => (
+                    <tr key={permission.id} className='hover:bg-muted/30 transition'>
+                      <td className='sticky left-0 bg-white py-2.5 px-4'>
+                        <p className='text-sm font-semibold text-[#0c2847]'>
+                          {getPermissionLabel(permission.key, permission.description)}
+                        </p>
                       </td>
-                    )
-                  })}
-                </tr>
-              ))}
+                      {roles.map(role => {
+                        const granted = grantSet.has(`${role.id}:${permission.id}`)
+                        const isSuperAdmin = role.key === 'super_admin'
+
+                        return (
+                          <td key={role.id} className='py-2.5 px-4 text-center'>
+                            <PermissionToggle
+                              roleId={role.id}
+                              permissionId={permission.id}
+                              granted={granted}
+                              disabled={!canManage || isSuperAdmin}
+                            />
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))
+                ]
+              })}
             </tbody>
           </table>
         </CardContent>
