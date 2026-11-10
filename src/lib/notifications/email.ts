@@ -313,6 +313,38 @@ export function buildEmailContent(
         link: statusUrl
       }
       break
+    case 'auction_fee_activation':
+      c = {
+        subject: `Selected for Auction: Pay Participation Fee for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `Congratulations! Your application ${appNo} has been selected for the auction round of booth/stall allotment for International Geeta Jayanti Mahotsav 2026.`,
+          'Please complete the auction participation fee payment using the link below to confirm your participation in the auction.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत स्टॉल/बूथ आवंटन की नीलामी (Auction) चरण हेतु आपके आवेदन ${appNo} का चयन हुआ है।`,
+          'कृपया नीलामी में भाग लेने की पुष्टि हेतु नीचे दिए गए लिंक से भागीदारी शुल्क का भुगतान पूर्ण करें।'
+        ],
+        link: statusUrl
+      }
+      break
+    case 'auction_final_payment':
+      c = {
+        subject: `Auction Won: Complete Final Payment for application ${appNo}`,
+        en: [
+          `Dear ${name},`,
+          `Congratulations! You have won the auction for application ${appNo} for International Geeta Jayanti Mahotsav 2026.`,
+          'Please complete the final allotment payment using the link below to confirm your stall and download your Allotment Letter.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} हेतु नीलामी (Auction) जीत ली गई है।`,
+          'कृपया अपना स्टॉल सुनिश्चित करने और आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से अंतिम आवंटन भुगतान पूर्ण करें।'
+        ],
+        link: statusUrl
+      }
+      break
     default:
       return null
   }
