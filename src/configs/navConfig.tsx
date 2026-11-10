@@ -60,7 +60,8 @@ export const navItems: NavItem[] = [
       {
         icon: 'LayoutDashboard',
         label: 'Dashboard',
-        href: '/admin/dashboard'
+        href: '/admin/dashboard',
+        permission: 'dashboard:view'
       }
     ]
   },

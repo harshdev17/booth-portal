@@ -17,9 +17,8 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import KpiCard from '@/components/shared/KpiCard'
-import { getSession } from '@/lib/auth/session'
 import { query } from '@/lib/db/client'
-import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
+import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import CategoryBreakdownChart from '@/views/admin/dashboard/CategoryBreakdownChart'
 import SubmissionsTrendChart from '@/views/admin/dashboard/SubmissionsTrendChart'
 
@@ -30,8 +29,23 @@ export const metadata: Metadata = {
 const TREND_DAYS = 14
 
 const DashboardPage = async () => {
-  const session = await getSession()
+  // Previously only checked for a valid session (any logged-in account
+  // could open the Dashboard) — no actual on/off switch for dashboard
+  // access itself existed. dashboard:view is a dedicated permission,
+  // granted to super_admin and police_user by default; every other role
+  // needs it granted explicitly from the Permission Matrix.
+  const session = await requirePermission('dashboard:view')
   const permissions = await getCurrentUserPermissions()
+
+  // Dashboard previously showed every card/link to every logged-in staff
+  // account regardless of permission, including hardcoded `/admin/draw` and
+  // `/admin/inventory` links the sidebar itself correctly hides for an
+  // account without that permission — clicking one threw a raw
+  // AuthorizationError crash screen instead of simply not being shown.
+  const canVerifyDocuments = !!permissions?.has('document:verify')
+  const canViewApplications = !!permissions?.has('application:view')
+  const canViewDraw = !!permissions?.has('draw:view')
+  const canViewInventory = !!permissions?.has('inventory:view')
 
   const [
     statusRows,
@@ -316,59 +330,63 @@ const DashboardPage = async () => {
 
             <div className='divide-y divide-slate-100'>
               {/* Document Queue */}
-              <Link
-                href='/admin/documents'
-                className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
-              >
-                <div className='flex items-center gap-3 min-w-0'>
-                  <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60'>
-                    <FileCheck2Icon className='size-4' />
-                  </div>
-                  <div className='min-w-0'>
-                    <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
-                      Document Verification
+              {canVerifyDocuments && (
+                <Link
+                  href='/admin/documents'
+                  className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60'>
+                      <FileCheck2Icon className='size-4' />
                     </div>
-                    <div className='text-[11px] text-slate-500 truncate'>
-                      {docsPending} document{docsPending === 1 ? '' : 's'} waiting for sign-off
+                    <div className='min-w-0'>
+                      <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
+                        Document Verification
+                      </div>
+                      <div className='text-[11px] text-slate-500 truncate'>
+                        {docsPending} document{docsPending === 1 ? '' : 's'} waiting for sign-off
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className='flex items-center gap-2 shrink-0 ml-3'>
-                  <Badge variant='outline' className='bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-bold'>
-                    {docsPending}
-                  </Badge>
-                  <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
-                </div>
-              </Link>
+                  <div className='flex items-center gap-2 shrink-0 ml-3'>
+                    <Badge variant='outline' className='bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-bold'>
+                      {docsPending}
+                    </Badge>
+                    <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
+                  </div>
+                </Link>
+              )}
 
               {/* Scrutiny Queue */}
-              <Link
-                href='/admin/applications?status=under_review'
-                className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
-              >
-                <div className='flex items-center gap-3 min-w-0'>
-                  <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60'>
-                    <ClockIcon className='size-4' />
-                  </div>
-                  <div className='min-w-0'>
-                    <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
-                      Applications Under Review
+              {canViewApplications && (
+                <Link
+                  href='/admin/applications?status=under_review'
+                  className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60'>
+                      <ClockIcon className='size-4' />
                     </div>
-                    <div className='text-[11px] text-slate-500 truncate'>
-                      {underReview} applicant{underReview === 1 ? '' : 's'} awaiting committee decision
+                    <div className='min-w-0'>
+                      <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
+                        Applications Under Review
+                      </div>
+                      <div className='text-[11px] text-slate-500 truncate'>
+                        {underReview} applicant{underReview === 1 ? '' : 's'} awaiting committee decision
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className='flex items-center gap-2 shrink-0 ml-3'>
-                  <Badge variant='outline' className='bg-blue-50 text-blue-800 border-blue-200 text-[10px] font-bold'>
-                    {underReview}
-                  </Badge>
-                  <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
-                </div>
-              </Link>
+                  <div className='flex items-center gap-2 shrink-0 ml-3'>
+                    <Badge variant='outline' className='bg-blue-50 text-blue-800 border-blue-200 text-[10px] font-bold'>
+                      {underReview}
+                    </Badge>
+                    <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
+                  </div>
+                </Link>
+              )}
 
               {/* Queries Queue */}
-              {openQueries > 0 && (
+              {canViewApplications && openQueries > 0 && (
                 <Link
                   href='/admin/applications?status=query_raised'
                   className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
@@ -396,27 +414,35 @@ const DashboardPage = async () => {
               )}
 
               {/* Draw Queue */}
-              <Link
-                href='/admin/draw'
-                className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
-              >
-                <div className='flex items-center gap-3 min-w-0'>
-                  <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 border border-purple-200/60'>
-                    <ShuffleIcon className='size-4' />
-                  </div>
-                  <div className='min-w-0'>
-                    <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
-                      Draw Panel
+              {canViewDraw && (
+                <Link
+                  href='/admin/draw'
+                  className='flex items-center justify-between px-4 py-3 hover:bg-slate-50/80 transition group'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 border border-purple-200/60'>
+                      <ShuffleIcon className='size-4' />
                     </div>
-                    <div className='text-[11px] text-slate-500 truncate'>
-                      Verified applicant pools ready for allotment
+                    <div className='min-w-0'>
+                      <div className='text-xs font-semibold text-slate-900 group-hover:text-[#0c2847] truncate'>
+                        Draw Panel
+                      </div>
+                      <div className='text-[11px] text-slate-500 truncate'>
+                        Verified applicant pools ready for allotment
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className='flex items-center gap-2 shrink-0 ml-3'>
-                  <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
-                </div>
-              </Link>
+                  <div className='flex items-center gap-2 shrink-0 ml-3'>
+                    <ArrowRightIcon className='size-3.5 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition' />
+                  </div>
+                </Link>
+              )}
+
+              {!canVerifyDocuments && !canViewApplications && !canViewDraw && (
+                <p className='px-4 py-6 text-center text-xs text-muted-foreground'>
+                  Nothing in your queue right now.
+                </p>
+              )}
             </div>
           </div>
 
@@ -432,12 +458,14 @@ const DashboardPage = async () => {
                   Physical booths/stalls occupancy and allocation
                 </p>
               </div>
-              <Link
-                href='/admin/inventory'
-                className='text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1'
-              >
-                Manage <ArrowRightIcon className='size-3' />
-              </Link>
+              {canViewInventory && (
+                <Link
+                  href='/admin/inventory'
+                  className='text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1'
+                >
+                  Manage <ArrowRightIcon className='size-3' />
+                </Link>
+              )}
             </div>
             <div className='p-4 space-y-3.5'>
               {/* Summary 3-pill grid */}
@@ -504,46 +532,48 @@ const DashboardPage = async () => {
           </div>
 
           {/* 3. Lucky Draw Engine Status */}
-          <div className='rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden'>
-            <div className='px-4 py-3.5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between'>
-              <div>
-                <h2 className='text-xs font-bold text-[#0c2847] uppercase tracking-wider flex items-center gap-1.5'>
-                  <ShuffleIcon className='size-3.5 text-purple-600' />
-                  Draw System
-                </h2>
-                <p className='text-[11px] text-slate-500 mt-0.5'>
-                  Provably fair cryptographic draw rounds
-                </p>
+          {canViewDraw && (
+            <div className='rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden'>
+              <div className='px-4 py-3.5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between'>
+                <div>
+                  <h2 className='text-xs font-bold text-[#0c2847] uppercase tracking-wider flex items-center gap-1.5'>
+                    <ShuffleIcon className='size-3.5 text-purple-600' />
+                    Draw System
+                  </h2>
+                  <p className='text-[11px] text-slate-500 mt-0.5'>
+                    Provably fair cryptographic draw rounds
+                  </p>
+                </div>
+                <Badge variant='outline' className='bg-purple-50 text-purple-700 border-purple-200 text-[10px] font-mono'>
+                  SHA-256
+                </Badge>
               </div>
-              <Badge variant='outline' className='bg-purple-50 text-purple-700 border-purple-200 text-[10px] font-mono'>
-                SHA-256
-              </Badge>
-            </div>
-            <div className='p-4 space-y-3.5'>
-              <div className='grid grid-cols-3 gap-2 text-center'>
-                <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
-                  <div className='text-xs font-bold text-slate-900 font-mono'>{totalDrawRounds}</div>
-                  <div className='text-[10px] text-slate-500'>Rounds</div>
+              <div className='p-4 space-y-3.5'>
+                <div className='grid grid-cols-3 gap-2 text-center'>
+                  <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
+                    <div className='text-xs font-bold text-slate-900 font-mono'>{totalDrawRounds}</div>
+                    <div className='text-[10px] text-slate-500'>Rounds</div>
+                  </div>
+                  <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
+                    <div className='text-xs font-bold text-emerald-700 font-mono'>{drawAllotted}</div>
+                    <div className='text-[10px] text-slate-500'>Allotted</div>
+                  </div>
+                  <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
+                    <div className='text-xs font-bold text-amber-700 font-mono'>{drawWaitlisted}</div>
+                    <div className='text-[10px] text-slate-500'>Waitlisted</div>
+                  </div>
                 </div>
-                <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
-                  <div className='text-xs font-bold text-emerald-700 font-mono'>{drawAllotted}</div>
-                  <div className='text-[10px] text-slate-500'>Allotted</div>
-                </div>
-                <div className='p-2 rounded-lg bg-slate-50 border border-slate-100'>
-                  <div className='text-xs font-bold text-amber-700 font-mono'>{drawWaitlisted}</div>
-                  <div className='text-[10px] text-slate-500'>Waitlisted</div>
-                </div>
-              </div>
 
-              <Link
-                href='/admin/draw'
-                className='w-full py-2.5 px-3 text-xs font-semibold rounded-lg bg-[#0c2847] hover:bg-[#12365c] text-white flex items-center justify-center gap-1.5 transition shadow-xs'
-              >
-                <ShuffleIcon className='size-3.5' />
-                Open Draw Control Room
-              </Link>
+                <Link
+                  href='/admin/draw'
+                  className='w-full py-2.5 px-3 text-xs font-semibold rounded-lg bg-[#0c2847] hover:bg-[#12365c] text-white flex items-center justify-center gap-1.5 transition shadow-xs'
+                >
+                  <ShuffleIcon className='size-3.5' />
+                  Open Draw Control Room
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
