@@ -604,22 +604,33 @@ export default function CategoryFeeSettingsClient({
                                 className={`size-3.5 ml-1 transition-transform ${isContentExpanded ? 'rotate-180' : ''}`}
                               />
                             </Button>
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              onClick={() => setExpandedId(isExpanded ? null : cat.id)}
-                              className={`text-xs font-bold rounded-lg border ${
-                                hasAllotmentPayment
-                                  ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50'
-                                  : 'border-slate-300'
-                              }`}
-                            >
-                              <CoinsIcon className='size-3.5 mr-1.5' />
-                              Allotment Fee
-                              <ChevronDownIcon
-                                className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                              />
-                            </Button>
+                            {/* This fixed-amount + deadline flow doesn't apply to an
+                                auction category — its final allotment amount
+                                varies per winner and is only known after the
+                                physical auction, not something an admin can set
+                                here ahead of time. (The dedicated Auction
+                                Participation Fee + results-upload flow this
+                                category actually needs was built and then
+                                reverted after a production outage — see
+                                .ai/CHANGELOG.md 2026-11-10 — and isn't live yet.) */}
+                            {cat.selection_method !== 'auction' && (
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => setExpandedId(isExpanded ? null : cat.id)}
+                                className={`text-xs font-bold rounded-lg border ${
+                                  hasAllotmentPayment
+                                    ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50'
+                                    : 'border-slate-300'
+                                }`}
+                              >
+                                <CoinsIcon className='size-3.5 mr-1.5' />
+                                Allotment Fee
+                                <ChevronDownIcon
+                                  className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </Button>
+                            )}
                             <Button
                               size='sm'
                               disabled={isSaving}
