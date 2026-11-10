@@ -16,7 +16,14 @@ const updateCategoryFeeSchema = z.object({
   categoryIds: z.array(z.number().int().positive()).optional(),
   feeBasePaise: z.number().int().min(0).nullable(),
   gstPercent: z.number().min(0).max(100).nullable(),
-  feePaise: z.number().int().min(0).nullable()
+  feePaise: z.number().int().min(0).nullable(),
+
+  // Only ever applied to the single `categoryId` case (never `categoryIds`'
+  // bulk-apply) — selection_method is a structural, per-category business
+  // decision (draw-service.ts, the payment flow, and the public category
+  // card all branch on it), not something that should silently change for
+  // every category in a bulk fee update.
+  selectionMethod: z.enum(['draw', 'manual', 'auction', 'tender', 'application_fee']).optional()
 })
 
 /**
@@ -34,21 +41,34 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Invalid fee configuration parameters.' }, { status: 400 })
     }
 
-    const { feeBasePaise, gstPercent, feePaise } = parsed.data
+    const { feeBasePaise, gstPercent, feePaise, selectionMethod } = parsed.data
+    const isBulk = Boolean(parsed.data.categoryIds?.length)
     const targetIds = parsed.data.categoryIds?.length ? parsed.data.categoryIds : parsed.data.categoryId ? [parsed.data.categoryId] : []
 
     if (targetIds.length === 0) {
       return NextResponse.json({ error: 'No category specified.' }, { status: 400 })
     }
 
-    await query(
-      `UPDATE categories
-       SET fee_base_paise = ?,
-           gst_percent = ?,
-           fee_paise = ?
-       WHERE id IN (${targetIds.map(() => '?').join(',')})`,
-      [feeBasePaise, gstPercent, feePaise, ...targetIds]
-    )
+    if (!isBulk && selectionMethod) {
+      await query(
+        `UPDATE categories
+         SET fee_base_paise = ?,
+             gst_percent = ?,
+             fee_paise = ?,
+             selection_method = ?
+         WHERE id = ?`,
+        [feeBasePaise, gstPercent, feePaise, selectionMethod, targetIds[0]]
+      )
+    } else {
+      await query(
+        `UPDATE categories
+         SET fee_base_paise = ?,
+             gst_percent = ?,
+             fee_paise = ?
+         WHERE id IN (${targetIds.map(() => '?').join(',')})`,
+        [feeBasePaise, gstPercent, feePaise, ...targetIds]
+      )
+    }
 
     await logAudit({
       actorUserId: session.userId,
@@ -57,7 +77,7 @@ export async function PATCH(request: Request) {
       module: 'settings',
       entityType: 'category',
       entityId: targetIds.join(','),
-      newValue: { feeBasePaise, gstPercent, feePaise, categoryIds: targetIds }
+      newValue: { feeBasePaise, gstPercent, feePaise, selectionMethod, categoryIds: targetIds }
     })
 
     return NextResponse.json({
