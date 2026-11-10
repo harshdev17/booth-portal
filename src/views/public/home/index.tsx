@@ -1,6 +1,5 @@
 import { getFeeBreakdown, getPortalApplicationSchedule, listOpenCategories } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
-import { parseIstDateTime } from '@/lib/format-date'
 import PublicHomeClient from './PublicHomeClient'
 
 interface CachedHomeData {
@@ -83,15 +82,8 @@ const PublicHome = async () => {
       allotmentAmountNote: category.allotment_amount_note,
       allotmentAmountNoteHi: category.allotment_amount_note_hi,
       availableShopsCount: availableCountByCategory.get(category.id) ?? 0,
-      // parseIstDateTime (not a bare `new Date(...)`) — the raw DB string is
-      // IST wall-clock time, and parsing it with a plain `new Date()` reads
-      // it in the server process's own timezone instead, which silently
-      // breaks on a UTC-timezone host (same root cause documented at
-      // isCategoryAcceptingApplications in this same file, which this must
-      // stay consistent with — confirmed live: the form page correctly said
-      // "closed" while this raw comparison said "open" for the same category).
       isApplicationClosed: Boolean(
-        category.application_closes_at && parseIstDateTime(category.application_closes_at) < new Date()
+        category.application_closes_at && new Date(category.application_closes_at) < new Date()
       )
     }
   })
