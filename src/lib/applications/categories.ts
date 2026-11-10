@@ -25,6 +25,9 @@ export type CategoryRow = {
   auction_date: string | null
   auction_venue: string | null
   auction_venue_hi: string | null
+
+  /** Admin-configurable participation fee for an 'auction' selection_method category (migration 0077). NULL until set. */
+  auction_participation_fee_paise: number | null
   status: 'draft' | 'open' | 'closed' | 'archived'
 
   /** 0 keeps this category reachable by direct URL / in admin, but out of the homepage category grid. */
