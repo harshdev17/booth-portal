@@ -25,7 +25,9 @@ const testMessageSchema = z.object({
     'direct_allotment_payment',
     'direct_allotment_confirmed',
     'stall_interchanged',
-    'reminder'
+    'reminder',
+    'auction_fee_activation',
+    'auction_final_payment'
   ]),
   mobileNumber: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
   email: z.string().trim().email().optional().or(z.literal(''))
@@ -55,24 +57,45 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar number does not match uploaded document.'] }
     case 'document_query':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'Aadhaar Card', 'Please upload a clearer copy.'] }
+
     case 'pay_now_activation': {
       const link = 'http://192.168.1.3:3000/status?appNo=IGM-2026-000000'
+
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
     }
+
     case 'direct_allotment_payment': {
       const link = 'http://192.168.1.3:3000/status?appNo=IGM-2026-000000'
+
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
     }
+
     case 'direct_allotment_confirmed': {
       const link = 'http://192.168.1.3:3000/allotment-letter?appNo=IGM-2026-000000'
+
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', link] }
     }
+
     case 'stall_interchanged': {
       const link = 'http://192.168.1.3:3000/allotment-letter?appNo=IGM-2026-000000'
+
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', 'A-01', 'F-101978', link] }
     }
+
     case 'reminder':
       return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
+
+    case 'auction_fee_activation': {
+      const link = 'http://192.168.1.3:3000/status?appNo=IGM-2026-000000'
+
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
+    }
+
+    case 'auction_final_payment': {
+      const link = 'http://192.168.1.3:3000/status?appNo=IGM-2026-000000'
+
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
+    }
   }
 }
 
