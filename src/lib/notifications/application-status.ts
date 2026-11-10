@@ -14,7 +14,10 @@ const STATUS_LABELS: Record<string, string> = {
   payment_required: 'Payment Required',
   allotted: 'Allotted',
   cancelled: 'Cancelled',
-  re_allotted: 'Re-Allotted'
+  re_allotted: 'Re-Allotted',
+  selected_for_auction: 'Selected for Auction',
+  auction_fee_paid: 'Auction Fee Paid',
+  auction_won: 'Auction Won'
 }
 
 /**

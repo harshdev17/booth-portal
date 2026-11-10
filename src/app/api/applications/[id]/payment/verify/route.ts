@@ -5,7 +5,7 @@ import { verifyAccessToken } from '@/lib/applications/access-token'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
-import { notifyAllotmentPaymentSuccess, notifyPaymentSuccess } from '@/lib/notifications/payment-success'
+import { notifyAllotmentPaymentSuccess, notifyAuctionFeePaymentSuccess, notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 import { getPaymentByRazorpayOrderId, recordCheckoutFailure, recordCheckoutSuccess } from '@/lib/payments/payment-records'
 import { verifyCheckoutSignature } from '@/lib/payments/razorpay'
 import { logServerError } from '@/lib/security/error-log'
@@ -149,8 +149,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ipAddress
     })
 
-    if (payment.purpose === 'pay_now') {
+    if (payment.purpose === 'pay_now' || payment.purpose === 'auction_final') {
       void notifyAllotmentPaymentSuccess(applicationId, payment.amount_paise)
+    } else if (payment.purpose === 'auction_fee') {
+      void notifyAuctionFeePaymentSuccess(applicationId, payment.amount_paise)
     } else {
       void notifyPaymentSuccess(applicationId, payment.amount_paise)
     }
