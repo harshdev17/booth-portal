@@ -462,7 +462,7 @@ const ApplicationsAdminPage = async ({
                 Boolean(app.is_direct_allotment) &&
                 app.allotment_payment_status !== 'success' &&
                 app.allotment_payment_status !== 'paid'
-              const isPaymentPending = registrationPending || allotmentPending
+              const isPaymentPending = (registrationPending || allotmentPending) && !!permissions?.has('payment:reminder')
 
               return {
                 ...app,

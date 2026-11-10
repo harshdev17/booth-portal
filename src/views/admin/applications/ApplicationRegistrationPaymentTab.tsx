@@ -55,7 +55,7 @@ type Props = {
     updated_at: string
   } | null
   transactions: TransactionItem[]
-  canManage: boolean
+  canSendReminder: boolean
   reminderHistory: Array<{
     id: number
     channel: 'whatsapp' | 'sms' | 'email'
@@ -74,7 +74,7 @@ export default function ApplicationRegistrationPaymentTab({
   gstPercent,
   payment,
   transactions,
-  canManage: _canManage,
+  canSendReminder,
   reminderHistory
 }: Props) {
   const [copiedLink, setCopiedLink] = useState(false)
@@ -373,17 +373,19 @@ export default function ApplicationRegistrationPaymentTab({
                   </a>
                 </div>
 
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  disabled={sendingReminder}
-                  onClick={sendReminder}
-                  className='w-full text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
-                >
-                  {sendingReminder ? <Loader2Icon className='size-3.5 animate-spin' /> : <BellRingIcon className='size-3.5' />}
-                  Send Payment Reminder
-                </Button>
+                {canSendReminder && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    disabled={sendingReminder}
+                    onClick={sendReminder}
+                    className='w-full text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
+                  >
+                    {sendingReminder ? <Loader2Icon className='size-3.5 animate-spin' /> : <BellRingIcon className='size-3.5' />}
+                    Send Payment Reminder
+                  </Button>
+                )}
                 {reminderMessage && (
                   <p className='text-[11px] font-semibold text-emerald-700'>{reminderMessage}</p>
                 )}

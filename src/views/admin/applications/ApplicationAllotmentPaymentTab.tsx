@@ -64,7 +64,7 @@ type Props = {
   } | null
   transactions: TransactionItem[]
   drawAllocation?: DrawAllocationInfo
-  canManage: boolean
+  canSendReminder: boolean
 }
 
 export default function ApplicationAllotmentPaymentTab({
@@ -79,7 +79,7 @@ export default function ApplicationAllotmentPaymentTab({
   payment,
   transactions,
   drawAllocation,
-  canManage: _canManage
+  canSendReminder
 }: Props) {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedOrder, setCopiedOrder] = useState(false)
@@ -498,17 +498,19 @@ export default function ApplicationAllotmentPaymentTab({
             {/* Communication & Order Actions */}
             <div className='flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100'>
               <div className='flex flex-wrap items-center gap-2'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  disabled={sendingReminder || isPaid || isFree}
-                  onClick={sendReminder}
-                  className='font-semibold text-[#0c2847]'
-                >
-                  {sendingReminder ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <BellRingIcon className='size-3.5 mr-1.5' />}
-                  Send Payment Reminder
-                </Button>
+                {canSendReminder && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    disabled={sendingReminder || isPaid || isFree}
+                    onClick={sendReminder}
+                    className='font-semibold text-[#0c2847]'
+                  >
+                    {sendingReminder ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <BellRingIcon className='size-3.5 mr-1.5' />}
+                    Send Payment Reminder
+                  </Button>
+                )}
               </div>
 
               {hasAllotment && (

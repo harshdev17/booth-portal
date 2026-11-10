@@ -791,7 +791,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             gstPercent={app.gst_percent}
             payment={registrationPayment}
             transactions={registrationTransactions}
-            canManage={!!permissions?.has('payment:view')}
+            canSendReminder={!!permissions?.has('payment:reminder')}
             reminderHistory={reminderLogRows}
           />
         </TabsContent>
@@ -810,7 +810,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               payment={allotmentPayment}
               transactions={allotmentTransactions}
               drawAllocation={drawAllocationRow}
-              canManage={!!permissions?.has('allotment:perform') || !!permissions?.has('application:approve')}
+              canSendReminder={!!permissions?.has('payment:reminder')}
             />
           </TabsContent>
         )}
