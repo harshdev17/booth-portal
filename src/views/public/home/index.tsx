@@ -1,5 +1,6 @@
 import { getFeeBreakdown, getPortalApplicationSchedule, listOpenCategories } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
+import { parseIstDateTime } from '@/lib/format-date'
 import PublicHomeClient from './PublicHomeClient'
 
 interface CachedHomeData {
@@ -18,6 +19,7 @@ interface CachedHomeData {
     allotmentAmountNote: string | null
     allotmentAmountNoteHi: string | null
     availableShopsCount: number
+    isApplicationClosed: boolean
   }>
   eventStartsOn: string | null
   eventEndsOn: string | null
@@ -80,7 +82,16 @@ const PublicHome = async () => {
       allotmentAmountPaise: category.allotment_amount_paise,
       allotmentAmountNote: category.allotment_amount_note,
       allotmentAmountNoteHi: category.allotment_amount_note_hi,
-      availableShopsCount: availableCountByCategory.get(category.id) ?? 0
+      availableShopsCount: availableCountByCategory.get(category.id) ?? 0,
+
+      // parseIstDateTime (not a bare `new Date(...)`) — the raw DB string is
+      // IST wall-clock time; parsing it with a plain `new Date()` reads it
+      // in the server process's own timezone instead, which silently breaks
+      // this on a UTC-timezone host. Must stay consistent with
+      // isCategoryAcceptingApplications in this same file.
+      isApplicationClosed: Boolean(
+        category.application_closes_at && parseIstDateTime(category.application_closes_at) < new Date()
+      )
     }
   })
 

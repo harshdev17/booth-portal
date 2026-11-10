@@ -35,6 +35,7 @@ export type CategoryCardData = {
   allotmentAmountNote: string | null
   allotmentAmountNoteHi: string | null
   availableShopsCount: number
+  isApplicationClosed: boolean
 }
 
 // Solid coloured circle + white glyph per category, matching the home-page
@@ -207,15 +208,34 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         />
       )}
 
+      {/* Application-closed notice, shown in place of the Apply Now button.
+          The card itself stays visible (listOpenCategories no longer
+          excludes a closed category) instead of vanishing with no
+          explanation. */}
+      {category.isApplicationClosed && (
+        <p className='mb-2.5 rounded-lg bg-[#fdf2f2] px-3 py-2 text-center text-xs font-bold text-[#b91c1c]'>
+          {lang === 'hi' ? 'आवेदन की अवधि समाप्त हो चुकी है।' : 'The application period for this category has closed.'}
+        </p>
+      )}
+
       {/* Action Buttons */}
       <div className='mt-auto grid grid-cols-2 gap-2.5 border-t border-[#f0eae1] pt-4'>
-        <Link
-          href={`/apply/${category.slug}`}
-          className='flex items-center justify-center gap-1.5 rounded-xl bg-[#092b52] px-3 py-3 text-center text-sm font-bold text-white shadow-2xs transition hover:bg-[#061e3a] active:scale-[0.98]'
-        >
-          <span>{lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}</span>
-          <span className='text-sm font-black'>→</span>
-        </Link>
+        {category.isApplicationClosed ? (
+          <span
+            aria-disabled='true'
+            className='flex cursor-not-allowed items-center justify-center gap-1.5 rounded-xl bg-[#d9dee3] px-3 py-3 text-center text-sm font-bold text-[#6b7684]'
+          >
+            {lang === 'hi' ? 'आवेदन बंद' : 'Applications Closed'}
+          </span>
+        ) : (
+          <Link
+            href={`/apply/${category.slug}`}
+            className='flex items-center justify-center gap-1.5 rounded-xl bg-[#092b52] px-3 py-3 text-center text-sm font-bold text-white shadow-2xs transition hover:bg-[#061e3a] active:scale-[0.98]'
+          >
+            <span>{lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}</span>
+            <span className='text-sm font-black'>→</span>
+          </Link>
+        )}
         <Link
           href={`/categories/${category.slug}`}
           className='flex items-center justify-center rounded-xl border border-[#d6dfe6] bg-white px-3 py-3 text-center text-sm font-bold text-[#092b52] transition hover:border-[#b4c5d5] hover:bg-[#f5f8fb] active:scale-[0.98]'
