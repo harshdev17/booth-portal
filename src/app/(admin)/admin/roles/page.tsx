@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { query } from '@/lib/db/client'
 import { getPermissionGroup, getPermissionLabel, PERMISSION_GROUP_ORDER } from '@/lib/rbac/permission-labels'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
+import AddStaffUserDialog from '@/views/admin/roles/AddStaffUserDialog'
 import PermissionToggle from '@/views/admin/roles/PermissionToggle'
 
 export const metadata: Metadata = {
@@ -114,11 +115,18 @@ const RolesAdminPage = async () => {
       </Card>
 
       <Card className='shadow-xs'>
-        <CardHeader className='border-b bg-muted/40 py-4'>
-          <CardTitle className='text-base font-bold text-[#0c2847]'>Admin Users</CardTitle>
-          <CardDescription className='text-xs'>
-            {users.length} account(s).
-          </CardDescription>
+        <CardHeader className='border-b bg-muted/40 py-4 flex flex-row items-center justify-between gap-3'>
+          <div>
+            <CardTitle className='text-base font-bold text-[#0c2847]'>Admin Users</CardTitle>
+            <CardDescription className='text-xs'>
+              {users.length} account(s).
+            </CardDescription>
+          </div>
+          {canManage && (
+            <AddStaffUserDialog
+              permissions={permissions.map(p => ({ id: p.id, key: p.key, description: p.description }))}
+            />
+          )}
         </CardHeader>
         <CardContent className='p-0'>
           {users.length === 0 ? (
