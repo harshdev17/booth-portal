@@ -226,6 +226,10 @@ export default function CategoryFeeSettingsClient({
     )
   }
 
+  const handleSelectionMethodChange = (categoryId: number, value: string) => {
+    setCategories(prev => prev.map(c => (c.id === categoryId ? { ...c, selection_method: value } : c)))
+  }
+
   const handleGstChange = (categoryId: number, value: string) => {
     const gst = value === '' ? null : Math.max(0, Math.min(100, Number(value)))
 
@@ -254,7 +258,8 @@ export default function CategoryFeeSettingsClient({
           categoryId: cat.id,
           feeBasePaise: cat.fee_base_paise,
           gstPercent: cat.gst_percent !== null ? Number(cat.gst_percent) : null,
-          feePaise: cat.fee_paise
+          feePaise: cat.fee_paise,
+          selectionMethod: cat.selection_method
         })
       })
 
@@ -554,9 +559,25 @@ export default function CategoryFeeSettingsClient({
                           <span className='font-mono text-[11px] text-muted-foreground'>{cat.slug}</span>
                         </td>
                         <td className='py-4 px-4'>
-                          <span className='rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800 capitalize'>
-                            {cat.selection_method.replace('_', ' ')}
-                          </span>
+                          {/* This is a structural/business-logic value, not display
+                              text — draw-service.ts, the payment flow, and the
+                              public CategoryCard all branch on it. Changing it on
+                              a category that already has applications/a draw/an
+                              allotment in progress can put that category into an
+                              inconsistent state, so this is a deliberate,
+                              admin-only, explicit action — never changed as a
+                              side effect of anything else. */}
+                          <select
+                            value={cat.selection_method}
+                            onChange={e => handleSelectionMethodChange(cat.id, e.target.value)}
+                            className='rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 capitalize'
+                          >
+                            <option value='draw'>Draw</option>
+                            <option value='manual'>Manual</option>
+                            <option value='auction'>Auction</option>
+                            <option value='tender'>Tender</option>
+                            <option value='application_fee'>Application Fee</option>
+                          </select>
                         </td>
                         <td className='py-4 px-4'>
                           <div className='relative'>
