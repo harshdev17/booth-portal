@@ -21,7 +21,7 @@ type AppRow = {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requirePermission('payment:reminder')
+  const session = await requirePermission('application:view')
 
   const { id } = await params
   const applicationId = decodeId(id) ?? (Number.isInteger(Number(id)) && Number(id) > 0 ? Number(id) : null)

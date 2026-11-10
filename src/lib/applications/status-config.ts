@@ -18,15 +18,7 @@ export const APPLICATION_STATUS_CONFIG: Record<string, { label: string; color: s
   payment_required: { label: 'Payment Required', color: 'bg-amber-100 text-amber-800' },
   allotted: { label: 'Allotted', color: 'bg-emerald-100 text-emerald-800' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
-  re_allotted: { label: 'Re-allotted', color: 'bg-purple-100 text-purple-800' },
-
-  // Auction payment flow (migration 0077) — categories with
-  // selection_method = 'auction' (e.g. Refreshment) go through these 3
-  // intermediate states between a draw win and the normal 'allotted' end
-  // state, instead of the usual payment_required -> allotted path.
-  selected_for_auction: { label: 'Selected for Auction', color: 'bg-indigo-100 text-indigo-800' },
-  auction_fee_paid: { label: 'Auction Fee Paid', color: 'bg-cyan-100 text-cyan-800' },
-  auction_won: { label: 'Auction Won — Payment Pending', color: 'bg-amber-100 text-amber-800' }
+  re_allotted: { label: 'Re-allotted', color: 'bg-purple-100 text-purple-800' }
 }
 
 export function getApplicationStatusConfig(status: string) {

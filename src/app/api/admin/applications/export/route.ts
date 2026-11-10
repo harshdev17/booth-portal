@@ -21,10 +21,7 @@ const QUICK_FILTERS: Record<string, string[]> = {
   under_review: ['under_review', 'payment_success'],
   query_raised: ['query_raised'],
   selected: ['selected', 'allotted', 're_allotted'],
-  rejected: ['rejected', 'not_selected', 'cancelled'],
-  // Auction Payment Flow (migration 0077) — matches the same bucket
-  // (admin)/admin/applications/page.tsx's "Auction In Progress" tab uses.
-  auction: ['selected_for_auction', 'auction_fee_paid', 'auction_won']
+  rejected: ['rejected', 'not_selected', 'cancelled']
 }
 
 const CSV_COLUMNS: Array<{ key: string; label: string }> = [

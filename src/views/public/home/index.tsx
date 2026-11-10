@@ -18,7 +18,6 @@ interface CachedHomeData {
     allotmentAmountNote: string | null
     allotmentAmountNoteHi: string | null
     availableShopsCount: number
-    isApplicationClosed: boolean
   }>
   eventStartsOn: string | null
   eventEndsOn: string | null
@@ -81,10 +80,7 @@ const PublicHome = async () => {
       allotmentAmountPaise: category.allotment_amount_paise,
       allotmentAmountNote: category.allotment_amount_note,
       allotmentAmountNoteHi: category.allotment_amount_note_hi,
-      availableShopsCount: availableCountByCategory.get(category.id) ?? 0,
-      isApplicationClosed: Boolean(
-        category.application_closes_at && new Date(category.application_closes_at) < new Date()
-      )
+      availableShopsCount: availableCountByCategory.get(category.id) ?? 0
     }
   })
 

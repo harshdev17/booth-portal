@@ -297,38 +297,6 @@ export function buildEmailContent(
         link: allotmentLetterUrl
       }
       break
-    case 'auction_fee_activation':
-      c = {
-        subject: `Auction Participation: Complete Fee Payment for application ${appNo}`,
-        en: [
-          `Dear ${name},`,
-          `Congratulations! Your application ${appNo} has been selected in the draw for the physical auction round for International Geeta Jayanti Mahotsav 2026.`,
-          'Please complete the auction participation fee payment using the link below. Once paid, you will be invited to the physical auction conducted by Kurukshetra Development Board (KDB).'
-        ],
-        hi: [
-          `प्रिय ${name},`,
-          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत भौतिक नीलामी (Physical Auction) राउंड हेतु ड्रा (Draw) में आपके आवेदन ${appNo} का चयन हुआ है।`,
-          'कृपया नीचे दिए गए लिंक से नीलामी भागीदारी शुल्क (Auction Participation Fee) का भुगतान पूर्ण करें। भुगतान के बाद आपको कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आयोजित भौतिक नीलामी हेतु आमंत्रित किया जाएगा।'
-        ],
-        link: statusUrl
-      }
-      break
-    case 'auction_final_payment':
-      c = {
-        subject: `Auction Won: Complete Final Payment for application ${appNo}`,
-        en: [
-          `Dear ${name},`,
-          `Congratulations! You have won a booth/stall for application ${appNo} at the physical auction conducted by Kurukshetra Development Board (KDB) for International Geeta Jayanti Mahotsav 2026.`,
-          `Please complete your final auction payment of Rs. ${third} using the link below to confirm your stall and download your official Allotment Letter.`
-        ],
-        hi: [
-          `प्रिय ${name},`,
-          `बधाई हो! कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आयोजित अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 की भौतिक नीलामी में आपके आवेदन ${appNo} हेतु बूथ/स्टॉल प्राप्त हुआ है।`,
-          `कृपया अपना स्टॉल सुनिश्चित करने और आधिकारिक आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से रु. ${third} का अंतिम नीलामी भुगतान पूर्ण करें।`
-        ],
-        link: statusUrl
-      }
-      break
     case 'reminder':
       c = {
         subject: `Payment Reminder: Complete Booth/Stall Fee for application ${appNo}`,
@@ -386,12 +354,6 @@ export function buildEmailContent(
     buttonColor = '#d97706'
   } else if (category === 'pay_now_activation') {
     buttonLabel = 'Pay Stall Fee (Draw) / स्टॉल शुल्क भुगतान करें'
-    buttonColor = '#d97706'
-  } else if (category === 'auction_fee_activation') {
-    buttonLabel = 'Pay Auction Participation Fee / नीलामी भागीदारी शुल्क भुगतान करें'
-    buttonColor = '#d97706'
-  } else if (category === 'auction_final_payment') {
-    buttonLabel = 'Pay Final Auction Amount / अंतिम नीलामी राशि भुगतान करें'
     buttonColor = '#d97706'
   } else if (category === 'payment_confirmation') {
     buttonLabel = 'View Receipt & Status / रसीद एवं स्थिति देखें'

@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
-import { notifyAuctionFeePaymentSuccess } from '@/lib/notifications/application-status'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
 import { notifyAllotmentPaymentSuccess, notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 import { getPaymentByRazorpayOrderId, recordCheckoutFailure, recordCheckoutSuccess } from '@/lib/payments/payment-records'
@@ -150,10 +149,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ipAddress
     })
 
-    if (payment.purpose === 'pay_now' || payment.purpose === 'auction_final') {
+    if (payment.purpose === 'pay_now') {
       void notifyAllotmentPaymentSuccess(applicationId, payment.amount_paise)
-    } else if (payment.purpose === 'auction_fee') {
-      void notifyAuctionFeePaymentSuccess(applicationId, payment.amount_paise)
     } else {
       void notifyPaymentSuccess(applicationId, payment.amount_paise)
     }

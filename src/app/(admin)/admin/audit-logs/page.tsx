@@ -7,7 +7,6 @@ import { ShieldAlertIcon } from 'lucide-react'
 import TablePagination from '@/components/shared/TablePagination'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { getAuditActionLabel, getRoleDisplayName } from '@/lib/audit/action-labels'
 import { query } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { requirePermission } from '@/lib/rbac/authorize'
@@ -224,16 +223,14 @@ const AuditLogsPage = async ({
                       </td>
                       <td className='py-3 px-4 text-xs'>
                         <p className='font-semibold text-slate-800'>{entry.actor_name ?? 'System'}</p>
-                        <p className='text-muted-foreground'>
-                          {entry.actor_role_key ? getRoleDisplayName(entry.actor_role_key) : '—'}
-                        </p>
+                        <p className='text-muted-foreground'>{entry.actor_role_key ?? '—'}</p>
                       </td>
                       <td className='py-3 px-4'>
-                        <span className='rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 capitalize'>
+                        <span className='rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700'>
                           {entry.module}
                         </span>
                       </td>
-                      <td className='py-3 px-4 text-xs font-semibold text-[#0c2847]'>{getAuditActionLabel(entry.action)}</td>
+                      <td className='py-3 px-4 font-mono text-xs text-[#0c2847]'>{entry.action}</td>
                       <td className='py-3 px-4 text-xs text-muted-foreground'>
                         {entry.entity_type ? `${entry.entity_type} #${entry.entity_id}` : '—'}
                       </td>

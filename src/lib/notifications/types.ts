@@ -17,8 +17,6 @@ export type NotificationCategory =
   | 'direct_allotment_confirmed'
   | 'stall_interchanged'
   | 'reminder'
-  | 'auction_fee_activation'
-  | 'auction_final_payment'
 
 export type SendTemplateMessageInput = {
   category: NotificationCategory

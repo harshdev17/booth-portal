@@ -37,18 +37,6 @@ export default function ExportApplicationsButton({
     q || (status && status !== 'all') || (category && category !== 'all')
   )
 
-  // "Export All" ignores every filter (no category, no status, no search —
-  // see allExportUrl below), so its count/label would be actively
-  // misleading once a category is selected: it previously showed the
-  // CATEGORY's total (totalAll was built from a category-scoped query, see
-  // page.tsx) right next to a button that actually exports every category —
-  // reported live as confusing ("dono mai data hi same aaye ga to iska
-  // matlab kya hai"). Per explicit request, the simplest fix is to not
-  // offer "Export All" at all while a category is selected — only the
-  // category-scoped "Current Filtered View" export makes sense in that
-  // state.
-  const hasCategoryFilter = Boolean(category && category !== 'all')
-
   const filteredParams = new URLSearchParams()
   if (q) filteredParams.set('q', q)
   if (status) filteredParams.set('status', status)
@@ -155,31 +143,29 @@ export default function ExportApplicationsButton({
             </DropdownMenuItem>
           )}
 
-          {!hasCategoryFilter && (
-            <DropdownMenuItem
-              disabled={downloading !== null}
-              onClick={() => void handleExport(allExportUrl, 'all')}
-              className='flex items-start gap-2.5 py-2 cursor-pointer'
-            >
-              {downloading === 'all' ? (
-                <Loader2Icon className='size-4 text-emerald-600 mt-0.5 shrink-0 animate-spin' />
-              ) : (
-                <DatabaseIcon className='size-4 text-emerald-600 mt-0.5 shrink-0' />
-              )}
-              <div>
-                <div className='font-semibold text-slate-800 text-xs'>
-                  Export All Applications (Complete Data)
-                </div>
-                <div className='text-[11px] text-slate-500'>
-                  {downloading === 'all'
-                    ? 'Preparing file…'
-                    : totalAll !== undefined
-                      ? `All ${totalAll} submitted records`
-                      : 'Every application & booth/stall detail'}
-                </div>
+          <DropdownMenuItem
+            disabled={downloading !== null}
+            onClick={() => void handleExport(allExportUrl, 'all')}
+            className='flex items-start gap-2.5 py-2 cursor-pointer'
+          >
+            {downloading === 'all' ? (
+              <Loader2Icon className='size-4 text-emerald-600 mt-0.5 shrink-0 animate-spin' />
+            ) : (
+              <DatabaseIcon className='size-4 text-emerald-600 mt-0.5 shrink-0' />
+            )}
+            <div>
+              <div className='font-semibold text-slate-800 text-xs'>
+                Export All Applications (Complete Data)
               </div>
-            </DropdownMenuItem>
-          )}
+              <div className='text-[11px] text-slate-500'>
+                {downloading === 'all'
+                  ? 'Preparing file…'
+                  : totalAll !== undefined
+                    ? `All ${totalAll} submitted records`
+                    : 'Every application & booth/stall detail'}
+              </div>
+            </div>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
