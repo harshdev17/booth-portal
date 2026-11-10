@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { query } from '@/lib/db/client'
 import { requirePermission, getCurrentUserPermissions } from '@/lib/rbac/authorize'
+import AuctionResultsUploadDialog from '@/views/admin/draw/AuctionResultsUploadDialog'
 import DrawDashboardControl from '@/views/admin/draw/DrawDashboardControl'
 
 export const metadata: Metadata = {
@@ -43,6 +44,12 @@ export default async function DrawProcessPage() {
   await requirePermission('draw:view')
   const permissions = await getCurrentUserPermissions()
   const canRunDraw = !!permissions?.has('draw:run')
+  // Reused for the Auction Results upload (migration 0077's Auction
+  // Payment Flow) — same class of action as Direct Allotment's own
+  // admin-assigns-a-stall flow, so it shares that permission rather than a
+  // new one being invented for this narrower trigger (a CSV instead of a
+  // form).
+  const canUploadAuctionResults = !!permissions?.has('allotment:perform')
 
   // Fetch categories with live eligible candidates & available stalls
   const [categories, pastDraws] = await Promise.all([
@@ -85,6 +92,7 @@ export default async function DrawProcessPage() {
             Provably fair, deterministic randomization engine for oversubscribed commercial booth/stall allotments.
           </p>
         </div>
+        {canUploadAuctionResults && <AuctionResultsUploadDialog />}
       </div>
 
       {/* Interactive Controls (Simulation & Execution) */}

@@ -10,6 +10,7 @@ import {
   CoinsIcon,
   CopyIcon,
   FileTextIcon,
+  GavelIcon,
   Loader2Icon,
   SaveIcon
 } from 'lucide-react'
@@ -46,6 +47,7 @@ type CategoryFeeItem = {
   allotment_amount_paise?: number | null
   allotment_payment_enabled?: number | boolean
   allotment_payment_deadline_at?: string | null
+  auction_participation_fee_paise?: number | null
   description: string | null
   description_hi: string | null
   allotment_amount_note: string | null
@@ -77,6 +79,7 @@ export default function CategoryFeeSettingsClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [expandedContentId, setExpandedContentId] = useState<number | null>(null)
+  const [expandedAuctionId, setExpandedAuctionId] = useState<number | null>(null)
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
@@ -320,6 +323,38 @@ export default function CategoryFeeSettingsClient({
     }
   }
 
+  const handleSaveAuctionFee = async (cat: CategoryFeeItem) => {
+    setSavingId(cat.id)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    const amountPaise =
+      cat.auction_participation_fee_paise !== undefined && cat.auction_participation_fee_paise !== null
+        ? Number(cat.auction_participation_fee_paise)
+        : null
+
+    try {
+      const response = await fetch('/api/admin/categories/auction-fee', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: cat.id, amountPaise })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccessMessage(`Auction Participation Fee for "${cat.name}" updated successfully!`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update auction participation fee.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   const handleSaveContent = async (cat: CategoryFeeItem) => {
     if (!cat.name.trim() || !cat.name_hi?.trim()) {
       setErrorMessage('Category name (English and Hindi) cannot be empty.')
@@ -536,7 +571,9 @@ export default function CategoryFeeSettingsClient({
                   const isSaving = savingId === cat.id
                   const isExpanded = expandedId === cat.id
                   const isContentExpanded = expandedContentId === cat.id
+                  const isAuctionExpanded = expandedAuctionId === cat.id
                   const hasAllotmentPayment = Boolean(cat.allotment_payment_enabled)
+                  const isAuctionCategory = cat.selection_method === 'auction'
 
                   return (
                     <Fragment key={cat.id}>
@@ -547,6 +584,19 @@ export default function CategoryFeeSettingsClient({
                             {hasAllotmentPayment && (
                               <span className='rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700'>
                                 Allotment Fee ₹{cat.allotment_amount_paise ? (cat.allotment_amount_paise / 100).toLocaleString('en-IN') : 0}
+                              </span>
+                            )}
+                            {isAuctionCategory && (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  cat.auction_participation_fee_paise
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {cat.auction_participation_fee_paise
+                                  ? `Auction Fee ₹${(cat.auction_participation_fee_paise / 100).toLocaleString('en-IN')}`
+                                  : 'Auction Fee Not Set'}
                               </span>
                             )}
                           </div>
@@ -620,6 +670,24 @@ export default function CategoryFeeSettingsClient({
                                 className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                               />
                             </Button>
+                            {isAuctionCategory && (
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => setExpandedAuctionId(isAuctionExpanded ? null : cat.id)}
+                                className={`text-xs font-bold rounded-lg border ${
+                                  cat.auction_participation_fee_paise
+                                    ? 'border-purple-500 text-purple-700 bg-purple-50/50 hover:bg-purple-50'
+                                    : 'border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50'
+                                }`}
+                              >
+                                <GavelIcon className='size-3.5 mr-1.5' />
+                                Auction Fee
+                                <ChevronDownIcon
+                                  className={`size-3.5 ml-1 transition-transform ${isAuctionExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </Button>
+                            )}
                             <Button
                               size='sm'
                               disabled={isSaving}
@@ -915,6 +983,75 @@ export default function CategoryFeeSettingsClient({
                                       <SaveIcon className='size-3.5 mr-1.5' />
                                     )}
                                     Save Allotment Settings
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {isAuctionExpanded && (
+                        <tr key={`${cat.id}-auction`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <GavelIcon className='size-3.5 text-purple-600' />
+                                  Auction Participation Fee for &ldquo;{cat.name}&rdquo; (नीलामी सहभागिता शुल्क)
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  Paid by every draw winner in this category before KDB&apos;s physical auction — separate
+                                  from the final auction-winning amount (which is set per person afterward, from the
+                                  Auction Results upload on the Draw page). A draw cannot be run for this category until
+                                  this fee is set.
+                                </p>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>
+                                    Auction Participation Fee (₹)
+                                  </label>
+                                  <div className='relative'>
+                                    <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+                                    <Input
+                                      type='number'
+                                      min={0}
+                                      value={
+                                        cat.auction_participation_fee_paise !== null &&
+                                        cat.auction_participation_fee_paise !== undefined
+                                          ? cat.auction_participation_fee_paise / 100
+                                          : ''
+                                      }
+                                      onChange={e => {
+                                        const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+
+                                        setCategories(prev =>
+                                          prev.map(c =>
+                                            c.id === cat.id ? { ...c, auction_participation_fee_paise: val } : c
+                                          )
+                                        )
+                                      }}
+                                      placeholder='e.g. 5000'
+                                      className='pl-7 h-9 text-sm'
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className='flex items-end'>
+                                  <Button
+                                    size='sm'
+                                    disabled={isSaving}
+                                    onClick={() => handleSaveAuctionFee(cat)}
+                                    className='w-full bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white h-9'
+                                  >
+                                    {isSaving ? (
+                                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                    ) : (
+                                      <SaveIcon className='size-3.5 mr-1.5' />
+                                    )}
+                                    Save Auction Fee
                                   </Button>
                                 </div>
                               </div>

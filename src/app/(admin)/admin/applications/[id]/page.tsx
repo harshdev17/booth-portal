@@ -14,6 +14,7 @@ import { query } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
+import { getAuditActionLabel, getRoleDisplayName } from '@/lib/audit/action-labels'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -790,7 +791,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             gstPercent={app.gst_percent}
             payment={registrationPayment}
             transactions={registrationTransactions}
-            canManage={!!permissions?.has('payment:view')}
+            canSendReminder={!!permissions?.has('payment:reminder')}
             reminderHistory={reminderLogRows}
           />
         </TabsContent>
@@ -809,7 +810,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
               payment={allotmentPayment}
               transactions={allotmentTransactions}
               drawAllocation={drawAllocationRow}
-              canManage={!!permissions?.has('allotment:perform') || !!permissions?.has('application:approve')}
+              canSendReminder={!!permissions?.has('payment:reminder')}
             />
           </TabsContent>
         )}
@@ -827,12 +828,14 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                   {auditEntries.map(entry => (
                     <div key={entry.id} className='rounded-md border border-border/60 px-3 py-2 text-sm'>
                       <div className='flex items-center justify-between'>
-                        <span className='font-semibold text-[#0c2847]'>{entry.action}</span>
+                        <span className='font-semibold text-[#0c2847]'>{getAuditActionLabel(entry.action)}</span>
                         <span className='text-xs text-muted-foreground'>
                           {new Date(entry.created_at).toLocaleString('en-IN')}
                         </span>
                       </div>
-                      <p className='text-xs text-muted-foreground'>Role: {entry.actor_role_key ?? 'system'}</p>
+                      <p className='text-xs text-muted-foreground'>
+                        By: {entry.actor_role_key ? getRoleDisplayName(entry.actor_role_key) : 'System'}
+                      </p>
                     </div>
                   ))}
                 </div>

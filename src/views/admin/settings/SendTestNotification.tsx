@@ -22,7 +22,9 @@ const CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'direct_allotment_payment', label: 'Direct Allotment Payment' },
   { value: 'direct_allotment_confirmed', label: 'Direct Allotment Confirmed' },
   { value: 'stall_interchanged', label: 'Stall Interchanged' },
-  { value: 'reminder', label: 'Reminder' }
+  { value: 'reminder', label: 'Reminder' },
+  { value: 'auction_fee_activation', label: 'Auction Fee Activation' },
+  { value: 'auction_final_payment', label: 'Auction Final Payment' }
 ]
 
 const initialState: SendTestMessageState = {}

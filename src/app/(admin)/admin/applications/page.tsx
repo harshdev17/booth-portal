@@ -58,7 +58,12 @@ const STATUS_CONFIG: Record<
   approved: { label: 'Approved for Draw', variant: 'default', color: 'bg-emerald-100 text-emerald-800' },
   selected: { label: 'Selected / Allotted', variant: 'default', color: 'bg-purple-100 text-purple-800' },
   rejected: { label: 'Rejected', variant: 'destructive', color: 'bg-red-100 text-red-800' },
-  allotted: { label: 'Allotted', variant: 'default', color: 'bg-teal-100 text-teal-800' }
+  allotted: { label: 'Allotted', variant: 'default', color: 'bg-teal-100 text-teal-800' },
+
+  // Auction Payment Flow (migration 0077) — Refreshment-category draw winners.
+  selected_for_auction: { label: 'Selected for Auction', variant: 'secondary', color: 'bg-indigo-100 text-indigo-800' },
+  auction_fee_paid: { label: 'Auction Fee Paid', variant: 'secondary', color: 'bg-cyan-100 text-cyan-800' },
+  auction_won: { label: 'Auction Won — Payment Pending', variant: 'secondary', color: 'bg-amber-100 text-amber-800' }
 }
 
 // Quick-filter tabs: the `status` URL param maps to one or more stored statuses
@@ -69,6 +74,12 @@ const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> =
   { key: 'selected', label: 'Allotted / Selected', statuses: ['selected', 'allotted', 're_allotted'] },
   { key: 'waitlist', label: 'Waitlist', statuses: [] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] },
+
+  // Auction Payment Flow (migration 0077) — one tab bucketing all 3
+  // intermediate auction states together, so a Refreshment-category draw
+  // winner stays findable in this list at every stage instead of only
+  // being visible in "All".
+  { key: 'auction', label: 'Auction In Progress', statuses: ['selected_for_auction', 'auction_fee_paid', 'auction_won'] },
 
   // Added per explicit request (2026-10-28): the sidebar's per-category
   // count (admin/layout.tsx's getCachedCategoryCounts) counts every
@@ -462,7 +473,7 @@ const ApplicationsAdminPage = async ({
                 Boolean(app.is_direct_allotment) &&
                 app.allotment_payment_status !== 'success' &&
                 app.allotment_payment_status !== 'paid'
-              const isPaymentPending = registrationPending || allotmentPending
+              const isPaymentPending = (registrationPending || allotmentPending) && !!permissions?.has('payment:reminder')
 
               return {
                 ...app,

@@ -60,7 +60,8 @@ export const navItems: NavItem[] = [
       {
         icon: 'LayoutDashboard',
         label: 'Dashboard',
-        href: '/admin/dashboard'
+        href: '/admin/dashboard',
+        permission: 'dashboard:view'
       }
     ]
   },
@@ -117,13 +118,13 @@ export const navItems: NavItem[] = [
         label: 'Draw Process',
         href: '/admin/draw',
         permission: 'draw:view'
-      },
-      {
-        icon: 'ClipboardCheck',
-        label: 'Booth/Stall Allotment',
-        href: '/admin/allotment',
-        permission: 'allotment:perform'
       }
+      // 'Booth/Stall Allotment' (/admin/allotment, Direct Allotment feature)
+      // intentionally removed from the sidebar per explicit request
+      // (2026-11-10, "iska koi use laga nahi mujhe") — the page and its
+      // backend (direct_allotments table, bulk inventory import's "Alloted
+      // To" column) are left fully intact, just not linked from here. Still
+      // reachable directly at /admin/allotment if needed.
     ]
   },
   {

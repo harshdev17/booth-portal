@@ -26,6 +26,7 @@ type CategoryRow = {
   allotment_amount_paise: number | null
   allotment_payment_enabled: number
   allotment_payment_deadline_at: string | null
+  auction_participation_fee_paise: number | null
   description: string | null
   description_hi: string | null
   allotment_amount_note: string | null
@@ -44,7 +45,8 @@ const GeneralSettingsPage = async () => {
             application_opens_at, application_closes_at, auction_date, auction_venue, auction_venue_hi,
             allotment_amount_paise, allotment_payment_enabled, allotment_payment_deadline_at,
             description, description_hi, allotment_amount_note, allotment_amount_note_hi,
-            important_dates_note, important_dates_note_hi, show_on_homepage
+            important_dates_note, important_dates_note_hi, show_on_homepage,
+            auction_participation_fee_paise
      FROM categories
      WHERE status != 'archived'
      ORDER BY display_order ASC`

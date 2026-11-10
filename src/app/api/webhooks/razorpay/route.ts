@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { logAudit } from '@/lib/audit/log'
+import { notifyAuctionFeePaymentSuccess } from '@/lib/notifications/application-status'
 import { notifyAllotmentPaymentSuccess, notifyPaymentSuccess } from '@/lib/notifications/payment-success'
 import {
   getPaymentByRazorpayOrderId,
@@ -99,8 +100,13 @@ export async function POST(request: Request) {
           newValue: { razorpayOrderId: paymentEntity.order_id, razorpayPaymentId: paymentEntity.id }
         })
 
-        if (payment.purpose === 'pay_now') {
+        if (payment.purpose === 'pay_now' || payment.purpose === 'auction_final') {
+          // Both land on the same 'allotted' end state — auction_final is
+          // just a variable, Excel-supplied amount instead of a fixed
+          // category fee (migration 0077's Auction Payment Flow).
           void notifyAllotmentPaymentSuccess(payment.application_id, payment.amount_paise)
+        } else if (payment.purpose === 'auction_fee') {
+          void notifyAuctionFeePaymentSuccess(payment.application_id, payment.amount_paise)
         } else {
           void notifyPaymentSuccess(payment.application_id, payment.amount_paise)
         }

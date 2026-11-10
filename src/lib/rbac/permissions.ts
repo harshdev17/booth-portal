@@ -6,6 +6,7 @@
  * silently granting/denying nothing at runtime.
  */
 export const PERMISSIONS = [
+  'dashboard:view',
   'application:view',
   'application:approve',
   'application:reject',
@@ -17,6 +18,7 @@ export const PERMISSIONS = [
   'payment:reconcile',
   'payment:refund',
   'payment:activate_paynow',
+  'payment:reminder',
   'inventory:view',
   'inventory:manage',
   'draw:run',

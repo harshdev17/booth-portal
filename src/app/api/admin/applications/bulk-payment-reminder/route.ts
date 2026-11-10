@@ -30,7 +30,7 @@ type AppRow = {
  * still pending", not "send to whatever's selected regardless of status".
  */
 export async function POST(request: Request) {
-  const session = await requirePermission('application:view')
+  const session = await requirePermission('payment:reminder')
 
   let body: { applicationIds?: string[] }
   try {

@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { query } from '@/lib/db/client'
 import { sendNotification } from '@/lib/notifications/service'
 
 // Human-readable label per application status, for the WhatsApp status-update
@@ -14,7 +15,10 @@ const STATUS_LABELS: Record<string, string> = {
   payment_required: 'Payment Required',
   allotted: 'Allotted',
   cancelled: 'Cancelled',
-  re_allotted: 'Re-Allotted'
+  re_allotted: 'Re-Allotted',
+  selected_for_auction: 'Selected for Auction',
+  auction_fee_paid: 'Auction Fee Paid',
+  auction_won: 'Auction Won'
 }
 
 /**
@@ -110,5 +114,101 @@ export async function notifyApplicationRejected(params: {
     templateParams: [params.representativeName, params.applicationNumber, params.reason],
     applicationId: params.applicationId,
     email: params.email
+  })
+}
+
+/**
+ * Sends the "selected for the physical auction, pay the participation fee"
+ * notification — sent instead of the normal pay_now_activation message when
+ * a draw winner's category has selection_method = 'auction' (migration
+ * 0077's Auction Payment Flow). Includes a payment link, same shape as
+ * pay_now_activation's own link in draw-service.ts.
+ */
+export async function notifyAuctionFeeActivation(params: {
+  applicationId: number
+  applicationNumber: string
+  mobileNumber: string
+  email?: string | null
+  representativeName: string
+  payLink: string
+}): Promise<void> {
+  await sendNotification({
+    category: 'auction_fee_activation',
+    destination: params.mobileNumber.startsWith('+') ? params.mobileNumber : `+91${params.mobileNumber}`,
+    userName: params.representativeName,
+    templateParams: [params.representativeName, params.applicationNumber, params.payLink],
+    buttonParam: params.applicationNumber,
+    applicationId: params.applicationId,
+    email: params.email
+  })
+}
+
+/**
+ * Sends the "you won the physical auction, pay your specific final amount"
+ * notification — triggered immediately after the admin's Auction Results
+ * CSV upload matches this application (src/app/api/admin/applications/auction-results/route.ts).
+ * amountRupees is the Excel-supplied, per-person final auction amount, not
+ * a fixed category fee.
+ */
+export async function notifyAuctionFinalPayment(params: {
+  applicationId: number
+  applicationNumber: string
+  mobileNumber: string
+  email?: string | null
+  representativeName: string
+  amountRupees: number
+  payLink: string
+}): Promise<void> {
+  await sendNotification({
+    category: 'auction_final_payment',
+    destination: params.mobileNumber.startsWith('+') ? params.mobileNumber : `+91${params.mobileNumber}`,
+    userName: params.representativeName,
+    templateParams: [params.representativeName, params.applicationNumber, String(params.amountRupees), params.payLink],
+    buttonParam: params.applicationNumber,
+    applicationId: params.applicationId,
+    email: params.email
+  })
+}
+
+/**
+ * Sends the "auction participation fee received" confirmation + moves
+ * status forward — called once the auction_fee payment is confirmed
+ * (checkout verify / webhook / admin reconcile), mirroring
+ * notifyAllotmentPaymentSuccess()'s own shape/signature (looks the
+ * application up itself from just an id + amount) but targeting the new
+ * 'auction_fee_paid' intermediate status instead of 'allotted' (a fee
+ * payment is NOT the end of this flow — the physical auction and a second,
+ * variable-amount payment still follow).
+ */
+export async function notifyAuctionFeePaymentSuccess(applicationId: number, amountPaise: number): Promise<void> {
+  const rows = await query<Array<{ application_number: string; mobile_number: string; representative_name: string; email: string }>>(
+    'SELECT application_number, mobile_number, representative_name, email FROM applications WHERE id = ? LIMIT 1',
+    [applicationId]
+  )
+
+  const application = rows[0]
+
+  if (!application) return
+
+  const destination = `+91${application.mobile_number}`
+
+  if (amountPaise > 0) {
+    await sendNotification({
+      category: 'payment_confirmation',
+      destination,
+      userName: application.representative_name,
+      templateParams: [application.representative_name, application.application_number, String(amountPaise / 100)],
+      applicationId,
+      email: application.email
+    })
+  }
+
+  await notifyApplicationStatusChange({
+    applicationId,
+    applicationNumber: application.application_number,
+    mobileNumber: application.mobile_number,
+    email: application.email,
+    representativeName: application.representative_name,
+    newStatus: 'auction_fee_paid'
   })
 }

@@ -30,7 +30,9 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
   direct_allotment_payment: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT',
   direct_allotment_confirmed: 'AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED',
   stall_interchanged: 'AISENSY_CAMPAIGN_STALL_INTERCHANGED',
-  reminder: 'AISENSY_CAMPAIGN_REMINDER'
+  reminder: 'AISENSY_CAMPAIGN_REMINDER',
+  auction_fee_activation: 'AISENSY_CAMPAIGN_AUCTION_FEE_ACTIVATION',
+  auction_final_payment: 'AISENSY_CAMPAIGN_AUCTION_FINAL_PAYMENT'
 }
 
 function getCampaignName(category: NotificationCategory): string | null {
@@ -80,6 +82,11 @@ function getCampaignName(category: NotificationCategory): string | null {
       null
     )
   }
+  // auction_fee_activation / auction_final_payment: no fallback, same
+  // reasoning as pay_now_activation/direct_allotment_payment above — both
+  // carry a payment link/amount that the generic status_update template has
+  // no slot for. Until each dedicated template is approved, the send fails
+  // safely (logged, not thrown).
   return process.env[CAMPAIGN_ENV_VAR[category]] || null
 }
 

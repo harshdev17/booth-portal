@@ -46,13 +46,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const authHeader = request.headers.get('authorization')
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
 
-  let requestedPurpose: 'registration' | 'pay_now' = 'registration'
+  let requestedPurpose: 'registration' | 'pay_now' | 'auction_fee' | 'auction_final' = 'registration'
   try {
     const rawBody = await request.text()
     if (rawBody) {
       const parsedBody = JSON.parse(rawBody)
-      if (parsedBody?.purpose === 'pay_now') {
-        requestedPurpose = 'pay_now'
+      if (
+        parsedBody?.purpose === 'pay_now' ||
+        parsedBody?.purpose === 'auction_fee' ||
+        parsedBody?.purpose === 'auction_final'
+      ) {
+        requestedPurpose = parsedBody.purpose
       }
     }
   } catch {
@@ -164,6 +168,139 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         applicationNumber: application.application_number,
         categoryName: category?.name ?? 'Stall Allotment',
         purpose: 'pay_now'
+      })
+    }
+
+    // Auction Payment Flow (migration 0077) — categories with
+    // selection_method = 'auction' (currently only Refreshment) skip the
+    // normal pay_now path above entirely (draw-service.ts sends them to
+    // 'selected_for_auction' instead of 'payment_required'). Two distinct
+    // payments here: a fixed-per-category participation fee first, then a
+    // variable per-person final amount after the physical auction.
+    if (requestedPurpose === 'auction_fee') {
+      if (application.status !== 'selected_for_auction') {
+        return NextResponse.json(
+          { error: `This application is "${application.status}" and does not require an auction participation fee payment.` },
+          { status: 409 }
+        )
+      }
+
+      const categoryRows = await query<Array<{ name: string; auction_participation_fee_paise: number | null }>>(
+        `SELECT name, auction_participation_fee_paise FROM categories WHERE id = ? LIMIT 1`,
+        [application.category_id]
+      )
+
+      const category = categoryRows[0]
+
+      if (!category || !category.auction_participation_fee_paise || category.auction_participation_fee_paise <= 0) {
+        return NextResponse.json(
+          { error: 'Auction participation fee is not configured for this category yet. Please contact the administration.' },
+          { status: 409 }
+        )
+      }
+
+      const amountPaise = Number(category.auction_participation_fee_paise)
+
+      const order = await createRazorpayOrder({
+        amountPaise,
+        receipt: `${application.application_number}-AUCFEE`,
+        notes: { applicationId: String(applicationId), purpose: 'auction_fee' }
+      })
+
+      await recordOrderCreated({
+        applicationId,
+        purpose: 'auction_fee',
+        amountPaise,
+        razorpayOrderId: order.id
+      })
+
+      await logAudit({
+        actorUserId: null,
+        actorRoleKey: null,
+        action: 'payment.order_created',
+        module: 'payments',
+        entityType: 'application',
+        entityId: String(applicationId),
+        newValue: { razorpayOrderId: order.id, amountPaise, purpose: 'auction_fee' },
+        ipAddress
+      })
+
+      return NextResponse.json({
+        orderId: order.id,
+        amountPaise,
+        currency: order.currency,
+        keyId: getRazorpayKeyId(),
+        applicationNumber: application.application_number,
+        categoryName: category.name,
+        purpose: 'auction_fee'
+      })
+    }
+
+    if (requestedPurpose === 'auction_final') {
+      if (application.status !== 'auction_won') {
+        return NextResponse.json(
+          { error: `This application is "${application.status}" and does not require a final auction payment.` },
+          { status: 409 }
+        )
+      }
+
+      // Amount is NEVER computed here — it is the exact figure the admin
+      // supplied in the Auction Results CSV upload (varies per applicant,
+      // decided at the physical auction), already seeded into this
+      // application's 'auction_final' payments row by that upload
+      // (src/app/api/admin/applications/auction-results/route.ts). Same
+      // "read the pre-seeded amount, never recompute it" pattern pay_now
+      // already uses above for direct-allotment candidates.
+      const existingPayments = await query<Array<{ amount_paise: number }>>(
+        `SELECT amount_paise FROM payments WHERE application_id = ? AND purpose = 'auction_final' LIMIT 1`,
+        [applicationId]
+      )
+
+      const amountPaise = existingPayments[0]?.amount_paise ? Number(existingPayments[0].amount_paise) : 0
+
+      if (amountPaise <= 0) {
+        return NextResponse.json(
+          { error: 'Your final auction amount has not been recorded yet. Please contact the administration.' },
+          { status: 409 }
+        )
+      }
+
+      const categoryRows = await query<Array<{ name: string }>>(`SELECT name FROM categories WHERE id = ? LIMIT 1`, [
+        application.category_id
+      ])
+
+      const order = await createRazorpayOrder({
+        amountPaise,
+        receipt: `${application.application_number}-AUCFINAL`,
+        notes: { applicationId: String(applicationId), purpose: 'auction_final' }
+      })
+
+      await recordOrderCreated({
+        applicationId,
+        purpose: 'auction_final',
+        amountPaise,
+        razorpayOrderId: order.id
+      })
+
+      await logAudit({
+        actorUserId: null,
+        actorRoleKey: null,
+        action: 'payment.order_created',
+        module: 'payments',
+        entityType: 'application',
+        entityId: String(applicationId),
+        newValue: { razorpayOrderId: order.id, amountPaise, purpose: 'auction_final' },
+        ipAddress
+      })
+
+      return NextResponse.json({
+        orderId: order.id,
+        amountPaise,
+        currency: order.currency,
+        keyId: getRazorpayKeyId(),
+        applicationNumber: application.application_number,
+        categoryName: categoryRows[0]?.name ?? 'Stall Allotment',
+        purpose: 'auction_final'
       })
     }
 

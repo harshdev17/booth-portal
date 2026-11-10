@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { login as loginUser } from '@/lib/auth/login'
 import { destroySession } from '@/lib/auth/session'
 import { isRateLimited } from '@/lib/auth/rate-limit'
+import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email is required').email('Enter a valid email address'),
@@ -30,6 +31,25 @@ async function getRequestMeta() {
   const userAgent = headerList.get('user-agent') ?? undefined
 
   return { ipAddress, userAgent }
+}
+
+/**
+ * Picks the first page an account can actually open, in rough order of how
+ * central each is to day-to-day use — /admin/dashboard is gated by its own
+ * 'dashboard:view' permission (migration 0075) and is no longer safe to
+ * assume every logged-in account can reach.
+ */
+export async function getPostLoginRedirect(): Promise<string> {
+  const permissions = await getCurrentUserPermissions()
+
+  if (permissions?.has('dashboard:view')) return '/admin/dashboard'
+  if (permissions?.has('application:view')) return '/admin/applications'
+  if (permissions?.has('document:verify')) return '/admin/documents'
+  if (permissions?.has('payment:view')) return '/admin/payments'
+  if (permissions?.has('inventory:view')) return '/admin/inventory'
+  if (permissions?.has('report:view')) return '/admin/reports'
+
+  return '/admin/dashboard'
 }
 
 export async function loginAction(_prevState: LoginFormState, formData: FormData): Promise<LoginFormState> {
@@ -73,7 +93,7 @@ export async function loginAction(_prevState: LoginFormState, formData: FormData
     redirect('/police/dashboard')
   }
 
-  redirect('/admin/dashboard')
+  redirect(await getPostLoginRedirect())
 }
 
 export async function logoutAction() {

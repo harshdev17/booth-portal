@@ -7,7 +7,7 @@ import type { PoolConnection } from 'mysql2/promise'
 import { getPool } from '@/lib/db/client'
 import { ProvablyFairRandom } from '@/lib/draw/provably-fair'
 import { logAudit } from '@/lib/audit/log'
-import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
+import { notifyApplicationStatusChange, notifyAuctionFeeActivation } from '@/lib/notifications/application-status'
 import { sendNotification } from '@/lib/notifications/service'
 
 export interface DrawSimulationParams {
@@ -186,12 +186,27 @@ export class LuckyDrawService {
 
       // 1. Lock category
       const [categoryRows] = await conn.query<any[]>(
-        `SELECT id, name, allotment_payment_enabled, allotment_payment_deadline_at, allotment_amount_paise FROM categories WHERE id = ? FOR UPDATE`,
+        `SELECT id, name, selection_method, allotment_payment_enabled, allotment_payment_deadline_at,
+                allotment_amount_paise, auction_participation_fee_paise
+         FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
 
       if (!categoryRows.length) throw new Error('Category not found.')
       const category = categoryRows[0]
+      const isAuctionCategory = category.selection_method === 'auction'
+
+      // Auction Payment Flow (migration 0077) requires an admin-configured
+      // participation fee before a draw can run for this category — never
+      // fall back to a hardcoded/zero amount (CLAUDE.md §5: no hardcoded
+      // business values). This check happens before any DB mutation below,
+      // so a misconfigured category fails the whole draw cleanly instead of
+      // allotting winners with no way to collect their participation fee.
+      if (isAuctionCategory && (!category.auction_participation_fee_paise || Number(category.auction_participation_fee_paise) <= 0)) {
+        throw new Error(
+          'This category uses the auction selection method but has no Auction Participation Fee configured yet. Set it in category settings before running this draw.'
+        )
+      }
 
       // 2. Fetch & lock eligible candidates (approved by committee, non-allotted)
       const [candidates] = await conn.query<any[]>(
@@ -357,24 +372,48 @@ export class LuckyDrawService {
       }
 
       // 10. Update Allotted Stalls (associate stall with allotted application)
-      const isPaymentRequired = Boolean(
-        category.allotment_payment_enabled &&
-        category.allotment_amount_paise &&
-        Number(category.allotment_amount_paise) > 0
-      )
-      const stallStatus = isPaymentRequired ? 'reserved' : 'allotted'
-      const applicationNewStatus = isPaymentRequired ? 'payment_required' : 'allotted'
-
-      for (let idx = 0; idx < allottedCount; idx++) {
-        const stall = shuffledStalls[idx]
-        const candidate = shuffledCandidates[idx]
-
-        await conn.query(
-          `UPDATE shop_units 
-           SET status = ?, allotted_to_application_id = ? 
-           WHERE id = ?`,
-          [stallStatus, candidate.applicationId, stall.shopUnitId]
+      //
+      // Auction Payment Flow (migration 0077): a category with
+      // selection_method = 'auction' (e.g. Refreshment) does NOT assign a
+      // specific stall to a winner here — the draw only decides WHO is
+      // invited to the physical auction, not which stall they get. Stalls
+      // stay 'available' and un-assigned; the admin's later Auction
+      // Results CSV upload (src/app/api/admin/applications/auction-results/route.ts)
+      // is what actually assigns a stall per winner, after the physical
+      // auction has happened. So for an auction category, step 10's
+      // shop_units update is skipped entirely.
+      // Forced false for an auction category regardless of its
+      // allotment_payment_enabled/allotment_amount_paise configuration —
+      // those columns drive the UNRELATED normal pay_now path, and an
+      // auction category must only ever go through the auction_fee path
+      // below. Guards against both notifications firing if a category were
+      // ever misconfigured with both set.
+      const isPaymentRequired =
+        !isAuctionCategory &&
+        Boolean(
+          category.allotment_payment_enabled &&
+          category.allotment_amount_paise &&
+          Number(category.allotment_amount_paise) > 0
         )
+      const stallStatus = isPaymentRequired ? 'reserved' : 'allotted'
+      const applicationNewStatus = isAuctionCategory
+        ? 'selected_for_auction'
+        : isPaymentRequired
+          ? 'payment_required'
+          : 'allotted'
+
+      if (!isAuctionCategory) {
+        for (let idx = 0; idx < allottedCount; idx++) {
+          const stall = shuffledStalls[idx]
+          const candidate = shuffledCandidates[idx]
+
+          await conn.query(
+            `UPDATE shop_units
+             SET status = ?, allotted_to_application_id = ?
+             WHERE id = ?`,
+            [stallStatus, candidate.applicationId, stall.shopUnitId]
+          )
+        }
       }
 
       // 11. Update Applications Status
@@ -384,8 +423,22 @@ export class LuckyDrawService {
           [applicationNewStatus, allottedAppIds]
         )
 
-        // Seed initial payment record for each winner if payment is required
-        if (isPaymentRequired) {
+        // Seed initial payment record for each winner if payment is required.
+        // Auction categories seed an 'auction_fee' row instead of 'pay_now' —
+        // same seeding mechanism, different purpose/amount source (the
+        // category's auction_participation_fee_paise, validated non-null/
+        // positive earlier in step 1, not allotment_amount_paise).
+        if (isAuctionCategory) {
+          const amountPaise = Number(category.auction_participation_fee_paise)
+          for (const appId of allottedAppIds) {
+            await conn.query(
+              `INSERT INTO payments (application_id, purpose, amount_paise, status)
+               VALUES (?, 'auction_fee', ?, 'not_initiated')
+               ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
+              [appId, amountPaise, amountPaise]
+            )
+          }
+        } else if (isPaymentRequired) {
           const amountPaise = Number(category.allotment_amount_paise)
           for (const appId of allottedAppIds) {
             await conn.query(
@@ -400,8 +453,8 @@ export class LuckyDrawService {
 
       // 12. Update Draw Event Totals
       await conn.query(
-        `UPDATE draw_events 
-         SET total_allotted = ?, total_waitlisted = ? 
+        `UPDATE draw_events
+         SET total_allotted = ?, total_waitlisted = ?
          WHERE id = ?`,
         [allottedCount, waitlistCount, drawEventId]
       )
@@ -414,16 +467,34 @@ export class LuckyDrawService {
       // waitlisted and unallocated candidates receive no draw notification.
       await Promise.allSettled(
         shuffledCandidates.slice(0, allottedCount).flatMap(candidate => {
-          const promises: Promise<unknown>[] = [
-            notifyApplicationStatusChange({
-              applicationId: candidate.applicationId,
-              applicationNumber: candidate.applicationNumber,
-              mobileNumber: candidate.mobileNumber,
-              email: candidate.email,
-              representativeName: candidate.representativeName,
-              newStatus: applicationNewStatus
-            })
-          ]
+          const promises: Promise<unknown>[] = isAuctionCategory
+            ? []
+            : [
+                notifyApplicationStatusChange({
+                  applicationId: candidate.applicationId,
+                  applicationNumber: candidate.applicationNumber,
+                  mobileNumber: candidate.mobileNumber,
+                  email: candidate.email,
+                  representativeName: candidate.representativeName,
+                  newStatus: applicationNewStatus
+                })
+              ]
+
+          if (isAuctionCategory) {
+            const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+            const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
+
+            promises.push(
+              notifyAuctionFeeActivation({
+                applicationId: candidate.applicationId,
+                applicationNumber: candidate.applicationNumber,
+                mobileNumber: candidate.mobileNumber,
+                email: candidate.email,
+                representativeName: candidate.representativeName,
+                payLink
+              })
+            )
+          }
 
           if (isPaymentRequired) {
             const destination = candidate.mobileNumber.startsWith('+')

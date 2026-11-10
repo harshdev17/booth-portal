@@ -83,6 +83,17 @@ export type DocumentDefinitionRow = {
  * to via its direct URL. khadi-other-reserved is the first category using
  * `show_on_homepage = 0` for exactly that: open for direct application, but
  * intentionally absent from the homepage grid (migration 0064).
+ *
+ * Previously also excluded a category once application_closes_at had
+ * passed — the card just vanished from the grid with no explanation.
+ * Reported live: "home page pe jo cards hai vo application close pe hide
+ * hore hai, but vo hide na karke Apply Now button ki jagah proper msg aana
+ * chahiye." Now a closed-but-otherwise-eligible category is still
+ * returned (so its card keeps showing) — the caller decides what to render
+ * based on `application_closes_at`/`application_opens_at` compared against
+ * "now" itself. A category that hasn't opened YET (application_opens_at in
+ * the future) is still excluded here — nothing to show "closed" about yet,
+ * and revealing an unopened category's card early isn't what was asked for.
  */
 export async function listOpenCategories(): Promise<CategoryRow[]> {
   return query<CategoryRow[]>(
@@ -90,7 +101,6 @@ export async function listOpenCategories(): Promise<CategoryRow[]> {
      WHERE status = 'open'
        AND show_on_homepage = 1
        AND (application_opens_at IS NULL OR application_opens_at <= NOW())
-       AND (application_closes_at IS NULL OR application_closes_at >= NOW())
      ORDER BY display_order ASC`
   )
 }
