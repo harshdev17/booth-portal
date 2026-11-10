@@ -1,12 +1,15 @@
 'use client'
 
+import { useState } from 'react'
+
 import { useSearchParams } from 'next/navigation'
-import { DownloadIcon, ChevronDownIcon, FileSpreadsheetIcon, DatabaseIcon } from 'lucide-react'
+import { DownloadIcon, ChevronDownIcon, FileSpreadsheetIcon, DatabaseIcon, Loader2Icon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -23,6 +26,8 @@ export default function ExportApplicationsButton({
   totalAll
 }: ExportApplicationsButtonProps) {
   const searchParams = useSearchParams()
+  const [downloading, setDownloading] = useState<'filtered' | 'all' | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const q = searchParams.get('q')
   const status = searchParams.get('status')
@@ -40,6 +45,48 @@ export default function ExportApplicationsButton({
   const filteredExportUrl = `/api/admin/applications/export?${filteredParams.toString()}`
   const allExportUrl = '/api/admin/applications/export?all=true'
 
+  /**
+   * A plain `<a href download>` gives no feedback while the server builds
+   * the CSV (a multi-second wait for a few thousand rows) — the button just
+   * sits there with nothing visibly happening, reported live as "export
+   * click karta hoon to time leta hai aur koi loader nahi aata." Fetching
+   * the CSV as a blob lets this show a spinner for that wait, then trigger
+   * the save via a short-lived object URL instead of a real link.
+   */
+  const handleExport = async (url: string, which: 'filtered' | 'all') => {
+    setDownloading(which)
+    setError(null)
+
+    try {
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        setError('Export failed. Please try again.')
+
+        return
+      }
+
+      const disposition = response.headers.get('Content-Disposition') ?? ''
+      const filenameMatch = disposition.match(/filename="([^"]+)"/)
+      const filename = filenameMatch ? filenameMatch[1] : 'applications-export.csv'
+
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+
+      link.href = objectUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(objectUrl)
+    } catch {
+      setError('Could not reach the server. Please try again.')
+    } finally {
+      setDownloading(null)
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -50,58 +97,76 @@ export default function ExportApplicationsButton({
           />
         }
       >
-        <DownloadIcon className='size-4 text-[#0c2847]' />
-        <span>Export to CSV</span>
+        {downloading ? (
+          <Loader2Icon className='size-4 text-[#0c2847] animate-spin' />
+        ) : (
+          <DownloadIcon className='size-4 text-[#0c2847]' />
+        )}
+        <span>{downloading ? 'Preparing export…' : 'Export to CSV'}</span>
         <ChevronDownIcon className='size-3.5 opacity-60 ml-0.5' />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align='end' className='w-64'>
-        <DropdownMenuLabel className='text-xs font-semibold text-slate-500'>
-          Export Applications Data
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className='text-xs font-semibold text-slate-500'>
+            Export Applications Data
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-        {hasActiveFilters && (
+          {error && (
+            <div className='px-2 py-1.5 text-[11px] font-medium text-red-600'>{error}</div>
+          )}
+
+          {hasActiveFilters && (
+            <DropdownMenuItem
+              disabled={downloading !== null}
+              onClick={() => void handleExport(filteredExportUrl, 'filtered')}
+              className='flex items-start gap-2.5 py-2 cursor-pointer'
+            >
+              {downloading === 'filtered' ? (
+                <Loader2Icon className='size-4 text-blue-600 mt-0.5 shrink-0 animate-spin' />
+              ) : (
+                <FileSpreadsheetIcon className='size-4 text-blue-600 mt-0.5 shrink-0' />
+              )}
+              <div>
+                <div className='font-semibold text-slate-800 text-xs'>
+                  Export Current Filtered View
+                </div>
+                <div className='text-[11px] text-slate-500'>
+                  {downloading === 'filtered'
+                    ? 'Preparing file…'
+                    : totalFiltered !== undefined
+                      ? `${totalFiltered} records`
+                      : 'Matching active filters'}
+                </div>
+              </div>
+            </DropdownMenuItem>
+          )}
+
           <DropdownMenuItem
-            render={
-              <a
-                href={filteredExportUrl}
-                download
-                className='flex items-start gap-2.5 py-2 cursor-pointer'
-              />
-            }
+            disabled={downloading !== null}
+            onClick={() => void handleExport(allExportUrl, 'all')}
+            className='flex items-start gap-2.5 py-2 cursor-pointer'
           >
-            <FileSpreadsheetIcon className='size-4 text-blue-600 mt-0.5 shrink-0' />
+            {downloading === 'all' ? (
+              <Loader2Icon className='size-4 text-emerald-600 mt-0.5 shrink-0 animate-spin' />
+            ) : (
+              <DatabaseIcon className='size-4 text-emerald-600 mt-0.5 shrink-0' />
+            )}
             <div>
               <div className='font-semibold text-slate-800 text-xs'>
-                Export Current Filtered View
+                Export All Applications (Complete Data)
               </div>
               <div className='text-[11px] text-slate-500'>
-                {totalFiltered !== undefined ? `${totalFiltered} records` : 'Matching active filters'}
+                {downloading === 'all'
+                  ? 'Preparing file…'
+                  : totalAll !== undefined
+                    ? `All ${totalAll} submitted records`
+                    : 'Every application & booth/stall detail'}
               </div>
             </div>
           </DropdownMenuItem>
-        )}
-
-        <DropdownMenuItem
-          render={
-            <a
-              href={allExportUrl}
-              download
-              className='flex items-start gap-2.5 py-2 cursor-pointer'
-            />
-          }
-        >
-          <DatabaseIcon className='size-4 text-emerald-600 mt-0.5 shrink-0' />
-          <div>
-            <div className='font-semibold text-slate-800 text-xs'>
-              Export All Applications (Complete Data)
-            </div>
-            <div className='text-[11px] text-slate-500'>
-              {totalAll !== undefined ? `All ${totalAll} submitted records` : 'Every application & booth/stall detail'}
-            </div>
-          </div>
-        </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

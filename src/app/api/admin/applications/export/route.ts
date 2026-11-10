@@ -1,10 +1,21 @@
 import { type NextRequest } from 'next/server'
 
 import { logAudit } from '@/lib/audit/log'
+import { getApplicationStatusConfig, getPaymentStatusConfig } from '@/lib/applications/status-config'
 import { query } from '@/lib/db/client'
 import { toCsvField } from '@/lib/export/csv'
 import { requireAnyPermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
+
+// Reads request.nextUrl.searchParams, so this route's output genuinely
+// depends on the request — force-dynamic rules out the exact failure mode
+// already found once in this codebase (see /status page, 2026-11-07): a
+// route Next.js statically prerenders ships ONE cached response/nonce for
+// every request, which can misbehave in production in ways dev never
+// reproduces. Every other working CSV export route in this app has no
+// request-dependent input at all, so this route was the only CSV export
+// actually exposed to that risk.
+export const dynamic = 'force-dynamic'
 
 const QUICK_FILTERS: Record<string, string[]> = {
   under_review: ['under_review', 'payment_success'],
@@ -16,7 +27,6 @@ const QUICK_FILTERS: Record<string, string[]> = {
 const CSV_COLUMNS: Array<{ key: string; label: string }> = [
   { key: 'application_number', label: 'Application Number' },
   { key: 'category_name', label: 'Category' },
-  { key: 'selection_method', label: 'Selection Method' },
   { key: 'representative_name', label: 'Applicant / Representative Name' },
   { key: 'father_name', label: 'Father / Husband Name' },
   { key: 'organisation_name', label: 'Organisation / Business Name' },
@@ -37,7 +47,6 @@ const CSV_COLUMNS: Array<{ key: string; label: string }> = [
   { key: 'stall_number', label: 'Allotted Booth/Stall Number' },
   { key: 'shop_type', label: 'Booth/Stall Type' },
   { key: 'stall_direction', label: 'Booth/Stall Location / Facing' },
-  { key: 'draw_allocation_type', label: 'Draw / Allotment Type' },
   { key: 'waitlist_position', label: 'Waitlist Position' },
   { key: 'amount_paid_inr', label: 'Fee Paid (INR)' },
   { key: 'payment_status', label: 'Payment Status' },
@@ -62,14 +71,20 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = []
     const params: unknown[] = []
 
+    // Drafts are unsubmitted, incomplete applications (the applicant never
+    // finished/paid) — never useful in an export regardless of filters, so
+    // excluded unconditionally rather than only when !isAll.
+    conditions.push(`a.status != 'draft'`)
+
     if (!isAll) {
       if (statusParam && QUICK_FILTERS[statusParam]) {
         const statuses = QUICK_FILTERS[statusParam]
         conditions.push(`a.status IN (${statuses.map(() => '?').join(', ')})`)
         params.push(...statuses)
       } else if (!statusParam) {
-        // Exclude raw unsubmitted drafts by default unless 'all=true'
-        conditions.push(`a.status NOT IN ('draft', 'payment_pending', 'payment_failed')`)
+        // Exclude unpaid/incomplete applications by default unless 'all=true'
+        // ('draft' is already excluded unconditionally above)
+        conditions.push(`a.status NOT IN ('payment_pending', 'payment_failed')`)
       }
 
       if (categoryParam && categoryParam !== 'all') {
@@ -89,10 +104,10 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const rows = await query<Array<Record<string, unknown>>>(
-      `SELECT 
+      `SELECT
+        a.id,
         a.application_number,
         c.name AS category_name,
-        c.selection_method,
         a.representative_name,
         a.father_name,
         a.police_station_name,
@@ -113,7 +128,6 @@ export async function GET(request: NextRequest) {
         COALESCE(su.stall_number, da_su.stall_number, '') AS stall_number,
         COALESCE(su.shop_type, da_su.shop_type, '') AS shop_type,
         COALESCE(su.direction, da_su.direction, '') AS stall_direction,
-        COALESCE(da.allocation_type, '') AS draw_allocation_type,
         da.waitlist_position,
         ROUND(COALESCE(p.amount_paise, 0) / 100, 2) AS amount_paid_inr,
         COALESCE(p.status, 'unpaid') AS payment_status,
@@ -136,9 +150,89 @@ export async function GET(request: NextRequest) {
       params
     )
 
+    // Category-specific fields (application_field_values) aren't columns on
+    // `applications` \u2014 they vary per category (e.g. "NGO Registration
+    // Number" for Social Organizations, "Type of Organization" for others).
+    // Per explicit request, each DISTINCT field label gets its own CSV
+    // column (not squeezed into one combined column) \u2014 built dynamically
+    // after CSV_COLUMNS, in first-seen order across all exported rows, with
+    // each application's row left blank for any column that field doesn't
+    // apply to it (most applications will have blanks in most of these
+    // columns, since each category only uses a subset).
+    //
+    // Some category-specific field labels mean the same thing as an
+    // existing fixed column (e.g. a category's "Father's / Mother's Name"
+    // dynamic field vs. the fixed "Father / Husband Name" column) \u2014 reported
+    // live via screenshot as the same name showing up twice. A dynamic
+    // field whose label case-insensitively matches a fixed CSV_COLUMNS
+    // label is folded INTO that fixed column (only when the fixed column is
+    // still blank for that application \u2014 never overwriting real applicant-
+    // table data) instead of getting its own duplicate column.
+    const fixedLabelToKey = new Map(CSV_COLUMNS.map(col => [col.label.toLowerCase(), col.key]))
+    const rowById = new Map(rows.map(row => [row.id as number, row]))
+
+    const appIds = rows.map(r => r.id as number)
+    const dynamicValuesByAppId = new Map<number, Map<string, string>>()
+    const dynamicColumnLabels: string[] = []
+    const seenLabels = new Set<string>()
+
+    if (appIds.length > 0) {
+      const dynamicRows = await query<Array<{ application_id: number; label: string; value: string }>>(
+        `SELECT afv.application_id, cfd.label, afv.value
+         FROM application_field_values afv
+         JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
+         WHERE afv.application_id IN (${appIds.map(() => '?').join(', ')})
+         ORDER BY cfd.display_order ASC, afv.application_id`,
+        appIds
+      )
+
+      for (const r of dynamicRows) {
+        const fixedKey = fixedLabelToKey.get(r.label.toLowerCase())
+
+        if (fixedKey) {
+          const row = rowById.get(r.application_id)
+
+          if (row && !row[fixedKey]) {
+            row[fixedKey] = r.value
+          }
+
+          continue
+        }
+
+        if (!seenLabels.has(r.label)) {
+          seenLabels.add(r.label)
+          dynamicColumnLabels.push(r.label)
+        }
+
+        const appValues = dynamicValuesByAppId.get(r.application_id) ?? new Map<string, string>()
+
+        appValues.set(r.label, r.value)
+        dynamicValuesByAppId.set(r.application_id, appValues)
+      }
+    }
+
+    const dynamicColumns = dynamicColumnLabels.map(label => ({ key: `dyn:${label}`, label }))
+    const allColumns = [...CSV_COLUMNS, ...dynamicColumns]
+
     // Build CSV with BOM for UTF-8 Excel support
-    const headerLine = CSV_COLUMNS.map(col => toCsvField(col.label)).join(',')
-    const dataLines = rows.map(row => CSV_COLUMNS.map(col => toCsvField(row[col.key])).join(','))
+    const headerLine = allColumns.map(col => toCsvField(col.label)).join(',')
+    const dataLines = rows.map(row => {
+      const appValues = dynamicValuesByAppId.get(row.id as number)
+      const rowWithDynamic: Record<string, unknown> = {
+        ...row,
+        status: getApplicationStatusConfig(row.status as string).label,
+        payment_status:
+          row.payment_status === 'unpaid' ? 'Not Paid' : getPaymentStatusConfig(row.payment_status as string).label
+      }
+
+      if (appValues) {
+        for (const [label, value] of appValues) {
+          rowWithDynamic[`dyn:${label}`] = value
+        }
+      }
+
+      return allColumns.map(col => toCsvField(rowWithDynamic[col.key])).join(',')
+    })
     const csvContent = '\uFEFF' + [headerLine, ...dataLines].join('\r\n')
 
     // Audit logging

@@ -56,7 +56,7 @@ export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | nu
      FROM category_maps cm
      LEFT JOIN categories c ON c.id = cm.category_id
      WHERE cm.category_id IS NULL OR c.status = 'open'
-     ORDER BY cm.category_id IS NULL DESC, c.display_order ASC`
+     ORDER BY cm.category_id IS NULL DESC, c.display_order ASC, cm.updated_at DESC`
   )
 
   const mapped = rows.map(row => ({

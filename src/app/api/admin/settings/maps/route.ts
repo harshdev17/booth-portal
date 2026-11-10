@@ -72,13 +72,33 @@ export async function POST(request: Request) {
 
     const filePath = `/api/maps/${filename}`
 
-    await query(
-      `INSERT INTO category_maps (category_id, pdf_path, original_filename, updated_by_user_id)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE pdf_path = VALUES(pdf_path), original_filename = VALUES(original_filename),
-         updated_by_user_id = VALUES(updated_by_user_id)`,
-      [categoryId, filePath, file.name || null, session.userId]
-    )
+    // `category_id` is NULL for the single "Full Map" row, and MySQL's
+    // UNIQUE constraint does NOT treat two NULLs as a duplicate (standard
+    // SQL NULL != NULL) — so ON DUPLICATE KEY UPDATE silently never matches
+    // the existing Full Map row and INSERTs a brand new one on every
+    // re-upload instead of replacing it. Confirmed live: 4 stale "Full Map"
+    // rows had piled up this way, and the app was non-deterministically
+    // serving whichever one happened to be returned first — explaining why
+    // the map worked sometimes and 404'd/served stale content other times.
+    // For categoryId === null, explicitly replace by deleting any existing
+    // NULL-category row(s) first; for a real category id, the UNIQUE
+    // constraint works normally and ON DUPLICATE KEY UPDATE is correct.
+    if (categoryId === null) {
+      await query(`DELETE FROM category_maps WHERE category_id IS NULL`)
+      await query(
+        `INSERT INTO category_maps (category_id, pdf_path, original_filename, updated_by_user_id)
+         VALUES (NULL, ?, ?, ?)`,
+        [filePath, file.name || null, session.userId]
+      )
+    } else {
+      await query(
+        `INSERT INTO category_maps (category_id, pdf_path, original_filename, updated_by_user_id)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE pdf_path = VALUES(pdf_path), original_filename = VALUES(original_filename),
+           updated_by_user_id = VALUES(updated_by_user_id)`,
+        [categoryId, filePath, file.name || null, session.userId]
+      )
+    }
 
     await logAudit({
       actorUserId: session.userId,
