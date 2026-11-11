@@ -4,11 +4,11 @@ import type { Metadata } from 'next'
 
 import { notFound } from 'next/navigation'
 
-import { ArrowLeftIcon } from 'lucide-react'
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { query } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
@@ -16,7 +16,7 @@ import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
-import { decodeId } from '@/lib/security/opaque-id'
+import { decodeId, encodeId } from '@/lib/security/opaque-id'
 import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
@@ -25,6 +25,7 @@ import ApplicationRegistrationPaymentTab from '@/views/admin/applications/Applic
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 import PersonalDocumentCard from '@/views/admin/documents/PersonalDocumentCard'
 import EditApplicationDialog, { type EditableCategoryField, type EditableField } from '@/views/admin/applications/EditApplicationDialog'
+import ApplicationTabsNav, { type ApplicationTabOrderItem } from '@/views/admin/applications/ApplicationTabsNav'
 
 export const metadata: Metadata = {
   title: 'Application Detail — IGM Admin Portal'
@@ -268,6 +269,29 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   if (!app) notFound()
 
+  // Previous/Next Application navigation — matches the Applications list's
+  // own default order (created_at DESC, id as a tiebreak for same-instant
+  // submissions), so clicking through from the list and clicking
+  // Previous/Next here land on the same neighbor. Drafts are excluded, same
+  // as the list itself never shows them.
+  const [prevRows, nextRows] = await Promise.all([
+    query<Array<{ id: number }>>(
+      `SELECT id FROM applications
+       WHERE status != 'draft' AND (created_at, id) > (?, ?)
+       ORDER BY created_at ASC, id ASC LIMIT 1`,
+      [app.created_at, app.id]
+    ),
+    query<Array<{ id: number }>>(
+      `SELECT id FROM applications
+       WHERE status != 'draft' AND (created_at, id) < (?, ?)
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [app.created_at, app.id]
+    )
+  ])
+
+  const prevApplicationId = prevRows[0]?.id ?? null
+  const nextApplicationId = nextRows[0]?.id ?? null
+
   // Full Aadhaar number is shown (not masked) to any admin with
   // application:view, per explicit instruction — every view is audit-logged
   // separately from the general page-view, since Aadhaar is sensitive PII
@@ -415,15 +439,54 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     Boolean(allotmentPayment) ||
     ['selected', 'allotted', 'payment_required', 're_allotted'].includes(app.status)
 
+  const tabOrder: ApplicationTabOrderItem[] = [
+    { value: 'personal', label: 'Personal' },
+    { value: 'application', label: 'Application' },
+    { value: 'documents', label: 'Documents' },
+    { value: 'registration-payment', label: 'Registration Payment' },
+    ...(hasSelectionOrAllotment ? [{ value: 'allotment-payment', label: 'Allotment Payment' }] : []),
+    { value: 'audit', label: 'Audit Trail' }
+  ]
+
   return (
     <div className='flex flex-col gap-6'>
       <div className='flex flex-col gap-3'>
-        <Link
-          href='/admin/applications'
-          className='inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-[#0c2847] transition'
-        >
-          <ArrowLeftIcon className='size-4' /> Back to Applications
-        </Link>
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <Link
+            href='/admin/applications'
+            className='inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-[#0c2847] transition'
+          >
+            <ArrowLeftIcon className='size-4' /> Back to Applications
+          </Link>
+
+          <div className='flex items-center gap-2'>
+            {prevApplicationId ? (
+              <Link
+                href={`/admin/applications/${encodeId(prevApplicationId)}`}
+                className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
+              >
+                <ChevronLeftIcon className='size-3.5' /> Previous
+              </Link>
+            ) : (
+              <span className='inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-300 cursor-not-allowed'>
+                <ChevronLeftIcon className='size-3.5' /> Previous
+              </span>
+            )}
+
+            {nextApplicationId ? (
+              <Link
+                href={`/admin/applications/${encodeId(nextApplicationId)}`}
+                className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
+              >
+                Next <ChevronRightIcon className='size-3.5' />
+              </Link>
+            ) : (
+              <span className='inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-300 cursor-not-allowed'>
+                Next <ChevronRightIcon className='size-3.5' />
+              </span>
+            )}
+          </div>
+        </div>
 
         <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
           <div>
@@ -484,7 +547,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      <Tabs defaultValue='personal'>
+      <ApplicationTabsNav tabOrder={tabOrder} defaultValue='personal'>
         <TabsList className='flex flex-wrap h-auto gap-1.5 p-1'>
           <TabsTrigger value='personal'>Personal</TabsTrigger>
           <TabsTrigger value='application'>Application</TabsTrigger>
@@ -840,7 +903,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+      </ApplicationTabsNav>
     </div>
   )
 }
