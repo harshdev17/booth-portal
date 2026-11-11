@@ -186,12 +186,25 @@ export class LuckyDrawService {
 
       // 1. Lock category
       const [categoryRows] = await conn.query<any[]>(
-        `SELECT id, name, allotment_payment_enabled, allotment_payment_deadline_at, allotment_amount_paise FROM categories WHERE id = ? FOR UPDATE`,
+        `SELECT id, name, selection_method, allotment_payment_enabled, allotment_payment_deadline_at,
+                allotment_amount_paise, auction_participation_fee_paise
+         FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
 
       if (!categoryRows.length) throw new Error('Category not found.')
       const category = categoryRows[0]
+      const isAuctionCategory = category.selection_method === 'auction'
+
+      // Refused before any further locking/mutation: an auction category's
+      // winners are sent a fixed Auction Participation Fee request (not the
+      // normal allotment-fee flow below), so that fee must be configured
+      // first — never a hardcoded fallback amount per CLAUDE.md Section 5.
+      if (isAuctionCategory && !(Number(category.auction_participation_fee_paise) > 0)) {
+        throw new Error(
+          'Set the Auction Participation Fee for this category (Fee & Category Settings) before running its draw.'
+        )
+      }
 
       // 2. Fetch & lock eligible candidates (approved by committee, non-allotted)
       const [candidates] = await conn.query<any[]>(
@@ -357,24 +370,40 @@ export class LuckyDrawService {
       }
 
       // 10. Update Allotted Stalls (associate stall with allotted application)
+      //
+      // An auction category's winners are NOT given a stall here at all —
+      // KDB holds a physical auction afterward, and the admin's later
+      // results-CSV upload is what reserves each winner's actual stall (a
+      // different one than this draw's shuffled stall order, since the
+      // physical auction decides that, not this draw). So for an auction
+      // category, shop_units is left untouched and every available stall
+      // this draw looked at stays 'available'.
       const isPaymentRequired = Boolean(
         category.allotment_payment_enabled &&
         category.allotment_amount_paise &&
         Number(category.allotment_amount_paise) > 0
       )
+
       const stallStatus = isPaymentRequired ? 'reserved' : 'allotted'
-      const applicationNewStatus = isPaymentRequired ? 'payment_required' : 'allotted'
 
-      for (let idx = 0; idx < allottedCount; idx++) {
-        const stall = shuffledStalls[idx]
-        const candidate = shuffledCandidates[idx]
+      const applicationNewStatus = isAuctionCategory
+        ? 'selected_for_auction'
+        : isPaymentRequired
+          ? 'payment_required'
+          : 'allotted'
 
-        await conn.query(
-          `UPDATE shop_units 
-           SET status = ?, allotted_to_application_id = ? 
-           WHERE id = ?`,
-          [stallStatus, candidate.applicationId, stall.shopUnitId]
-        )
+      if (!isAuctionCategory) {
+        for (let idx = 0; idx < allottedCount; idx++) {
+          const stall = shuffledStalls[idx]
+          const candidate = shuffledCandidates[idx]
+
+          await conn.query(
+            `UPDATE shop_units
+             SET status = ?, allotted_to_application_id = ?
+             WHERE id = ?`,
+            [stallStatus, candidate.applicationId, stall.shopUnitId]
+          )
+        }
       }
 
       // 11. Update Applications Status
@@ -384,9 +413,25 @@ export class LuckyDrawService {
           [applicationNewStatus, allottedAppIds]
         )
 
-        // Seed initial payment record for each winner if payment is required
-        if (isPaymentRequired) {
+        if (isAuctionCategory) {
+          // Seed the fixed Auction Participation Fee owed by every winner —
+          // the eventual final allotment amount (which varies per winner) is
+          // seeded separately, per person, by the results-CSV upload once
+          // the physical auction has actually happened.
+          const feePaise = Number(category.auction_participation_fee_paise)
+
+          for (const appId of allottedAppIds) {
+            await conn.query(
+              `INSERT INTO payments (application_id, purpose, amount_paise, status)
+               VALUES (?, 'auction_fee', ?, 'not_initiated')
+               ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
+              [appId, feePaise, feePaise]
+            )
+          }
+        } else if (isPaymentRequired) {
+          // Seed initial payment record for each winner if payment is required
           const amountPaise = Number(category.allotment_amount_paise)
+
           for (const appId of allottedAppIds) {
             await conn.query(
               `INSERT INTO payments (application_id, purpose, amount_paise, status)
@@ -425,16 +470,17 @@ export class LuckyDrawService {
             })
           ]
 
-          if (isPaymentRequired) {
+          if (isAuctionCategory || isPaymentRequired) {
             const destination = candidate.mobileNumber.startsWith('+')
               ? candidate.mobileNumber
               : `+91${candidate.mobileNumber}`
+
             const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
             const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
 
             promises.push(
               sendNotification({
-                category: 'pay_now_activation',
+                category: isAuctionCategory ? 'auction_fee_activation' : 'pay_now_activation',
                 destination,
                 userName: candidate.representativeName,
                 templateParams: [candidate.representativeName, candidate.applicationNumber, payLink],
