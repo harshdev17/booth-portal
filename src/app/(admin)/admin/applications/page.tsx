@@ -46,6 +46,12 @@ type ApplicationItem = {
   is_direct_allotment: number
 }
 
+export type ApplicationDocumentSummary = {
+  id: number
+  label: string
+  verification_status: string
+}
+
 const STATUS_CONFIG: Record<
   string,
   { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string }
@@ -233,6 +239,32 @@ const ApplicationsAdminPage = async ({
       statsParams
     )
   ])
+
+  // Only this page's rows' documents — so "Raise Query" from the list can
+  // offer a document picker (per explicit request) without loading every
+  // application's documents up front. Grouped client-side below, not via
+  // GROUP_CONCAT, so each row keeps its own label/verification_status.
+  const applicationIds = applications.map(app => app.id)
+  const documentRows =
+    applicationIds.length > 0
+      ? await query<Array<{ application_id: number; id: number; label: string; verification_status: string }>>(
+          `SELECT ad.application_id, ad.id, cdd.label, ad.verification_status
+           FROM application_documents ad
+           JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
+           WHERE ad.application_id IN (${applicationIds.map(() => '?').join(', ')})
+           ORDER BY cdd.display_order ASC`,
+          applicationIds
+        )
+      : []
+
+  const documentsByApplicationId = new Map<number, ApplicationDocumentSummary[]>()
+
+  for (const row of documentRows) {
+    const list = documentsByApplicationId.get(row.application_id) ?? []
+
+    list.push({ id: row.id, label: row.label, verification_status: row.verification_status })
+    documentsByApplicationId.set(row.application_id, list)
+  }
 
   // "All" now includes payment_pending/payment_failed too (matches its own
   // list query's `conditions` above, which only excludes 'draft') — no
@@ -478,7 +510,8 @@ const ApplicationsAdminPage = async ({
                 canReject,
                 canRaiseQuery,
                 statusCfg,
-                isPaymentPending
+                isPaymentPending,
+                documents: documentsByApplicationId.get(app.id) ?? []
               }
             })}
             sortLinks={{

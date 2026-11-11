@@ -13,6 +13,12 @@ import ApplicationsBulkActionsBar from '@/views/admin/applications/ApplicationsB
 
 type StatusConfig = { label: string; color: string }
 
+export type ApplicationDocumentOption = {
+  id: number
+  label: string
+  verification_status: string
+}
+
 export type ApplicationTableRow = {
   id: number
   encodedId: string
@@ -40,6 +46,7 @@ export type ApplicationTableRow = {
   canRaiseQuery: boolean
   statusCfg: StatusConfig
   isPaymentPending: boolean
+  documents: ApplicationDocumentOption[]
 }
 
 type SortIcon = 'asc' | 'desc' | 'none'
@@ -138,10 +145,10 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
       />
 
       <StickyHorizontalTableScroll>
-        <table className='min-w-[1600px] w-full text-left text-sm'>
-          <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
+        <table className='w-[1700px] table-fixed border-separate border-spacing-0 text-left text-sm'>
+          <thead className='border-b bg-muted/40 text-xs font-bold text-muted-foreground uppercase'>
             <tr>
-              <th className='sticky left-0 z-10 w-10 bg-muted/40 py-3 px-4'>
+              <th className='sticky left-0 z-10 w-12 py-3 px-4 border-r border-slate-200' style={{ background: '#f9f9f9' }}>
                 {actionableRows.length > 0 && (
                   <input
                     type='checkbox'
@@ -152,41 +159,47 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                   />
                 )}
               </th>
-              <th className='sticky left-10 z-10 bg-muted/40 py-3 px-4 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
+              <th
+                className='sticky left-12 z-10 w-40 py-3 px-4 whitespace-nowrap border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'
+                style={{ background: '#f9f9f9' }}
+              >
                 <Link href={sortLinks.appNo} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   App Number
                   <SortIndicator icon={sortIcons.appNo} />
                 </Link>
               </th>
-              <th className='py-3 px-4'>
+              <th className='w-56 bg-muted/40 py-3 px-4 whitespace-nowrap'>
                 <Link href={sortLinks.name} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Applicant / Firm
                   <SortIndicator icon={sortIcons.name} />
                 </Link>
               </th>
-              <th className='py-3 px-4'>
+              <th className='w-44 bg-muted/40 py-3 px-4 whitespace-nowrap'>
                 <Link href={sortLinks.category} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Category
                   <SortIndicator icon={sortIcons.category} />
                 </Link>
               </th>
-              <th className='py-3 px-4'>Contact</th>
-              <th className='py-3 px-4'>Booth / Stall</th>
-              <th className='py-3 px-4'>
+              <th className='w-44 bg-muted/40 py-3 px-4 whitespace-nowrap'>Contact</th>
+              <th className='w-28 bg-muted/40 py-3 px-4 whitespace-nowrap'>Booth / Stall</th>
+              <th className='w-36 bg-muted/40 py-3 px-4 whitespace-nowrap'>
                 <Link href={sortLinks.status} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Status
                   <SortIndicator icon={sortIcons.status} />
                 </Link>
               </th>
-              <th className='py-3 px-4'>
+              <th className='w-40 bg-muted/40 py-3 px-4 whitespace-nowrap'>
                 <Link href={sortLinks.date} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Submitted At
                   <SortIndicator icon={sortIcons.date} />
                 </Link>
               </th>
-              <th className='py-3 px-4'>Allotment Payment</th>
-              <th className='py-3 px-4'>Created / Allotted</th>
-              <th className='sticky right-0 z-10 bg-muted/40 py-3 px-4 text-right shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
+              <th className='w-36 bg-muted/40 py-3 px-4 whitespace-nowrap'>Allotment Payment</th>
+              <th className='w-48 bg-muted/40 py-3 px-4 whitespace-nowrap'>Created / Allotted</th>
+              <th
+                className='sticky right-0 z-10 w-36 py-3 px-4 text-right whitespace-nowrap border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'
+                style={{ background: '#f9f9f9' }}
+              >
                 Actions
               </th>
             </tr>
@@ -194,7 +207,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
           <tbody className='divide-y'>
             {applications.map(app => (
               <tr key={app.id} className='hover:bg-muted/30 transition'>
-                <td className='sticky left-0 z-10 bg-white py-3.5 px-4'>
+                <td className='sticky left-0 z-10 w-12 bg-white py-3.5 px-4 border-r border-slate-200'>
                   {(app.isPaymentPending || app.canApprove || app.canReject) && (
                     <input
                       type='checkbox'
@@ -205,25 +218,25 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                     />
                   )}
                 </td>
-                <td className='sticky left-10 z-10 bg-white py-3.5 px-4 font-mono font-bold text-[#0c2847] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
+                <td className='sticky left-12 z-10 w-40 bg-white py-3.5 px-4 font-mono font-bold text-[#0c2847] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
                   <Link href={`/admin/applications/${app.encodedId}`} className='hover:underline'>
                     {app.application_number}
                   </Link>
                 </td>
-                <td className='py-3.5 px-4'>
-                  <p className='font-bold text-[#0c2847]'>{app.representative_name}</p>
-                  <p className='text-xs text-muted-foreground'>{app.organisation_name}</p>
+                <td className='w-56 py-3.5 px-4'>
+                  <p className='truncate font-bold text-[#0c2847]'>{app.representative_name}</p>
+                  <p className='truncate text-xs text-muted-foreground'>{app.organisation_name}</p>
                 </td>
-                <td className='py-3.5 px-4'>
+                <td className='w-44 py-3.5 px-4'>
                   <span className='inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800'>
                     {app.category_name}
                   </span>
                 </td>
-                <td className='py-3.5 px-4 text-xs space-y-0.5'>
+                <td className='w-44 py-3.5 px-4 text-xs space-y-0.5'>
                   <p className='font-mono font-medium text-slate-800'>{app.mobile_number}</p>
-                  <p className='text-muted-foreground truncate max-w-[160px]'>{app.email}</p>
+                  <p className='text-muted-foreground truncate'>{app.email}</p>
                 </td>
-                <td className='py-3.5 px-4 text-xs'>
+                <td className='w-28 py-3.5 px-4 text-xs'>
                   {app.stall_number ? (
                     <p className='font-mono font-bold text-[#0c2847]'>{app.stall_number}</p>
                   ) : app.draw_allocation_type === 'waitlist' ? (
@@ -232,7 +245,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                     <span className='text-muted-foreground'>Not allotted</span>
                   )}
                 </td>
-                <td className='py-3.5 px-4'>
+                <td className='w-36 py-3.5 px-4'>
                   <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${app.statusCfg.color}`}>
                     {app.statusCfg.label}
                   </span>
@@ -248,7 +261,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                     <p className='mt-1 text-[11px] font-semibold text-amber-700'>Waitlist #{app.waitlist_position}</p>
                   )}
                 </td>
-                <td className='py-3.5 px-4 text-xs text-muted-foreground'>
+                <td className='w-40 py-3.5 px-4 text-xs text-muted-foreground'>
                   {app.submitted_at
                     ? new Date(app.submitted_at).toLocaleString('en-IN', {
                         day: 'numeric',
@@ -259,7 +272,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       })
                     : new Date(app.created_at).toLocaleDateString('en-IN')}
                 </td>
-                <td className='py-3.5 px-4 text-xs'>
+                <td className='w-36 py-3.5 px-4 text-xs'>
                   <p className='font-semibold text-slate-800'>
                     {app.allotment_payment_amount_paise === null
                       ? 'Amount not set'
@@ -271,7 +284,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       : app.allotment_payment_status.replaceAll('_', ' ')}
                   </p>
                 </td>
-                <td className='py-3.5 px-4 text-xs text-muted-foreground'>
+                <td className='w-48 py-3.5 px-4 text-xs text-muted-foreground'>
                   <p>
                     Created:{' '}
                     {new Date(app.created_at).toLocaleDateString('en-IN', {
@@ -293,7 +306,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       : '—'}
                   </p>
                 </td>
-                <td className='sticky right-0 z-10 bg-white py-3.5 px-4 shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
+                <td className='sticky right-0 z-10 w-36 bg-white py-3.5 px-4 border-l border-slate-200 shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
                   <div className='flex justify-end'>
                     <ApplicationRowActions
                       applicationId={app.encodedId}
@@ -301,6 +314,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       canApprove={app.canApprove}
                       canReject={app.canReject}
                       canRaiseQuery={app.canRaiseQuery}
+                      documents={app.documents}
                     />
                   </div>
                 </td>

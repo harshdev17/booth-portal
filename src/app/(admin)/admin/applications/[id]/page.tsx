@@ -410,7 +410,15 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     artisan_card_number: ['artisan_card'],
     award_certificate_number: ['award_certificate'],
     registration_number: ['firm_registration_certificate'],
-    shg_registration_number: ['shg_registration_certificate']
+    shg_registration_number: ['shg_registration_certificate'],
+
+    // work_product_photos (migration 0017) is required by 3 categories, each
+    // with its own field naming for "what the applicant makes/displays" —
+    // anchored to each category's own closest-matching field so the photo
+    // proof shows up right next to it, same as every other anchored doc.
+    products_made: ['work_product_photos'], // Artisan Card Holders
+    products_to_display: ['work_product_photos'], // Special Art & Craft
+    product_description: ['work_product_photos'] // National Awardees
   }
 
   const documentsByKey = new Map(uploadedDocuments.map(d => [d.document_key, d]))

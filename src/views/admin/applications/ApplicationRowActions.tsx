@@ -16,16 +16,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { RejectButton } from '@/views/admin/applications/ApplicationDecisionActions'
 import ApproveApplicationDialog, { type DialogHandle } from '@/views/admin/applications/ApproveApplicationDialog'
-import { RaiseApplicationQueryButton } from '@/views/admin/documents/DocumentDecisionActions'
+import { RaiseListQueryButton, type DocumentOption } from '@/views/admin/documents/DocumentDecisionActions'
 
 type Props = {
   applicationId: string
 
-  /** Raw numeric id — RaiseApplicationQueryButton's server action takes this, not the opaque id used in links. */
+  /** Raw numeric id — RaiseListQueryButton's server action takes this, not the opaque id used in links. */
   rawApplicationId: number
   canApprove: boolean
   canReject: boolean
   canRaiseQuery: boolean
+  documents: DocumentOption[]
 }
 
 /**
@@ -38,7 +39,7 @@ type Props = {
  * routes independently re-check status, permission and document
  * verification; this is UI only.
  */
-const ApplicationRowActions = ({ applicationId, rawApplicationId, canApprove, canReject, canRaiseQuery }: Props) => {
+const ApplicationRowActions = ({ applicationId, rawApplicationId, canApprove, canReject, canRaiseQuery, documents }: Props) => {
   const approveRef = useRef<DialogHandle>(null)
   const rejectRef = useRef<DialogHandle>(null)
   const queryRef = useRef<DialogHandle>(null)
@@ -73,7 +74,9 @@ const ApplicationRowActions = ({ applicationId, rawApplicationId, canApprove, ca
 
       {canApprove && <ApproveApplicationDialog applicationId={applicationId} hideTrigger ref={approveRef} />}
       {canReject && <RejectButton applicationId={applicationId} hideTrigger ref={rejectRef} />}
-      {canRaiseQuery && <RaiseApplicationQueryButton applicationId={rawApplicationId} hideTrigger ref={queryRef} />}
+      {canRaiseQuery && (
+        <RaiseListQueryButton rawApplicationId={rawApplicationId} documents={documents} hideTrigger ref={queryRef} />
+      )}
     </>
   )
 }

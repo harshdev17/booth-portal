@@ -119,6 +119,12 @@ async function decideDocument(
   // on every request.
   revalidatePath('/admin/documents')
 
+  // The Applications list's Raise Query dialog shows each document's own
+  // verification_status (so an admin can verify it from there too) — must
+  // stay in sync with this decision, or the dropdown would show a stale
+  // status until an unrelated page load happened to revalidate it.
+  revalidatePath('/admin/applications')
+
   if (toStatus === 'query') {
     // Never let a notification failure block the query action itself —
     // notifyDocumentQuery already swallows send errors (see its own doc comment).
