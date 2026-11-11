@@ -96,3 +96,47 @@ export async function notifyAllotmentPaymentSuccess(applicationId: number, amoun
     logServerError('notifications.allotment-payment-success', error, { applicationId })
   }
 }
+
+/**
+ * Sends notifications once an Auction Participation Fee ('auction_fee') is
+ * confirmed: payment confirmation + a status update to 'auction_fee_paid'
+ * (NOT 'allotted' — a stall is only reserved later, when the admin uploads
+ * the physical auction's results).
+ */
+export async function notifyAuctionFeePaymentSuccess(applicationId: number, amountPaise: number): Promise<void> {
+  try {
+    const rows = await query<Array<{ application_number: string; mobile_number: string; representative_name: string; email: string }>>(
+      'SELECT application_number, mobile_number, representative_name, email FROM applications WHERE id = ? LIMIT 1',
+      [applicationId]
+    )
+
+    const application = rows[0]
+
+    if (!application) return
+
+    const destination = `+91${application.mobile_number}`
+    const userName = application.representative_name
+
+    if (amountPaise > 0) {
+      await sendNotification({
+        category: 'payment_confirmation',
+        destination,
+        userName,
+        templateParams: [userName, application.application_number, String(amountPaise / 100)],
+        applicationId,
+        email: application.email
+      })
+    }
+
+    await notifyApplicationStatusChange({
+      applicationId,
+      applicationNumber: application.application_number,
+      mobileNumber: application.mobile_number,
+      representativeName: application.representative_name,
+      email: application.email,
+      newStatus: 'auction_fee_paid'
+    })
+  } catch (error) {
+    logServerError('notifications.auction-fee-payment-success', error, { applicationId })
+  }
+}
