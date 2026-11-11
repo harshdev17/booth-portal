@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -15,6 +16,7 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   FileTextIcon,
+  GavelIcon,
   InfoIcon,
   Loader2Icon,
   SearchIcon,
@@ -42,22 +44,27 @@ function loadRazorpayCheckoutScript(): Promise<boolean> {
   return new Promise(resolve => {
     if (typeof window === 'undefined') {
       resolve(false)
+
       return
     }
 
     if ((window as unknown as { Razorpay?: unknown }).Razorpay) {
       resolve(true)
+
       return
     }
 
     const existing = document.querySelector(`script[src="${RAZORPAY_CHECKOUT_SCRIPT_SRC}"]`)
+
     if (existing) {
       existing.addEventListener('load', () => resolve(true))
       existing.addEventListener('error', () => resolve(false))
+
       return
     }
 
     const script = document.createElement('script')
+
     script.src = RAZORPAY_CHECKOUT_SCRIPT_SRC
     script.onload = () => resolve(true)
     script.onerror = () => resolve(false)
@@ -105,6 +112,8 @@ type StatusResult = {
   allotmentPaymentDeadlineAt: string | null
   allotmentPaymentStatus: string | null
   allotmentPaidAt: string | null
+  auctionParticipationFeePaise: number | null
+  auctionFinalAmountPaise: number | null
   categoryName: string
   categoryNameHi: string | null
   categorySlug: string
@@ -130,7 +139,10 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
   allotted: { en: 'Allotted', hi: 'आबंटित' },
   cancelled: { en: 'Cancelled', hi: 'रद्द' },
-  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आबंटित' }
+  re_allotted: { en: 'Re-Allotted', hi: 'पुनः आबंटित' },
+  selected_for_auction: { en: 'Selected For Auction', hi: 'नीलामी हेतु चयनित' },
+  auction_fee_paid: { en: 'Auction Fee Paid', hi: 'नीलामी शुल्क भुगतान हुआ' },
+  auction_won: { en: 'Auction Won', hi: 'नीलामी में विजयी' }
 }
 
 const DOCUMENT_STATUS_HI: Record<string, string> = {
@@ -170,6 +182,18 @@ const STATUS_HINT: Record<string, { en: string; hi: string }> = {
   allotted: {
     en: 'Your booth/stall is confirmed and allotted. You can download your official Allotment Letter below.',
     hi: 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित और पुष्टीकृत हो गया है। आप नीचे अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
+  },
+  selected_for_auction: {
+    en: 'Your application has been selected in the draw. This category is allotted through a physical auction — please pay the Auction Participation Fee below to confirm your place.',
+    hi: 'ड्रॉ में आपके आवेदन का चयन हुआ है। इस श्रेणी का आबंटन भौतिक नीलामी के माध्यम से होता है — कृपया अपनी भागीदारी सुनिश्चित करने के लिए नीचे नीलामी भागीदारी शुल्क का भुगतान करें।'
+  },
+  auction_fee_paid: {
+    en: 'Your Auction Participation Fee has been received. Please wait for the physical auction date — you will be notified with your final amount once it is held.',
+    hi: 'आपका नीलामी भागीदारी शुल्क प्राप्त हो गया है। कृपया भौतिक नीलामी की तिथि की प्रतीक्षा करें — नीलामी होने के बाद आपको आपकी अंतिम राशि के बारे में सूचित किया जाएगा।'
+  },
+  auction_won: {
+    en: 'Congratulations! You won a booth/stall at the physical auction. Please complete the final payment below to confirm your allotment.',
+    hi: 'बधाई हो! आपने भौतिक नीलामी में बूथ/स्टॉल जीता है। अपना आबंटन सुनिश्चित करने के लिए कृपया नीचे अंतिम भुगतान पूर्ण करें।'
   }
 }
 
@@ -209,6 +233,18 @@ const StatusLookup = () => {
 
   const [isDownloadingAllotmentLetter, setIsDownloadingAllotmentLetter] = useState(false)
   const [allotmentLetterError, setAllotmentLetterError] = useState<string | null>(null)
+
+  // Auction Participation Fee payment state — for an auction-category
+  // applicant sitting at 'selected_for_auction'.
+  const [isPayingAuctionFee, setIsPayingAuctionFee] = useState(false)
+  const [auctionFeePaymentError, setAuctionFeePaymentError] = useState<string | null>(null)
+  const [auctionFeePaymentSuccess, setAuctionFeePaymentSuccess] = useState(false)
+
+  // Final Auction Payment state — for an applicant sitting at 'auction_won'
+  // (results CSV already uploaded, exact amount already seeded).
+  const [isPayingAuctionFinal, setIsPayingAuctionFinal] = useState(false)
+  const [auctionFinalPaymentError, setAuctionFinalPaymentError] = useState<string | null>(null)
+  const [auctionFinalPaymentSuccess, setAuctionFinalPaymentSuccess] = useState(false)
 
   const form = useForm<LookupValues>({
     resolver: zodResolver(lookupSchema),
@@ -379,6 +415,7 @@ const StatusLookup = () => {
       if (!(documentKey in prev)) return prev
 
       const next = { ...prev }
+
       delete next[documentKey]
 
       return next
@@ -392,6 +429,7 @@ const StatusLookup = () => {
       formData.append('file', file)
 
       const headers: Record<string, string> = {}
+
       if (result.accessToken) {
         headers['Authorization'] = `Bearer ${result.accessToken}`
       }
@@ -455,6 +493,7 @@ const StatusLookup = () => {
 
     try {
       const loaded = await loadRazorpayCheckoutScript()
+
       if (!loaded) {
         setAllotmentPaymentError(
           lang === 'hi'
@@ -462,10 +501,12 @@ const StatusLookup = () => {
             : 'Could not load payment gateway. Please check your internet connection.'
         )
         setIsPayingAllotment(false)
+
         return
       }
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
       if (result.accessToken) {
         headers['Authorization'] = `Bearer ${result.accessToken}`
       }
@@ -484,10 +525,11 @@ const StatusLookup = () => {
             (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate allotment payment.')
         )
         setIsPayingAllotment(false)
+
         return
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const razorpay = new (window as any).Razorpay({
         key: orderData.keyId,
         amount: orderData.amountPaise,
@@ -499,7 +541,7 @@ const StatusLookup = () => {
             ? `स्टॉल आबंटन शुल्क — ${orderData.applicationNumber}`
             : `Stall Allotment Fee — ${orderData.applicationNumber}`,
         theme: { color: '#0c2847' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         handler: async (response: any) => {
           try {
             const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
@@ -522,6 +564,7 @@ const StatusLookup = () => {
                     : 'Payment verification failed. If amount was deducted, please contact support.')
               )
               setIsPayingAllotment(false)
+
               return
             }
 
@@ -564,6 +607,232 @@ const StatusLookup = () => {
     }
   }
 
+  // Auction Participation Fee payment via Razorpay — mirrors
+  // handlePayAllotmentFee above, with purpose: 'auction_fee' and the
+  // resulting status moving to 'auction_fee_paid' (not 'allotted').
+  const handlePayAuctionFee = async () => {
+    if (!result || !result.applicationId) return
+
+    setIsPayingAuctionFee(true)
+    setAuctionFeePaymentError(null)
+
+    try {
+      const loaded = await loadRazorpayCheckoutScript()
+
+      if (!loaded) {
+        setAuctionFeePaymentError(
+          lang === 'hi'
+            ? 'पेमेंट गेटवे लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+            : 'Could not load payment gateway. Please check your internet connection.'
+        )
+        setIsPayingAuctionFee(false)
+
+        return
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
+      const orderRes = await fetch(`/api/applications/${result.applicationId}/payment/order`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ purpose: 'auction_fee' })
+      })
+
+      const orderData = await orderRes.json()
+
+      if (!orderRes.ok) {
+        setAuctionFeePaymentError(
+          orderData.error ?? (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate payment.')
+        )
+        setIsPayingAuctionFee(false)
+
+        return
+      }
+
+       
+      const razorpay = new (window as any).Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amountPaise,
+        currency: orderData.currency || 'INR',
+        order_id: orderData.orderId,
+        name: 'Kurukshetra Development Board',
+        description:
+          lang === 'hi'
+            ? `नीलामी भागीदारी शुल्क — ${orderData.applicationNumber}`
+            : `Auction Participation Fee — ${orderData.applicationNumber}`,
+        theme: { color: '#0c2847' },
+         
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            })
+
+            const verifyData = await verifyRes.json()
+
+            if (!verifyRes.ok) {
+              setAuctionFeePaymentError(
+                verifyData.error ??
+                  (lang === 'hi'
+                    ? 'भुगतान सत्यापन विफल रहा। यदि राशि कट गई है तो सहायता से संपर्क करें।'
+                    : 'Payment verification failed. If amount was deducted, please contact support.')
+              )
+              setIsPayingAuctionFee(false)
+
+              return
+            }
+
+            setAuctionFeePaymentSuccess(true)
+            setResult(prev => (prev ? { ...prev, status: 'auction_fee_paid' } : null))
+            setIsPayingAuctionFee(false)
+          } catch {
+            setAuctionFeePaymentError(
+              lang === 'hi'
+                ? 'सत्यापन के दौरान त्रुटि हुई। कृपया सहायता से संपर्क करें।'
+                : 'Error verifying payment. Please contact support.'
+            )
+            setIsPayingAuctionFee(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPayingAuctionFee(false)
+          }
+        }
+      })
+
+      razorpay.open()
+    } catch {
+      setAuctionFeePaymentError(
+        lang === 'hi' ? 'भुगतान शुरू करने में समस्या आई।' : 'An error occurred while starting payment.'
+      )
+      setIsPayingAuctionFee(false)
+    }
+  }
+
+  // Final Auction Payment via Razorpay — mirrors handlePayAllotmentFee
+  // above, with purpose: 'auction_final'. The amount is whatever the order
+  // route reads back from the CSV-seeded payments row; nothing here decides it.
+  const handlePayAuctionFinal = async () => {
+    if (!result || !result.applicationId) return
+
+    setIsPayingAuctionFinal(true)
+    setAuctionFinalPaymentError(null)
+
+    try {
+      const loaded = await loadRazorpayCheckoutScript()
+
+      if (!loaded) {
+        setAuctionFinalPaymentError(
+          lang === 'hi'
+            ? 'पेमेंट गेटवे लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+            : 'Could not load payment gateway. Please check your internet connection.'
+        )
+        setIsPayingAuctionFinal(false)
+
+        return
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
+      if (result.accessToken) {
+        headers['Authorization'] = `Bearer ${result.accessToken}`
+      }
+
+      const orderRes = await fetch(`/api/applications/${result.applicationId}/payment/order`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ purpose: 'auction_final' })
+      })
+
+      const orderData = await orderRes.json()
+
+      if (!orderRes.ok) {
+        setAuctionFinalPaymentError(
+          orderData.error ?? (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate payment.')
+        )
+        setIsPayingAuctionFinal(false)
+
+        return
+      }
+
+       
+      const razorpay = new (window as any).Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amountPaise,
+        currency: orderData.currency || 'INR',
+        order_id: orderData.orderId,
+        name: 'Kurukshetra Development Board',
+        description:
+          lang === 'hi'
+            ? `अंतिम नीलामी भुगतान — ${orderData.applicationNumber}`
+            : `Final Auction Payment — ${orderData.applicationNumber}`,
+        theme: { color: '#0c2847' },
+         
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            })
+
+            const verifyData = await verifyRes.json()
+
+            if (!verifyRes.ok) {
+              setAuctionFinalPaymentError(
+                verifyData.error ??
+                  (lang === 'hi'
+                    ? 'भुगतान सत्यापन विफल रहा। यदि राशि कट गई है तो सहायता से संपर्क करें।'
+                    : 'Payment verification failed. If amount was deducted, please contact support.')
+              )
+              setIsPayingAuctionFinal(false)
+
+              return
+            }
+
+            setAuctionFinalPaymentSuccess(true)
+            setResult(prev => (prev ? { ...prev, status: 'allotted' } : null))
+            setIsPayingAuctionFinal(false)
+          } catch {
+            setAuctionFinalPaymentError(
+              lang === 'hi'
+                ? 'सत्यापन के दौरान त्रुटि हुई। कृपया सहायता से संपर्क करें।'
+                : 'Error verifying payment. Please contact support.'
+            )
+            setIsPayingAuctionFinal(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPayingAuctionFinal(false)
+          }
+        }
+      })
+
+      razorpay.open()
+    } catch {
+      setAuctionFinalPaymentError(
+        lang === 'hi' ? 'भुगतान शुरू करने में समस्या आई।' : 'An error occurred while starting payment.'
+      )
+      setIsPayingAuctionFinal(false)
+    }
+  }
+
   // Registration (application) fee payment via Razorpay — mirrors
   // handlePayAllotmentFee above, but omits `purpose` so the order route
   // takes its default 'registration' branch instead of 'pay_now'.
@@ -575,6 +844,7 @@ const StatusLookup = () => {
 
     try {
       const loaded = await loadRazorpayCheckoutScript()
+
       if (!loaded) {
         setRegistrationPaymentError(
           lang === 'hi'
@@ -582,10 +852,12 @@ const StatusLookup = () => {
             : 'Could not load payment gateway. Please check your internet connection.'
         )
         setIsPayingRegistration(false)
+
         return
       }
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
       if (result.accessToken) {
         headers['Authorization'] = `Bearer ${result.accessToken}`
       }
@@ -602,10 +874,11 @@ const StatusLookup = () => {
           orderData.error ?? (lang === 'hi' ? 'भुगतान शुरू नहीं हो सका।' : 'Could not initiate payment.')
         )
         setIsPayingRegistration(false)
+
         return
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const razorpay = new (window as any).Razorpay({
         key: orderData.keyId,
         amount: orderData.amountPaise,
@@ -617,7 +890,7 @@ const StatusLookup = () => {
             ? `आवेदन शुल्क — ${orderData.applicationNumber}`
             : `Application Fee — ${orderData.applicationNumber}`,
         theme: { color: '#0c2847' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         handler: async (response: any) => {
           try {
             const verifyRes = await fetch(`/api/applications/${result.applicationId}/payment/verify`, {
@@ -640,6 +913,7 @@ const StatusLookup = () => {
                     : 'Payment verification failed. If amount was deducted, please contact support.')
               )
               setIsPayingRegistration(false)
+
               return
             }
 
@@ -682,6 +956,7 @@ const StatusLookup = () => {
 
     try {
       const headers: Record<string, string> = {}
+
       if (result.accessToken) {
         headers['Authorization'] = `Bearer ${result.accessToken}`
       }
@@ -771,6 +1046,7 @@ const StatusLookup = () => {
             : { status: 'idle' as const }
     ])
   )
+
   const hint = STATUS_HINT[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en']
 
   const isResult = phase === 'result' && !!result
@@ -1023,6 +1299,36 @@ const StatusLookup = () => {
               </div>
             )}
 
+            {auctionFeePaymentSuccess && (
+              <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
+                <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+                <div className='text-sm'>
+                  <p className='font-bold text-emerald-900'>
+                    {lang === 'hi' ? 'नीलामी भागीदारी शुल्क भुगतान सफल!' : 'Auction Participation Fee Payment Successful!'}
+                  </p>
+                  <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
+                    {STATUS_HINT.auction_fee_paid[lang === 'hi' ? 'hi' : 'en']}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {auctionFinalPaymentSuccess && (
+              <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
+                <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
+                <div className='text-sm'>
+                  <p className='font-bold text-emerald-900'>
+                    {lang === 'hi' ? 'अंतिम नीलामी भुगतान सफल!' : 'Final Auction Payment Successful!'}
+                  </p>
+                  <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
+                    {lang === 'hi'
+                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आप नीचे दिए गए बटन से अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
+                      : 'Your booth/stall has been successfully allotted. You can download your official Allotment Letter below.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {registrationPaymentSuccess && (
               <div className='flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 shadow-2xs' role='status'>
                 <CheckCircle2Icon className='mt-0.5 size-5 shrink-0 text-emerald-700' />
@@ -1203,6 +1509,172 @@ const StatusLookup = () => {
                             {lang === 'hi'
                               ? `आवंटन शुल्क का भुगतान करें (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`
                               : `Pay Allotment Fee (₹${(Number(result.allotmentAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auction Participation Fee Required Card */}
+            {effectiveStatus === 'selected_for_auction' && (
+              <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
+                    <GavelIcon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-lg font-bold text-amber-950'>
+                        {lang === 'hi' ? 'नीलामी भागीदारी शुल्क आवश्यक' : 'Auction Participation Fee Required'}
+                      </h2>
+                      <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
+                        {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
+                      </span>
+                    </div>
+
+                    <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
+                      {STATUS_HINT.selected_for_auction[lang === 'hi' ? 'hi' : 'en']}
+                    </p>
+
+                    {result.auctionParticipationFeePaise !== null && (
+                      <div className='mt-4 rounded-lg bg-white/90 p-3.5 text-xs border border-amber-200/80 shadow-2xs'>
+                        <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
+                          {lang === 'hi' ? 'देय नीलामी भागीदारी शुल्क' : 'Auction Participation Fee Payable'}
+                        </span>
+                        <span className='text-base font-extrabold text-amber-950'>
+                          ₹{(Number(result.auctionParticipationFeePaise) / 100).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    )}
+
+                    {auctionFeePaymentError && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>{auctionFeePaymentError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
+                    <div className='mt-4'>
+                      <Button
+                        type='button'
+                        onClick={handlePayAuctionFee}
+                        disabled={isPayingAuctionFee}
+                        className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
+                      >
+                        {isPayingAuctionFee ? (
+                          <>
+                            <Loader2Icon className='size-4 animate-spin mr-2' />
+                            {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCardIcon className='size-4 mr-2' />
+                            {lang === 'hi'
+                              ? `नीलामी भागीदारी शुल्क भुगतान करें (₹${(Number(result.auctionParticipationFeePaise ?? 0) / 100).toLocaleString('en-IN')})`
+                              : `Pay Auction Participation Fee (₹${(Number(result.auctionParticipationFeePaise ?? 0) / 100).toLocaleString('en-IN')})`}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auction Fee Received — waiting for the physical auction (informational only, no action needed) */}
+            {effectiveStatus === 'auction_fee_paid' && (
+              <div className='overflow-hidden rounded-xl border-2 border-blue-300 bg-linear-to-br from-blue-50 via-sky-50/60 to-blue-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-blue-500 p-2.5 text-white shrink-0 shadow-xs'>
+                    <GavelIcon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <h2 className='text-lg font-bold text-blue-950'>
+                      {lang === 'hi' ? 'नीलामी भागीदारी शुल्क प्राप्त हुआ' : 'Auction Participation Fee Received'}
+                    </h2>
+                    <p className='mt-2 text-xs sm:text-sm text-blue-900/95 leading-relaxed'>
+                      {STATUS_HINT.auction_fee_paid[lang === 'hi' ? 'hi' : 'en']}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auction Won — Final Payment Required Card */}
+            {effectiveStatus === 'auction_won' && (
+              <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
+                <div className='flex items-start gap-4'>
+                  <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
+                    <GavelIcon className='size-6' />
+                  </div>
+                  <div className='flex-1'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <h2 className='text-lg font-bold text-amber-950'>
+                        {lang === 'hi' ? 'नीलामी जीती — अंतिम भुगतान आवश्यक' : 'Auction Won — Final Payment Required'}
+                      </h2>
+                      <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
+                        {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
+                      </span>
+                    </div>
+
+                    <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
+                      {STATUS_HINT.auction_won[lang === 'hi' ? 'hi' : 'en']}
+                    </p>
+
+                    <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg bg-white/90 p-3.5 text-xs border border-amber-200/80 shadow-2xs'>
+                      {result.stallNumber && (
+                        <div>
+                          <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
+                            {lang === 'hi' ? 'आबंटित स्टॉल क्रमांक' : 'Allotted Stall No.'}
+                          </span>
+                          <span className='font-mono text-base font-extrabold text-[#0c2847]'>{result.stallNumber}</span>
+                        </div>
+                      )}
+
+                      {result.auctionFinalAmountPaise !== null && (
+                        <div>
+                          <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
+                            {lang === 'hi' ? 'देय अंतिम राशि' : 'Final Amount Payable'}
+                          </span>
+                          <span className='text-base font-extrabold text-amber-950'>
+                            ₹{(Number(result.auctionFinalAmountPaise) / 100).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {auctionFinalPaymentError && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>{auctionFinalPaymentError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
+                    <div className='mt-4'>
+                      <Button
+                        type='button'
+                        onClick={handlePayAuctionFinal}
+                        disabled={isPayingAuctionFinal}
+                        className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
+                      >
+                        {isPayingAuctionFinal ? (
+                          <>
+                            <Loader2Icon className='size-4 animate-spin mr-2' />
+                            {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCardIcon className='size-4 mr-2' />
+                            {lang === 'hi'
+                              ? `अंतिम भुगतान करें (₹${(Number(result.auctionFinalAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`
+                              : `Pay Final Amount (₹${(Number(result.auctionFinalAmountPaise ?? 0) / 100).toLocaleString('en-IN')})`}
                           </>
                         )}
                       </Button>

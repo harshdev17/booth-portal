@@ -49,6 +49,8 @@ type StatusRow = {
   allotment_payment_amount_paise: number | null
   allotment_razorpay_order_id: string | null
   allotment_paid_at: string | null
+  auction_participation_fee_paise: number | null
+  auction_final_amount_paise: number | null
 }
 
 function maskMobile(mobile: string): string {
@@ -91,6 +93,7 @@ export async function POST(request: Request) {
               c.name AS category_name, c.name_hi AS category_name_hi, c.slug AS category_slug,
               c.fee_paise, c.fee_base_paise, c.gst_percent,
               c.allotment_payment_enabled, c.allotment_amount_paise, c.allotment_payment_deadline_at,
+              c.auction_participation_fee_paise,
               a.submitted_at,
               COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
               COALESCE(allotment_payment.status, da.payment_status) AS allotment_payment_status,
@@ -98,12 +101,15 @@ export async function POST(request: Request) {
               allotment_payment.razorpay_order_id AS allotment_razorpay_order_id,
               (SELECT pt.created_at FROM payment_transactions pt
                 WHERE pt.payment_id = allotment_payment.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
-                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at
+                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
+              auction_final_payment.amount_paise AS auction_final_amount_paise
        FROM applications a
        JOIN categories c ON c.id = a.category_id
        LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
        LEFT JOIN payments allotment_payment
          ON allotment_payment.application_id = a.id AND allotment_payment.purpose = 'pay_now'
+       LEFT JOIN payments auction_final_payment
+         ON auction_final_payment.application_id = a.id AND auction_final_payment.purpose = 'auction_final'
        LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
        LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
        WHERE a.application_number = ? AND a.status != 'draft'
@@ -173,6 +179,7 @@ export async function POST(request: Request) {
 
     // Issue a fresh access token for authenticated follow-up operations (document re-uploads, fee payments)
     const freshAccessToken = generateAccessToken()
+
     await query(`UPDATE applications SET access_token_hash = ? WHERE id = ?`, [
       hashAccessToken(freshAccessToken),
       application.id
@@ -242,6 +249,8 @@ export async function POST(request: Request) {
       allotmentPaymentDeadlineAt: application.allotment_payment_deadline_at ?? null,
       allotmentPaymentStatus: application.allotment_payment_status ?? null,
       allotmentPaidAt: application.allotment_paid_at ?? null,
+      auctionParticipationFeePaise: application.auction_participation_fee_paise ?? null,
+      auctionFinalAmountPaise: application.auction_final_amount_paise ?? null,
       categoryName: application.category_name,
       categoryNameHi: application.category_name_hi,
       categorySlug: application.category_slug,
