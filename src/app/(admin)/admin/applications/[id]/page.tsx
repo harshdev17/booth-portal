@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
 import type { Metadata } from 'next'
 
@@ -121,6 +121,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     query<
       Array<{
         field_definition_id: number
+        field_key: string
         label: string
         label_hi: string | null
         value: string
@@ -130,7 +131,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         display_order: number
       }>
     >(
-      `SELECT cfd.id AS field_definition_id, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
+      `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
        FROM application_field_values afv
        JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
        WHERE afv.application_id = ?
@@ -153,6 +154,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
         created_at: string | null
       }>
     >(
+
       // LEFT JOIN from the category's own required document definitions —
       // not just the documents actually uploaded — so a document the
       // applicant never uploaded at all still shows up here as a visible
@@ -241,6 +243,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
        LIMIT 1`,
       [applicationId]
     ),
+
     // "Send Payment Reminder" history, per explicit request — every
     // WhatsApp/email reminder send attempt is already logged here by
     // sendNotification() (src/lib/notifications/service.ts), one row per
@@ -341,6 +344,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     : !permissions?.has('application:reject')
       ? 'You do not have permission to reject applications.'
       : `Reject is only available while the application is under review, has a query raised, or was approved by mistake (current status: ${statusCfg.label}).`
+
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const canEditApplication = !!permissions?.has('application:edit')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
@@ -372,6 +376,8 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     value: f.value,
     inputType: f.input_type
   }))
+
+
   // documents now includes a row per required document DEFINITION (not
   // just actually-uploaded ones, see the LEFT JOIN above) — a document the
   // applicant never uploaded has id: null, so it must be excluded here or
@@ -380,19 +386,61 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
   const uploadedDocuments = documents.filter(
     (d): d is typeof d & { id: number; original_filename: string; verification_status: string } => d.id !== null
   )
+
   const missingDocuments = documents.filter(d => d.id === null)
   const aadhaarDocument = uploadedDocuments.find(d => d.document_key === 'aadhaar_card') ?? null
+
+  // Inline a category-specific document right next to the one dynamic field
+  // it's actually proof of, instead of leaving it only in the generic
+  // Documents tab — mirrors the existing aadhaar_card/Personal-tab pattern.
+  // Each entry's field_key is the single field this document is shown after
+  // (a document key may list more than one, when the same field_key is used
+  // under a different document_key across categories, e.g. the business
+  // registration certificate — only one will ever actually be present on a
+  // given application, since an application belongs to exactly one
+  // category). Field keys mapped to more than one document here on purpose
+  // are never attached a second time: only this map's own anchor field
+  // renders the card, the field's other data rows (e.g. artisan_card's
+  // issuing department/validity fields) render as plain text only.
+  const DOCUMENT_FIELD_ANCHORS: Record<string, string[]> = {
+    ngo_registration_number: ['ngo_registration_certificate'],
+    business_registration_number: ['registration_certificate', 'firm_business_registration_certificate'],
+    fssai_license_number: ['fssai_license'],
+    artisan_card_number: ['artisan_card'],
+    award_certificate_number: ['award_certificate'],
+    registration_number: ['firm_registration_certificate'],
+    shg_registration_number: ['shg_registration_certificate']
+  }
+
+  const documentsByKey = new Map(uploadedDocuments.map(d => [d.document_key, d]))
+
+  const findAnchoredDocument = (fieldKey: string) => {
+    const candidateKeys = DOCUMENT_FIELD_ANCHORS[fieldKey]
+
+    if (!candidateKeys) return null
+
+    for (const key of candidateKeys) {
+      const doc = documentsByKey.get(key)
+
+      if (doc) return doc
+    }
+
+    return null
+  }
 
   const approvalBlockedByDocs =
     isReviewStage && !!permissions?.has('application:approve') && !approvalChecklist?.allDocumentsVerified
 
   const [categorySectionsMap] = [new Map<string, typeof fieldValues>()]
+
   for (const fv of fieldValues) {
     const sectionName = fv.section?.trim() || 'Category Details'
     const list = categorySectionsMap.get(sectionName) ?? []
+
     list.push(fv)
     categorySectionsMap.set(sectionName, list)
   }
+
   const categorySections = Array.from(categorySectionsMap.entries())
 
   const registrationPayment = paymentRows.find(p => p.purpose === 'registration') ?? null
@@ -430,6 +478,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
   const allotPaymentStatus = allotmentPayment?.status ?? app.allotment_payment_status
   const allotIsPaid = allotPaymentStatus === 'success' || allotPaymentStatus === 'paid'
+
   const allotIsFree =
     (app.allotment_amount_paise === 0 || app.allotment_amount_note?.toLowerCase().includes('free')) && !allotIsPaid
 
@@ -806,18 +855,23 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                     {sectionFields.map(fv => {
                       const fieldKey = `dynamic:${fv.field_definition_id}`
                       const isFull = fv.input_type === 'textarea' || fv.input_type === 'multiselect'
+                      const anchoredDocument = findAnchoredDocument(fv.field_key)
 
                       return (
-                        <ApplicationFieldRow
-                          key={fieldKey}
-                          applicationId={id}
-                          fieldKey={fieldKey}
-                          label={fv.label}
-                          value={fv.value}
-                          full={isFull}
-                          canCheck={canVerifyDocuments}
-                          initiallyChecked={checkedFieldKeys.has(fieldKey)}
-                        />
+                        <Fragment key={fieldKey}>
+                          <ApplicationFieldRow
+                            applicationId={id}
+                            fieldKey={fieldKey}
+                            label={fv.label}
+                            value={fv.value}
+                            full={isFull}
+                            canCheck={canVerifyDocuments}
+                            initiallyChecked={checkedFieldKeys.has(fieldKey)}
+                          />
+                          {anchoredDocument && (
+                            <PersonalDocumentCard document={anchoredDocument} canVerifyDocuments={canVerifyDocuments} />
+                          )}
+                        </Fragment>
                       )
                     })}
                   </div>
