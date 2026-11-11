@@ -52,7 +52,7 @@ const ApproveApplicationDialog = ({
   const [submitting, setSubmitting] = useState(false)
   const [checklist, setChecklist] = useState<Checklist | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [notify, setNotify] = useState(true)
+
   // Field keys currently mid-toggle (single checkbox click, or part of
   // "Mark All As Checked") — disables that row's checkbox while its
   // /field-checks request is in flight, so a double-click can't fire twice.
@@ -64,7 +64,6 @@ const ApproveApplicationDialog = ({
     setLoading(true)
     setError(null)
     setChecklist(null)
-    setNotify(true)
     setTogglingKeys(new Set())
     setMarkingAll(false)
 
@@ -178,9 +177,9 @@ const ApproveApplicationDialog = ({
     try {
       const response = await fetch(`/api/admin/applications/${applicationId}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notify })
+        headers: { 'Content-Type': 'application/json' }
       })
+
       const data = await response.json()
 
       if (!response.ok) {
@@ -312,18 +311,6 @@ const ApproveApplicationDialog = ({
                 )}
               </div>
             </>
-          )}
-
-          {!loading && checklist && checklist.allDocumentsVerified && (
-            <label className='flex items-center gap-2 text-sm text-slate-700'>
-              <input
-                type='checkbox'
-                checked={notify}
-                onChange={e => setNotify(e.target.checked)}
-                className='size-4 rounded border-slate-300'
-              />
-              Notify applicant via Email &amp; WhatsApp
-            </label>
           )}
 
           <DialogFooter>
