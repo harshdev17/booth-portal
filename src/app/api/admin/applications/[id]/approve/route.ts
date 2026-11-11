@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { logAudit } from '@/lib/audit/log'
-import { notifyApplicationApproved } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -86,25 +85,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success', 'rejected')`, [applicationId])
 
-    if (notify) {
-      const contactRows = await query<
-        Array<{ application_number: string; representative_name: string; mobile_number: string; email: string | null }>
-      >(
-        `SELECT application_number, representative_name, mobile_number, email FROM applications WHERE id = ?`,
-        [applicationId]
-      )
-      const contact = contactRows[0]
-
-      if (contact) {
-        await notifyApplicationApproved({
-          applicationId,
-          applicationNumber: contact.application_number,
-          mobileNumber: contact.mobile_number,
-          email: contact.email,
-          representativeName: contact.representative_name
-        })
-      }
-    }
+    // Email/WhatsApp notification on approval disabled per explicit request
+    // (2026-11-11) — do not re-enable this call without asking first. The
+    // "notify applicant" checkbox in ApproveApplicationDialog.tsx still
+    // posts `notify`, but it's now a no-op server-side.
+    void notify
 
     await logAudit({
       actorUserId: session.userId,
@@ -114,7 +99,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       entityType: 'application',
       entityId: String(applicationId),
       previousValue: { status: 'under_review' },
-      newValue: { status: 'approved', fieldsMarkedChecked: newlyCheckedKeys, notified: notify }
+      newValue: { status: 'approved', fieldsMarkedChecked: newlyCheckedKeys, notified: false }
     })
 
     return NextResponse.json({ success: true })
