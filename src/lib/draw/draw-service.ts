@@ -186,26 +186,24 @@ export class LuckyDrawService {
 
       // 1. Lock category
       const [categoryRows] = await conn.query<any[]>(
-        `SELECT id, name, allotment_payment_enabled, allotment_payment_deadline_at, allotment_amount_paise,
-                selection_method, auction_participation_fee_paise
+        `SELECT id, name, selection_method, allotment_payment_enabled, allotment_payment_deadline_at,
+                allotment_amount_paise, auction_participation_fee_paise
          FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
 
       if (!categoryRows.length) throw new Error('Category not found.')
       const category = categoryRows[0]
-
-      // Auction categories (migration 0077) go through a 3-step payment
-      // flow (selected_for_auction -> auction_fee_paid -> auction_won ->
-      // allotted) handled entirely outside this draw, so there is no
-      // stall assignment or fee configured to check here other than the
-      // one guard below: refuse to run the draw at all until the admin
-      // has configured a participation fee, since winners are notified to
-      // pay it immediately after this transaction commits.
       const isAuctionCategory = category.selection_method === 'auction'
 
-      if (isAuctionCategory && !category.auction_participation_fee_paise) {
-        throw new Error('Set the auction participation fee for this category before running the draw.')
+      // Refused before any further locking/mutation: an auction category's
+      // winners are sent a fixed Auction Participation Fee request (not the
+      // normal allotment-fee flow below), so that fee must be configured
+      // first — never a hardcoded fallback amount per CLAUDE.md Section 5.
+      if (isAuctionCategory && !(Number(category.auction_participation_fee_paise) > 0)) {
+        throw new Error(
+          'Set the Auction Participation Fee for this category (Fee & Category Settings) before running its draw.'
+        )
       }
 
       // 2. Fetch & lock eligible candidates (approved by committee, non-allotted)
@@ -372,18 +370,27 @@ export class LuckyDrawService {
       }
 
       // 10. Update Allotted Stalls (associate stall with allotted application)
-      // Auction winners never get a stall reserved here — stall assignment
-      // for them happens later, outside this draw, once the auction itself
-      // has actually run (see .ai/APPLICATION_FLOW.md auction section).
+      //
+      // An auction category's winners are NOT given a stall here at all —
+      // KDB holds a physical auction afterward, and the admin's later
+      // results-CSV upload is what reserves each winner's actual stall (a
+      // different one than this draw's shuffled stall order, since the
+      // physical auction decides that, not this draw). So for an auction
+      // category, shop_units is left untouched and every available stall
+      // this draw looked at stays 'available'.
       const isPaymentRequired = Boolean(
         category.allotment_payment_enabled &&
         category.allotment_amount_paise &&
         Number(category.allotment_amount_paise) > 0
       )
+
       const stallStatus = isPaymentRequired ? 'reserved' : 'allotted'
+
       const applicationNewStatus = isAuctionCategory
         ? 'selected_for_auction'
-        : isPaymentRequired ? 'payment_required' : 'allotted'
+        : isPaymentRequired
+          ? 'payment_required'
+          : 'allotted'
 
       if (!isAuctionCategory) {
         for (let idx = 0; idx < allottedCount; idx++) {
@@ -406,22 +413,25 @@ export class LuckyDrawService {
           [applicationNewStatus, allottedAppIds]
         )
 
-        // Seed initial payment record for each winner — auction winners pay
-        // the participation fee first (auction_fee purpose), everyone else
-        // pays the normal allotment fee (pay_now) if one is configured.
         if (isAuctionCategory) {
-          const amountPaise = Number(category.auction_participation_fee_paise)
+          // Seed the fixed Auction Participation Fee owed by every winner —
+          // the eventual final allotment amount (which varies per winner) is
+          // seeded separately, per person, by the results-CSV upload once
+          // the physical auction has actually happened.
+          const feePaise = Number(category.auction_participation_fee_paise)
 
           for (const appId of allottedAppIds) {
             await conn.query(
               `INSERT INTO payments (application_id, purpose, amount_paise, status)
                VALUES (?, 'auction_fee', ?, 'not_initiated')
                ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
-              [appId, amountPaise, amountPaise]
+              [appId, feePaise, feePaise]
             )
           }
         } else if (isPaymentRequired) {
+          // Seed initial payment record for each winner if payment is required
           const amountPaise = Number(category.allotment_amount_paise)
+
           for (const appId of allottedAppIds) {
             await conn.query(
               `INSERT INTO payments (application_id, purpose, amount_paise, status)
@@ -464,6 +474,7 @@ export class LuckyDrawService {
             const destination = candidate.mobileNumber.startsWith('+')
               ? candidate.mobileNumber
               : `+91${candidate.mobileNumber}`
+
             const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
             const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
 

@@ -296,6 +296,7 @@ export async function queryApplicationAction(
   })
 
   revalidatePath('/admin/documents')
+  revalidatePath('/admin/applications')
 
   // Never let a notification failure block the query action itself —
   // notifyDocumentQuery already swallows send errors.

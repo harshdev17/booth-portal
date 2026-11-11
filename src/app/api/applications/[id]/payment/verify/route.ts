@@ -150,6 +150,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     })
 
     if (payment.purpose === 'pay_now' || payment.purpose === 'auction_final') {
+      // Both reach the same 'allotted' end state, so the same notification applies.
       void notifyAllotmentPaymentSuccess(applicationId, payment.amount_paise)
     } else if (payment.purpose === 'auction_fee') {
       void notifyAuctionFeePaymentSuccess(applicationId, payment.amount_paise)

@@ -43,6 +43,7 @@ function getCampaignName(category: NotificationCategory): string | null {
       null
     )
   }
+
   if (category === 'application_approved') {
     // Falls back to the Status Update campaign (which already covers an
     // "Approved" status label) until AISENSY_CAMPAIGN_APPLICATION_APPROVED's
@@ -54,6 +55,7 @@ function getCampaignName(category: NotificationCategory): string | null {
       null
     )
   }
+
   if (category === 'application_rejected') {
     // No safe fallback: the rejection REASON is this template's whole point,
     // and status_update's approved wording has no variable for it — sending
@@ -63,6 +65,7 @@ function getCampaignName(category: NotificationCategory): string | null {
     // wording.
     return process.env.AISENSY_CAMPAIGN_APPLICATION_REJECTED || null
   }
+
   if (category === 'direct_allotment_confirmed') {
     return (
       process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED ||
@@ -70,6 +73,7 @@ function getCampaignName(category: NotificationCategory): string | null {
       null
     )
   }
+
   if (category === 'stall_interchanged') {
     // Falls back to the Direct Allotment Confirmed / Status Update campaigns
     // until AISENSY_CAMPAIGN_STALL_INTERCHANGED's own dedicated template is
@@ -82,6 +86,7 @@ function getCampaignName(category: NotificationCategory): string | null {
       null
     )
   }
+
   return process.env[CAMPAIGN_ENV_VAR[category]] || null
 }
 

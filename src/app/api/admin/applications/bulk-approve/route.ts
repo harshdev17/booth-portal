@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { logAudit } from '@/lib/audit/log'
-import { notifyApplicationApproved } from '@/lib/notifications/application-status'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -22,6 +21,7 @@ export async function POST(request: Request) {
   const session = await requirePermission('application:approve')
 
   let body: { applicationIds?: string[] }
+
   try {
     body = await request.json()
   } catch {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   try {
     for (const applicationId of applicationIds) {
-      // eslint-disable-next-line no-await-in-loop
+       
       const checklist = await getApprovalChecklist(applicationId)
 
       if (!checklist) {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       if (checklist.fields.length > 0) {
         const values = checklist.fields.map(f => [applicationId, f.key, session.userId])
 
-        // eslint-disable-next-line no-await-in-loop
+         
         await query(
           `INSERT INTO application_field_checks (application_id, field_key, checked_by_user_id)
            VALUES ${values.map(() => '(?, ?, ?)').join(', ')}
@@ -81,30 +81,14 @@ export async function POST(request: Request) {
         )
       }
 
-      // eslint-disable-next-line no-await-in-loop
+       
       await query(`UPDATE applications SET status = 'approved' WHERE id = ? AND status IN ('under_review', 'payment_success', 'rejected')`, [applicationId])
 
-      // eslint-disable-next-line no-await-in-loop
-      const contactRows = await query<
-        Array<{ application_number: string; representative_name: string; mobile_number: string; email: string | null }>
-      >(
-        `SELECT application_number, representative_name, mobile_number, email FROM applications WHERE id = ?`,
-        [applicationId]
-      )
-      const contact = contactRows[0]
+      // Email/WhatsApp notification on approval disabled per explicit
+      // request (2026-11-11) — do not re-enable this call without asking
+      // first.
 
-      if (contact) {
-        // eslint-disable-next-line no-await-in-loop
-        await notifyApplicationApproved({
-          applicationId,
-          applicationNumber: contact.application_number,
-          mobileNumber: contact.mobile_number,
-          email: contact.email,
-          representativeName: contact.representative_name
-        })
-      }
-
-      // eslint-disable-next-line no-await-in-loop
+       
       await logAudit({
         actorUserId: session.userId,
         actorRoleKey: session.role.key,

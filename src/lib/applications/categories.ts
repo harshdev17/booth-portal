@@ -18,6 +18,9 @@ export type CategoryRow = {
   allotment_amount_paise: number | null
   allotment_amount_note: string | null
   allotment_amount_note_hi: string | null
+
+  /** Admin-configurable participation fee for an 'auction' selection_method category (migration 0075). NULL until an admin sets it. */
+  auction_participation_fee_paise: number | null
   important_dates_note: string | null
   important_dates_note_hi: string | null
   application_opens_at: string | null

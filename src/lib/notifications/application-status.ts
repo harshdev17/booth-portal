@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   allotted: 'Allotted',
   cancelled: 'Cancelled',
   re_allotted: 'Re-Allotted',
-  selected_for_auction: 'Selected for Auction',
+  selected_for_auction: 'Selected For Auction',
   auction_fee_paid: 'Auction Fee Paid',
   auction_won: 'Auction Won'
 }

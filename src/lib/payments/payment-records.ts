@@ -92,30 +92,37 @@ async function insertTransaction(
 }
 
 /**
- * Applies the application/shop_unit/draw_allocation side effects of a
- * successful payment, branching on purpose:
- *  - pay_now / auction_final: confirms the stall itself — allotted,
- *    matching stall + draw_allocations rows confirmed. (An auction_final
- *    payment's stall was already assigned by the auction-results upload,
- *    see src/app/api/admin/applications/auction-results/route.ts, so this
- *    is just confirming it, not assigning one for the first time.)
- *  - auction_fee: only advances the application to auction_fee_paid — no
- *    stall exists yet at this point in the auction flow.
- *  - registration (or anything else): advances to under_review, the normal
- *    post-registration-payment state.
+ * The state transition a successful payment triggers, by purpose — shared
+ * by recordCheckoutSuccess/recordWebhookConfirmed/recordAdminReconciled so
+ * the 4 purposes' effects are defined in exactly one place.
  */
-async function applySuccessfulPaymentEffects(txQuery: TransactionQuery, applicationId: number, purpose: PaymentPurpose): Promise<void> {
-  if (purpose === 'pay_now' || purpose === 'auction_final') {
-    const fromStatus = purpose === 'pay_now' ? 'payment_required' : 'auction_won'
-
-    await txQuery(`UPDATE applications SET status = 'allotted' WHERE id = ? AND status = ?`, [applicationId, fromStatus])
+async function applySuccessfulPaymentEffects(
+  txQuery: TransactionQuery,
+  purpose: PaymentPurpose,
+  applicationId: number
+): Promise<void> {
+  if (purpose === 'pay_now') {
+    await txQuery(`UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`, [applicationId])
     await txQuery(`UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`, [applicationId])
     await txQuery(
       `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
       [applicationId]
     )
   } else if (purpose === 'auction_fee') {
-    await txQuery(`UPDATE applications SET status = 'auction_fee_paid' WHERE id = ? AND status = 'selected_for_auction'`, [applicationId])
+    // No stall is touched here — this only confirms the fixed participation
+    // fee; a stall is reserved only once the results CSV is uploaded after
+    // the physical auction.
+    await txQuery(
+      `UPDATE applications SET status = 'auction_fee_paid' WHERE id = ? AND status = 'selected_for_auction'`,
+      [applicationId]
+    )
+  } else if (purpose === 'auction_final') {
+    // The results CSV upload already reserved this applicant's specific
+    // stall (shop_units.allotted_to_application_id) and set the winning
+    // application to 'auction_won' — there's no draw_allocations row to
+    // confirm here, since this stall was never part of a draw allocation.
+    await txQuery(`UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'auction_won'`, [applicationId])
+    await txQuery(`UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`, [applicationId])
   } else {
     await txQuery(
       `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
@@ -175,10 +182,11 @@ export async function recordCheckoutSuccess(input: {
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
     )
+
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, input.applicationId, purpose)
+    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -205,14 +213,17 @@ export async function recordCheckoutFailure(input: {
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
     )
+
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'failed' WHERE id = ? AND status != 'success'`, [input.paymentId])
+
     if (purpose === 'registration') {
       await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
         input.applicationId
       ])
     }
+
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'checkout_failed',
@@ -239,10 +250,11 @@ export async function recordWebhookConfirmed(input: {
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
     )
+
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, input.applicationId, purpose)
+    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -283,10 +295,11 @@ export async function recordAdminReconciled(input: {
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
     )
+
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, input.applicationId, purpose)
+    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -314,14 +327,17 @@ export async function recordWebhookFailure(input: {
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
     )
+
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'failed' WHERE id = ? AND status != 'success'`, [input.paymentId])
+
     if (purpose === 'registration') {
       await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
         input.applicationId
       ])
     }
+
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
       type: 'webhook_failed',

@@ -46,6 +46,7 @@ type CategoryFeeItem = {
   allotment_amount_paise?: number | null
   allotment_payment_enabled?: number | boolean
   allotment_payment_deadline_at?: string | null
+  auction_participation_fee_paise?: number | null
   description: string | null
   description_hi: string | null
   allotment_amount_note: string | null
@@ -76,6 +77,7 @@ export default function CategoryFeeSettingsClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [expandedAuctionFeeId, setExpandedAuctionFeeId] = useState<number | null>(null)
   const [expandedContentId, setExpandedContentId] = useState<number | null>(null)
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
@@ -270,6 +272,38 @@ export default function CategoryFeeSettingsClient({
         setTimeout(() => setSuccessMessage(null), 4000)
       } else {
         setErrorMessage(data.error ?? 'Failed to update fee.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const handleSaveAuctionFee = async (cat: CategoryFeeItem) => {
+    setSavingId(cat.id)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    const feePaise =
+      cat.auction_participation_fee_paise !== undefined && cat.auction_participation_fee_paise !== null
+        ? Number(cat.auction_participation_fee_paise)
+        : null
+
+    try {
+      const response = await fetch('/api/admin/categories/auction-fee', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: cat.id, auctionParticipationFeePaise: feePaise })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccessMessage(`Auction participation fee for "${cat.name}" updated successfully!`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update auction participation fee.')
       }
     } catch {
       setErrorMessage('Could not connect to server. Please try again.')
@@ -542,6 +576,8 @@ export default function CategoryFeeSettingsClient({
                   const isExpanded = expandedId === cat.id
                   const isContentExpanded = expandedContentId === cat.id
                   const hasAllotmentPayment = Boolean(cat.allotment_payment_enabled)
+                  const isAuctionFeeExpanded = expandedAuctionFeeId === cat.id
+                  const hasAuctionFee = Boolean(cat.auction_participation_fee_paise)
 
                   return (
                     <Fragment key={cat.id}>
@@ -634,7 +670,7 @@ export default function CategoryFeeSettingsClient({
                                 category actually needs was built and then
                                 reverted after a production outage — see
                                 .ai/CHANGELOG.md 2026-11-10 — and isn't live yet.) */}
-                            {cat.selection_method !== 'auction' && (
+                            {cat.selection_method !== 'auction' ? (
                               <Button
                                 size='sm'
                                 variant='outline'
@@ -649,6 +685,23 @@ export default function CategoryFeeSettingsClient({
                                 Allotment Fee
                                 <ChevronDownIcon
                                   className={`size-3.5 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </Button>
+                            ) : (
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => setExpandedAuctionFeeId(isAuctionFeeExpanded ? null : cat.id)}
+                                className={`text-xs font-bold rounded-lg border ${
+                                  hasAuctionFee
+                                    ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50'
+                                    : 'border-slate-300'
+                                }`}
+                              >
+                                <CoinsIcon className='size-3.5 mr-1.5' />
+                                Auction Fee
+                                <ChevronDownIcon
+                                  className={`size-3.5 ml-1 transition-transform ${isAuctionFeeExpanded ? 'rotate-180' : ''}`}
                                 />
                               </Button>
                             )}
@@ -950,6 +1003,75 @@ export default function CategoryFeeSettingsClient({
                                   </Button>
                                 </div>
                               </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {isAuctionFeeExpanded && (
+                        <tr key={`${cat.id}-auction-fee`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <CoinsIcon className='size-3.5 text-amber-600' />
+                                  Auction Participation Fee for &ldquo;{cat.name}&rdquo; (नीलामी भागीदारी शुल्क)
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  Fixed fee draw-selected applicants pay to take part in the physical auction. The
+                                  final allotment amount (which varies per winner) is set separately, per person,
+                                  when uploading the auction results — see Draw → Upload Auction Results.
+                                </p>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Auction Participation Fee (₹)</label>
+                                  <div className='relative'>
+                                    <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+                                    <Input
+                                      type='number'
+                                      min={0}
+                                      value={
+                                        cat.auction_participation_fee_paise !== null &&
+                                        cat.auction_participation_fee_paise !== undefined
+                                          ? cat.auction_participation_fee_paise / 100
+                                          : ''
+                                      }
+                                      onChange={e => {
+                                        const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+
+                                        setCategories(prev =>
+                                          prev.map(c => (c.id === cat.id ? { ...c, auction_participation_fee_paise: val } : c))
+                                        )
+                                      }}
+                                      placeholder='e.g. 5000'
+                                      className='pl-7 h-9 text-sm'
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className='flex items-end'>
+                                  <Button
+                                    size='sm'
+                                    disabled={isSaving}
+                                    onClick={() => handleSaveAuctionFee(cat)}
+                                    className='w-full bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white h-9'
+                                  >
+                                    {isSaving ? (
+                                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                    ) : (
+                                      <SaveIcon className='size-3.5 mr-1.5' />
+                                    )}
+                                    Save Auction Fee
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <p className='text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2'>
+                                A draw cannot be run for this category until this fee is set — the draw refuses to
+                                proceed with no participation fee configured.
+                              </p>
                             </div>
                           </td>
                         </tr>

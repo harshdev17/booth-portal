@@ -98,10 +98,10 @@ export async function notifyAllotmentPaymentSuccess(applicationId: number, amoun
 }
 
 /**
- * Sends notifications once an auction participation fee ('auction_fee') is
- * successfully confirmed — moves the applicant to auction_fee_paid, the
- * intermediate step while they wait for the live auction itself to happen
- * (see draw-service.ts / .ai/APPLICATION_FLOW.md auction section).
+ * Sends notifications once an Auction Participation Fee ('auction_fee') is
+ * confirmed: payment confirmation + a status update to 'auction_fee_paid'
+ * (NOT 'allotted' — a stall is only reserved later, when the admin uploads
+ * the physical auction's results).
  */
 export async function notifyAuctionFeePaymentSuccess(applicationId: number, amountPaise: number): Promise<void> {
   try {

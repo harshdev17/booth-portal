@@ -37,6 +37,7 @@ export type ApplicationTableRow = {
   is_direct_allotment: number | boolean
   canApprove: boolean
   canReject: boolean
+  canRaiseQuery: boolean
   statusCfg: StatusConfig
   isPaymentPending: boolean
 }
@@ -140,7 +141,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
         <table className='min-w-[1600px] w-full text-left text-sm'>
           <thead className='border-b bg-muted/20 text-xs font-bold text-muted-foreground uppercase'>
             <tr>
-              <th className='py-3 px-4 w-10'>
+              <th className='sticky left-0 z-10 w-10 bg-muted/40 py-3 px-4'>
                 {actionableRows.length > 0 && (
                   <input
                     type='checkbox'
@@ -151,7 +152,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                   />
                 )}
               </th>
-              <th className='py-3 px-4'>
+              <th className='sticky left-10 z-10 bg-muted/40 py-3 px-4 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
                 <Link href={sortLinks.appNo} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   App Number
                   <SortIndicator icon={sortIcons.appNo} />
@@ -185,13 +186,15 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
               </th>
               <th className='py-3 px-4'>Allotment Payment</th>
               <th className='py-3 px-4'>Created / Allotted</th>
-              <th className='py-3 px-4 text-right'>Actions</th>
+              <th className='sticky right-0 z-10 bg-muted/40 py-3 px-4 text-right shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className='divide-y'>
             {applications.map(app => (
               <tr key={app.id} className='hover:bg-muted/30 transition'>
-                <td className='py-3.5 px-4'>
+                <td className='sticky left-0 z-10 bg-white py-3.5 px-4'>
                   {(app.isPaymentPending || app.canApprove || app.canReject) && (
                     <input
                       type='checkbox'
@@ -202,7 +205,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                     />
                   )}
                 </td>
-                <td className='py-3.5 px-4 font-mono font-bold text-[#0c2847]'>
+                <td className='sticky left-10 z-10 bg-white py-3.5 px-4 font-mono font-bold text-[#0c2847] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
                   <Link href={`/admin/applications/${app.encodedId}`} className='hover:underline'>
                     {app.application_number}
                   </Link>
@@ -290,9 +293,15 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       : '—'}
                   </p>
                 </td>
-                <td className='py-3.5 px-4'>
+                <td className='sticky right-0 z-10 bg-white py-3.5 px-4 shadow-[-2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
                   <div className='flex justify-end'>
-                    <ApplicationRowActions applicationId={app.encodedId} canApprove={app.canApprove} canReject={app.canReject} />
+                    <ApplicationRowActions
+                      applicationId={app.encodedId}
+                      rawApplicationId={app.id}
+                      canApprove={app.canApprove}
+                      canReject={app.canReject}
+                      canRaiseQuery={app.canRaiseQuery}
+                    />
                   </div>
                 </td>
               </tr>

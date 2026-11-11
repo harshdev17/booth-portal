@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useImperativeHandle, useState, type Ref } from 'react'
 
 import { CheckIcon, HelpCircleIcon, Loader2Icon } from 'lucide-react'
 
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea'
 
 import { queryApplicationAction, queryDocumentAction, verifyDocumentAction, type DocumentActionState } from '@/app/server/document-actions'
+import type { DialogHandle } from '@/views/admin/applications/ApproveApplicationDialog'
 
 const initialState: DocumentActionState = {}
 
@@ -111,7 +112,15 @@ const DocumentDecisionActions = ({ documentId, currentStatus }: { documentId: nu
  * queryApplicationAction instead of a specific document's verification
  * status.
  */
-export const RaiseApplicationQueryButton = ({ applicationId }: { applicationId: number }) => {
+export const RaiseApplicationQueryButton = ({
+  applicationId,
+  hideTrigger,
+  ref
+}: {
+  applicationId: number
+  hideTrigger?: boolean
+  ref?: Ref<DialogHandle>
+}) => {
   const [state, formAction, isPending] = useActionState(queryApplicationAction, initialState)
   const [open, setOpen] = useState(false)
   const [submittedAt, setSubmittedAt] = useState(0)
@@ -123,12 +132,16 @@ export const RaiseApplicationQueryButton = ({ applicationId }: { applicationId: 
     setOpen(true)
   }
 
+  useImperativeHandle(ref, () => ({ open: openDialog }))
+
   return (
     <>
-      <Button type='button' size='sm' variant='outline' onClick={openDialog}>
-        <HelpCircleIcon />
-        Raise Query
-      </Button>
+      {!hideTrigger && (
+        <Button type='button' size='sm' variant='outline' onClick={openDialog}>
+          <HelpCircleIcon />
+          Raise Query
+        </Button>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setOpen}>
         <DialogContent>

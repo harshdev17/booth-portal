@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { query } from '@/lib/db/client'
 import { requirePermission, getCurrentUserPermissions } from '@/lib/rbac/authorize'
+import AuctionResultsUploadDialog from '@/views/admin/draw/AuctionResultsUploadDialog'
 import DrawDashboardControl from '@/views/admin/draw/DrawDashboardControl'
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default async function DrawProcessPage() {
   await requirePermission('draw:view')
   const permissions = await getCurrentUserPermissions()
   const canRunDraw = !!permissions?.has('draw:run')
+  const canUploadAuctionResults = !!permissions?.has('allotment:perform')
 
   // Fetch categories with live eligible candidates & available stalls
   const [categories, pastDraws] = await Promise.all([
@@ -85,6 +87,8 @@ export default async function DrawProcessPage() {
             Provably fair, deterministic randomization engine for oversubscribed commercial booth/stall allotments.
           </p>
         </div>
+
+        {canUploadAuctionResults && <AuctionResultsUploadDialog />}
       </div>
 
       {/* Interactive Controls (Simulation & Execution) */}

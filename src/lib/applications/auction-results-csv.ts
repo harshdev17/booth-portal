@@ -1,12 +1,15 @@
 import 'server-only'
 
-// CSV import for recording live-auction results (migration 0077). The
-// auction itself happens offline/in-person — this file only parses the
-// admin's post-auction upload: which applicant won which stall at what
-// final price. Plain CSV for the same reason as shop-units-csv.ts: the only
-// available .xlsx parser (`xlsx`/SheetJS) has unpatched vulnerabilities and
-// this endpoint parses admin-uploaded file content.
-export const AUCTION_RESULTS_CSV_COLUMNS = ['Application Number', 'Booth/Stall No.', 'Final Amount'] as const
+// CSV import for an auction category's physical-auction results (migration
+// 0075_auction_payment_flow.sql). Plain CSV, not .xlsx — same reasoning as
+// shop-units-csv.ts: the only Node .xlsx library has unpatched
+// vulnerabilities and this parses admin-uploaded file content.
+//
+// One row per winner: which application won, which stall they get, and the
+// final amount settled at the (offline, in-person) auction — this amount
+// genuinely varies per person, so it's supplied here rather than configured
+// anywhere ahead of time.
+export const AUCTION_RESULTS_CSV_COLUMNS = ['Application Number', 'Stall Number', 'Final Auction Amount'] as const
 
 export type AuctionResultCsvRow = {
   rowNumber: number
@@ -22,7 +25,31 @@ export type ParsedAuctionResultsCsv = {
   errors: CsvRowError[]
 }
 
-/** Parses one CSV line respecting double-quoted fields (which may contain commas). */
+// Formula-injection guard matches shop-units-csv.ts's escapeCsvField().
+function escapeCsvField(value: string): string {
+  let out = value
+
+  if (/^[=+\-@\t\r]/.test(out)) {
+    out = `'${out}`
+  }
+
+  if (out.includes(',') || out.includes('"') || out.includes('\n')) {
+    return `"${out.replace(/"/g, '""')}"`
+  }
+
+  return out
+}
+
+function buildCsv(rows: string[][]): string {
+  return rows.map(row => row.map(escapeCsvField).join(',')).join('\r\n')
+}
+
+/** The downloadable blank template — header row plus one example row. */
+export function buildAuctionResultsTemplateCsv(): string {
+  return buildCsv([[...AUCTION_RESULTS_CSV_COLUMNS], ['IGM-2026-000123', 'S-101', '55000']])
+}
+
+/** Parses one CSV line respecting double-quoted fields (which may contain commas). Matches shop-units-csv.ts. */
 function parseCsvLine(line: string): string[] {
   const fields: string[] = []
   let current = ''
@@ -61,64 +88,46 @@ const MAX_IMPORT_ROWS = 500
 
 /**
  * Parses an uploaded CSV's text content into validated rows. Does NOT touch
- * the database or resolve application numbers to IDs — that happens in the
- * caller against live application data, since "does this application exist
- * and is it actually auction_won" is a live lookup, not something this pure
- * parsing function should own.
+ * the database — resolving each application/stall against live data and
+ * checking their current eligibility happens in the caller, same separation
+ * as parseShopUnitsCsv().
  */
 export function parseAuctionResultsCsv(text: string): ParsedAuctionResultsCsv {
-  const cleanedText = text.replace(/^﻿/, '').trim()
-  const lines = cleanedText.split(/\r\n|\r|\n/).filter(line => line.trim() !== '')
+  const cleaned = text.replace(/^﻿/, '').replace(/\r\n/g, '\n')
+  const lines = cleaned.split('\n').filter(line => line.trim().length > 0)
 
   if (lines.length === 0) {
     return { rows: [], errors: [{ rowNumber: 0, message: 'The file is empty.' }] }
   }
 
-  const rawHeaders = parseCsvLine(lines[0]).map(h => h.replace(/^﻿/, '').trim())
-  const colIndex = new Map<string, number>()
-  rawHeaders.forEach((h, idx) => {
-    colIndex.set(h.toLowerCase().trim(), idx)
-  })
+  const header = parseCsvLine(lines[0]).map(h => h.trim())
+  const expected = AUCTION_RESULTS_CSV_COLUMNS as readonly string[]
+  const headerMatches = expected.every((col, idx) => header[idx]?.toLowerCase() === col.toLowerCase())
 
-  const findCol = (keywords: string[]): number => {
-    for (const kw of keywords) {
-      const lowerKw = kw.toLowerCase()
-      for (const [key, idx] of colIndex.entries()) {
-        if (key === lowerKw || key.includes(lowerKw)) return idx
-      }
-    }
-
-    return -1
-  }
-
-  const appCol = findCol(['application number', 'application no.', 'application no', 'app no', 'appno'])
-  const stallCol = findCol(['booth/stall no.', 'booth/stall no', 'stall no.', 'stall no', 'stall number', 'booth number'])
-  const amountCol = findCol(['final amount', 'auction amount', 'winning amount', 'amount'])
-
-  if (appCol === -1 || stallCol === -1) {
+  if (!headerMatches) {
     return {
       rows: [],
-      errors: [{ rowNumber: 1, message: 'Could not identify "Application Number" or "Booth/Stall No." columns. Please verify column headers.' }]
+      errors: [{ rowNumber: 1, message: `Header row must be exactly: ${expected.join(', ')}` }]
     }
   }
 
   const dataLines = lines.slice(1)
 
   if (dataLines.length > MAX_IMPORT_ROWS) {
-    return { rows: [], errors: [{ rowNumber: 0, message: `Too many rows (max ${MAX_IMPORT_ROWS} per import).` }] }
+    return { rows: [], errors: [{ rowNumber: 0, message: `Too many rows (max ${MAX_IMPORT_ROWS} per upload).` }] }
   }
 
   const rows: AuctionResultCsvRow[] = []
   const errors: CsvRowError[] = []
   const seenApplicationNumbers = new Set<string>()
+  const seenStallNumbers = new Set<string>()
 
   dataLines.forEach((line, idx) => {
-    const rowNumber = idx + 2
+    const rowNumber = idx + 2 // +1 for 0-index, +1 for the header row
     const fields = parseCsvLine(line)
-
-    const applicationNumber = (fields[appCol] ?? '').trim()
-    const stallNumber = (fields[stallCol] ?? '').trim()
-    const amountRaw = amountCol !== -1 ? (fields[amountCol] ?? '').trim().replace(/[^\d.]/g, '') : ''
+    const applicationNumber = (fields[0] ?? '').trim()
+    const stallNumber = (fields[1] ?? '').trim()
+    const amountRaw = (fields[2] ?? '').trim()
 
     if (!applicationNumber) {
       errors.push({ rowNumber, message: 'Application Number is required.' })
@@ -126,27 +135,34 @@ export function parseAuctionResultsCsv(text: string): ParsedAuctionResultsCsv {
       return
     }
 
-    if (seenApplicationNumbers.has(applicationNumber.toLowerCase())) {
-      errors.push({ rowNumber, message: `Duplicate Application Number "${applicationNumber}" within this file.` })
-
-      return
-    }
-
-    seenApplicationNumbers.add(applicationNumber.toLowerCase())
-
     if (!stallNumber) {
-      errors.push({ rowNumber, message: 'Booth/Stall No. is required.' })
+      errors.push({ rowNumber, message: 'Stall Number is required.' })
 
       return
     }
 
-    const finalAmountRupees = Math.max(0, Math.round(Number(amountRaw) || 0))
+    const finalAmountRupees = Number(amountRaw)
 
-    if (!amountRaw || finalAmountRupees <= 0) {
-      errors.push({ rowNumber, message: 'Final Amount must be a positive number.' })
+    if (!amountRaw || !Number.isFinite(finalAmountRupees) || finalAmountRupees <= 0) {
+      errors.push({ rowNumber, message: 'Final Auction Amount must be a positive number.' })
 
       return
     }
+
+    if (seenApplicationNumbers.has(applicationNumber)) {
+      errors.push({ rowNumber, message: `Application Number "${applicationNumber}" appears more than once in this file.` })
+
+      return
+    }
+
+    if (seenStallNumbers.has(stallNumber)) {
+      errors.push({ rowNumber, message: `Stall Number "${stallNumber}" appears more than once in this file.` })
+
+      return
+    }
+
+    seenApplicationNumbers.add(applicationNumber)
+    seenStallNumbers.add(stallNumber)
 
     rows.push({ rowNumber, applicationNumber, stallNumber, finalAmountRupees })
   })

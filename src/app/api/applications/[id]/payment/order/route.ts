@@ -47,10 +47,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
 
   let requestedPurpose: 'registration' | 'pay_now' | 'auction_fee' | 'auction_final' = 'registration'
+
   try {
     const rawBody = await request.text()
+
     if (rawBody) {
       const parsedBody = JSON.parse(rawBody)
+
       if (parsedBody?.purpose === 'pay_now' || parsedBody?.purpose === 'auction_fee' || parsedBody?.purpose === 'auction_final') {
         requestedPurpose = parsedBody.purpose
       }
@@ -121,6 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           // live to silently shift this deadline by 5.5 hours on a
           // UTC-timezone host (same root cause as isCategoryAcceptingApplications).
           const deadline = parseIstDateTime(category.allotment_payment_deadline_at)
+
           if (Date.now() > deadline.getTime()) {
             return NextResponse.json(
               { error: 'Allotment payment deadline has passed. Please contact the administration.' },
@@ -167,47 +171,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       })
     }
 
-    if (requestedPurpose === 'auction_fee' || requestedPurpose === 'auction_final') {
-      const expectedStatus = requestedPurpose === 'auction_fee' ? 'selected_for_auction' : 'auction_won'
-
-      if (application.status !== expectedStatus) {
+    if (requestedPurpose === 'auction_fee') {
+      if (application.status !== 'selected_for_auction') {
         return NextResponse.json(
-          { error: `This application is "${application.status}" and does not require this payment.` },
+          { error: `This application is "${application.status}" and does not require the auction participation fee.` },
           { status: 409 }
         )
       }
 
-      // Both auction purposes are always seeded ahead of time — by
-      // draw-service.ts (auction_fee, right after the draw selects this
-      // application) or the auction-results upload route (auction_final,
-      // right after the live auction assigns a stall) — never computed
-      // fresh from category config here, since there is no category-level
-      // "auction final amount"; it's whatever the live auction settled on.
-      const existingPayments = await query<Array<{ amount_paise: number }>>(
-        `SELECT amount_paise FROM payments WHERE application_id = ? AND purpose = ? LIMIT 1`,
-        [applicationId, requestedPurpose]
+      const categoryRows = await query<Array<{ name: string; auction_participation_fee_paise: number | null }>>(
+        `SELECT name, auction_participation_fee_paise FROM categories WHERE id = ? LIMIT 1`,
+        [application.category_id]
       )
 
-      const amountPaise = existingPayments[0]?.amount_paise ? Number(existingPayments[0].amount_paise) : 0
+      const category = categoryRows[0]
 
-      if (amountPaise <= 0) {
-        return NextResponse.json({ error: 'No payment amount configured for this application yet.' }, { status: 409 })
+      if (!category || !category.auction_participation_fee_paise || category.auction_participation_fee_paise <= 0) {
+        return NextResponse.json({ error: 'Auction participation fee is not configured for this category.' }, { status: 409 })
       }
 
-      const category = await getCategoryById(application.category_id)
+      const amountPaise = Number(category.auction_participation_fee_paise)
 
       const order = await createRazorpayOrder({
         amountPaise,
-        receipt: `${application.application_number}-${requestedPurpose === 'auction_fee' ? 'AUCFEE' : 'AUCFINAL'}`,
-        notes: { applicationId: String(applicationId), purpose: requestedPurpose }
+        receipt: `${application.application_number}-AUCFEE`,
+        notes: { applicationId: String(applicationId), purpose: 'auction_fee' }
       })
 
-      await recordOrderCreated({
-        applicationId,
-        purpose: requestedPurpose,
-        amountPaise,
-        razorpayOrderId: order.id
-      })
+      await recordOrderCreated({ applicationId, purpose: 'auction_fee', amountPaise, razorpayOrderId: order.id })
 
       await logAudit({
         actorUserId: null,
@@ -216,7 +207,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         module: 'payments',
         entityType: 'application',
         entityId: String(applicationId),
-        newValue: { razorpayOrderId: order.id, amountPaise, purpose: requestedPurpose },
+        newValue: { razorpayOrderId: order.id, amountPaise, purpose: 'auction_fee' },
         ipAddress
       })
 
@@ -226,8 +217,64 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         currency: order.currency,
         keyId: getRazorpayKeyId(),
         applicationNumber: application.application_number,
-        categoryName: category?.name ?? 'Stall Allotment',
-        purpose: requestedPurpose
+        categoryName: category.name,
+        purpose: 'auction_fee'
+      })
+    }
+
+    if (requestedPurpose === 'auction_final') {
+      if (application.status !== 'auction_won') {
+        return NextResponse.json(
+          { error: `This application is "${application.status}" and does not require the final auction payment.` },
+          { status: 409 }
+        )
+      }
+
+      // Never recomputed from category config — the final amount varies per
+      // winner and is only known from the results CSV the admin uploaded
+      // after the physical auction, which already seeded this exact row.
+      const existingPayments = await query<Array<{ amount_paise: number }>>(
+        `SELECT amount_paise FROM payments WHERE application_id = ? AND purpose = 'auction_final' LIMIT 1`,
+        [applicationId]
+      )
+
+      const amountPaise = existingPayments[0]?.amount_paise ? Number(existingPayments[0].amount_paise) : 0
+
+      if (amountPaise <= 0) {
+        return NextResponse.json({ error: 'Final auction amount has not been recorded for this application yet.' }, { status: 409 })
+      }
+
+      const categoryRows = await query<Array<{ name: string }>>(`SELECT name FROM categories WHERE id = ? LIMIT 1`, [
+        application.category_id
+      ])
+
+      const order = await createRazorpayOrder({
+        amountPaise,
+        receipt: `${application.application_number}-AUCFINAL`,
+        notes: { applicationId: String(applicationId), purpose: 'auction_final' }
+      })
+
+      await recordOrderCreated({ applicationId, purpose: 'auction_final', amountPaise, razorpayOrderId: order.id })
+
+      await logAudit({
+        actorUserId: null,
+        actorRoleKey: null,
+        action: 'payment.order_created',
+        module: 'payments',
+        entityType: 'application',
+        entityId: String(applicationId),
+        newValue: { razorpayOrderId: order.id, amountPaise, purpose: 'auction_final' },
+        ipAddress
+      })
+
+      return NextResponse.json({
+        orderId: order.id,
+        amountPaise,
+        currency: order.currency,
+        keyId: getRazorpayKeyId(),
+        applicationNumber: application.application_number,
+        categoryName: categoryRows[0]?.name ?? 'Stall Allotment',
+        purpose: 'auction_final'
       })
     }
 

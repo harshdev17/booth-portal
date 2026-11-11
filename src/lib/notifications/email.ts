@@ -98,9 +98,11 @@ export function buildEmailContent(
   const statusUrl = baseUrl
     ? `${baseUrl.replace(/\/+$/, '')}/status${appNo ? `?appNo=${encodeURIComponent(appNo)}` : ''}`
     : undefined
+
   const allotmentLetterUrl = baseUrl
     ? `${baseUrl.replace(/\/+$/, '')}/allotment-letter${appNo ? `?appNo=${encodeURIComponent(appNo)}` : ''}`
     : undefined
+
   let c: Content
 
   switch (category) {
@@ -133,6 +135,7 @@ export function buildEmailContent(
         link: statusUrl
       }
       break
+
     case 'status_update': {
       const isAllotted = typeof third === 'string' && third.toLowerCase() === 'allotted'
 
@@ -158,6 +161,7 @@ export function buildEmailContent(
       }
       break
     }
+
     case 'application_approved':
       c = {
         subject: `Application ${appNo} Approved`,
@@ -192,6 +196,7 @@ export function buildEmailContent(
         link: statusUrl
       }
       break
+
     case 'document_query': {
       // Two distinct cases share this one notification category:
       // 1. A specific uploaded document needs correcting (document-level
@@ -233,6 +238,7 @@ export function buildEmailContent(
       }
       break
     }
+
     case 'pay_now_activation':
       c = {
         subject: `Draw Selection: Complete Payment for application ${appNo}`,
@@ -315,16 +321,16 @@ export function buildEmailContent(
       break
     case 'auction_fee_activation':
       c = {
-        subject: `Selected for Auction: Pay Participation Fee for application ${appNo}`,
+        subject: `Draw Selection: Pay Auction Participation Fee for application ${appNo}`,
         en: [
           `Dear ${name},`,
-          `Congratulations! Your application ${appNo} has been selected for the auction round of booth/stall allotment for International Geeta Jayanti Mahotsav 2026.`,
-          'Please complete the auction participation fee payment using the link below to confirm your participation in the auction.'
+          `Congratulations! Your application ${appNo} has been selected in the draw for International Geeta Jayanti Mahotsav 2026.`,
+          'This category is allotted through a physical auction held by the Kurukshetra Development Board (KDB). Please pay the Auction Participation Fee using the link below to confirm your place at the auction.'
         ],
         hi: [
           `प्रिय ${name},`,
-          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत स्टॉल/बूथ आवंटन की नीलामी (Auction) चरण हेतु आपके आवेदन ${appNo} का चयन हुआ है।`,
-          'कृपया नीलामी में भाग लेने की पुष्टि हेतु नीचे दिए गए लिंक से भागीदारी शुल्क का भुगतान पूर्ण करें।'
+          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत ड्रा (Draw) में आपके आवेदन ${appNo} का चयन हुआ है।`,
+          'इस श्रेणी का आबंटन कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आयोजित भौतिक नीलामी (Physical Auction) के माध्यम से किया जाता है। कृपया नीलामी में अपनी भागीदारी सुनिश्चित करने के लिए नीचे दिए गए लिंक से नीलामी भागीदारी शुल्क (Auction Participation Fee) का भुगतान करें।'
         ],
         link: statusUrl
       }
@@ -334,13 +340,13 @@ export function buildEmailContent(
         subject: `Auction Won: Complete Final Payment for application ${appNo}`,
         en: [
           `Dear ${name},`,
-          `Congratulations! You have won the auction for application ${appNo} for International Geeta Jayanti Mahotsav 2026.`,
+          `Congratulations! Your application ${appNo} has won a booth/stall at the physical auction for International Geeta Jayanti Mahotsav 2026.`,
           'Please complete the final allotment payment using the link below to confirm your stall and download your Allotment Letter.'
         ],
         hi: [
           `प्रिय ${name},`,
-          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} हेतु नीलामी (Auction) जीत ली गई है।`,
-          'कृपया अपना स्टॉल सुनिश्चित करने और आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से अंतिम आवंटन भुगतान पूर्ण करें।'
+          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत भौतिक नीलामी (Physical Auction) में आपके आवेदन ${appNo} को बूथ/स्टॉल आबंटित हुआ है।`,
+          'कृपया अपना आवंटन सुनिश्चित करने और आवंटन पत्र डाउनलोड करने के लिए नीचे दिए गए लिंक से अंतिम भुगतान पूर्ण करें।'
         ],
         link: statusUrl
       }
@@ -374,6 +380,7 @@ export function buildEmailContent(
 
   let buttonLabel = 'Open Portal / पोर्टल खोलें'
   let buttonColor = '#0c2847'
+
   if (
     category === 'direct_allotment_confirmed' ||
     category === 'stall_interchanged' ||
@@ -386,6 +393,12 @@ export function buildEmailContent(
     buttonColor = '#d97706'
   } else if (category === 'pay_now_activation') {
     buttonLabel = 'Pay Stall Fee (Draw) / स्टॉल शुल्क भुगतान करें'
+    buttonColor = '#d97706'
+  } else if (category === 'auction_fee_activation') {
+    buttonLabel = 'Pay Auction Fee / नीलामी शुल्क भुगतान करें'
+    buttonColor = '#d97706'
+  } else if (category === 'auction_final_payment') {
+    buttonLabel = 'Pay Final Amount / अंतिम भुगतान करें'
     buttonColor = '#d97706'
   } else if (category === 'payment_confirmation') {
     buttonLabel = 'View Receipt & Status / रसीद एवं स्थिति देखें'
