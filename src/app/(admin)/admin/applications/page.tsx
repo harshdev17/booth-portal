@@ -449,6 +449,13 @@ const ApplicationsAdminPage = async ({
                   app.status === 'approved') &&
                 !!permissions?.has('application:reject')
 
+              // Matches queryApplicationAction's own eligibility check
+              // (src/app/server/document-actions.ts) — kept in sync so the
+              // menu item is never shown enabled only to be rejected server-side.
+              const canRaiseQuery =
+                (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'query_raised') &&
+                !!permissions?.has('document:verify')
+
               // Eligible for the bulk reminder exactly like the single-row
               // button on the application detail page: registration fee not
               // yet paid (covers payment_pending/payment_failed/draft-paid-
@@ -469,6 +476,7 @@ const ApplicationsAdminPage = async ({
                 encodedId,
                 canApprove,
                 canReject,
+                canRaiseQuery,
                 statusCfg,
                 isPaymentPending
               }
