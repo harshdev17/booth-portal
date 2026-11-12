@@ -444,41 +444,74 @@ const ApplicationDetailPage = async ({
   // are never attached a second time: only this map's own anchor field
   // renders the card, the field's other data rows (e.g. artisan_card's
   // issuing department/validity fields) render as plain text only.
+  // Rule, applied consistently across every category: a document always
+  // anchors to the LAST field of its own section, never a field in the
+  // middle — so the card always shows up at the end of that section's
+  // fields, not interrupting them partway through. Verified against a full
+  // dump of every active category's own field_key/section/display_order
+  // (2026-11-13) rather than guessed per-category.
   const DOCUMENT_FIELD_ANCHORS: Record<string, string[]> = {
-    ngo_registration_number: ['ngo_registration_certificate'], // Social Organizations
-    business_registration_number: ['registration_certificate'], // Refreshment Stalls
-    fssai_license_number: ['fssai_license'], // Refreshment Stalls, Sweets & Special Items
-    artisan_card_number: ['artisan_card'], // Artisan Card Holders
-    award_certificate_number: ['award_certificate'], // National Awardees
-    registration_number: ['firm_registration_certificate'], // Brand Promotion & Corporate
-    shg_registration_number: ['shg_registration_certificate'], // SARAS
+    // Social Organizations — Organisation Details section, last field organization_type
+    organization_type: ['ngo_registration_certificate'],
 
-    // work_product_photos (migration 0017) is required by 3 categories, each
-    // with its own field naming for "what the applicant makes/displays" —
-    // anchored to each category's own closest-matching field so the photo
-    // proof shows up right next to it, same as every other anchored doc.
-    // artisan-card-holders' products_made field was made inactive and
-    // artisan_work_description relabeled to "Description of Products Made"
-    // by migration 0025 — that relabeled field is the one actually shown
-    // on the live form now, so it's the correct anchor, not products_made.
-    artisan_work_description: ['work_product_photos'], // Artisan Card Holders
+    // Refreshment Stalls — Business Details section, last field business_registration_number;
+    // FSSAI License section, last field fssai_validity_date (shared field_key with Sweets below,
+    // same document_key either way, so no cross-category conflict)
+    business_registration_number: ['registration_certificate'],
+    fssai_validity_date: ['fssai_license'],
 
-    products_to_display: ['work_product_photos'], // Special Art & Craft
+    // Sweets, Bakers and Special Food Items — Business Details section has only
+    // one field (business_firm_name, so it's also the last); Product Details
+    // section, last field products_description
+    business_firm_name: ['registration_certificate'],
+    products_description: ['product_photos'],
 
-    // product_description is reused as a field_key by 3 different
-    // categories (SARAS, Wooden Craft & Carpets, National Awardees). SARAS
-    // and National Awardees each only ever have ONE of these candidates
-    // present (product_photos / work_product_photos respectively), so the
-    // first-match behavior below is fine for them. Wooden Craft & Carpets
-    // is the one category where TWO of its own documents
-    // (firm_business_registration_certificate and product_work_photos) can
-    // both be present on the same application — per explicit request, both
-    // should show up here, at the end of the Business Details section
-    // (product_description is that section's last field), rather than
-    // firm_business_registration_certificate anchoring mid-section against
-    // business_registration_number as it did before.
-    product_description: ['product_photos', 'firm_business_registration_certificate', 'product_work_photos', 'work_product_photos'], // SARAS, Wooden Craft & Carpets, National Awardees
-    products_description: ['product_photos'] // Sweets, Bakers and Special Food Items
+    // SARAS — SHG Details section, last field shg_member_count; Products
+    // section, last (only) field product_description
+    shg_member_count: ['shg_registration_certificate'],
+
+    // Artisan Card Holders — Artisan Card section, last field artisan_card_validity;
+    // Artisan Work section, last field artisan_work_description (relabeled
+    // "Description of Products Made" by migration 0025 — the field actually
+    // shown on the live form now, not the inactive products_made)
+    artisan_card_validity: ['artisan_card'],
+    artisan_work_description: ['work_product_photos'],
+
+    // National Awardees — Award Details section, last field award_description;
+    // Work Details section, last field work_description. Previously
+    // work_product_photos was wrongly anchored to product_description, a
+    // field_key this category doesn't even have (that's SARAS/Wooden Craft's
+    // field) — the document silently never showed up here because of it.
+    award_description: ['award_certificate'],
+    work_description: ['work_product_photos'],
+
+    // Special Art & Craft (Without card holder) — Craft Details section,
+    // last field years_of_experience (previously anchored to
+    // products_to_display, a field in the MIDDLE of this section)
+    years_of_experience: ['work_product_photos'],
+
+    // Wooden Craft & Carpets — Business Details section has no document of
+    // its own; Products section, last field product_description, carries
+    // BOTH of this category's non-Aadhaar documents (the one category where
+    // two of its own documents can both be present on the same application)
+    product_description: ['firm_business_registration_certificate', 'product_work_photos'],
+
+    // Government Departments — Department Details section has only one
+    // field (organisation_name, so it's also the last). organisation_name
+    // is also a field_key in Social Organizations and Brand Promotion, but
+    // department_authorization_letter is a document_key only Government
+    // Departments applications ever have, so findAnchoredDocuments()
+    // naturally returns nothing for it on those other two categories.
+    organisation_name: ['department_authorization_letter'],
+
+    // Brand Promotion & Corporate — Company & Brand Details section, last
+    // field website; Promotion section, last field promotion_purpose,
+    // carries the other 2 documents (per explicit request — Authorization
+    // Letter and Sponsorship Proposal have no field of their own to anchor
+    // to, but should still show up on the Application tab, not only the
+    // Documents tab)
+    website: ['firm_registration_certificate'],
+    promotion_purpose: ['authorization_letter', 'sponsorship_proposal']
   }
 
   const documentsByKey = new Map(uploadedDocuments.map(d => [d.document_key, d]))
@@ -919,10 +952,23 @@ const ApplicationDetailPage = async ({
                 <div key={sectionName} className='mt-6'>
                   <SectionLabel>{sectionName}</SectionLabel>
                   <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
-                    {sectionFields.map(fv => {
+                    {sectionFields.map((fv, idx) => {
                       const fieldKey = `dynamic:${fv.field_definition_id}`
                       const isFull = fv.input_type === 'textarea' || fv.input_type === 'multiselect'
-                      const anchoredDocuments = findAnchoredDocuments(fv.field_key)
+
+                      // Anchored documents only ever attach at the actual
+                      // LAST field of this section (for this specific
+                      // application's own field list), never a field in the
+                      // middle — resolved here against the real per-section
+                      // field order instead of baking "is this the last
+                      // field" into DOCUMENT_FIELD_ANCHORS itself, which
+                      // would otherwise double-render a document when the
+                      // same field_key is reused by another category where
+                      // it ISN'T the last field (e.g. business_firm_name is
+                      // Sweets' only/last Business Details field, but
+                      // Refreshment Stalls' first one).
+                      const isLastInSection = idx === sectionFields.length - 1
+                      const anchoredDocuments = isLastInSection ? findAnchoredDocuments(fv.field_key) : []
 
                       return (
                         <Fragment key={fieldKey}>

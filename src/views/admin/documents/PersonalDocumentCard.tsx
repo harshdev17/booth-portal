@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { DownloadIcon, EyeIcon } from 'lucide-react'
+import { DownloadIcon, EyeIcon, Loader2Icon } from 'lucide-react'
 
 import { previewKindFor } from '@/lib/applications/document-preview-kind'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
@@ -35,6 +35,7 @@ const PersonalDocumentCard = ({
 }) => {
   const docCfg = getDocumentStatusConfig(document.verification_status)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
   const previewKind = previewKindFor(document.original_filename)
   const previewSrc = `/api/documents/${document.id}/preview`
 
@@ -62,7 +63,10 @@ const PersonalDocumentCard = ({
         <div className='flex shrink-0 items-center gap-2'>
           <button
             type='button'
-            onClick={() => setIsPreviewOpen(prev => !prev)}
+            onClick={() => {
+              setIsPreviewOpen(prev => !prev)
+              if (!isPreviewOpen) setIsPreviewLoading(true)
+            }}
             className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
               isPreviewOpen
                 ? 'border-[#0c2847] bg-[#0c2847] text-white hover:bg-[#06192e]'
@@ -86,12 +90,34 @@ const PersonalDocumentCard = ({
       {isPreviewOpen && (
         <div className='mt-3 border-t pt-3'>
           {previewKind === 'pdf' && (
-            <iframe src={previewSrc} title={document.label} className='h-[60vh] w-full rounded-md border' />
+            <div className='relative'>
+              {isPreviewLoading && (
+                <div className='absolute inset-0 flex items-center justify-center gap-2 rounded-md border bg-white text-sm text-muted-foreground'>
+                  <Loader2Icon className='size-4 animate-spin' /> Loading preview…
+                </div>
+              )}
+              <iframe
+                src={previewSrc}
+                title={document.label}
+                onLoad={() => setIsPreviewLoading(false)}
+                className='h-[60vh] w-full rounded-md border'
+              />
+            </div>
           )}
           {previewKind === 'image' && (
-            <div className='flex max-h-[60vh] items-center justify-center overflow-auto rounded-md border bg-white p-2'>
+            <div className='relative flex max-h-[60vh] items-center justify-center overflow-auto rounded-md border bg-white p-2'>
+              {isPreviewLoading && (
+                <div className='absolute inset-0 flex items-center justify-center gap-2 bg-white text-sm text-muted-foreground'>
+                  <Loader2Icon className='size-4 animate-spin' /> Loading preview…
+                </div>
+              )}
               {/* eslint-disable-next-line @next/next/no-img-element -- admin-only authenticated document bytes, not a next/image-optimizable public asset */}
-              <img src={previewSrc} alt={document.label} className='max-w-full object-contain' />
+              <img
+                src={previewSrc}
+                alt={document.label}
+                onLoad={() => setIsPreviewLoading(false)}
+                className='max-w-full object-contain'
+              />
             </div>
           )}
           {previewKind === null && (
