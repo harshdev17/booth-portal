@@ -34,16 +34,48 @@ const CorrigendumNoticeModal = () => {
   const rows =
     lang === 'hi'
       ? [
-          { particular: 'सभी कैटेगरी का रिजल्ट घोषित होना', date: '16 नवंबर 2026, सुबह 11:00 बजे' },
-          { particular: 'Refreshment & Ice Cream बूथ/स्टॉल की फिजिकल नीलामी', date: '19 नवंबर 2026, सुबह 10:00 बजे' },
-          { particular: 'Government Department Category के लिए आवेदन की अंतिम तारीख', date: '19 नवंबर 2026, शाम 5:00 बजे' },
-          { particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख', date: '15 नवंबर 2026, शाम 5:00 बजे' }
+          {
+            particular: 'सभी कैटेगरी का रिजल्ट घोषित होना',
+            previous: '12 नवंबर 2026, सुबह 11:00 बजे',
+            revised: '16 नवंबर 2026, सुबह 11:00 बजे'
+          },
+          {
+            particular: 'Refreshment & Ice Cream बूथ/स्टॉल की फिजिकल नीलामी',
+            previous: '16 नवंबर 2026, सुबह 10:00 बजे',
+            revised: '19 नवंबर 2026, सुबह 10:00 बजे'
+          },
+          {
+            particular: 'Government Department Category के लिए आवेदन की अंतिम तारीख',
+            previous: '10 नवंबर 2026, शाम 5:00 बजे',
+            revised: '19 नवंबर 2026, शाम 5:00 बजे'
+          },
+          {
+            particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख',
+            previous: '10 नवंबर 2026, शाम 5:00 बजे',
+            revised: '15 नवंबर 2026, शाम 5:00 बजे'
+          }
         ]
       : [
-          { particular: 'Declaration of Results for all categories', date: '16 November 2026 (11:00 AM)' },
-          { particular: 'Physical Auction for Refreshment & Ice Cream Booths/Stalls', date: '19 November 2026 (10:00 AM)' },
-          { particular: 'Application for Govt. Department Category', date: '19 November 2026 (5:00 PM)' },
-          { particular: 'Application for Brand Promotion Category', date: '15 November 2026 (5:00 PM)' }
+          {
+            particular: 'Declaration of Results for all categories',
+            previous: '12 November 2026 (11:00 AM)',
+            revised: '16 November 2026 (11:00 AM)'
+          },
+          {
+            particular: 'Physical Auction for Refreshment & Ice Cream Booths/Stalls',
+            previous: '16 November 2026 (10:00 AM)',
+            revised: '19 November 2026 (10:00 AM)'
+          },
+          {
+            particular: 'Application for Govt. Department Category',
+            previous: '10 November 2026 (5:00 PM)',
+            revised: '19 November 2026 (5:00 PM)'
+          },
+          {
+            particular: 'Application for Brand Promotion Category',
+            previous: '10 November 2026 (5:00 PM)',
+            revised: '15 November 2026 (5:00 PM)'
+          }
         ]
 
   return (
@@ -56,15 +88,31 @@ const CorrigendumNoticeModal = () => {
           {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}
         </p>
 
-        <div className='mb-7 overflow-hidden rounded-xl border border-[#e8e2d8]'>
-          <table className='w-full text-left text-base'>
+        <div className='mb-7 overflow-x-auto rounded-xl border border-[#e8e2d8]'>
+          <table className='w-full min-w-[480px] text-left text-base'>
+            <thead>
+              <tr className='border-b border-[#e8e2d8] bg-[#f3efe6]'>
+                <th className='px-4 py-3 text-xs font-bold tracking-wide text-[#6b5b3a] uppercase'>
+                  {lang === 'hi' ? 'विवरण' : 'Particular'}
+                </th>
+                <th className='px-4 py-3 text-xs font-bold tracking-wide text-[#6b5b3a] uppercase'>
+                  {lang === 'hi' ? 'पूर्व तिथि' : 'Previous'}
+                </th>
+                <th className='px-4 py-3 text-xs font-bold tracking-wide text-[#6b5b3a] uppercase'>
+                  {lang === 'hi' ? 'संशोधित तिथि' : 'Revised'}
+                </th>
+              </tr>
+            </thead>
             <tbody className='divide-y divide-[#e8e2d8]'>
               {rows.map(row => (
                 <tr key={row.particular}>
-                  <td className='w-1/2 bg-[#faf7f1] px-4 py-4 align-top text-[15px] font-semibold text-[#44403c]'>
+                  <td className='bg-[#faf7f1] px-4 py-4 align-top text-[14px] font-semibold text-[#44403c]'>
                     {row.particular}
                   </td>
-                  <td className='px-4 py-4 align-top text-[15px] font-bold text-[#0c2847]'>{row.date}</td>
+                  <td className='px-4 py-4 align-top text-[14px] font-medium text-[#94a3b8] line-through decoration-[#cbd5e1]'>
+                    {row.previous}
+                  </td>
+                  <td className='px-4 py-4 align-top text-[14px] font-bold text-[#0c2847]'>{row.revised}</td>
                 </tr>
               ))}
             </tbody>
