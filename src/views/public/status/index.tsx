@@ -134,7 +134,7 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   under_review: { en: 'Pending (Under Review)', hi: 'लंबित (समीक्षाधीन)' },
   query_raised: { en: 'Query Raised', hi: 'स्पष्टीकरण आवश्यक' },
   rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
-  selected: { en: 'Approved', hi: 'स्वीकृत' },
+  selected: { en: 'Verified', hi: 'सत्यापित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
   allotted: { en: 'Allotted', hi: 'आबंटित' },
