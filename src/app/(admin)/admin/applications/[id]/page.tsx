@@ -527,11 +527,11 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                 href={`/admin/applications/${encodeId(prevApplicationId)}`}
                 className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
               >
-                <ChevronLeftIcon className='size-3.5' /> Previous
+                <ChevronLeftIcon className='size-3.5' /> Previous Application
               </Link>
             ) : (
               <span className='inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-300 cursor-not-allowed'>
-                <ChevronLeftIcon className='size-3.5' /> Previous
+                <ChevronLeftIcon className='size-3.5' /> Previous Application
               </span>
             )}
 
@@ -540,11 +540,11 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
                 href={`/admin/applications/${encodeId(nextApplicationId)}`}
                 className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
               >
-                Next <ChevronRightIcon className='size-3.5' />
+                Next Application <ChevronRightIcon className='size-3.5' />
               </Link>
             ) : (
               <span className='inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-300 cursor-not-allowed'>
-                Next <ChevronRightIcon className='size-3.5' />
+                Next Application <ChevronRightIcon className='size-3.5' />
               </span>
             )}
           </div>
