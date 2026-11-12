@@ -416,7 +416,11 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
     // with its own field naming for "what the applicant makes/displays" —
     // anchored to each category's own closest-matching field so the photo
     // proof shows up right next to it, same as every other anchored doc.
-    products_made: ['work_product_photos'], // Artisan Card Holders
+    // artisan-card-holders' products_made field was made inactive and
+    // artisan_work_description relabeled to "Description of Products Made"
+    // by migration 0025 — that relabeled field is the one actually shown
+    // on the live form now, so it's the correct anchor, not products_made.
+    artisan_work_description: ['work_product_photos'], // Artisan Card Holders
     products_to_display: ['work_product_photos'], // Special Art & Craft
     product_description: ['work_product_photos'] // National Awardees
   }
