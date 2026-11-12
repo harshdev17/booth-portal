@@ -451,13 +451,30 @@ const ApplicationDetailPage = async ({
   // dump of every active category's own field_key/section/display_order
   // (2026-11-13) rather than guessed per-category.
   const DOCUMENT_FIELD_ANCHORS: Record<string, string[]> = {
-    // Social Organizations — Organisation Details section, last field organization_type
-    organization_type: ['ngo_registration_certificate'],
+    // Social Organizations — Organisation Details section, last field
+    // organization_type, carries both its non-Aadhaar documents
+    // (ngo_registration_certificate AND authorization_letter — the latter
+    // had no anchor at all before and only ever showed on the Documents
+    // tab, same gap Brand Promotion's authorization_letter/
+    // sponsorship_proposal had before being fixed below)
+    organization_type: ['ngo_registration_certificate', 'authorization_letter'],
 
-    // Refreshment Stalls — Business Details section, last field business_registration_number;
-    // FSSAI License section, last field fssai_validity_date (shared field_key with Sweets below,
-    // same document_key either way, so no cross-category conflict)
+    // Refreshment Stalls — Business Details section's LAST ACTIVE field is
+    // business_registration_number, but it's optional and most real
+    // applications leave it blank (no application_field_values row at all
+    // for it) — when that happens, gst_number (also optional) or pan_number
+    // becomes the section's effective last FILLED field for that specific
+    // application, so the document needs an anchor on each of them too, not
+    // just the nominal last field. (Confirmed live, 2026-11-13: most real
+    // Refreshment applications only have business_firm_name/pan_number/
+    // fssai fields filled, no business_registration_number row at all —
+    // the document was silently never showing up because of it.)
+    // FSSAI License section, last field fssai_validity_date (shared
+    // field_key with Sweets below, same document_key either way, so no
+    // cross-category conflict).
     business_registration_number: ['registration_certificate'],
+    gst_number: ['registration_certificate'],
+    pan_number: ['registration_certificate'],
     fssai_validity_date: ['fssai_license'],
 
     // Sweets, Bakers and Special Food Items — Business Details section has only
@@ -466,9 +483,11 @@ const ApplicationDetailPage = async ({
     business_firm_name: ['registration_certificate'],
     products_description: ['product_photos'],
 
-    // SARAS — SHG Details section, last field shg_member_count; Products
-    // section, last (only) field product_description
-    shg_member_count: ['shg_registration_certificate'],
+    // SARAS — SHG Details section, last field shg_member_count, carries
+    // both shg_registration_certificate and authorization_letter (same gap
+    // as Social Organizations above — authorization_letter had no anchor);
+    // Products section, last (only) field product_description
+    shg_member_count: ['shg_registration_certificate', 'authorization_letter'],
 
     // Artisan Card Holders — Artisan Card section, last field artisan_card_validity;
     // Artisan Work section, last field artisan_work_description (relabeled
