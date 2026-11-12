@@ -445,13 +445,13 @@ const ApplicationDetailPage = async ({
   // renders the card, the field's other data rows (e.g. artisan_card's
   // issuing department/validity fields) render as plain text only.
   const DOCUMENT_FIELD_ANCHORS: Record<string, string[]> = {
-    ngo_registration_number: ['ngo_registration_certificate'],
-    business_registration_number: ['registration_certificate', 'firm_business_registration_certificate'],
-    fssai_license_number: ['fssai_license'],
-    artisan_card_number: ['artisan_card'],
-    award_certificate_number: ['award_certificate'],
-    registration_number: ['firm_registration_certificate'],
-    shg_registration_number: ['shg_registration_certificate'],
+    ngo_registration_number: ['ngo_registration_certificate'], // Social Organizations
+    business_registration_number: ['registration_certificate', 'firm_business_registration_certificate'], // Refreshment Stalls, Wooden Craft & Carpets
+    fssai_license_number: ['fssai_license'], // Refreshment Stalls, Sweets & Special Items
+    artisan_card_number: ['artisan_card'], // Artisan Card Holders
+    award_certificate_number: ['award_certificate'], // National Awardees
+    registration_number: ['firm_registration_certificate'], // Brand Promotion & Corporate
+    shg_registration_number: ['shg_registration_certificate'], // SARAS
 
     // work_product_photos (migration 0017) is required by 3 categories, each
     // with its own field naming for "what the applicant makes/displays" —
@@ -462,8 +462,17 @@ const ApplicationDetailPage = async ({
     // by migration 0025 — that relabeled field is the one actually shown
     // on the live form now, so it's the correct anchor, not products_made.
     artisan_work_description: ['work_product_photos'], // Artisan Card Holders
+
     products_to_display: ['work_product_photos'], // Special Art & Craft
-    product_description: ['work_product_photos'] // National Awardees
+
+    // product_description is reused as a field_key by 3 different
+    // categories (SARAS, Wooden Craft & Carpets, National Awardees), each
+    // requiring a different photo document — listing all 3 candidate
+    // document_keys here is safe: an application belongs to exactly one
+    // category, so only the one that category actually requires will ever
+    // be present, and findAnchoredDocument() takes the first match.
+    product_description: ['product_photos', 'product_work_photos', 'work_product_photos'], // SARAS, Wooden Craft & Carpets, National Awardees
+    products_description: ['product_photos'] // Sweets, Bakers and Special Food Items
   }
 
   const documentsByKey = new Map(uploadedDocuments.map(d => [d.document_key, d]))
