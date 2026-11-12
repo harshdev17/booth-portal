@@ -446,7 +446,7 @@ const ApplicationDetailPage = async ({
   // issuing department/validity fields) render as plain text only.
   const DOCUMENT_FIELD_ANCHORS: Record<string, string[]> = {
     ngo_registration_number: ['ngo_registration_certificate'], // Social Organizations
-    business_registration_number: ['registration_certificate', 'firm_business_registration_certificate'], // Refreshment Stalls, Wooden Craft & Carpets
+    business_registration_number: ['registration_certificate'], // Refreshment Stalls
     fssai_license_number: ['fssai_license'], // Refreshment Stalls, Sweets & Special Items
     artisan_card_number: ['artisan_card'], // Artisan Card Holders
     award_certificate_number: ['award_certificate'], // National Awardees
@@ -466,29 +466,33 @@ const ApplicationDetailPage = async ({
     products_to_display: ['work_product_photos'], // Special Art & Craft
 
     // product_description is reused as a field_key by 3 different
-    // categories (SARAS, Wooden Craft & Carpets, National Awardees), each
-    // requiring a different photo document — listing all 3 candidate
-    // document_keys here is safe: an application belongs to exactly one
-    // category, so only the one that category actually requires will ever
-    // be present, and findAnchoredDocument() takes the first match.
-    product_description: ['product_photos', 'product_work_photos', 'work_product_photos'], // SARAS, Wooden Craft & Carpets, National Awardees
+    // categories (SARAS, Wooden Craft & Carpets, National Awardees). SARAS
+    // and National Awardees each only ever have ONE of these candidates
+    // present (product_photos / work_product_photos respectively), so the
+    // first-match behavior below is fine for them. Wooden Craft & Carpets
+    // is the one category where TWO of its own documents
+    // (firm_business_registration_certificate and product_work_photos) can
+    // both be present on the same application — per explicit request, both
+    // should show up here, at the end of the Business Details section
+    // (product_description is that section's last field), rather than
+    // firm_business_registration_certificate anchoring mid-section against
+    // business_registration_number as it did before.
+    product_description: ['product_photos', 'firm_business_registration_certificate', 'product_work_photos', 'work_product_photos'], // SARAS, Wooden Craft & Carpets, National Awardees
     products_description: ['product_photos'] // Sweets, Bakers and Special Food Items
   }
 
   const documentsByKey = new Map(uploadedDocuments.map(d => [d.document_key, d]))
 
-  const findAnchoredDocument = (fieldKey: string) => {
+  const findAnchoredDocuments = (fieldKey: string) => {
     const candidateKeys = DOCUMENT_FIELD_ANCHORS[fieldKey]
 
-    if (!candidateKeys) return null
+    if (!candidateKeys) return []
 
-    for (const key of candidateKeys) {
+    return candidateKeys.flatMap(key => {
       const doc = documentsByKey.get(key)
 
-      if (doc) return doc
-    }
-
-    return null
+      return doc ? [doc] : []
+    })
   }
 
   const approvalBlockedByDocs =
@@ -918,7 +922,7 @@ const ApplicationDetailPage = async ({
                     {sectionFields.map(fv => {
                       const fieldKey = `dynamic:${fv.field_definition_id}`
                       const isFull = fv.input_type === 'textarea' || fv.input_type === 'multiselect'
-                      const anchoredDocument = findAnchoredDocument(fv.field_key)
+                      const anchoredDocuments = findAnchoredDocuments(fv.field_key)
 
                       return (
                         <Fragment key={fieldKey}>
@@ -931,9 +935,9 @@ const ApplicationDetailPage = async ({
                             canCheck={canVerifyDocuments}
                             initiallyChecked={checkedFieldKeys.has(fieldKey)}
                           />
-                          {anchoredDocument && (
-                            <PersonalDocumentCard document={anchoredDocument} canVerifyDocuments={canVerifyDocuments} />
-                          )}
+                          {anchoredDocuments.map(doc => (
+                            <PersonalDocumentCard key={doc.id} document={doc} canVerifyDocuments={canVerifyDocuments} />
+                          ))}
                         </Fragment>
                       )
                     })}

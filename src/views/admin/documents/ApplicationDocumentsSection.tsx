@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
-import { previewKindFor } from '@/lib/applications/document-preview-kind'
 import { verifyAllDocumentsAction, type DocumentActionState } from '@/app/server/document-actions'
 import DocumentDecisionActions, { RaiseApplicationQueryButton } from '@/views/admin/documents/DocumentDecisionActions'
 
@@ -165,13 +164,6 @@ const ApplicationDocumentsSection = ({
 }) => {
   const reloadAfterUpload = () => window.location.reload()
 
-  // Split-view preview — clicking "Preview" selects a document here instead
-  // of opening a new tab, so the document and its Verify/Raise Query
-  // controls are visible on the same screen. Per explicit request: with
-  // 1000+ applications to verify, switching tabs for every single document
-  // made bulk verification impractically slow.
-  const [selectedDoc, setSelectedDoc] = useState<ApplicationDocumentRow | null>(null)
-
   const personalDocs = documents.filter(d => PERSONAL_DOCUMENT_KEYS.has(d.document_key))
   const applicationDocs = documents.filter(d => !PERSONAL_DOCUMENT_KEYS.has(d.document_key))
 
@@ -225,15 +217,9 @@ const ApplicationDocumentsSection = ({
           }
 
           const docCfg = getDocumentStatusConfig(doc.verification_status!)
-          const isSelected = selectedDoc?.id === doc.id
 
           return (
-            <div
-              key={doc.id}
-              className={`flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between ${
-                isSelected ? 'bg-blue-50/60 -mx-4 px-4' : ''
-              }`}
-            >
+            <div key={doc.id} className='flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
               <div>
                 <div className='flex items-center gap-2'>
                   <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
@@ -253,17 +239,14 @@ const ApplicationDocumentsSection = ({
               </div>
 
               <div className='flex shrink-0 items-center gap-2'>
-                <button
-                  type='button'
-                  onClick={() => setSelectedDoc(doc)}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
-                    isSelected
-                      ? 'border-[#0c2847] bg-[#0c2847] text-white hover:bg-[#06192e]'
-                      : 'border-input text-[#0c2847] hover:bg-muted'
-                  }`}
+                <a
+                  href={`/api/documents/${doc.id}/preview`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
                 >
                   <EyeIcon className='size-3.5' /> Preview
-                </button>
+                </a>
                 <a
                   href={`/api/documents/${doc.id}/preview?download=true`}
                   className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
@@ -315,95 +298,30 @@ const ApplicationDocumentsSection = ({
         </Card>
       )}
 
-      <div className='grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start'>
-        <Card className='shadow-xs'>
-          <CardHeader className='flex flex-row items-center justify-between gap-3'>
-            <CardTitle className='text-base'>
-              Documents ({uploadedCount}/{documents.length} uploaded)
-            </CardTitle>
-            {canVerifyDocuments && pendingVerificationCount > 0 && (
-              <VerifyAllDocumentsButton applicationId={numericApplicationId} />
-            )}
-          </CardHeader>
-          <CardContent>
-            {documents.length === 0 ? (
-              <p className='py-8 text-center text-sm text-muted-foreground'>No documents required for this category.</p>
-            ) : (
-              <Tabs defaultValue='personal'>
-                <TabsList>
-                  <TabsTrigger value='personal'>Personal ({personalDocs.length})</TabsTrigger>
-                  <TabsTrigger value='application'>Application ({applicationDocs.length})</TabsTrigger>
-                </TabsList>
-                <TabsContent value='personal'>{renderDocList(personalDocs)}</TabsContent>
-                <TabsContent value='application'>{renderDocList(applicationDocs)}</TabsContent>
-              </Tabs>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Split-view preview panel — stays mounted (not a new tab), so
-            clicking Preview on the next document in the list swaps this
-            panel's contents without the admin ever leaving this page. */}
-        <Card className='shadow-xs lg:sticky lg:top-4'>
-          <CardHeader>
-            <CardTitle className='text-base'>Document Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!selectedDoc ? (
-              <p className='py-12 text-center text-sm text-muted-foreground'>
-                Click &ldquo;Preview&rdquo; on any document to view it here.
-              </p>
-            ) : (
-              <div className='flex flex-col gap-3'>
-                <div>
-                  <p className='text-sm font-semibold text-[#0c2847]'>{selectedDoc.label}</p>
-                  <p className='text-xs text-muted-foreground'>{selectedDoc.original_filename}</p>
-                </div>
-
-                {(() => {
-                  const kind = previewKindFor(selectedDoc.original_filename)
-                  const src = `/api/documents/${selectedDoc.id}/preview`
-
-                  if (kind === 'pdf') {
-                    return <iframe src={src} title={selectedDoc.label} className='h-[70vh] w-full rounded-md border' />
-                  }
-
-                  if (kind === 'image') {
-                    return (
-                      <div className='flex max-h-[70vh] items-center justify-center overflow-auto rounded-md border bg-muted/20 p-2'>
-                        {/* eslint-disable-next-line @next/next/no-img-element -- admin-only authenticated document bytes, not a next/image-optimizable public asset */}
-                        <img src={src} alt={selectedDoc.label} className='max-w-full object-contain' />
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <p className='rounded-md border bg-muted/20 py-10 text-center text-sm text-muted-foreground'>
-                      Preview not available for this file type.{' '}
-                      <a href={`${src}?download=true`} className='font-semibold text-[#0c2847] underline'>
-                        Download instead
-                      </a>
-                      .
-                    </p>
-                  )
-                })()}
-
-                <div className='flex flex-wrap items-center gap-2 border-t pt-3'>
-                  {canVerifyDocuments && (
-                    <DocumentDecisionActions documentId={selectedDoc.id!} currentStatus={selectedDoc.verification_status!} />
-                  )}
-                  <a
-                    href={`/api/documents/${selectedDoc.id}/preview?download=true`}
-                    className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                  >
-                    <DownloadIcon className='size-3.5' /> Download
-                  </a>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card className='shadow-xs'>
+        <CardHeader className='flex flex-row items-center justify-between gap-3'>
+          <CardTitle className='text-base'>
+            Documents ({uploadedCount}/{documents.length} uploaded)
+          </CardTitle>
+          {canVerifyDocuments && pendingVerificationCount > 0 && (
+            <VerifyAllDocumentsButton applicationId={numericApplicationId} />
+          )}
+        </CardHeader>
+        <CardContent>
+          {documents.length === 0 ? (
+            <p className='py-8 text-center text-sm text-muted-foreground'>No documents required for this category.</p>
+          ) : (
+            <Tabs defaultValue='personal'>
+              <TabsList>
+                <TabsTrigger value='personal'>Personal ({personalDocs.length})</TabsTrigger>
+                <TabsTrigger value='application'>Application ({applicationDocs.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value='personal'>{renderDocList(personalDocs)}</TabsContent>
+              <TabsContent value='application'>{renderDocList(applicationDocs)}</TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
