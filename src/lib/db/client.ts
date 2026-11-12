@@ -35,7 +35,24 @@ export function getPool(): mysql.Pool {
     waitForConnections: true,
     connectionLimit: 40,
     maxIdle: 20,
-    idleTimeout: 300000,
+
+    // Hostinger's shared MySQL server silently closes an idle connection
+    // after a short server-side wait_timeout (reported as low as 20-60s on
+    // shared plans — well under MySQL's own 8-hour default, and far under
+    // the 300000ms idleTimeout this pool used before). A connection this
+    // pool still considered "idle but fine" would already be dead
+    // server-side: the next query on it failed, and the pool opened a
+    // fresh connection to replace it. That replace-on-failure cycle, not
+    // steady request volume, is what actually drove the DB user's
+    // max_connections_per_hour limit (500) to be exceeded in production
+    // (confirmed live, 2026-11-12 — admin pages started failing permission
+    // checks because requirePermission()'s own query was hitting this).
+    // 15s keeps this pool closing an idle connection well before Hostinger
+    // does, so a fresh one opens predictably on next use instead of a
+    // query failing first. This ONLY affects idle (checked-in, unused)
+    // connections — a connection with a query actively running on it,
+    // however long that query takes, is never idle and is unaffected.
+    idleTimeout: 15000,
 
     // Keep pooled connections warm: with a remote DB each fresh connect costs ~1s+, and a
     // 60s idle timeout made the first request after a short pause (e.g. a settings save) pay it.
