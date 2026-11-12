@@ -45,7 +45,7 @@ const ApplicationTabsNav = ({
           className='text-xs font-bold'
         >
           <ChevronLeftIcon className='size-3.5' />
-          {prevTab ? prevTab.label : 'Previous'}
+          Previous
         </Button>
         <Button
           type='button'
@@ -55,7 +55,7 @@ const ApplicationTabsNav = ({
           onClick={() => nextTab && setValue(nextTab.value)}
           className='text-xs font-bold'
         >
-          {nextTab ? nextTab.label : 'Next'}
+          Next
           <ChevronRightIcon className='size-3.5' />
         </Button>
       </div>
