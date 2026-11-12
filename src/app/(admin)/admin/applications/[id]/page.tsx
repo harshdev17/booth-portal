@@ -70,13 +70,29 @@ type ApplicationRow = {
   registration_payment_status: string | null
 }
 
-const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string }> }) => {
+const ApplicationDetailPage = async ({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ from?: string }>
+}) => {
   const session = await requirePermission('application:view')
 
   const { id } = await params
   const applicationId = decodeId(id)
 
   if (applicationId === null) notFound()
+
+  // "Back to Applications" returns to the exact list view (filters, sort,
+  // page) the admin opened this application from, instead of always
+  // resetting to the unfiltered list — per explicit request. Only a
+  // same-origin relative path is trusted here (must start with exactly one
+  // `/`, never `//` which a browser resolves as protocol-relative to an
+  // external host) — an untrusted `from` value could otherwise be used as
+  // an open-redirect vector.
+  const { from } = await searchParams
+  const backToListUrl = from && from.startsWith('/') && !from.startsWith('//') ? from : '/admin/applications'
 
   const [
     rows,
@@ -515,7 +531,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
       <div className='flex flex-col gap-3'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <Link
-            href='/admin/applications'
+            href={backToListUrl}
             className='inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-[#0c2847] transition'
           >
             <ArrowLeftIcon className='size-4' /> Back to Applications
@@ -524,7 +540,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
           <div className='flex items-center gap-2'>
             {prevApplicationId ? (
               <Link
-                href={`/admin/applications/${encodeId(prevApplicationId)}`}
+                href={`/admin/applications/${encodeId(prevApplicationId)}?from=${encodeURIComponent(backToListUrl)}`}
                 className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
               >
                 <ChevronLeftIcon className='size-3.5' /> Previous Application
@@ -537,7 +553,7 @@ const ApplicationDetailPage = async ({ params }: { params: Promise<{ id: string 
 
             {nextApplicationId ? (
               <Link
-                href={`/admin/applications/${encodeId(nextApplicationId)}`}
+                href={`/admin/applications/${encodeId(nextApplicationId)}?from=${encodeURIComponent(backToListUrl)}`}
                 className='inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
               >
                 Next Application <ChevronRightIcon className='size-3.5' />

@@ -27,6 +27,9 @@ type Props = {
   canReject: boolean
   canRaiseQuery: boolean
   documents: DocumentOption[]
+
+  /** Current list URL (filters/sort/page), carried into the View link's `from` param so the detail page's "Back to Applications" returns to this exact view. */
+  backToListUrl: string
 }
 
 /**
@@ -39,7 +42,15 @@ type Props = {
  * routes independently re-check status, permission and document
  * verification; this is UI only.
  */
-const ApplicationRowActions = ({ applicationId, rawApplicationId, canApprove, canReject, canRaiseQuery, documents }: Props) => {
+const ApplicationRowActions = ({
+  applicationId,
+  rawApplicationId,
+  canApprove,
+  canReject,
+  canRaiseQuery,
+  documents,
+  backToListUrl
+}: Props) => {
   const approveRef = useRef<DialogHandle>(null)
   const rejectRef = useRef<DialogHandle>(null)
   const queryRef = useRef<DialogHandle>(null)
@@ -52,7 +63,9 @@ const ApplicationRowActions = ({ applicationId, rawApplicationId, canApprove, ca
           <ChevronDownIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-40'>
-          <DropdownMenuItem render={<Link href={`/admin/applications/${applicationId}`} />}>
+          <DropdownMenuItem
+            render={<Link href={`/admin/applications/${applicationId}?from=${encodeURIComponent(backToListUrl)}`} />}
+          >
             <EyeIcon />
             View
           </DropdownMenuItem>

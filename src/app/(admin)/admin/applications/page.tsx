@@ -298,6 +298,28 @@ const ApplicationsAdminPage = async ({
     return `/admin/applications?${sp.toString()}`
   }
 
+  // The exact list URL the admin is currently looking at (every filter,
+  // sort, and page) — passed through to each row's detail-page link as
+  // `from`, so "Back to Applications" on the detail page returns here
+  // instead of always resetting to the unfiltered list. Per explicit
+  // request: opening a category-filtered list, viewing an application, then
+  // using Back previously dropped the category filter entirely.
+  const currentListUrl = (() => {
+    const sp = new URLSearchParams()
+
+    if (q) sp.set('q', q)
+    if (status) sp.set('status', status)
+    if (category) sp.set('category', category)
+    if (sort) sp.set('sort', sort)
+    if (dir) sp.set('dir', dir)
+    if (pageParam) sp.set('page', pageParam)
+    if (pageSizeParam) sp.set('pageSize', pageSizeParam)
+
+    const qs = sp.toString()
+
+    return qs ? `/admin/applications?${qs}` : '/admin/applications'
+  })()
+
   // Helper to generate quick status filter URLs
   const getStatusFilterUrl = (targetStatus: string) => {
     const sp = new URLSearchParams()
@@ -464,6 +486,7 @@ const ApplicationsAdminPage = async ({
 
         <CardContent className='p-0'>
           <ApplicationsTableClient
+            backToListUrl={currentListUrl}
             applications={applications.map(app => {
               const statusCfg = STATUS_CONFIG[app.status] ?? {
                 label: app.status,

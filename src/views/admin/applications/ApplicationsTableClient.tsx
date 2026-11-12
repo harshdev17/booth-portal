@@ -53,6 +53,9 @@ type SortIcon = 'asc' | 'desc' | 'none'
 
 type Props = {
   applications: ApplicationTableRow[]
+
+  /** Current list URL (filters/sort/page) — carried into each row's detail-page link so "Back to Applications" returns to this exact view. */
+  backToListUrl: string
   sortLinks: {
     appNo: string
     name: string
@@ -89,7 +92,8 @@ function SortIndicator({ icon }: { icon: SortIcon }) {
  * backend routes independently re-check eligibility per row regardless, so
  * this is just to avoid a confusing "enabled but does nothing" button.
  */
-export default function ApplicationsTableClient({ applications, sortLinks, sortIcons }: Props) {
+export default function ApplicationsTableClient({ applications, backToListUrl, sortLinks, sortIcons }: Props) {
+  const fromParam = `from=${encodeURIComponent(backToListUrl)}`
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -219,7 +223,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                   )}
                 </td>
                 <td className='sticky left-12 z-10 w-40 bg-white py-3.5 px-4 font-mono font-bold text-[#0c2847] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
-                  <Link href={`/admin/applications/${app.encodedId}`} className='hover:underline'>
+                  <Link href={`/admin/applications/${app.encodedId}?${fromParam}`} className='hover:underline'>
                     {app.application_number}
                   </Link>
                 </td>
@@ -315,6 +319,7 @@ export default function ApplicationsTableClient({ applications, sortLinks, sortI
                       canReject={app.canReject}
                       canRaiseQuery={app.canRaiseQuery}
                       documents={app.documents}
+                      backToListUrl={backToListUrl}
                     />
                   </div>
                 </td>
