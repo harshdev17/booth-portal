@@ -36,12 +36,14 @@ const CorrigendumNoticeModal = () => {
       ? [
           { particular: 'सभी कैटेगरी का रिजल्ट घोषित होना', date: '16 नवंबर 2026, सुबह 11:00 बजे' },
           { particular: 'Refreshment & Ice Cream बूथ/स्टॉल की फिजिकल नीलामी', date: '19 नवंबर 2026, सुबह 10:00 बजे' },
-          { particular: 'Brand Promotion और Government Department Category के लिए आवेदन की अंतिम तारीख', date: '15 नवंबर 2026, शाम 5:00 बजे' }
+          { particular: 'Government Department Category के लिए आवेदन की अंतिम तारीख', date: '19 नवंबर 2026, शाम 5:00 बजे' },
+          { particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख', date: '15 नवंबर 2026, शाम 5:00 बजे' }
         ]
       : [
           { particular: 'Declaration of Results for all categories', date: '16 November 2026 (11:00 AM)' },
           { particular: 'Physical Auction for Refreshment & Ice Cream Booths/Stalls', date: '19 November 2026 (10:00 AM)' },
-          { particular: 'Application for Brand Promotion and Govt. Department Category', date: '15 November 2026 (5:00 PM)' }
+          { particular: 'Application for Govt. Department Category', date: '19 November 2026 (5:00 PM)' },
+          { particular: 'Application for Brand Promotion Category', date: '15 November 2026 (5:00 PM)' }
         ]
 
   return (
