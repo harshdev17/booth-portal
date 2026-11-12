@@ -263,7 +263,7 @@ export const RaiseListQueryButton = ({
           {hasDocuments && (
             <div className='flex flex-col gap-1.5'>
               <Label className='text-xs font-semibold'>Document</Label>
-              <Select value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
+              <Select value={selectedDocumentId} onValueChange={value => setSelectedDocumentId(value ?? '')}>
                 <SelectTrigger className='w-full'>
                   <SelectValue placeholder='Select a document' />
                 </SelectTrigger>
