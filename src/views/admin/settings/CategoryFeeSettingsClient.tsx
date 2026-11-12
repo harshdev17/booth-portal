@@ -79,6 +79,7 @@ export default function CategoryFeeSettingsClient({
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [expandedAuctionFeeId, setExpandedAuctionFeeId] = useState<number | null>(null)
   const [expandedContentId, setExpandedContentId] = useState<number | null>(null)
+  const [expandedDatesId, setExpandedDatesId] = useState<number | null>(null)
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
@@ -304,6 +305,50 @@ export default function CategoryFeeSettingsClient({
         setTimeout(() => setSuccessMessage(null), 4000)
       } else {
         setErrorMessage(data.error ?? 'Failed to update auction participation fee.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  /**
+   * Per-category application open/close dates — separate from the "Portal
+   * Application & Draw Schedule" card above, which applies one shared
+   * schedule to every active category at once. This lets a single category
+   * (e.g. one whose window closed earlier but needs reopening) be adjusted
+   * without touching every other category's dates. Uses the same
+   * /api/admin/categories/schedule route, just with a single categoryId
+   * instead of the bulk categoryIds array — the route already supported
+   * this, there was just no UI calling it that way yet.
+   */
+  const handleSaveDates = async (cat: CategoryFeeItem) => {
+    setSavingId(cat.id)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/categories/schedule', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: cat.id,
+          applicationOpensAt: toDatetimeLocalValue(cat.application_opens_at),
+          applicationClosesAt: toDatetimeLocalValue(cat.application_closes_at),
+          auctionDate: toDatetimeLocalValue(cat.auction_date),
+          auctionVenue: cat.auction_venue ?? '',
+          auctionVenueHi: cat.auction_venue_hi ?? ''
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccessMessage(`Application dates for "${cat.name}" updated successfully!`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update application dates.')
       }
     } catch {
       setErrorMessage('Could not connect to server. Please try again.')
@@ -578,6 +623,7 @@ export default function CategoryFeeSettingsClient({
                   const hasAllotmentPayment = Boolean(cat.allotment_payment_enabled)
                   const isAuctionFeeExpanded = expandedAuctionFeeId === cat.id
                   const hasAuctionFee = Boolean(cat.auction_participation_fee_paise)
+                  const isDatesExpanded = expandedDatesId === cat.id
 
                   return (
                     <Fragment key={cat.id}>
@@ -652,6 +698,18 @@ export default function CategoryFeeSettingsClient({
                             <Button
                               size='sm'
                               variant='outline'
+                              onClick={() => setExpandedDatesId(isDatesExpanded ? null : cat.id)}
+                              className='text-xs font-bold rounded-lg border border-slate-300'
+                            >
+                              <CalendarClockIcon className='size-3.5 mr-1.5' />
+                              Dates
+                              <ChevronDownIcon
+                                className={`size-3.5 ml-1 transition-transform ${isDatesExpanded ? 'rotate-180' : ''}`}
+                              />
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='outline'
                               onClick={() => setExpandedContentId(isContentExpanded ? null : cat.id)}
                               className='text-xs font-bold rounded-lg border border-slate-300'
                             >
@@ -721,6 +779,74 @@ export default function CategoryFeeSettingsClient({
                           </div>
                         </td>
                       </tr>
+
+                      {isDatesExpanded && (
+                        <tr key={`${cat.id}-dates`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <CalendarClockIcon className='size-3.5 text-slate-600' />
+                                  Application Dates for &ldquo;{cat.name}&rdquo; (आवेदन तिथियां)
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  Only this category&apos;s open/close dates — independent of the shared Portal
+                                  Application &amp; Draw Schedule above. Use this to reopen or adjust one category
+                                  without touching every other category&apos;s dates.
+                                </p>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-end'>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Application Opens At</label>
+                                  <Input
+                                    type='datetime-local'
+                                    value={toDatetimeLocalValue(cat.application_opens_at)}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, application_opens_at: e.target.value || null } : c
+                                        )
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Application Closes At</label>
+                                  <Input
+                                    type='datetime-local'
+                                    value={toDatetimeLocalValue(cat.application_closes_at)}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, application_closes_at: e.target.value || null } : c
+                                        )
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex items-end'>
+                                  <Button
+                                    size='sm'
+                                    disabled={isSaving}
+                                    onClick={() => handleSaveDates(cat)}
+                                    className='w-full bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white h-9'
+                                  >
+                                    {isSaving ? (
+                                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                    ) : (
+                                      <SaveIcon className='size-3.5 mr-1.5' />
+                                    )}
+                                    Save Dates
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
 
                       {isContentExpanded && (
                         <tr key={`${cat.id}-content`} className='bg-slate-50/80'>
