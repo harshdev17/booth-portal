@@ -1,46 +1,35 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { useLanguage } from '@/context/LanguageContext'
 
-// Bump this when a new corrigendum needs to be shown again to visitors who
-// already dismissed an earlier one — a new key means localStorage's old
-// dismissal no longer matches, so the prompt reappears once for the new
-// notice. Never reuse a key already shipped, or returning visitors who
-// dismissed that exact notice would never see the next one either.
-const DISMISSED_KEY = 'kdb_corrigendum_02_dismissed'
-
 /**
- * One-time popup for Corrigendum Notice-02 (revised schedule), shown right
- * after the language-preference modal is dismissed/chosen — never
- * simultaneously with it. Only the dates that actually changed are shown
- * here, not the full corrigendum text; the PDF notice itself still lives on
- * the Notices page for anyone who wants the complete wording.
+ * Popup for Corrigendum Notice-02 (revised schedule), shown right after the
+ * language-preference modal is dismissed/chosen — never simultaneously with
+ * it. Only the dates that actually changed are shown here, not the full
+ * corrigendum text; the PDF notice itself still lives on the Notices page
+ * for anyone who wants the complete wording.
+ *
+ * Deliberately NOT remembered in localStorage — per explicit request, this
+ * reappears on every homepage load/refresh (not just a visitor's first
+ * visit), so it's scoped to '/' only; other pages never show it even within
+ * the same session.
  */
 const CorrigendumNoticeModal = () => {
   const { lang, showLanguagePrompt } = useLanguage()
   const pathname = usePathname()
-  const [dismissed, setDismissed] = useState(true)
+  const [closed, setClosed] = useState(false)
 
-  useEffect(() => {
-    const alreadyDismissed = localStorage.getItem(DISMISSED_KEY) === 'true'
-
-    setDismissed(alreadyDismissed)
-  }, [])
-
-  const close = () => {
-    localStorage.setItem(DISMISSED_KEY, 'true')
-    setDismissed(true)
-  }
+  const close = () => setClosed(true)
 
   // Never stacked with the language prompt — waits for that one to resolve
   // first (same reasoning as its own Coming Soon exclusion: a second
   // blocking popup right on top of the first is just friction).
-  if (dismissed || showLanguagePrompt || pathname === '/coming-soon') return null
+  if (closed || showLanguagePrompt || pathname !== '/') return null
 
   const rows =
     lang === 'hi'
