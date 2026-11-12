@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { Inter, Noto_Sans_Devanagari } from 'next/font/google'
 
+import CorrigendumNoticeModal from '@/components/public/CorrigendumNoticeModal'
 import FloatingChatbot from '@/components/public/FloatingChatbot'
 import FloatingContactButtons from '@/components/public/FloatingContactButtons'
 import LanguagePreferenceModal from '@/components/public/LanguagePreferenceModal'
@@ -28,6 +29,7 @@ const PublicLayout = async ({ children }: { children: ReactNode }) => {
       <LanguageProvider>
         <div className={cn('kdb-public w-full min-w-0 flex-1', inter.variable, notoSansDevanagari.variable)}>
           <LanguagePreferenceModal />
+          <CorrigendumNoticeModal />
           {children}
           <FloatingContactButtons />
           <FloatingChatbot />
