@@ -94,6 +94,21 @@ const ApplicationDetailPage = async ({
   const { from } = await searchParams
   const backToListUrl = from && from.startsWith('/') && !from.startsWith('//') ? from : '/admin/applications'
 
+  // Previous/Next Application stays within the same category the admin was
+  // browsing, instead of always stepping through every category's
+  // applications in one combined order — per explicit request ("special art
+  // craft waale page se aaya hoon to next/previous bhi isi cat ki aaye").
+  // Parsed straight out of backToListUrl rather than a separate searchParams
+  // field, since that URL already carries whatever category filter was
+  // active on the list the admin came from.
+  const listCategorySlug = (() => {
+    try {
+      return new URL(backToListUrl, 'http://localhost').searchParams.get('category')
+    } catch {
+      return null
+    }
+  })()
+
   const [
     rows,
     fieldValues,
@@ -293,19 +308,29 @@ const ApplicationDetailPage = async ({
   // own default order (created_at DESC, id as a tiebreak for same-instant
   // submissions), so clicking through from the list and clicking
   // Previous/Next here land on the same neighbor. Drafts are excluded, same
-  // as the list itself never shows them.
+  // as the list itself never shows them. When the admin arrived from a
+  // category-filtered list (listCategorySlug above), Previous/Next stays
+  // within that same category instead of stepping through every category's
+  // applications combined.
+  const categoryFilterJoin = listCategorySlug
+    ? `JOIN categories cat_filter ON cat_filter.id = applications.category_id AND cat_filter.slug = ?`
+    : ''
+  const categoryFilterParams = listCategorySlug ? [listCategorySlug] : []
+
   const [prevRows, nextRows] = await Promise.all([
     query<Array<{ id: number }>>(
-      `SELECT id FROM applications
-       WHERE status != 'draft' AND (created_at, id) > (?, ?)
-       ORDER BY created_at ASC, id ASC LIMIT 1`,
-      [app.created_at, app.id]
+      `SELECT applications.id FROM applications
+       ${categoryFilterJoin}
+       WHERE applications.status != 'draft' AND (applications.created_at, applications.id) > (?, ?)
+       ORDER BY applications.created_at ASC, applications.id ASC LIMIT 1`,
+      [...categoryFilterParams, app.created_at, app.id]
     ),
     query<Array<{ id: number }>>(
-      `SELECT id FROM applications
-       WHERE status != 'draft' AND (created_at, id) < (?, ?)
-       ORDER BY created_at DESC, id DESC LIMIT 1`,
-      [app.created_at, app.id]
+      `SELECT applications.id FROM applications
+       ${categoryFilterJoin}
+       WHERE applications.status != 'draft' AND (applications.created_at, applications.id) < (?, ?)
+       ORDER BY applications.created_at DESC, applications.id DESC LIMIT 1`,
+      [...categoryFilterParams, app.created_at, app.id]
     )
   ])
 
