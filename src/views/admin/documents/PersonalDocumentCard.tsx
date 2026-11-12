@@ -90,25 +90,27 @@ const PersonalDocumentCard = ({
       {isPreviewOpen && (
         <div className='mt-3 border-t pt-3'>
           {previewKind === 'pdf' && (
-            <div className='relative'>
+            <div className='relative min-h-[70vh]'>
               {isPreviewLoading && (
-                <div className='absolute inset-0 flex items-center justify-center gap-2 rounded-md border bg-white text-sm text-muted-foreground'>
-                  <Loader2Icon className='size-4 animate-spin' /> Loading preview…
+                <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-md border bg-white'>
+                  <Loader2Icon className='size-6 animate-spin text-[#0c2847]' />
+                  <p className='text-sm font-medium text-muted-foreground'>Loading preview…</p>
                 </div>
               )}
               <iframe
                 src={previewSrc}
                 title={document.label}
                 onLoad={() => setIsPreviewLoading(false)}
-                className='h-[60vh] w-full rounded-md border'
+                className='h-[70vh] w-full rounded-md border'
               />
             </div>
           )}
           {previewKind === 'image' && (
-            <div className='relative flex max-h-[60vh] items-center justify-center overflow-auto rounded-md border bg-white p-2'>
+            <div className='relative min-h-[70vh] rounded-md border bg-white'>
               {isPreviewLoading && (
-                <div className='absolute inset-0 flex items-center justify-center gap-2 bg-white text-sm text-muted-foreground'>
-                  <Loader2Icon className='size-4 animate-spin' /> Loading preview…
+                <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-md bg-white'>
+                  <Loader2Icon className='size-6 animate-spin text-[#0c2847]' />
+                  <p className='text-sm font-medium text-muted-foreground'>Loading preview…</p>
                 </div>
               )}
               {/* eslint-disable-next-line @next/next/no-img-element -- admin-only authenticated document bytes, not a next/image-optimizable public asset */}
@@ -116,7 +118,7 @@ const PersonalDocumentCard = ({
                 src={previewSrc}
                 alt={document.label}
                 onLoad={() => setIsPreviewLoading(false)}
-                className='max-w-full object-contain'
+                className='mx-auto block max-h-[70vh] w-auto max-w-full object-contain p-2'
               />
             </div>
           )}
