@@ -1,6 +1,6 @@
 'use client'
 
-import { EyeIcon } from 'lucide-react'
+import { DownloadIcon, EyeIcon } from 'lucide-react'
 
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
@@ -59,6 +59,12 @@ const PersonalDocumentCard = ({
             className='inline-flex items-center gap-1.5 rounded-md border border-input bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
           >
             <EyeIcon className='size-3.5' /> Preview
+          </a>
+          <a
+            href={`/api/documents/${document.id}/preview?download=true`}
+            className='inline-flex items-center gap-1.5 rounded-md border border-input bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+          >
+            <DownloadIcon className='size-3.5' /> Download
           </a>
           {canVerifyDocuments && (
             <DocumentDecisionActions documentId={document.id} currentStatus={document.verification_status} />

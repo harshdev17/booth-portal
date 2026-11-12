@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from 'react'
 
-import { CheckCheckIcon, EyeIcon, Loader2Icon, UploadIcon } from 'lucide-react'
+import { CheckCheckIcon, DownloadIcon, EyeIcon, Loader2Icon, UploadIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -245,6 +245,12 @@ const ApplicationDocumentsSection = ({
                   className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
                 >
                   <EyeIcon className='size-3.5' /> Preview
+                </a>
+                <a
+                  href={`/api/documents/${doc.id}/preview?download=true`}
+                  className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                >
+                  <DownloadIcon className='size-3.5' /> Download
                 </a>
                 {canVerifyDocuments && (
                   <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status!} />

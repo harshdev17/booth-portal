@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   CreditCardIcon,
   DownloadIcon,
+  FileArchiveIcon,
   FileTextIcon,
   Loader2Icon,
   PrinterIcon,
@@ -117,8 +118,20 @@ const ApplicationPdfDownloads = ({
             Available Documents &amp; Receipts
           </div>
 
+          {/* 0. Download Everything (ZIP) */}
+          <a
+            href={`/api/admin/applications/${applicationId}/download-all`}
+            className='flex items-center gap-2 rounded-sm px-2 py-2 text-xs hover:bg-slate-50 transition'
+          >
+            <FileArchiveIcon className='size-4 text-emerald-700 shrink-0' />
+            <div>
+              <span className='font-semibold text-slate-900 block'>Download All (ZIP)</span>
+              <span className='text-[10px] text-muted-foreground block'>Application form + every uploaded document</span>
+            </div>
+          </a>
+
           {/* 1. Application Form */}
-          <div className='flex items-center justify-between rounded-sm px-2 py-2 text-xs hover:bg-slate-50 transition'>
+          <div className='flex items-center justify-between rounded-sm border-t border-slate-100 px-2 py-2 text-xs hover:bg-slate-50 transition'>
             <button
               type='button'
               onClick={() => print('summary')}

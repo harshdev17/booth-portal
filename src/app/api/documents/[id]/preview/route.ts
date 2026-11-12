@@ -113,12 +113,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const fileBuffer = await readStoredFile(document.storage_path)
 
-    // inline (not attachment): opens in the browser's own PDF/image viewer
-    // rather than forcing a download, for a preview.
+    // inline (not attachment) by default: opens in the browser's own
+    // PDF/image viewer rather than forcing a download. ?download=true
+    // switches to attachment — this route already does every ownership/
+    // authorization check a dedicated download endpoint would need, so
+    // reusing it here avoids duplicating that logic in a second route.
+    const { searchParams } = new URL(request.url)
+    const disposition = searchParams.get('download') === 'true' ? 'attachment' : 'inline'
+
     return new Response(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': document.mime_type,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(document.original_filename)}"`,
+        'Content-Disposition': `${disposition}; filename="${encodeURIComponent(document.original_filename)}"`,
         'Cache-Control': 'private, no-store'
       }
     })
