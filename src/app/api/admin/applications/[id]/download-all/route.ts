@@ -1,6 +1,6 @@
-import archiver from 'archiver'
+import { ZipArchive } from 'archiver'
 import { NextResponse } from 'next/server'
-import { PassThrough, Readable } from 'node:stream'
+import { Readable } from 'node:stream'
 
 import { query } from '@/lib/db/client'
 import { buildApplicationFormPdf } from '@/lib/applications/application-form-pdf'
@@ -64,13 +64,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
 
-    const archive = archiver('zip', { zlib: { level: 9 } })
-    const stream = new PassThrough()
-
-    archive.on('error', err => {
-      stream.destroy(err)
-    })
-    archive.pipe(stream)
+    const archive = new ZipArchive({ zlib: { level: 9 } })
 
     archive.append(formPdf.buffer, { name: `Application-${application.application_number}.pdf` })
 
@@ -116,7 +110,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const filename = `Application-${application.application_number}-${timestamp}.zip`
 
-    return new Response(Readable.toWeb(stream) as ReadableStream, {
+    return new Response(Readable.toWeb(archive) as ReadableStream, {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,

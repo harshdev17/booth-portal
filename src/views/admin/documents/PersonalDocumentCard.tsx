@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+
 import { DownloadIcon, EyeIcon } from 'lucide-react'
 
+import { previewKindFor } from '@/lib/applications/document-preview-kind'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
 
@@ -18,8 +21,10 @@ export type PersonalDocumentRow = {
  * Shows the Aadhaar Card (and other identity-proof documents) directly on
  * the Personal tab, right next to the Identity fields they correspond to,
  * instead of requiring a separate click into the Documents tab — per
- * explicit request. Its Preview action opens the same secure document
- * endpoint in a new browser tab, consistent with the Documents tab.
+ * explicit request. Preview expands the document inline (PDF/image) right
+ * in this card instead of opening a new browser tab — per explicit request:
+ * with 1000+ applications to verify, switching tabs for every document made
+ * bulk verification impractically slow.
  */
 const PersonalDocumentCard = ({
   document,
@@ -29,6 +34,9 @@ const PersonalDocumentCard = ({
   canVerifyDocuments: boolean
 }) => {
   const docCfg = getDocumentStatusConfig(document.verification_status)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const previewKind = previewKindFor(document.original_filename)
+  const previewSrc = `/api/documents/${document.id}/preview`
 
   return (
     <div className='sm:col-span-2 rounded-lg border border-border/60 bg-muted/20 p-4'>
@@ -52,16 +60,19 @@ const PersonalDocumentCard = ({
         </div>
 
         <div className='flex shrink-0 items-center gap-2'>
-          <a
-            href={`/api/documents/${document.id}/preview`}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='inline-flex items-center gap-1.5 rounded-md border border-input bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+          <button
+            type='button'
+            onClick={() => setIsPreviewOpen(prev => !prev)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+              isPreviewOpen
+                ? 'border-[#0c2847] bg-[#0c2847] text-white hover:bg-[#06192e]'
+                : 'border-input bg-white text-[#0c2847] hover:bg-muted'
+            }`}
           >
-            <EyeIcon className='size-3.5' /> Preview
-          </a>
+            <EyeIcon className='size-3.5' /> {isPreviewOpen ? 'Hide Preview' : 'Preview'}
+          </button>
           <a
-            href={`/api/documents/${document.id}/preview?download=true`}
+            href={`${previewSrc}?download=true`}
             className='inline-flex items-center gap-1.5 rounded-md border border-input bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
           >
             <DownloadIcon className='size-3.5' /> Download
@@ -71,6 +82,29 @@ const PersonalDocumentCard = ({
           )}
         </div>
       </div>
+
+      {isPreviewOpen && (
+        <div className='mt-3 border-t pt-3'>
+          {previewKind === 'pdf' && (
+            <iframe src={previewSrc} title={document.label} className='h-[60vh] w-full rounded-md border' />
+          )}
+          {previewKind === 'image' && (
+            <div className='flex max-h-[60vh] items-center justify-center overflow-auto rounded-md border bg-white p-2'>
+              {/* eslint-disable-next-line @next/next/no-img-element -- admin-only authenticated document bytes, not a next/image-optimizable public asset */}
+              <img src={previewSrc} alt={document.label} className='max-w-full object-contain' />
+            </div>
+          )}
+          {previewKind === null && (
+            <p className='rounded-md border bg-white py-6 text-center text-sm text-muted-foreground'>
+              Preview not available for this file type.{' '}
+              <a href={`${previewSrc}?download=true`} className='font-semibold text-[#0c2847] underline'>
+                Download instead
+              </a>
+              .
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
