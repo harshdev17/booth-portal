@@ -23,6 +23,7 @@ export function getPool(): mysql.Pool {
     user: requireEnv('DB_USER'),
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
+
     // 40 is a safe margin under the DB user's actual max_user_connections
     // ceiling (75, confirmed live via `SHOW VARIABLES LIKE
     // 'max_user_connections'` — the server-wide max_connections is 2000,
@@ -36,23 +37,24 @@ export function getPool(): mysql.Pool {
     connectionLimit: 40,
     maxIdle: 20,
 
-    // Hostinger's shared MySQL server silently closes an idle connection
-    // after a short server-side wait_timeout (reported as low as 20-60s on
-    // shared plans — well under MySQL's own 8-hour default, and far under
-    // the 300000ms idleTimeout this pool used before). A connection this
-    // pool still considered "idle but fine" would already be dead
-    // server-side: the next query on it failed, and the pool opened a
-    // fresh connection to replace it. That replace-on-failure cycle, not
-    // steady request volume, is what actually drove the DB user's
-    // max_connections_per_hour limit (500) to be exceeded in production
-    // (confirmed live, 2026-11-12 — admin pages started failing permission
-    // checks because requirePermission()'s own query was hitting this).
-    // 15s keeps this pool closing an idle connection well before Hostinger
-    // does, so a fresh one opens predictably on next use instead of a
-    // query failing first. This ONLY affects idle (checked-in, unused)
-    // connections — a connection with a query actively running on it,
-    // however long that query takes, is never idle and is unaffected.
-    idleTimeout: 15000,
+    // Hostinger's max_connections_per_hour (500) counts every connection
+    // CREATED in the rolling hour, not how many are open at once (confirmed
+    // against Hostinger's own support docs) — so the fix is to open fewer
+    // new connections overall, not to close idle ones faster. A previous
+    // attempt at this (2026-11-12) set idleTimeout to 15000ms specifically
+    // to beat Hostinger's own short server-side wait_timeout and avoid a
+    // "query on an already-dead connection" failure — but a 15s idle
+    // timeout forces this pool to open a fresh connection after every ~15s
+    // gap in traffic, which churns through FAR more new connections per
+    // hour than before, and tipped the DB user over max_connections_per_hour
+    // again the very next day (confirmed live, 2026-11-13 — the whole site
+    // down with a generic server error, not just admin pages this time).
+    // idleTimeout raised back up to cut that churn; a connection genuinely
+    // killed server-side before this timeout fires is now handled by
+    // query()'s own stale-connection retry below instead of relying on
+    // winning a timing race against a Hostinger wait_timeout this app can't
+    // see or control.
+    idleTimeout: 55000,
 
     // Keep pooled connections warm: with a remote DB each fresh connect costs ~1s+, and a
     // 60s idle timeout made the first request after a short pause (e.g. a settings save) pay it.
@@ -86,15 +88,52 @@ export function getPool(): mysql.Pool {
   return pool
 }
 
+// Error codes meaning the connection itself died (server-side timeout, TCP
+// reset, a dropped keepalive) rather than anything wrong with the query —
+// the pool has already discarded that connection by the time this surfaces,
+// so retrying immediately gets a genuinely different one. Deliberately NOT
+// retrying anything else (a real SQL error, a constraint violation, bad
+// input) — those would just fail identically again.
+const TRANSIENT_CONNECTION_ERROR_CODES = new Set([
+  'PROTOCOL_CONNECTION_LOST',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EPIPE',
+  'ER_SERVER_SHUTDOWN'
+])
+
+function isTransientConnectionError(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code
+
+  return typeof code === 'string' && TRANSIENT_CONNECTION_ERROR_CODES.has(code)
+}
+
 /**
  * Runs a parameterized query. Callers must always pass user input via `params`,
  * never interpolate it into `sql` directly — this is the SQL-injection boundary
  * for the whole app (see .ai/SECURITY.md).
+ *
+ * Retries exactly once on a transient connection-death error (see
+ * TRANSIENT_CONNECTION_ERROR_CODES) — Hostinger's shared MySQL server can
+ * silently close a pooled connection server-side at any moment regardless
+ * of this pool's own idleTimeout; without this, that single unlucky request
+ * fails with a raw connection error instead of just quietly getting a fresh
+ * connection, which is what previously surfaced as a misleading "you don't
+ * have access" screen (requirePermission()'s query hitting a dead
+ * connection) or, worse, a site-wide crash.
  */
 export async function query<T = unknown>(sql: string, params: ReadonlyArray<unknown> = []): Promise<T> {
-  const [rows] = await getPool().execute(sql, params as mysql.ExecuteValues)
+  try {
+    const [rows] = await getPool().execute(sql, params as mysql.ExecuteValues)
 
-  return rows as T
+    return rows as T
+  } catch (error) {
+    if (!isTransientConnectionError(error)) throw error
+
+    const [rows] = await getPool().execute(sql, params as mysql.ExecuteValues)
+
+    return rows as T
+  }
 }
 
 /**
