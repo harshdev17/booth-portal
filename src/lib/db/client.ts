@@ -151,10 +151,41 @@ export async function query<T = unknown>(sql: string, params: ReadonlyArray<unkn
 
 /**
  * A connection-scoped query function, bound to one checked-out connection so
- * multiple statements participate in the same transaction. Passed into the
- * callback given to withTransaction() — never used outside of it.
+ * multiple statements run against the same connection instead of each
+ * grabbing its own from the pool. Passed into the callback given to
+ * withTransaction() or withPooledConnection().
  */
 export type TransactionQuery = <T = unknown>(sql: string, params?: ReadonlyArray<unknown>) => Promise<T>
+
+/**
+ * Runs several independent reads against ONE pooled connection instead of
+ * each calling query() (and thus checking out its own separate connection).
+ * Unlike withTransaction(), this does not BEGIN/COMMIT — it's for read-only
+ * fan-out, not atomicity. Use this when a single page/route would otherwise
+ * fire many unrelated queries in parallel (Promise.all of query() calls),
+ * each demanding its own pool slot: with connectionLimit capped low (see the
+ * comment on connectionLimit above — kept at 10 per Hostinger), a handful of
+ * such pages loading at once could by themselves exhaust the whole pool
+ * before any other request gets a connection at all (confirmed: the
+ * application detail page's old Promise.all of ~14 query() calls, counting
+ * getApprovalChecklist()'s own, could alone demand more connections than
+ * the entire pool has — see .ai/CHANGELOG.md 2026-11-13).
+ */
+export async function withPooledConnection<T>(fn: (query: TransactionQuery) => Promise<T>): Promise<T> {
+  const connection = await getPool().getConnection()
+
+  try {
+    const scopedQuery: TransactionQuery = async (sql, params = []) => {
+      const [rows] = await connection.execute(sql, params as mysql.ExecuteValues)
+
+      return rows as never
+    }
+
+    return await fn(scopedQuery)
+  } finally {
+    connection.release()
+  }
+}
 
 /**
  * Runs `fn` inside a single MySQL transaction: BEGIN, run the callback with a
