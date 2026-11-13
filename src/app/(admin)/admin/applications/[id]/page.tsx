@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { query } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
@@ -109,196 +109,212 @@ const ApplicationDetailPage = async ({
     }
   })()
 
-  const [
-    rows,
-    fieldValues,
-    checkedFieldRows,
-    documents,
-    auditEntries,
-    permissions,
-    approvalChecklist,
-    paymentRows,
-    transactionRows,
-    drawAllocationRows,
-    reminderLogRows
-  ] = await Promise.all([
-    query<ApplicationRow[]>(
-      `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
-              a.father_name, a.police_station_name, a.police_station_address,
-              a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
-              a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
-              c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
-              COALESCE(c.fee_base_paise, c.fee_paise, 0) AS fee_amount_paise,
-              COALESCE(c.gst_percent, 18.00) AS gst_percent,
-              c.allotment_amount_note,
-              so.label AS shop_option_label,
-              COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
-              COALESCE(p.amount_paise, da.payment_amount_paise, c.allotment_amount_paise) AS allotment_amount_paise,
-              COALESCE(p.status, da.payment_status) AS allotment_payment_status,
-              (SELECT pt.created_at FROM payment_transactions pt
-                WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
-                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
-              reg_p.status AS registration_payment_status
-       FROM applications a
-       JOIN categories c ON c.id = a.category_id
-       LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
-       LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
-       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
-       LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
-       LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
-       LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
-       WHERE a.id = ?`,
-      [applicationId]
-    ),
-    query<
-      Array<{
-        field_definition_id: number
-        field_key: string
-        label: string
-        label_hi: string | null
-        value: string
-        section: string | null
-        section_hi: string | null
-        input_type: string
-        display_order: number
-      }>
-    >(
-      `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
-       FROM application_field_values afv
-       JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
-       WHERE afv.application_id = ?
-       ORDER BY cfd.display_order ASC`,
-      [applicationId]
-    ),
-    query<Array<{ field_key: string }>>(`SELECT field_key FROM application_field_checks WHERE application_id = ?`, [
-      applicationId
-    ]),
-    query<
-      Array<{
-        id: number | null
-        document_key: string
-        label: string
-        original_filename: string | null
-        verification_status: string | null
-        verification_remarks: string | null
-        verified_at: string | null
-        reuploaded_at: string | null
-        created_at: string | null
-      }>
-    >(
+  // Grouped onto 3 shared connections (withPooledConnection, see client.ts)
+  // instead of each query() call below checking out its own from the pool —
+  // this page alone used to fire ~14 concurrent queries (counting
+  // getApprovalChecklist()'s own), which with connectionLimit capped at 10
+  // (see client.ts) meant a single admin opening a single application could
+  // by itself exhaust the entire pool. That's what was happening while
+  // admins clicked through applications to verify them — confirmed live,
+  // see .ai/CHANGELOG.md 2026-11-13.
+  const [batchA, batchB, batchC, permissions] = await Promise.all([
+    withPooledConnection(async q => ({
+      rows: await q<ApplicationRow[]>(
+        `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
+                a.father_name, a.police_station_name, a.police_station_address,
+                a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
+                a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
+                c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
+                COALESCE(c.fee_base_paise, c.fee_paise, 0) AS fee_amount_paise,
+                COALESCE(c.gst_percent, 18.00) AS gst_percent,
+                c.allotment_amount_note,
+                so.label AS shop_option_label,
+                COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
+                COALESCE(p.amount_paise, da.payment_amount_paise, c.allotment_amount_paise) AS allotment_amount_paise,
+                COALESCE(p.status, da.payment_status) AS allotment_payment_status,
+                (SELECT pt.created_at FROM payment_transactions pt
+                  WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
+                  ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
+                reg_p.status AS registration_payment_status
+         FROM applications a
+         JOIN categories c ON c.id = a.category_id
+         LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
+         LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
+         LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+         LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
+         LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
+         LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
+         WHERE a.id = ?`,
+        [applicationId]
+      ),
+      fieldValues: await q<
+        Array<{
+          field_definition_id: number
+          field_key: string
+          label: string
+          label_hi: string | null
+          value: string
+          section: string | null
+          section_hi: string | null
+          input_type: string
+          display_order: number
+        }>
+      >(
+        `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
+         FROM application_field_values afv
+         JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
+         WHERE afv.application_id = ?
+         ORDER BY cfd.display_order ASC`,
+        [applicationId]
+      ),
+      checkedFieldRows: await q<Array<{ field_key: string }>>(
+        `SELECT field_key FROM application_field_checks WHERE application_id = ?`,
+        [applicationId]
+      )
+    })),
 
-      // LEFT JOIN from the category's own required document definitions —
-      // not just the documents actually uploaded — so a document the
-      // applicant never uploaded at all still shows up here as a visible
-      // "not uploaded yet" row, instead of silently not existing on this
-      // page with no indication anything is still outstanding. Reported
-      // live: an admin had no way to see that "Work/Product Photographs"
-      // was still pending for an application sitting in query_raised.
-      `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
-              ad.verified_at, ad.reuploaded_at, ad.created_at
-       FROM category_document_definitions cdd
-       LEFT JOIN application_documents ad
-         ON ad.document_definition_id = cdd.id AND ad.application_id = ?
-       WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
-       ORDER BY cdd.display_order ASC`,
-      [applicationId, applicationId]
-    ),
-    query<Array<{ id: number; action: string; actor_role_key: string | null; new_value: string | null; created_at: string }>>(
-      `SELECT id, action, actor_role_key, new_value, created_at
-       FROM audit_logs
-       WHERE entity_type = 'application' AND entity_id = ?
-       ORDER BY created_at DESC
-       LIMIT 50`,
-      [String(applicationId)]
-    ),
-    getCurrentUserPermissions(),
-    getApprovalChecklist(applicationId),
-    query<
-      Array<{
-        id: number
-        purpose: 'registration' | 'pay_now'
-        amount_paise: number
-        status: string
-        razorpay_order_id: string | null
-        created_at: string
-        updated_at: string
-      }>
-    >(
-      `SELECT id, purpose, amount_paise, status, razorpay_order_id, created_at, updated_at
-       FROM payments
-       WHERE application_id = ?
-       ORDER BY id ASC`,
-      [applicationId]
-    ),
-    query<
-      Array<{
-        id: number
-        payment_id: number
-        purpose: 'registration' | 'pay_now'
-        type: string
-        amount_paise: number
-        razorpay_order_id: string | null
-        razorpay_payment_id: string | null
-        signature_valid: number | null
-        failure_reason: string | null
-        source: string
-        webhook_event_id: string | null
-        created_at: string
-      }>
-    >(
-      `SELECT pt.id, pt.payment_id, p.purpose, pt.type, pt.amount_paise, pt.razorpay_order_id,
-              pt.razorpay_payment_id, pt.signature_valid, pt.failure_reason, pt.source,
-              pt.webhook_event_id, pt.created_at
-       FROM payment_transactions pt
-       JOIN payments p ON p.id = pt.payment_id
-       WHERE p.application_id = ?
-       ORDER BY pt.created_at DESC`,
-      [applicationId]
-    ),
-    query<
-      Array<{
-        id: number
-        draw_event_id: number
-        draw_position: number
-        allocation_type: string
-        status: string
-        draw_code: string
-        round_number: number
-        completed_at: string | null
-      }>
-    >(
-      `SELECT da.id, da.draw_event_id, da.draw_position, da.allocation_type, da.status,
-              de.draw_code, de.round_number, de.completed_at
-       FROM draw_allocations da
-       JOIN draw_events de ON de.id = da.draw_event_id
-       WHERE da.application_id = ?
-       LIMIT 1`,
-      [applicationId]
-    ),
+    withPooledConnection(async q => ({
+      documents: await q<
+        Array<{
+          id: number | null
+          document_key: string
+          label: string
+          original_filename: string | null
+          verification_status: string | null
+          verification_remarks: string | null
+          verified_at: string | null
+          reuploaded_at: string | null
+          created_at: string | null
+        }>
+      >(
 
-    // "Send Payment Reminder" history, per explicit request — every
-    // WhatsApp/email reminder send attempt is already logged here by
-    // sendNotification() (src/lib/notifications/service.ts), one row per
-    // channel per attempt, success or failure — this just surfaces it on
-    // the Registration Payment tab instead of only in the DB/audit trail.
-    query<
-      Array<{
-        id: number
-        channel: 'whatsapp' | 'sms' | 'email'
-        status: 'sent' | 'failed'
-        campaign_name: string | null
-        error_message: string | null
-        created_at: string
-      }>
-    >(
-      `SELECT id, channel, status, campaign_name, error_message, created_at
-       FROM notification_log
-       WHERE application_id = ? AND category = 'reminder'
-       ORDER BY created_at DESC
-       LIMIT 20`,
-      [applicationId]
-    )
+        // LEFT JOIN from the category's own required document definitions —
+        // not just the documents actually uploaded — so a document the
+        // applicant never uploaded at all still shows up here as a visible
+        // "not uploaded yet" row, instead of silently not existing on this
+        // page with no indication anything is still outstanding. Reported
+        // live: an admin had no way to see that "Work/Product Photographs"
+        // was still pending for an application sitting in query_raised.
+        `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
+                ad.verified_at, ad.reuploaded_at, ad.created_at
+         FROM category_document_definitions cdd
+         LEFT JOIN application_documents ad
+           ON ad.document_definition_id = cdd.id AND ad.application_id = ?
+         WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
+         ORDER BY cdd.display_order ASC`,
+        [applicationId, applicationId]
+      ),
+      auditEntries: await q<
+        Array<{ id: number; action: string; actor_role_key: string | null; new_value: string | null; created_at: string }>
+      >(
+        `SELECT id, action, actor_role_key, new_value, created_at
+         FROM audit_logs
+         WHERE entity_type = 'application' AND entity_id = ?
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [String(applicationId)]
+      ),
+
+      // Shares this same connection (q) instead of getApprovalChecklist()
+      // checking out one of its own — see the optional runQuery param on
+      // getApprovalChecklist() in approval-checklist.ts.
+      approvalChecklist: await getApprovalChecklist(applicationId, q)
+    })),
+
+    withPooledConnection(async q => ({
+      paymentRows: await q<
+        Array<{
+          id: number
+          purpose: 'registration' | 'pay_now'
+          amount_paise: number
+          status: string
+          razorpay_order_id: string | null
+          created_at: string
+          updated_at: string
+        }>
+      >(
+        `SELECT id, purpose, amount_paise, status, razorpay_order_id, created_at, updated_at
+         FROM payments
+         WHERE application_id = ?
+         ORDER BY id ASC`,
+        [applicationId]
+      ),
+      transactionRows: await q<
+        Array<{
+          id: number
+          payment_id: number
+          purpose: 'registration' | 'pay_now'
+          type: string
+          amount_paise: number
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          signature_valid: number | null
+          failure_reason: string | null
+          source: string
+          webhook_event_id: string | null
+          created_at: string
+        }>
+      >(
+        `SELECT pt.id, pt.payment_id, p.purpose, pt.type, pt.amount_paise, pt.razorpay_order_id,
+                pt.razorpay_payment_id, pt.signature_valid, pt.failure_reason, pt.source,
+                pt.webhook_event_id, pt.created_at
+         FROM payment_transactions pt
+         JOIN payments p ON p.id = pt.payment_id
+         WHERE p.application_id = ?
+         ORDER BY pt.created_at DESC`,
+        [applicationId]
+      ),
+      drawAllocationRows: await q<
+        Array<{
+          id: number
+          draw_event_id: number
+          draw_position: number
+          allocation_type: string
+          status: string
+          draw_code: string
+          round_number: number
+          completed_at: string | null
+        }>
+      >(
+        `SELECT da.id, da.draw_event_id, da.draw_position, da.allocation_type, da.status,
+                de.draw_code, de.round_number, de.completed_at
+         FROM draw_allocations da
+         JOIN draw_events de ON de.id = da.draw_event_id
+         WHERE da.application_id = ?
+         LIMIT 1`,
+        [applicationId]
+      ),
+
+      // "Send Payment Reminder" history, per explicit request — every
+      // WhatsApp/email reminder send attempt is already logged here by
+      // sendNotification() (src/lib/notifications/service.ts), one row per
+      // channel per attempt, success or failure — this just surfaces it on
+      // the Registration Payment tab instead of only in the DB/audit trail.
+      reminderLogRows: await q<
+        Array<{
+          id: number
+          channel: 'whatsapp' | 'sms' | 'email'
+          status: 'sent' | 'failed'
+          campaign_name: string | null
+          error_message: string | null
+          created_at: string
+        }>
+      >(
+        `SELECT id, channel, status, campaign_name, error_message, created_at
+         FROM notification_log
+         WHERE application_id = ? AND category = 'reminder'
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        [applicationId]
+      )
+    })),
+
+    getCurrentUserPermissions()
   ])
+
+  const { rows, fieldValues, checkedFieldRows } = batchA
+  const { documents, auditEntries, approvalChecklist } = batchB
+  const { paymentRows, transactionRows, drawAllocationRows, reminderLogRows } = batchC
 
   const app = rows[0]
 
@@ -317,25 +333,25 @@ const ApplicationDetailPage = async ({
     : ''
   const categoryFilterParams = listCategorySlug ? [listCategorySlug] : []
 
-  const [prevRows, nextRows] = await Promise.all([
-    query<Array<{ id: number }>>(
+  const { prevApplicationId, nextApplicationId } = await withPooledConnection(async q => {
+    const prevRows = await q<Array<{ id: number }>>(
       `SELECT applications.id FROM applications
        ${categoryFilterJoin}
        WHERE applications.status != 'draft' AND (applications.created_at, applications.id) > (?, ?)
        ORDER BY applications.created_at ASC, applications.id ASC LIMIT 1`,
       [...categoryFilterParams, app.created_at, app.id]
-    ),
-    query<Array<{ id: number }>>(
+    )
+
+    const nextRows = await q<Array<{ id: number }>>(
       `SELECT applications.id FROM applications
        ${categoryFilterJoin}
        WHERE applications.status != 'draft' AND (applications.created_at, applications.id) < (?, ?)
        ORDER BY applications.created_at DESC, applications.id DESC LIMIT 1`,
       [...categoryFilterParams, app.created_at, app.id]
     )
-  ])
 
-  const prevApplicationId = prevRows[0]?.id ?? null
-  const nextApplicationId = nextRows[0]?.id ?? null
+    return { prevApplicationId: prevRows[0]?.id ?? null, nextApplicationId: nextRows[0]?.id ?? null }
+  })
 
   // Full Aadhaar number is shown (not masked) to any admin with
   // application:view, per explicit instruction — every view is audit-logged

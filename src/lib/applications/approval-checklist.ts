@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { query } from '@/lib/db/client'
+import { query, type TransactionQuery } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 
 export type ApprovalChecklistField = { key: string; label: string; checked: boolean; value: string }
@@ -50,9 +50,20 @@ const LEGACY_FIELDS: Array<{ key: 'organisation_name' | 'work_purpose' | 'achiev
  * application_field_checks). Approving marks every field in this list as
  * checked, in one step, instead of requiring each to be ticked individually
  * on the detail page first.
+ *
+ * Takes an optional connection-scoped query function (see
+ * withPooledConnection() in client.ts) so a caller that's already fanning
+ * out several other queries of its own — the application detail page — can
+ * run this checklist's queries on that same shared connection instead of
+ * checking out yet another one from the pool. Callers that don't pass one
+ * (the approve/bulk-approve routes) keep using the default pool-backed
+ * query(), unchanged.
  */
-export async function getApprovalChecklist(applicationId: number): Promise<ApprovalChecklist | null> {
-  const rows = await query<
+export async function getApprovalChecklist(
+  applicationId: number,
+  runQuery: TransactionQuery = query
+): Promise<ApprovalChecklist | null> {
+  const rows = await runQuery<
     Array<{
       id: number
       status: string
@@ -88,33 +99,42 @@ export async function getApprovalChecklist(applicationId: number): Promise<Appro
 
   if (!app) return null
 
-  const [missingDocs, categoryRow, dynamicFields, checkedRows] = await Promise.all([
-    query<Array<{ label: string }>>(
-      `SELECT cdd.label
-       FROM category_document_definitions cdd
-       LEFT JOIN application_documents ad
-         ON ad.document_definition_id = cdd.id AND ad.application_id = ?
-       WHERE cdd.category_id = ? AND cdd.is_required = 1 AND cdd.status = 'active'
-         AND (ad.id IS NULL OR ad.verification_status != 'verified')
-       ORDER BY cdd.display_order ASC`,
-      [applicationId, app.category_id]
-    ),
-    query<Array<{ name: string; selection_method: string }>>(
-      `SELECT name, selection_method FROM categories WHERE id = ? LIMIT 1`,
-      [app.category_id]
-    ),
-    query<Array<{ field_definition_id: number; label: string; value: string }>>(
-      `SELECT cfd.id AS field_definition_id, cfd.label, afv.value
-       FROM application_field_values afv
-       JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
-       WHERE afv.application_id = ?
-       ORDER BY cfd.display_order ASC`,
-      [applicationId]
-    ),
-    query<Array<{ field_key: string }>>(`SELECT field_key FROM application_field_checks WHERE application_id = ?`, [
-      applicationId
-    ])
-  ])
+  // Sequential on the same connection (runQuery), not Promise.all — when
+  // called with a shared connection (see withPooledConnection in client.ts),
+  // concurrent queries on one mysql2 connection aren't safe. When called
+  // with the default pool-backed query() (the approve/bulk-approve routes),
+  // this is slightly slower than running them in parallel, but those routes
+  // run once per approval action, not on every page load, so the trade-off
+  // favors not adding yet another fan-out point.
+  const missingDocs = await runQuery<Array<{ label: string }>>(
+    `SELECT cdd.label
+     FROM category_document_definitions cdd
+     LEFT JOIN application_documents ad
+       ON ad.document_definition_id = cdd.id AND ad.application_id = ?
+     WHERE cdd.category_id = ? AND cdd.is_required = 1 AND cdd.status = 'active'
+       AND (ad.id IS NULL OR ad.verification_status != 'verified')
+     ORDER BY cdd.display_order ASC`,
+    [applicationId, app.category_id]
+  )
+
+  const categoryRow = await runQuery<Array<{ name: string; selection_method: string }>>(
+    `SELECT name, selection_method FROM categories WHERE id = ? LIMIT 1`,
+    [app.category_id]
+  )
+
+  const dynamicFields = await runQuery<Array<{ field_definition_id: number; label: string; value: string }>>(
+    `SELECT cfd.id AS field_definition_id, cfd.label, afv.value
+     FROM application_field_values afv
+     JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
+     WHERE afv.application_id = ?
+     ORDER BY cfd.display_order ASC`,
+    [applicationId]
+  )
+
+  const checkedRows = await runQuery<Array<{ field_key: string }>>(
+    `SELECT field_key FROM application_field_checks WHERE application_id = ?`,
+    [applicationId]
+  )
 
   const checkedKeys = new Set(checkedRows.map(r => r.field_key))
   const category = categoryRow[0]
