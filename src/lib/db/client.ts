@@ -24,24 +24,31 @@ export function getPool(): mysql.Pool {
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
 
-    // Lowered from 40 (maxIdle was 20) after the 2026-11-13 outage —
-    // Hostinger's own support agent, when asked directly about this DB
-    // user, recommended a pool this size (their own example used
-    // connectionLimit: 5) specifically to reduce max_connections_per_hour
-    // pressure: a higher limit lets more NEW connections open
-    // simultaneously during a traffic burst (e.g. several admin pages
-    // loading at once, or a wave of idle connections all expiring near the
-    // same moment), and each one counts toward the same hourly cap. 10
-    // still comfortably covers this app's real concurrency (a handful of
-    // admin users plus public traffic, never anywhere near 40 at once).
-    // maxIdle is intentionally equal to connectionLimit — maxIdle < connectionLimit
-    // would force the pool to immediately CLOSE any returned connection
-    // once more than maxIdle are sitting idle, which is its own source of
-    // unnecessary churn; the only thing that should ever close an idle
-    // connection here is idleTimeout below.
+    // Kept at 10 per explicit instruction — Hostinger support's own
+    // recommendation for this DB user after 40 drove max_connections_per_hour
+    // over its cap (2026-11-10/13 outages). maxIdle is intentionally equal
+    // to connectionLimit — maxIdle < connectionLimit would force the pool
+    // to immediately CLOSE any returned connection once more than maxIdle
+    // are sitting idle, which is its own source of unnecessary churn; the
+    // only thing that should ever close an idle connection here is
+    // idleTimeout below.
     waitForConnections: true,
     connectionLimit: 10,
     maxIdle: 10,
+
+    // Bounds BOTH of the "just hangs forever" failure modes reported live
+    // (one request took ~314 seconds) instead of only ever timing out
+    // because the caller gave up: connectTimeout caps how long opening a
+    // brand-new TCP/MySQL connection can take (no default in mysql2 —
+    // without this, a stalled handshake on Hostinger's shared network can
+    // hang indefinitely holding that pool slot). queueLimit caps how many
+    // requests may queue waiting for a free connection before the pool
+    // just rejects the next one outright (a fast, clear "too busy" error
+    // query()'s caller can handle) instead of letting a queue grow
+    // unbounded and every one of those requests wait just as long as
+    // whatever is ahead of it.
+    connectTimeout: 10000,
+    queueLimit: 50,
 
     // Hostinger's max_connections_per_hour (500) counts every connection
     // CREATED in the rolling hour, not how many are open at once (confirmed
