@@ -7,7 +7,7 @@ import { CheckCircle2Icon, ClockIcon, FileTextIcon, ListOrderedIcon, ShieldCheck
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
-import { query } from '@/lib/db/client'
+import { query, withPooledConnection } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
@@ -180,65 +180,78 @@ const ApplicationsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'a.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [applications, categories, statsRows, countRows, waitlistRows] = await Promise.all([
-    query<ApplicationItem[]>(
-      `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
-              a.organisation_name, a.representative_name, a.mobile_number, a.email,
-              a.status, c.fee_paise, a.submitted_at, a.created_at,
-              su.stall_number,
-              latest_draw.allocation_type AS draw_allocation_type,
-              latest_draw.waitlist_position,
-              latest_draw.created_at AS allotted_at,
-              COALESCE(allotment_payment.status, 'not_activated') AS allotment_payment_status,
-              COALESCE(allotment_payment.amount_paise, c.allotment_amount_paise) AS allotment_payment_amount_paise,
-              registration_payment.status AS registration_payment_status,
-              (da.id IS NOT NULL) AS is_direct_allotment,
-              (SELECT COUNT(*) FROM application_documents d
-                WHERE d.application_id = a.id AND d.verification_status = 'query') AS open_queries,
-              (SELECT COUNT(*) FROM application_documents d
-                WHERE d.application_id = a.id AND d.reuploaded_at IS NOT NULL AND d.verification_status = 'pending') AS reuploaded_pending
-       FROM applications a
-       JOIN categories c ON c.id = a.category_id
-       LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
-       LEFT JOIN draw_allocations latest_draw ON latest_draw.id = (
-         SELECT allocation_lookup.id FROM draw_allocations allocation_lookup
-         WHERE allocation_lookup.application_id = a.id
-         ORDER BY allocation_lookup.id DESC LIMIT 1
-       )
-       LEFT JOIN payments allotment_payment
-         ON allotment_payment.application_id = a.id AND allotment_payment.purpose = 'pay_now'
-       LEFT JOIN payments registration_payment
-         ON registration_payment.application_id = a.id AND registration_payment.purpose = 'registration'
-       LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
-       ${whereClause}
-       ORDER BY ${sortCol} ${sortDir}
-       LIMIT ${limit} OFFSET ${offset}`,
-      params
-    ),
-    query<Array<{ id: number; name: string; slug: string }>>(
-      `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
-    ),
-    query<Array<{ status: string; count: number }>>(
-      `SELECT a.status, COUNT(*) AS count
-       FROM applications a
-       JOIN categories c ON c.id = a.category_id
-       ${statsWhereClause}
-       GROUP BY a.status`,
-      statsParams
-    ),
-    query<Array<{ total: number }>>(
-      `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
-      params
-    ),
-    query<Array<{ total: number }>>(
-      `SELECT COUNT(DISTINCT a.id) AS total
-       FROM applications a
-       JOIN categories c ON c.id = a.category_id
-       JOIN draw_allocations da ON da.application_id = a.id
-       ${statsWhereClause} AND da.allocation_type = 'waitlist' AND da.status = 'allotted'`,
-      statsParams
-    )
+  // Grouped onto 2 shared connections (withPooledConnection, see client.ts)
+  // instead of each query() call below checking out its own — same
+  // pool-saturation fix as the application detail page and dashboard (see
+  // .ai/CHANGELOG.md 2026-11-13); this is the list page admins repeatedly
+  // reload while browsing/verifying, so its old 5-way fan-out added up fast.
+  const [batchA, batchB] = await Promise.all([
+    withPooledConnection(async q => ({
+      applications: await q<ApplicationItem[]>(
+        `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
+                a.organisation_name, a.representative_name, a.mobile_number, a.email,
+                a.status, c.fee_paise, a.submitted_at, a.created_at,
+                su.stall_number,
+                latest_draw.allocation_type AS draw_allocation_type,
+                latest_draw.waitlist_position,
+                latest_draw.created_at AS allotted_at,
+                COALESCE(allotment_payment.status, 'not_activated') AS allotment_payment_status,
+                COALESCE(allotment_payment.amount_paise, c.allotment_amount_paise) AS allotment_payment_amount_paise,
+                registration_payment.status AS registration_payment_status,
+                (da.id IS NOT NULL) AS is_direct_allotment,
+                (SELECT COUNT(*) FROM application_documents d
+                  WHERE d.application_id = a.id AND d.verification_status = 'query') AS open_queries,
+                (SELECT COUNT(*) FROM application_documents d
+                  WHERE d.application_id = a.id AND d.reuploaded_at IS NOT NULL AND d.verification_status = 'pending') AS reuploaded_pending
+         FROM applications a
+         JOIN categories c ON c.id = a.category_id
+         LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
+         LEFT JOIN draw_allocations latest_draw ON latest_draw.id = (
+           SELECT allocation_lookup.id FROM draw_allocations allocation_lookup
+           WHERE allocation_lookup.application_id = a.id
+           ORDER BY allocation_lookup.id DESC LIMIT 1
+         )
+         LEFT JOIN payments allotment_payment
+           ON allotment_payment.application_id = a.id AND allotment_payment.purpose = 'pay_now'
+         LEFT JOIN payments registration_payment
+           ON registration_payment.application_id = a.id AND registration_payment.purpose = 'registration'
+         LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
+         ${whereClause}
+         ORDER BY ${sortCol} ${sortDir}
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
+      ),
+      categories: await q<Array<{ id: number; name: string; slug: string }>>(
+        `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
+      )
+    })),
+
+    withPooledConnection(async q => ({
+      statsRows: await q<Array<{ status: string; count: number }>>(
+        `SELECT a.status, COUNT(*) AS count
+         FROM applications a
+         JOIN categories c ON c.id = a.category_id
+         ${statsWhereClause}
+         GROUP BY a.status`,
+        statsParams
+      ),
+      countRows: await q<Array<{ total: number }>>(
+        `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
+        params
+      ),
+      waitlistRows: await q<Array<{ total: number }>>(
+        `SELECT COUNT(DISTINCT a.id) AS total
+         FROM applications a
+         JOIN categories c ON c.id = a.category_id
+         JOIN draw_allocations da ON da.application_id = a.id
+         ${statsWhereClause} AND da.allocation_type = 'waitlist' AND da.status = 'allotted'`,
+        statsParams
+      )
+    }))
   ])
+
+  const { applications, categories } = batchA
+  const { statsRows, countRows, waitlistRows } = batchB
 
   // Only this page's rows' documents — so "Raise Query" from the list can
   // offer a document picker (per explicit request) without loading every

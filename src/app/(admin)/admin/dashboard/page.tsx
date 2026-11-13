@@ -17,7 +17,7 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import KpiCard from '@/components/shared/KpiCard'
-import { query } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import CategoryBreakdownChart from '@/views/admin/dashboard/CategoryBreakdownChart'
 import SubmissionsTrendChart from '@/views/admin/dashboard/SubmissionsTrendChart'
@@ -47,78 +47,97 @@ const DashboardPage = async () => {
   const canViewDraw = !!permissions?.has('draw:view')
   const canViewInventory = !!permissions?.has('inventory:view')
 
-  const [
-    statusRows,
-    categoryRows,
-    trendRows,
-    docStatusRows,
-    stallStats,
-    categoryStalls,
-    drawStats,
-    paymentStats,
-    topDistricts
-  ] = await Promise.all([
-    query<Array<{ status: string; count: number }>>(
-      `SELECT status, COUNT(*) AS count FROM applications WHERE status != 'draft' GROUP BY status`
-    ),
-    query<Array<{ category: string; count: number }>>(
-      `SELECT c.name AS category, COUNT(*) AS count FROM applications a
-       JOIN categories c ON c.id = a.category_id
-       WHERE a.status != 'draft'
-       GROUP BY c.name ORDER BY count DESC LIMIT 10`
-    ),
-    query<Array<{ date: string; count: number }>>(
-      `SELECT DATE(created_at) AS date, COUNT(*) AS count FROM applications
-       WHERE status != 'draft' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ${TREND_DAYS - 1} DAY)
-       GROUP BY DATE(created_at) ORDER BY date ASC`
-    ),
-    query<Array<{ verification_status: string; count: number }>>(
-      `SELECT verification_status, COUNT(*) AS count FROM application_documents GROUP BY verification_status`
-    ),
-    query<Array<{ total_stalls: number; available_stalls: number; allotted_stalls: number; reserved_stalls: number }>>(
-      `SELECT 
-         COUNT(*) AS total_stalls,
-         SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
-         SUM(CASE WHEN status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls,
-         SUM(CASE WHEN status IN ('reserved', 'reserved_for_direct_allotment') THEN 1 ELSE 0 END) AS reserved_stalls
-       FROM shop_units`
-    ),
-    query<Array<{ category_name: string; selection_method: string; total_stalls: number; available_stalls: number; allotted_stalls: number }>>(
-      `SELECT 
-         c.name AS category_name,
-         c.selection_method,
-         COUNT(su.id) AS total_stalls,
-         SUM(CASE WHEN su.status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
-         SUM(CASE WHEN su.status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls
-       FROM categories c
-       LEFT JOIN shop_units su ON su.category_id = c.id
-       WHERE c.status != 'archived'
-       GROUP BY c.id, c.name, c.selection_method
-       ORDER BY total_stalls DESC, c.display_order ASC`
-    ),
-    query<Array<{ total_draws: number; total_allotted: number; total_waitlisted: number }>>(
-      `SELECT 
-         COUNT(*) AS total_draws,
-         COALESCE(SUM(total_allotted), 0) AS total_allotted,
-         COALESCE(SUM(total_waitlisted), 0) AS total_waitlisted
-       FROM draw_events`
-    ),
-    query<Array<{ total_payments: number; total_paid_paise: number; successful_payments: number }>>(
-      `SELECT 
-         COUNT(*) AS total_payments,
-         COALESCE(SUM(CASE WHEN status = 'success' THEN amount_paise ELSE 0 END), 0) AS total_paid_paise,
-         SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS successful_payments
-       FROM payments`
-    ),
-    query<Array<{ district: string; count: number }>>(
-      `SELECT district, COUNT(*) AS count 
-       FROM applications 
-       WHERE district IS NOT NULL AND district != '' AND district != 'Pending'
-       GROUP BY district 
-       ORDER BY count DESC 
-       LIMIT 6`
-    )
+  // Grouped onto 3 shared connections (withPooledConnection, see client.ts)
+  // instead of each query() call below checking out its own — this page is
+  // the admin landing page, opened far more often than any other, so its old
+  // 9-way Promise.all fan-out (9 concurrent pool checkouts for every single
+  // visit) was one of the biggest single contributors to pool saturation
+  // under connectionLimit:10. See the application detail page's same fix
+  // (.ai/CHANGELOG.md 2026-11-13) for the full writeup of this pattern.
+  const [batchA, batchB, batchC] = await Promise.all([
+    withPooledConnection(async q => ({
+      statusRows: await q<Array<{ status: string; count: number }>>(
+        `SELECT status, COUNT(*) AS count FROM applications WHERE status != 'draft' GROUP BY status`
+      ),
+      categoryRows: await q<Array<{ category: string; count: number }>>(
+        `SELECT c.name AS category, COUNT(*) AS count FROM applications a
+         JOIN categories c ON c.id = a.category_id
+         WHERE a.status != 'draft'
+         GROUP BY c.name ORDER BY count DESC LIMIT 10`
+      ),
+      trendRows: await q<Array<{ date: string; count: number }>>(
+        `SELECT DATE(created_at) AS date, COUNT(*) AS count FROM applications
+         WHERE status != 'draft' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ${TREND_DAYS - 1} DAY)
+         GROUP BY DATE(created_at) ORDER BY date ASC`
+      )
+    })),
+
+    withPooledConnection(async q => ({
+      docStatusRows: await q<Array<{ verification_status: string; count: number }>>(
+        `SELECT verification_status, COUNT(*) AS count FROM application_documents GROUP BY verification_status`
+      ),
+      stallStats: await q<
+        Array<{ total_stalls: number; available_stalls: number; allotted_stalls: number; reserved_stalls: number }>
+      >(
+        `SELECT
+           COUNT(*) AS total_stalls,
+           SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
+           SUM(CASE WHEN status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls,
+           SUM(CASE WHEN status IN ('reserved', 'reserved_for_direct_allotment') THEN 1 ELSE 0 END) AS reserved_stalls
+         FROM shop_units`
+      ),
+      categoryStalls: await q<
+        Array<{
+          category_name: string
+          selection_method: string
+          total_stalls: number
+          available_stalls: number
+          allotted_stalls: number
+        }>
+      >(
+        `SELECT
+           c.name AS category_name,
+           c.selection_method,
+           COUNT(su.id) AS total_stalls,
+           SUM(CASE WHEN su.status = 'available' THEN 1 ELSE 0 END) AS available_stalls,
+           SUM(CASE WHEN su.status = 'allotted' THEN 1 ELSE 0 END) AS allotted_stalls
+         FROM categories c
+         LEFT JOIN shop_units su ON su.category_id = c.id
+         WHERE c.status != 'archived'
+         GROUP BY c.id, c.name, c.selection_method
+         ORDER BY total_stalls DESC, c.display_order ASC`
+      )
+    })),
+
+    withPooledConnection(async q => ({
+      drawStats: await q<Array<{ total_draws: number; total_allotted: number; total_waitlisted: number }>>(
+        `SELECT
+           COUNT(*) AS total_draws,
+           COALESCE(SUM(total_allotted), 0) AS total_allotted,
+           COALESCE(SUM(total_waitlisted), 0) AS total_waitlisted
+         FROM draw_events`
+      ),
+      paymentStats: await q<Array<{ total_payments: number; total_paid_paise: number; successful_payments: number }>>(
+        `SELECT
+           COUNT(*) AS total_payments,
+           COALESCE(SUM(CASE WHEN status = 'success' THEN amount_paise ELSE 0 END), 0) AS total_paid_paise,
+           SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS successful_payments
+         FROM payments`
+      ),
+      topDistricts: await q<Array<{ district: string; count: number }>>(
+        `SELECT district, COUNT(*) AS count
+         FROM applications
+         WHERE district IS NOT NULL AND district != '' AND district != 'Pending'
+         GROUP BY district
+         ORDER BY count DESC
+         LIMIT 6`
+      )
+    }))
   ])
+
+  const { statusRows, categoryRows, trendRows } = batchA
+  const { docStatusRows, stallStats, categoryStalls } = batchB
+  const { drawStats, paymentStats, topDistricts } = batchC
 
   const getCount = (status: string) => statusRows.find(r => r.status === status)?.count ?? 0
   const totalSubmitted = statusRows.reduce((sum, r) => sum + Number(r.count), 0)
