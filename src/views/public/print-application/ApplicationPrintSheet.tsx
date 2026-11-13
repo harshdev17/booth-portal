@@ -41,6 +41,11 @@ export const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   under_review: { en: 'Under Review', hi: 'समीक्षाधीन' },
   query_raised: { en: 'Query Raised', hi: 'स्पष्टीकरण आवश्यक' },
   rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
+
+  // 'approved' is the "Approved for Draw" workflow state (migration 0052) —
+  // same applicant-facing wording as the Check Application Status page
+  // (status/index.tsx) uses for it.
+  approved: { en: 'Verified', hi: 'सत्यापित' },
   selected: { en: 'Selected', hi: 'चयनित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },

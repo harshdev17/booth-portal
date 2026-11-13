@@ -134,6 +134,12 @@ const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
   under_review: { en: 'Pending (Under Review)', hi: 'लंबित (समीक्षाधीन)' },
   query_raised: { en: 'Query Raised', hi: 'स्पष्टीकरण आवश्यक' },
   rejected: { en: 'Rejected', hi: 'अस्वीकृत' },
+
+  // 'approved' is the "Approved for Draw" workflow state (migration 0052) —
+  // distinct in the DB from 'selected' (the draw has actually run and picked
+  // this applicant), but the applicant themselves only needs to know their
+  // documents have been reviewed and accepted, same wording as 'selected'.
+  approved: { en: 'Verified', hi: 'सत्यापित' },
   selected: { en: 'Verified', hi: 'सत्यापित' },
   not_selected: { en: 'Not Selected', hi: 'चयनित नहीं' },
   payment_required: { en: 'Payment Required', hi: 'भुगतान आवश्यक' },
@@ -169,6 +175,7 @@ const STATUS_HINT: Record<string, { en: string; hi: string }> = {
   payment_pending: { en: 'Your fee payment is not complete yet.', hi: 'आपके आवेदन शुल्क का भुगतान अभी पूरा नहीं हुआ है।' },
   payment_success: { en: 'Your application and documents are being reviewed.', hi: 'आपके आवेदन और दस्तावेज़ों की समीक्षा की जा रही है।' },
   under_review: { en: 'Your application and documents are being reviewed.', hi: 'आपके आवेदन और दस्तावेज़ों की समीक्षा की जा रही है।' },
+  approved: { en: 'Your application has been verified.', hi: 'आपका आवेदन सत्यापित हो गया है।' },
   selected: { en: 'Your application has been verified.', hi: 'आपका आवेदन सत्यापित हो गया है।' },
   rejected: { en: 'Your application has been rejected.', hi: 'आपका आवेदन अस्वीकृत कर दिया गया है।' },
   query_raised: {
