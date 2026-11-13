@@ -24,18 +24,24 @@ export function getPool(): mysql.Pool {
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
 
-    // 40 is a safe margin under the DB user's actual max_user_connections
-    // ceiling (75, confirmed live via `SHOW VARIABLES LIKE
-    // 'max_user_connections'` — the server-wide max_connections is 2000,
-    // but that's shared across everyone on the host, not a limit specific
-    // to this app's DB user). Raised from 25 to widen how many simultaneous
-    // application submissions the pool can serve before later requests
-    // queue (waitForConnections below), while still leaving headroom for
-    // other concurrent connections (admin panel usage, etc.) under the
-    // 75-connection ceiling.
+    // Lowered from 40 (maxIdle was 20) after the 2026-11-13 outage —
+    // Hostinger's own support agent, when asked directly about this DB
+    // user, recommended a pool this size (their own example used
+    // connectionLimit: 5) specifically to reduce max_connections_per_hour
+    // pressure: a higher limit lets more NEW connections open
+    // simultaneously during a traffic burst (e.g. several admin pages
+    // loading at once, or a wave of idle connections all expiring near the
+    // same moment), and each one counts toward the same hourly cap. 10
+    // still comfortably covers this app's real concurrency (a handful of
+    // admin users plus public traffic, never anywhere near 40 at once).
+    // maxIdle is intentionally equal to connectionLimit — maxIdle < connectionLimit
+    // would force the pool to immediately CLOSE any returned connection
+    // once more than maxIdle are sitting idle, which is its own source of
+    // unnecessary churn; the only thing that should ever close an idle
+    // connection here is idleTimeout below.
     waitForConnections: true,
-    connectionLimit: 40,
-    maxIdle: 20,
+    connectionLimit: 10,
+    maxIdle: 10,
 
     // Hostinger's max_connections_per_hour (500) counts every connection
     // CREATED in the rolling hour, not how many are open at once (confirmed
