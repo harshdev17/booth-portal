@@ -7,7 +7,12 @@ import { sendNotification } from '@/lib/notifications/service'
 // admin UI) so the wording sent to applicants stays in one place.
 const STATUS_LABELS: Record<string, string> = {
   under_review: 'Under Review',
-  approved: 'Approved',
+
+  // Matches the "Verified" wording the applicant-facing status/print pages
+  // use for this status (src/views/public/status/index.tsx) — 'approved' is
+  // the internal "Approved for Draw" workflow name (migration 0052), not
+  // something the applicant needs to see.
+  approved: 'Verified',
   rejected: 'Rejected',
   selected: 'Selected',
   not_selected: 'Not Selected',
