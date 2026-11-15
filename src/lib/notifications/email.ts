@@ -34,7 +34,14 @@ function getTransporter(): Transporter {
       host: process.env.SMTP_HOST,
       port,
       secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+
+      // Nodemailer's defaults are 2 minutes to connect and 10 MINUTES of
+      // socket inactivity — a stalled SMTP server would hold the request
+      // that triggered the email (e.g. an OTP request) open that whole time.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000
     })
   }
 

@@ -18,6 +18,15 @@ import type { NotificationCategory, NotificationService, SendTemplateMessageInpu
 
 const AISENSY_ENDPOINT = 'https://backend.aisensy.com/campaign/t1/api/v2'
 
+// Native fetch has no default timeout — confirmed live (2026-11-15): when
+// AiSensy's own API was slow/unresponsive, a single POST /api/applications/status
+// request (which calls this on OTP request) hung for ~581 seconds instead of
+// failing, which the browser gave up on long before the server did, showing
+// as "Server Busy, Reconnecting" with normal CPU/memory the whole time (the
+// process was idle, just waiting on a stalled socket to a third party — not
+// a resource or DB problem at all). See .ai/CHANGELOG.md 2026-11-15.
+const AISENSY_REQUEST_TIMEOUT_MS = 15_000
+
 const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
   otp: 'AISENSY_CAMPAIGN_OTP',
   application_confirmation: 'AISENSY_CAMPAIGN_APPLICATION_CONFIRMATION',
@@ -113,6 +122,7 @@ export class AiSensyNotificationService implements NotificationService {
       const response = await fetch(AISENSY_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(AISENSY_REQUEST_TIMEOUT_MS),
         body: JSON.stringify({
           apiKey,
           campaignName,
