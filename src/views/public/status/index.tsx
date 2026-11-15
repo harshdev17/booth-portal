@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
+import { statusLookupErrorMessage } from '@/lib/applications/status-lookup-error'
 import { formatDate } from '@/lib/format-date'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { downloadBlob } from '@/lib/browser/download-blob'
@@ -333,7 +334,14 @@ const StatusLookup = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? (lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'))
+        setError(
+          statusLookupErrorMessage(
+            response.status,
+            body,
+            lang,
+            lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'
+          )
+        )
 
         return
       }
@@ -381,7 +389,14 @@ const StatusLookup = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? (lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'))
+        setError(
+          statusLookupErrorMessage(
+            response.status,
+            body,
+            lang,
+            lang === 'hi' ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।' : 'Something went wrong. Please try again.'
+          )
+        )
 
         return
       }

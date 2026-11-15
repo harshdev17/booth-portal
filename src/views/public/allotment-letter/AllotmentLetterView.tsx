@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/context/LanguageContext'
+import { statusLookupErrorMessage } from '@/lib/applications/status-lookup-error'
 import { downloadBlob } from '@/lib/browser/download-blob'
 
 const lookupSchema = z.object({
@@ -92,7 +94,8 @@ const AllotmentLetterView = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? (lang === 'hi' ? 'कुछ गलत हो गया।' : 'Something went wrong.'))
+        setError(statusLookupErrorMessage(response.status, body, lang, lang === 'hi' ? 'कुछ गलत हो गया।' : 'Something went wrong.'))
+
         return
       }
 
@@ -128,7 +131,8 @@ const AllotmentLetterView = () => {
       const body = await response.json()
 
       if (!response.ok) {
-        setError(body.error ?? (lang === 'hi' ? 'सत्यापन विफल रहा।' : 'Verification failed.'))
+        setError(statusLookupErrorMessage(response.status, body, lang, lang === 'hi' ? 'सत्यापन विफल रहा।' : 'Verification failed.'))
+
         return
       }
 
@@ -156,6 +160,7 @@ const AllotmentLetterView = () => {
 
     try {
       const headers: Record<string, string> = {}
+
       if (statusData.accessToken) {
         headers['Authorization'] = `Bearer ${statusData.accessToken}`
       }
@@ -269,6 +274,15 @@ const AllotmentLetterView = () => {
             {isLoading && <Loader2Icon className='animate-spin' />}
             {lang === 'hi' ? 'सत्यापित करें और आबंटन पत्र देखें' : 'Verify & View Allotment Letter'}
           </Button>
+
+          <button
+            type='button'
+            className='text-xs text-[var(--kdb-muted)] underline hover:text-[var(--kdb-primary)]'
+            disabled={isLoading}
+            onClick={() => requestOtpForLookup({ applicationNumber })}
+          >
+            {lang === 'hi' ? 'कोड पुनः भेजें' : 'Resend code'}
+          </button>
 
           <button
             type='button'
