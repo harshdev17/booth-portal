@@ -552,7 +552,23 @@ const ApplicationDetailPage = async ({
     : null
 
   const daysSinceLastQuery = lastQueryAt ? wholeDaysSince(lastQueryAt) : 0
-  const openQueryItems = [...openDocumentQueries.map(d => d.label), ...openFieldQueryRows.map(q => q.field_label)]
+
+  // Every item still waiting on the applicant, each with the date its own
+  // query was raised (they can differ), newest first. An application-level
+  // query has no per-item state, so its most recent one is listed while the
+  // application is in query_raised.
+  const latestApplicationQuery =
+    app.status === 'query_raised' ? auditEntries.find(e => e.action === 'application.query_raised') : undefined
+
+  const openQueryItems = [
+    ...openDocumentQueries.map(d => ({ key: `doc-${d.document_key}`, kind: 'Document', label: d.label, at: d.verified_at })),
+    ...openFieldQueryRows.map(q => ({ key: `field-${q.id}`, kind: 'Field', label: q.field_label, at: q.created_at as string | null })),
+    ...(latestApplicationQuery
+      ? [{ key: 'application', kind: 'Application', label: 'Whole application', at: latestApplicationQuery.created_at as string | null }]
+      : [])
+  ]
+    .map(item => ({ ...item, date: item.at ? parseIstDateTime(item.at) : null }))
+    .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
 
   // 'payment_success' = legacy rows paid before payment moved straight to 'under_review'.
   const isReviewStage = app.status === 'under_review' || app.status === 'payment_success'
@@ -934,7 +950,20 @@ const ApplicationDetailPage = async ({
               )}
             </p>
             {openQueryItems.length > 0 && (
-              <p className='mt-1 text-xs text-amber-800'>Pending with applicant: {openQueryItems.join(', ')}</p>
+              <ul className='mt-1.5 flex flex-col gap-1 text-xs text-amber-900'>
+                {openQueryItems.map(item => (
+                  <li key={item.key} className='flex flex-wrap gap-x-1.5'>
+                    <span className='font-semibold'>{item.label}</span>
+                    <span className='text-amber-700'>({item.kind})</span>
+                    <span>
+                      — raised{' '}
+                      {item.date
+                        ? `${formatDateTime(item.date, 'en')}, ${(d => (d === 0 ? 'today' : d === 1 ? '1 day ago' : `${d} days ago`))(wholeDaysSince(item.date))}`
+                        : 'date not recorded'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
