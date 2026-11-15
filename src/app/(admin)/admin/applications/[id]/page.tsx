@@ -18,6 +18,7 @@ import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId, encodeId } from '@/lib/security/opaque-id'
+import { formatDateTime, parseIstDateTime } from '@/lib/format-date'
 import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import ApplicationFieldRow, { type FieldQuerySummary } from '@/views/admin/applications/ApplicationFieldRow'
@@ -69,6 +70,11 @@ type ApplicationRow = {
   allotment_payment_status: string | null
   allotment_paid_at: string | null
   registration_payment_status: string | null
+}
+
+// Whole days between `date` and the time this page is rendered.
+function wholeDaysSince(date: Date): number {
+  return Math.floor((Date.now() - date.getTime()) / 86_400_000)
 }
 
 const ApplicationDetailPage = async ({
@@ -523,6 +529,31 @@ const ApplicationDetailPage = async ({
 
   const statusCfg = getApplicationStatusConfig(app.status)
 
+  // "Query open since…" banner at the top of the view: when the most recent
+  // query was raised (document, field or application-level), shown only
+  // while something is still waiting on the applicant.
+  const openDocumentQueries = documents.filter(d => d.verification_status === 'query')
+  const openFieldQueryRows = fieldQueryRows.filter(q => q.status === 'open')
+  const hasOpenQuery = app.status === 'query_raised' || openDocumentQueries.length > 0 || openFieldQueryRows.length > 0
+  const QUERY_AUDIT_ACTIONS = new Set(['application.query_raised', 'document.query', 'field.query_raised'])
+
+  const queryTimestamps = [
+    ...openDocumentQueries.map(d => d.verified_at),
+    ...openFieldQueryRows.map(q => q.created_at),
+    ...auditEntries.filter(e => QUERY_AUDIT_ACTIONS.has(e.action)).map(e => e.created_at)
+  ].filter((t): t is string => Boolean(t))
+
+  const lastQueryAt = hasOpenQuery
+    ? (queryTimestamps.reduce<Date | null>((latest, t) => {
+        const at = parseIstDateTime(t)
+
+        return !latest || at > latest ? at : latest
+      }, null) ?? null)
+    : null
+
+  const daysSinceLastQuery = lastQueryAt ? wholeDaysSince(lastQueryAt) : 0
+  const openQueryItems = [...openDocumentQueries.map(d => d.label), ...openFieldQueryRows.map(q => q.field_label)]
+
   // 'payment_success' = legacy rows paid before payment moved straight to 'under_review'.
   const isReviewStage = app.status === 'under_review' || app.status === 'payment_success'
 
@@ -887,6 +918,26 @@ const ApplicationDetailPage = async ({
             />
           </div>
         </div>
+
+        {hasOpenQuery && (
+          <div className='rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-amber-800'>Query Open</p>
+            <p className='mt-0.5 text-sm text-amber-950'>
+              {lastQueryAt ? (
+                <>
+                  Last query raised on <span className='font-semibold'>{formatDateTime(lastQueryAt, 'en')}</span>
+                  {' '}
+                  ({daysSinceLastQuery === 0 ? 'today' : daysSinceLastQuery === 1 ? '1 day ago' : `${daysSinceLastQuery} days ago`})
+                </>
+              ) : (
+                'Waiting on the applicant — query date not recorded.'
+              )}
+            </p>
+            {openQueryItems.length > 0 && (
+              <p className='mt-1 text-xs text-amber-800'>Pending with applicant: {openQueryItems.join(', ')}</p>
+            )}
+          </div>
+        )}
 
         {latestRejection && (
           <div className='rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5'>
