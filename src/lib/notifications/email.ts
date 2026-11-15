@@ -41,7 +41,7 @@ function getTransporter(): Transporter {
       // that triggered the email (e.g. an OTP request) open that whole time.
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
-      socketTimeout: 15_000
+      socketTimeout: 20_000
     })
   }
 
