@@ -45,15 +45,24 @@ function getR2Client(): S3Client {
     // live (2026-11-15): a document preview request hung for ~325 seconds
     // while R2 was slow to respond, with the Node process otherwise idle the
     // whole time (normal CPU/memory) rather than any resource or DB problem.
-    // connectionTimeout bounds how long establishing the TCP connection to
-    // R2 can take; requestTimeout bounds the whole request once sent.
+    // connectionTimeout bounds establishing the TCP connection; socketTimeout
+    // aborts after that long with no bytes moving. A response that keeps
+    // trickling bytes defeats both, so every call also carries an overall
+    // deadline (r2Deadline below).
     requestHandler: new NodeHttpHandler({
       connectionTimeout: 5_000,
-      requestTimeout: 15_000
+      socketTimeout: 15_000
     })
   })
 
   return cachedClient
+}
+
+const R2_TOTAL_TIMEOUT_MS = 60_000
+
+// Fresh per call — covers the whole operation including reading the body.
+function r2Deadline() {
+  return { abortSignal: AbortSignal.timeout(R2_TOTAL_TIMEOUT_MS) }
 }
 
 function getBucketName(): string {
@@ -84,7 +93,8 @@ export async function storeFile(storagePath: string, content: Buffer): Promise<v
       Bucket: getBucketName(),
       Key: storagePath,
       Body: content
-    })
+    }),
+      r2Deadline()
   )
 }
 
@@ -95,7 +105,8 @@ export async function readStoredFile(storagePath: string): Promise<Buffer> {
     new GetObjectCommand({
       Bucket: getBucketName(),
       Key: storagePath
-    })
+    }),
+      r2Deadline()
   )
 
   const byteArray = await result.Body?.transformToByteArray()
@@ -115,7 +126,8 @@ export async function deleteStoredFile(storagePath: string): Promise<void> {
       new DeleteObjectCommand({
         Bucket: getBucketName(),
         Key: storagePath
-      })
+      }),
+        r2Deadline()
     )
   } catch (error) {
     // Best-effort cleanup (e.g. failed/temporary uploads) — mirrors the
