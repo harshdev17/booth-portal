@@ -54,6 +54,12 @@ const DashboardPage = async () => {
   // visit) was one of the biggest single contributors to pool saturation
   // under connectionLimit:10. See the application detail page's same fix
   // (.ai/CHANGELOG.md 2026-11-13) for the full writeup of this pattern.
+  // Each batch is independently fault-tolerant: if one pooled connection
+  // times out or the DB is briefly busy (Hostinger connection cap), that
+  // section's metrics fall back to empty/zeroed defaults instead of the
+  // whole dashboard crashing to the error boundary — a single slow query
+  // no longer takes down every KPI card and chart (see .ai/CHANGELOG.md
+  // 2026-11-14).
   const [batchA, batchB, batchC] = await Promise.all([
     withPooledConnection(async q => ({
       statusRows: await q<Array<{ status: string; count: number }>>(
@@ -70,6 +76,10 @@ const DashboardPage = async () => {
          WHERE status != 'draft' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ${TREND_DAYS - 1} DAY)
          GROUP BY DATE(created_at) ORDER BY date ASC`
       )
+    })).catch(() => ({
+      statusRows: [] as Array<{ status: string; count: number }>,
+      categoryRows: [] as Array<{ category: string; count: number }>,
+      trendRows: [] as Array<{ date: string; count: number }>
     })),
 
     withPooledConnection(async q => ({
@@ -107,6 +117,21 @@ const DashboardPage = async () => {
          GROUP BY c.id, c.name, c.selection_method
          ORDER BY total_stalls DESC, c.display_order ASC`
       )
+    })).catch(() => ({
+      docStatusRows: [] as Array<{ verification_status: string; count: number }>,
+      stallStats: [] as Array<{
+        total_stalls: number
+        available_stalls: number
+        allotted_stalls: number
+        reserved_stalls: number
+      }>,
+      categoryStalls: [] as Array<{
+        category_name: string
+        selection_method: string
+        total_stalls: number
+        available_stalls: number
+        allotted_stalls: number
+      }>
     })),
 
     withPooledConnection(async q => ({
@@ -132,6 +157,10 @@ const DashboardPage = async () => {
          ORDER BY count DESC
          LIMIT 6`
       )
+    })).catch(() => ({
+      drawStats: [] as Array<{ total_draws: number; total_allotted: number; total_waitlisted: number }>,
+      paymentStats: [] as Array<{ total_payments: number; total_paid_paise: number; successful_payments: number }>,
+      topDistricts: [] as Array<{ district: string; count: number }>
     }))
   ])
 
@@ -167,8 +196,10 @@ const DashboardPage = async () => {
 
   for (let i = TREND_DAYS - 1; i >= 0; i--) {
     const d = new Date()
+
     d.setDate(d.getDate() - i)
     const key = d.toISOString().slice(0, 10)
+
     trendData.push({ date: key, count: trendMap.get(key) ?? 0 })
   }
 

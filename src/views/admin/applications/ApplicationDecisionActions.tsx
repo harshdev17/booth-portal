@@ -4,7 +4,7 @@ import { useImperativeHandle, useState, type Ref } from 'react'
 
 import { useRouter } from 'next/navigation'
 
-import { Loader2Icon, XIcon } from 'lucide-react'
+import { Loader2Icon, RotateCcwIcon, XIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,15 @@ type Props = {
   applicationId: string
   canApprove: boolean
   canReject: boolean
+
   /** Shown in a tooltip on the Approve button when canApprove is false. */
   approveDisabledReason?: string
+
   /** Shown in a tooltip on the Reject button when canReject is false. */
   rejectDisabledReason?: string
+
+  /** Shows the "Under Review" undo button — only meaningful when the application is currently approved/rejected. */
+  canRevertToReview?: boolean
   nowrap?: boolean
 }
 
@@ -145,11 +150,108 @@ export const RejectButton = ({
 }
 
 /**
+ * Plain undo — puts a mistakenly approved/rejected application straight
+ * back to "Under Review", distinct from re-deciding it the other way
+ * (Approve/Reject already allow undoing each other, see the comments on
+ * canApprove/canReject in the detail page). Only shown when the
+ * application is currently 'approved' or 'rejected' — there is nothing to
+ * revert otherwise.
+ */
+const RevertToReviewButton = ({
+  applicationId,
+  disabled,
+  disabledReason
+}: {
+  applicationId: string
+  disabled?: boolean
+  disabledReason?: string
+}) => {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/admin/applications/${applicationId}/revert-to-review`, { method: 'POST' })
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error ?? 'Could not revert this application.')
+
+        return
+      }
+
+      setOpen(false)
+      router.refresh()
+    } catch {
+      setError('Could not reach the server. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const trigger = (
+    <Button type='button' size='sm' variant='outline' className='whitespace-nowrap' disabled={disabled} onClick={() => setOpen(true)}>
+      <RotateCcwIcon />
+      Under Review
+    </Button>
+  )
+
+  return (
+    <>
+      {disabled && disabledReason ? (
+        <Tooltip>
+          <TooltipTrigger render={<span tabIndex={0} className='inline-flex' />}>{trigger}</TooltipTrigger>
+          <TooltipContent>{disabledReason}</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revert to Under Review</DialogTitle>
+            <DialogDescription>
+              This puts the application back in the review queue, undoing the current decision. No notification is
+              sent to the applicant. This is recorded in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+
+          {error && (
+            <Alert variant='destructive'>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type='button' onClick={submit} disabled={submitting}>
+              {submitting && <Loader2Icon className='animate-spin' />}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+/**
  * Approve/Reject are always rendered; each is disabled (with a tooltip
  * explaining why) when the application isn't in a valid stage for that
  * transition per .ai/APPLICATION_FLOW.md Section 3. Both server routes
  * independently re-verify status/permission/document-verification, so this
  * component's disabled state is a UI convenience only, never the real gate.
+ * A third "Under Review" button appears only when the application is
+ * currently approved/rejected, for a plain undo without re-deciding it —
+ * per explicit request.
  */
 const ApplicationDecisionActions = ({
   applicationId,
@@ -157,12 +259,14 @@ const ApplicationDecisionActions = ({
   canReject,
   approveDisabledReason,
   rejectDisabledReason,
+  canRevertToReview,
   nowrap
 }: Props) => {
   return (
     <div className={`flex gap-2 ${nowrap ? 'flex-nowrap' : 'flex-wrap'}`}>
       <ApproveApplicationDialog applicationId={applicationId} disabled={!canApprove} disabledReason={approveDisabledReason} />
       <RejectButton applicationId={applicationId} disabled={!canReject} disabledReason={rejectDisabledReason} />
+      {canRevertToReview && <RevertToReviewButton applicationId={applicationId} />}
     </div>
   )
 }

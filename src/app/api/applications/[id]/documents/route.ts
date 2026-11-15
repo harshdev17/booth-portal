@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 import { verifyAccessToken } from '@/lib/applications/access-token'
 import { getDocumentDefinitionsForCategory } from '@/lib/applications/categories'
 import { logAudit } from '@/lib/audit/log'
-import { query } from '@/lib/db/client'
+import { query, withTransaction } from '@/lib/db/client'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
 import { detectFileType, isAllowedDetectedType } from '@/lib/uploads/file-signature'
 import { generateStoragePath, storeFile } from '@/lib/uploads/storage'
@@ -135,15 +135,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // a document row actually exists to compare against.
     let isQueryResponse = false
 
+    // Full prior-row data (not just verification_status) — if this upload
+    // turns out to be a genuine replace (a row already exists for this
+    // slot), this is archived into application_document_versions before
+    // being overwritten below, so the admin can still see what was
+    // reviewed before the query was raised. Fetched regardless of
+    // isUnderReview so a pre-submission re-upload (rare, but the INSERT
+    // ... ON DUPLICATE KEY UPDATE below would still silently overwrite one
+    // if it somehow existed) is covered too.
+    const existingRows = await query<
+      Array<{
+        id: number
+        original_filename: string
+        storage_path: string
+        mime_type: string
+        size_bytes: number
+        content_sha256: string | null
+        verification_status: string
+        verification_remarks: string | null
+      }>
+    >(
+      `SELECT id, original_filename, storage_path, mime_type, size_bytes, content_sha256, verification_status, verification_remarks
+       FROM application_documents WHERE application_id = ? AND document_definition_id = ?`,
+      [applicationId, definition.id]
+    )
+
+    const existingDocument = existingRows[0] ?? null
+
     if (isUnderReview) {
-      const existingRows = await query<Array<{ verification_status: string }>>(
-        'SELECT verification_status FROM application_documents WHERE application_id = ? AND document_definition_id = ?',
-        [applicationId, definition.id]
-      )
-
-      const existingStatus = existingRows[0]?.verification_status
-
-      if (existingRows.length > 0 && existingStatus !== 'query') {
+      if (existingDocument && existingDocument.verification_status !== 'query') {
         return NextResponse.json(
           { error: 'This document is not awaiting your response and cannot be replaced.' },
           { status: 409 }
@@ -179,34 +199,60 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     await storeFile(storagePath, buffer)
 
-    await query(
-      `INSERT INTO application_documents
-         (application_id, document_definition_id, original_filename, storage_path, mime_type, size_bytes, content_sha256)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         original_filename = VALUES(original_filename),
-         storage_path = VALUES(storage_path),
-         mime_type = VALUES(mime_type),
-         size_bytes = VALUES(size_bytes),
-         content_sha256 = VALUES(content_sha256),
-         verification_status = 'pending',
-         verification_remarks = NULL,
-         verified_by_user_id = NULL,
-         verified_at = NULL,
-         reuploaded_at = ${isQueryResponse ? 'NOW()' : 'reuploaded_at'}`,
-      [
-        applicationId,
-        definition.id,
+    // Archiving the prior version (if one exists) and overwriting it run in
+    // one transaction — never leave a state where the old version is
+    // archived but the overwrite didn't happen, or vice versa. The old R2
+    // object itself is never deleted (storagePath above is always a fresh
+    // generateStoragePath() key), so it stays retrievable via the archived
+    // row's storage_path.
+    await withTransaction(async tx => {
+      if (existingDocument) {
+        await tx(
+          `INSERT INTO application_document_versions
+             (application_document_id, original_filename, storage_path, mime_type, size_bytes, content_sha256, verification_status, verification_remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            existingDocument.id,
+            existingDocument.original_filename,
+            existingDocument.storage_path,
+            existingDocument.mime_type,
+            existingDocument.size_bytes,
+            existingDocument.content_sha256,
+            existingDocument.verification_status,
+            existingDocument.verification_remarks
+          ]
+        )
+      }
 
-        // Stored for display only — never used to construct a filesystem
-        // path. Truncated defensively even though the column itself caps length.
-        file.name.slice(0, 255),
-        storagePath,
-        detectedType,
-        buffer.length,
-        contentHash
-      ]
-    )
+      await tx(
+        `INSERT INTO application_documents
+           (application_id, document_definition_id, original_filename, storage_path, mime_type, size_bytes, content_sha256)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           original_filename = VALUES(original_filename),
+           storage_path = VALUES(storage_path),
+           mime_type = VALUES(mime_type),
+           size_bytes = VALUES(size_bytes),
+           content_sha256 = VALUES(content_sha256),
+           verification_status = 'pending',
+           verification_remarks = NULL,
+           verified_by_user_id = NULL,
+           verified_at = NULL,
+           reuploaded_at = ${isQueryResponse ? 'NOW()' : 'reuploaded_at'}`,
+        [
+          applicationId,
+          definition.id,
+
+          // Stored for display only — never used to construct a filesystem
+          // path. Truncated defensively even though the column itself caps length.
+          file.name.slice(0, 255),
+          storagePath,
+          detectedType,
+          buffer.length,
+          contentHash
+        ]
+      )
+    })
 
     // Last open query answered -> the application goes back to plain
     // "Under Review" so the reviewer sees it is ready for another look.

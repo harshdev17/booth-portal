@@ -4,6 +4,9 @@ import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
+import ResultsDeclaredBanner from '@/components/public/ResultsDeclaredBanner'
+import { withPooledConnection } from '@/lib/db/client'
+import { anyDrawCompleted, getResultsBannerSettings } from '@/lib/draw/results-declared'
 import StatusLookup from '@/views/public/status'
 
 export const metadata: Metadata = {
@@ -21,10 +24,15 @@ export const metadata: Metadata = {
 // its HTML (and nonce) is generated fresh per request, matching the header.
 export const dynamic = 'force-dynamic'
 
-const StatusPage = () => {
+const StatusPage = async () => {
+  const [resultsDeclared, bannerSettings] = await withPooledConnection(query =>
+    Promise.all([anyDrawCompleted(query), getResultsBannerSettings(query)])
+  )
+
   return (
     <>
       <PublicHeader />
+      <ResultsDeclaredBanner show={resultsDeclared} textEn={bannerSettings.textEn} textHi={bannerSettings.textHi} />
       {/* StatusLookup reads ?appNo= via useSearchParams, which requires a Suspense boundary in the App Router */}
       <Suspense>
         <StatusLookup />

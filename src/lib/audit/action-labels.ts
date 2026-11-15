@@ -39,6 +39,7 @@ const ACTION_LABELS: Record<string, string> = {
   'document.verified': 'Document verified',
   'document.rejected': 'Document rejected',
   'document.query': 'Query raised on document',
+  'document.version_previewed': 'Previous document version viewed',
   'inventory.created': 'Shop/stall unit created',
   'inventory.created_and_allotted': 'Shop/stall created and allotted',
   'inventory.deleted': 'Shop/stall unit deleted',
@@ -75,7 +76,19 @@ const ACTION_LABELS: Record<string, string> = {
   'role.permission_revoked': 'Permission revoked from role',
   'application.field_checked': 'Applicant field marked verified',
   'application.field_unchecked': 'Applicant field unmarked verified',
-  'application.approval_checklist_viewed': 'Approval checklist viewed'
+  'application.approval_checklist_viewed': 'Approval checklist viewed',
+  'application.submitted': 'Application submitted',
+  'application.reverted_to_review': 'Reverted to Under Review',
+  'notification.resent': 'Notification resent',
+  'application.query_resolved': 'Query resolved, back under review',
+  'application.downloaded_all': 'All documents downloaded',
+  'allotment.promoted_from_waitlist': 'Promoted from waitlist',
+  'category.allotment_deadline_updated': 'Allotment payment deadline updated',
+  'draw.executed': 'Draw executed',
+  'auction_results.imported': 'Auction results imported',
+  'result_document.created': 'Result document uploaded',
+  'result_document.deleted': 'Result document deleted',
+  'results_banner.updated': 'Results banner text updated'
 }
 
 function humanizeFallback(action: string): string {

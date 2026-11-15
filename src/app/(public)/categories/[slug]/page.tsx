@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
 import { getCategoryBySlug, getDocumentDefinitionsForCategory, isCategoryAcceptingApplications } from '@/lib/applications/categories'
+import { withPooledConnection } from '@/lib/db/client'
 import { getCategoryMapBySlug } from '@/lib/settings/category-maps'
 import CategoryDetail from '@/views/public/category-detail'
 
@@ -18,16 +19,25 @@ export const dynamic = 'force-dynamic'
 
 const CategoryDetailPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params
-  const category = await getCategoryBySlug(slug)
 
-  if (!category || category.status === 'draft' || category.status === 'archived') {
-    notFound()
-  }
+  // Category lookup + its 2 dependent reads share ONE pooled connection
+  // instead of 3 separate checkouts — see .ai/CHANGELOG.md 2026-11-14.
+  const { category, documents, mapRow } = await withPooledConnection(async query => {
+    const category = await getCategoryBySlug(slug, query)
 
-  const [documents, mapRow] = await Promise.all([
-    getDocumentDefinitionsForCategory(category.id),
-    getCategoryMapBySlug(category.slug)
-  ])
+    if (!category || category.status === 'draft' || category.status === 'archived') {
+      return { category: null, documents: [], mapRow: null }
+    }
+
+    const [documents, mapRow] = await Promise.all([
+      getDocumentDefinitionsForCategory(category.id, query),
+      getCategoryMapBySlug(category.slug, query)
+    ])
+
+    return { category, documents, mapRow }
+  })
+
+  if (!category) notFound()
 
   return (
     <>

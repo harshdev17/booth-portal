@@ -6,22 +6,31 @@ import { getSession } from '@/lib/auth/session'
 import { query } from '@/lib/db/client'
 import type { Permission } from '@/lib/rbac/permissions'
 
+// Prefix kept on `message` (not just `name`) because Next.js only passes
+// `message` through to the client-side error boundary for errors it renders
+// (vs. redacting to a generic message for ones it just logs) — see
+// src/app/(admin)/error.tsx, which pattern-matches this prefix to show
+// "Access Denied" instead of its default auto-retrying "server busy" screen.
+const PERMISSION_ERROR_PREFIX = 'PERMISSION_DENIED:'
+
 export class AuthenticationError extends Error {
   constructor() {
-    super('Not authenticated')
+    super(`${PERMISSION_ERROR_PREFIX} Not authenticated`)
     this.name = 'AuthenticationError'
   }
 }
 
 export class AuthorizationError extends Error {
   constructor(permission: string) {
-    super(`Missing required permission: ${permission}`)
+    super(`${PERMISSION_ERROR_PREFIX} Missing required permission: ${permission}`)
     this.name = 'AuthorizationError'
   }
 }
 
-// Short TTL cache (30s) for role permissions to eliminate redundant DB round trips
-// across layout checks and page-level permission checks.
+// Kept at the original 30s per explicit instruction — the real fix for DB
+// overload under this short TTL is the error-fallback below (serve the
+// last-known-good permission set on a DB hiccup instead of throwing), not a
+// longer TTL (see .ai/CHANGELOG.md 2026-11-14).
 const rolePermissionsCache = new Map<string, { permissions: Set<string>; cachedAt: number }>()
 const ROLE_CACHE_TTL_MS = 30_000
 
@@ -33,14 +42,24 @@ async function getRolePermissions(roleKey: string): Promise<Set<string>> {
     return cached.permissions
   }
 
-  const rows = await query<Array<{ key: string }>>(
-    `SELECT p.\`key\` AS \`key\`
-     FROM role_permissions rp
-     JOIN permissions p ON p.id = rp.permission_id
-     JOIN roles r ON r.id = rp.role_id
-     WHERE r.\`key\` = ?`,
-    [roleKey]
-  )
+  let rows: Array<{ key: string }>
+
+  try {
+    rows = await query(
+      `SELECT p.\`key\` AS \`key\`
+       FROM role_permissions rp
+       JOIN permissions p ON p.id = rp.permission_id
+       JOIN roles r ON r.id = rp.role_id
+       WHERE r.\`key\` = ?`,
+      [roleKey]
+    )
+  } catch (error) {
+    // DB unreachable/busy — serve the last-known-good permission set rather
+    // than throwing (which previously surfaced as a false "you don't have
+    // access" screen under DB load, not an actual permission problem).
+    if (cached) return cached.permissions
+    throw error
+  }
 
   const permissions = new Set(rows.map(r => r.key))
 

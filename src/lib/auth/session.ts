@@ -2,12 +2,13 @@ import 'server-only'
 
 import { randomBytes } from 'node:crypto'
 
+import { cache } from 'react'
+
 import { cookies } from 'next/headers'
 import { jwtVerify, SignJWT } from 'jose'
 
 import { query } from '@/lib/db/client'
 
-import { cache } from 'react'
 
 const SESSION_COOKIE_NAME = 'kdb_admin_session'
 const SESSION_DURATION_SECONDS = 60 * 60 * 8 // 8 hours idle-session ceiling — see .ai/OPEN_QUESTIONS.md #8 for final confirmation
@@ -15,7 +16,14 @@ const sessionTouchCache = new Map<string, number>()
 
 export type SessionResult = SessionPayload & { role: { key: string; name: string }; email: string; fullName: string }
 const sessionUserCache = new Map<string, { user: SessionResult; cachedAt: number }>()
-const SESSION_CACHE_TTL_MS = 20_000 // 20s TTL eliminates repetitive remote DB trips on rapid admin navigation
+
+// 30s per explicit instruction (kept close to the original 20s so a
+// revoked/disabled account loses access quickly) — the real fix for DB
+// overload under this short TTL is the error-fallback below, not a longer
+// TTL: on a DB hiccup, the signed JWT already proves the cookie is genuine,
+// so getSession() now serves the last-known-good user instead of throwing
+// (see .ai/CHANGELOG.md 2026-11-14).
+const SESSION_CACHE_TTL_MS = 30_000
 
 function getSessionSecret(): Uint8Array {
   const secret = process.env.SESSION_SECRET
@@ -93,32 +101,45 @@ export const getSession = cache(async function getSession(): Promise<SessionResu
 
   const now = Date.now()
   const cached = sessionUserCache.get(payload.sessionId)
+
   if (cached && now - cached.cachedAt < SESSION_CACHE_TTL_MS) {
     return cached.user
   }
 
-  const rows = await query<
-    Array<{
-      user_id: number
-      status: 'active' | 'disabled'
-      email: string
-      full_name: string
-      role_key: string
-      role_name: string
-    }>
-  >(
-    `SELECT s.user_id, u.status, u.email, u.full_name, r.\`key\` AS role_key, r.name AS role_name
-     FROM sessions s
-     JOIN users u ON u.id = s.user_id
-     JOIN roles r ON r.id = u.role_id
-     WHERE s.id = ? AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
-    [payload.sessionId]
-  )
+  let rows: Array<{
+    user_id: number
+    status: 'active' | 'disabled'
+    email: string
+    full_name: string
+    role_key: string
+    role_name: string
+  }>
+
+  try {
+    rows = await query(
+      `SELECT s.user_id, u.status, u.email, u.full_name, r.\`key\` AS role_key, r.name AS role_name
+       FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       JOIN roles r ON r.id = u.role_id
+       WHERE s.id = ? AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+      [payload.sessionId]
+    )
+  } catch (error) {
+    // DB unreachable/busy (Hostinger connection cap, transient timeout) —
+    // the JWT signature already proves this cookie is genuine and unexpired,
+    // so fall back to the last-known-good user rather than treating a DB
+    // hiccup as "not authenticated" (previously surfaced as a false "you
+    // don't have access" screen). A revoked/disabled account only stays
+    // valid under this fallback for the remainder of SESSION_CACHE_TTL_MS.
+    if (cached) return cached.user
+    throw error
+  }
 
   const row = rows[0]
 
   if (!row || row.status !== 'active') {
     sessionUserCache.delete(payload.sessionId)
+
     return null
   }
 

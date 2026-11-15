@@ -125,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Payment verification failed. Please contact support if you were charged.' }, { status: 400 })
     }
 
-    await recordCheckoutSuccess({
+    const transition = await recordCheckoutSuccess({
       paymentId: payment.id,
       applicationId,
       amountPaise: payment.amount_paise,
@@ -140,11 +140,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       module: 'payments',
       entityType: 'application',
       entityId: String(applicationId),
+      previousValue: transition ? { status: transition.previousStatus } : undefined,
       newValue: {
         razorpayOrderId: parsed.data.razorpayOrderId,
         razorpayPaymentId: parsed.data.razorpayPaymentId,
         amountPaise: payment.amount_paise,
-        purpose: payment.purpose
+        purpose: payment.purpose,
+        ...(transition ? { status: transition.newStatus } : {})
       },
       ipAddress
     })

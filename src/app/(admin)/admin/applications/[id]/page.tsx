@@ -14,13 +14,13 @@ import { withPooledConnection } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
-import { getAuditActionLabel, getRoleDisplayName } from '@/lib/audit/action-labels'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId, encodeId } from '@/lib/security/opaque-id'
 import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
 import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
+import ApplicationHistoryTab from '@/views/admin/applications/ApplicationHistoryTab'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
 import ApplicationRegistrationPaymentTab from '@/views/admin/applications/ApplicationRegistrationPaymentTab'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
@@ -109,217 +109,18 @@ const ApplicationDetailPage = async ({
     }
   })()
 
-  // Grouped onto 3 shared connections (withPooledConnection, see client.ts)
-  // instead of each query() call below checking out its own from the pool —
-  // this page alone used to fire ~14 concurrent queries (counting
-  // getApprovalChecklist()'s own), which with connectionLimit capped at 10
-  // (see client.ts) meant a single admin opening a single application could
-  // by itself exhaust the entire pool. That's what was happening while
-  // admins clicked through applications to verify them — confirmed live,
-  // see .ai/CHANGELOG.md 2026-11-13.
-  const [batchA, batchB, batchC, permissions] = await Promise.all([
-    withPooledConnection(async q => ({
-      rows: await q<ApplicationRow[]>(
-        `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
-                a.father_name, a.police_station_name, a.police_station_address,
-                a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
-                a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
-                c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
-                COALESCE(c.fee_base_paise, c.fee_paise, 0) AS fee_amount_paise,
-                COALESCE(c.gst_percent, 18.00) AS gst_percent,
-                c.allotment_amount_note,
-                so.label AS shop_option_label,
-                COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
-                COALESCE(p.amount_paise, da.payment_amount_paise, c.allotment_amount_paise) AS allotment_amount_paise,
-                COALESCE(p.status, da.payment_status) AS allotment_payment_status,
-                (SELECT pt.created_at FROM payment_transactions pt
-                  WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
-                  ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
-                reg_p.status AS registration_payment_status
-         FROM applications a
-         JOIN categories c ON c.id = a.category_id
-         LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
-         LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
-         LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
-         LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
-         LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
-         LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
-         WHERE a.id = ?`,
-        [applicationId]
-      ),
-      fieldValues: await q<
-        Array<{
-          field_definition_id: number
-          field_key: string
-          label: string
-          label_hi: string | null
-          value: string
-          section: string | null
-          section_hi: string | null
-          input_type: string
-          display_order: number
-        }>
-      >(
-        `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
-         FROM application_field_values afv
-         JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
-         WHERE afv.application_id = ?
-         ORDER BY cfd.display_order ASC`,
-        [applicationId]
-      ),
-      checkedFieldRows: await q<Array<{ field_key: string }>>(
-        `SELECT field_key FROM application_field_checks WHERE application_id = ?`,
-        [applicationId]
-      )
-    })),
-
-    withPooledConnection(async q => ({
-      documents: await q<
-        Array<{
-          id: number | null
-          document_key: string
-          label: string
-          original_filename: string | null
-          verification_status: string | null
-          verification_remarks: string | null
-          verified_at: string | null
-          reuploaded_at: string | null
-          created_at: string | null
-        }>
-      >(
-
-        // LEFT JOIN from the category's own required document definitions —
-        // not just the documents actually uploaded — so a document the
-        // applicant never uploaded at all still shows up here as a visible
-        // "not uploaded yet" row, instead of silently not existing on this
-        // page with no indication anything is still outstanding. Reported
-        // live: an admin had no way to see that "Work/Product Photographs"
-        // was still pending for an application sitting in query_raised.
-        `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
-                ad.verified_at, ad.reuploaded_at, ad.created_at
-         FROM category_document_definitions cdd
-         LEFT JOIN application_documents ad
-           ON ad.document_definition_id = cdd.id AND ad.application_id = ?
-         WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
-         ORDER BY cdd.display_order ASC`,
-        [applicationId, applicationId]
-      ),
-      auditEntries: await q<
-        Array<{ id: number; action: string; actor_role_key: string | null; new_value: string | null; created_at: string }>
-      >(
-        `SELECT id, action, actor_role_key, new_value, created_at
-         FROM audit_logs
-         WHERE entity_type = 'application' AND entity_id = ?
-         ORDER BY created_at DESC
-         LIMIT 50`,
-        [String(applicationId)]
-      ),
-
-      // Shares this same connection (q) instead of getApprovalChecklist()
-      // checking out one of its own — see the optional runQuery param on
-      // getApprovalChecklist() in approval-checklist.ts.
-      approvalChecklist: await getApprovalChecklist(applicationId, q)
-    })),
-
-    withPooledConnection(async q => ({
-      paymentRows: await q<
-        Array<{
-          id: number
-          purpose: 'registration' | 'pay_now'
-          amount_paise: number
-          status: string
-          razorpay_order_id: string | null
-          created_at: string
-          updated_at: string
-        }>
-      >(
-        `SELECT id, purpose, amount_paise, status, razorpay_order_id, created_at, updated_at
-         FROM payments
-         WHERE application_id = ?
-         ORDER BY id ASC`,
-        [applicationId]
-      ),
-      transactionRows: await q<
-        Array<{
-          id: number
-          payment_id: number
-          purpose: 'registration' | 'pay_now'
-          type: string
-          amount_paise: number
-          razorpay_order_id: string | null
-          razorpay_payment_id: string | null
-          signature_valid: number | null
-          failure_reason: string | null
-          source: string
-          webhook_event_id: string | null
-          created_at: string
-        }>
-      >(
-        `SELECT pt.id, pt.payment_id, p.purpose, pt.type, pt.amount_paise, pt.razorpay_order_id,
-                pt.razorpay_payment_id, pt.signature_valid, pt.failure_reason, pt.source,
-                pt.webhook_event_id, pt.created_at
-         FROM payment_transactions pt
-         JOIN payments p ON p.id = pt.payment_id
-         WHERE p.application_id = ?
-         ORDER BY pt.created_at DESC`,
-        [applicationId]
-      ),
-      drawAllocationRows: await q<
-        Array<{
-          id: number
-          draw_event_id: number
-          draw_position: number
-          allocation_type: string
-          status: string
-          draw_code: string
-          round_number: number
-          completed_at: string | null
-        }>
-      >(
-        `SELECT da.id, da.draw_event_id, da.draw_position, da.allocation_type, da.status,
-                de.draw_code, de.round_number, de.completed_at
-         FROM draw_allocations da
-         JOIN draw_events de ON de.id = da.draw_event_id
-         WHERE da.application_id = ?
-         LIMIT 1`,
-        [applicationId]
-      ),
-
-      // "Send Payment Reminder" history, per explicit request — every
-      // WhatsApp/email reminder send attempt is already logged here by
-      // sendNotification() (src/lib/notifications/service.ts), one row per
-      // channel per attempt, success or failure — this just surfaces it on
-      // the Registration Payment tab instead of only in the DB/audit trail.
-      reminderLogRows: await q<
-        Array<{
-          id: number
-          channel: 'whatsapp' | 'sms' | 'email'
-          status: 'sent' | 'failed'
-          campaign_name: string | null
-          error_message: string | null
-          created_at: string
-        }>
-      >(
-        `SELECT id, channel, status, campaign_name, error_message, created_at
-         FROM notification_log
-         WHERE application_id = ? AND category = 'reminder'
-         ORDER BY created_at DESC
-         LIMIT 20`,
-        [applicationId]
-      )
-    })),
-
-    getCurrentUserPermissions()
-  ])
-
-  const { rows, fieldValues, checkedFieldRows } = batchA
-  const { documents, auditEntries, approvalChecklist } = batchB
-  const { paymentRows, transactionRows, drawAllocationRows, reminderLogRows } = batchC
-
-  const app = rows[0]
-
-  if (!app) notFound()
-
+  // Split across 2 pooled connections run concurrently, not 1 — this page
+  // used to run ALL ~11 queries sequentially on a single connection (a prior
+  // pass merged them down from 4 separate connections to cut Hostinger's
+  // connection-cap risk), but on a remote DB every sequential round trip
+  // adds its own latency, so 11-in-a-row made the page noticeably slower to
+  // open (reported live, 2026-11-15). 2 connections in parallel is a
+  // deliberate middle ground: still well under connectionLimit (10, see
+  // client.ts) even with several admins open at once, while halving the
+  // page's critical-path query latency. Connection A holds what the top of
+  // the page needs immediately (the application itself + its field
+  // values/documents); Connection B holds everything gated behind a tab
+  // click (audit trail, payments, draw info) plus prev/next nav.
   // Previous/Next Application navigation — matches the Applications list's
   // own default order (created_at DESC, id as a tiebreak for same-instant
   // submissions), so clicking through from the list and clicking
@@ -331,9 +132,129 @@ const ApplicationDetailPage = async ({
   const categoryFilterJoin = listCategorySlug
     ? `JOIN categories cat_filter ON cat_filter.id = applications.category_id AND cat_filter.slug = ?`
     : ''
+
   const categoryFilterParams = listCategorySlug ? [listCategorySlug] : []
 
-  const { prevApplicationId, nextApplicationId } = await withPooledConnection(async q => {
+  // Connection A: the application row itself plus everything the top of
+  // the page renders immediately (field values, documents) — kept small so
+  // this connection's queries finish fast and the page has its core
+  // content as soon as possible.
+  const connectionAPromise = withPooledConnection(async q => {
+    const rows = await q<ApplicationRow[]>(
+      `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
+              a.father_name, a.police_station_name, a.police_station_address,
+              a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
+              a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
+              c.id AS category_id, c.name AS category_name, c.slug AS category_slug, c.selection_method,
+              COALESCE(c.fee_base_paise, c.fee_paise, 0) AS fee_amount_paise,
+              COALESCE(c.gst_percent, 18.00) AS gst_percent,
+              c.allotment_amount_note,
+              so.label AS shop_option_label,
+              COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
+              COALESCE(p.amount_paise, da.payment_amount_paise, c.allotment_amount_paise) AS allotment_amount_paise,
+              COALESCE(p.status, da.payment_status) AS allotment_payment_status,
+              (SELECT pt.created_at FROM payment_transactions pt
+                WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
+                ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
+              reg_p.status AS registration_payment_status
+       FROM applications a
+       JOIN categories c ON c.id = a.category_id
+       LEFT JOIN category_shop_options so ON so.id = a.shop_option_id
+       LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+       LEFT JOIN payments reg_p ON reg_p.application_id = a.id AND reg_p.purpose = 'registration'
+       LEFT JOIN direct_allotments da ON da.application_id = a.id AND da.status = 'active'
+       LEFT JOIN shop_units da_su ON da_su.id = da.shop_unit_id
+       WHERE a.id = ?`,
+      [applicationId]
+    )
+
+    const app = rows[0]
+
+    if (!app) notFound()
+
+    const fieldValues = await q<
+      Array<{
+        field_definition_id: number
+        field_key: string
+        label: string
+        label_hi: string | null
+        value: string
+        section: string | null
+        section_hi: string | null
+        input_type: string
+        display_order: number
+      }>
+    >(
+      `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
+       FROM application_field_values afv
+       JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
+       WHERE afv.application_id = ?
+       ORDER BY cfd.display_order ASC`,
+      [applicationId]
+    )
+
+    const checkedFieldRows = await q<Array<{ field_key: string }>>(
+      `SELECT field_key FROM application_field_checks WHERE application_id = ?`,
+      [applicationId]
+    )
+
+    const documents = await q<
+      Array<{
+        id: number | null
+        document_key: string
+        label: string
+        original_filename: string | null
+        verification_status: string | null
+        verification_remarks: string | null
+        verified_at: string | null
+        reuploaded_at: string | null
+        created_at: string | null
+      }>
+    >(
+
+      // LEFT JOIN from the category's own required document definitions —
+      // not just the documents actually uploaded — so a document the
+      // applicant never uploaded at all still shows up here as a visible
+      // "not uploaded yet" row, instead of silently not existing on this
+      // page with no indication anything is still outstanding. Reported
+      // live: an admin had no way to see that "Work/Product Photographs"
+      // was still pending for an application sitting in query_raised.
+      `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
+              ad.verified_at, ad.reuploaded_at, ad.created_at
+       FROM category_document_definitions cdd
+       LEFT JOIN application_documents ad
+         ON ad.document_definition_id = cdd.id AND ad.application_id = ?
+       WHERE cdd.category_id = (SELECT category_id FROM applications WHERE id = ?) AND cdd.status = 'active'
+       ORDER BY cdd.display_order ASC`,
+      [applicationId, applicationId]
+    )
+
+    // Every superseded version of every document for this application (see
+    // migration 0077) — grouped by application_document_id below so each
+    // document row can show its own "Previous versions" disclosure. Only
+    // re-uploads made AFTER this feature shipped have any rows here; older
+    // overwrites were never preserved and can't be recovered (see
+    // .ai/CHANGELOG.md 2026-11-15).
+    const documentVersionRows = await q<
+      Array<{
+        id: number
+        application_document_id: number
+        original_filename: string
+        verification_status: string
+        verification_remarks: string | null
+        superseded_at: string
+      }>
+    >(
+      `SELECT adv.id, adv.application_document_id, adv.original_filename, adv.verification_status,
+              adv.verification_remarks, adv.superseded_at
+       FROM application_document_versions adv
+       JOIN application_documents ad ON ad.id = adv.application_document_id
+       WHERE ad.application_id = ?
+       ORDER BY adv.superseded_at DESC`,
+      [applicationId]
+    )
+
     const prevRows = await q<Array<{ id: number }>>(
       `SELECT applications.id FROM applications
        ${categoryFilterJoin}
@@ -350,8 +271,211 @@ const ApplicationDetailPage = async ({
       [...categoryFilterParams, app.created_at, app.id]
     )
 
-    return { prevApplicationId: prevRows[0]?.id ?? null, nextApplicationId: nextRows[0]?.id ?? null }
+    return {
+      app,
+      fieldValues,
+      checkedFieldRows,
+      documents,
+      documentVersionRows,
+      prevApplicationId: prevRows[0]?.id ?? null,
+      nextApplicationId: nextRows[0]?.id ?? null
+    }
   })
+
+  // Connection B: everything gated behind a tab click (Audit Trail,
+  // Registration/Allotment Payment, Draw info) — independent of Connection
+  // A's data, so it runs concurrently rather than queuing behind it.
+  const connectionBPromise = withPooledConnection(async q => {
+    // Broadened beyond entity_type='application' alone — a document
+    // decision or payment event for THIS application is logged against
+    // entityType 'application_document'/'payment', not 'application', so
+    // the Audit Trail tab was previously missing them even though they
+    // were already in the DB. LIMIT raised from 50 to 100 since merging
+    // in notification_log (below) means more total rows per application.
+    const auditEntries = await q<
+      Array<{
+        id: number
+        action: string
+        actor_role_key: string | null
+        previous_value: string | null
+        new_value: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT id, action, actor_role_key, previous_value, new_value, created_at
+       FROM audit_logs
+       WHERE (entity_type = 'application' AND entity_id = ?)
+          OR (entity_type = 'application_document' AND entity_id IN (
+               SELECT id FROM application_documents WHERE application_id = ?
+             ))
+          OR (entity_type = 'payment' AND entity_id IN (
+               SELECT id FROM payments WHERE application_id = ?
+             ))
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [String(applicationId), applicationId, applicationId]
+    )
+
+    // WhatsApp/SMS/email sends live in a separate table from audit_logs —
+    // merged into the same timeline (below, after both queries run) so an
+    // admin can see whether/when a message actually reached the
+    // applicant, not just that the system decided to send one.
+    const notificationEntries = await q<
+      Array<{
+        channel: 'whatsapp' | 'sms' | 'email'
+        category: string
+        destination: string
+        status: 'sent' | 'failed'
+        error_message: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT channel, category, destination, status, error_message, created_at
+       FROM notification_log
+       WHERE application_id = ?
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [applicationId]
+    )
+
+    // Shares this same connection (q) instead of getApprovalChecklist()
+    // checking out one of its own — see the optional runQuery param on
+    // getApprovalChecklist() in approval-checklist.ts.
+    const approvalChecklist = await getApprovalChecklist(applicationId, q)
+
+    const paymentRows = await q<
+      Array<{
+        id: number
+        purpose: 'registration' | 'pay_now'
+        amount_paise: number
+        status: string
+        razorpay_order_id: string | null
+        created_at: string
+        updated_at: string
+      }>
+    >(
+      `SELECT id, purpose, amount_paise, status, razorpay_order_id, created_at, updated_at
+       FROM payments
+       WHERE application_id = ?
+       ORDER BY id ASC`,
+      [applicationId]
+    )
+
+    const transactionRows = await q<
+      Array<{
+        id: number
+        payment_id: number
+        purpose: 'registration' | 'pay_now'
+        type: string
+        amount_paise: number
+        razorpay_order_id: string | null
+        razorpay_payment_id: string | null
+        signature_valid: number | null
+        failure_reason: string | null
+        source: string
+        webhook_event_id: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT pt.id, pt.payment_id, p.purpose, pt.type, pt.amount_paise, pt.razorpay_order_id,
+              pt.razorpay_payment_id, pt.signature_valid, pt.failure_reason, pt.source,
+              pt.webhook_event_id, pt.created_at
+       FROM payment_transactions pt
+       JOIN payments p ON p.id = pt.payment_id
+       WHERE p.application_id = ?
+       ORDER BY pt.created_at DESC`,
+      [applicationId]
+    )
+
+    const drawAllocationRows = await q<
+      Array<{
+        id: number
+        draw_event_id: number
+        draw_position: number
+        allocation_type: string
+        status: string
+        draw_code: string
+        round_number: number
+        completed_at: string | null
+      }>
+    >(
+      `SELECT da.id, da.draw_event_id, da.draw_position, da.allocation_type, da.status,
+              de.draw_code, de.round_number, de.completed_at
+       FROM draw_allocations da
+       JOIN draw_events de ON de.id = da.draw_event_id
+       WHERE da.application_id = ?
+       LIMIT 1`,
+      [applicationId]
+    )
+
+    // "Send Payment Reminder" history, per explicit request — every
+    // WhatsApp/email reminder send attempt is already logged here by
+    // sendNotification() (src/lib/notifications/service.ts), one row per
+    // channel per attempt, success or failure — this just surfaces it on
+    // the Registration Payment tab instead of only in the DB/audit trail.
+    const reminderLogRows = await q<
+      Array<{
+        id: number
+        channel: 'whatsapp' | 'sms' | 'email'
+        status: 'sent' | 'failed'
+        campaign_name: string | null
+        error_message: string | null
+        created_at: string
+      }>
+    >(
+      `SELECT id, channel, status, campaign_name, error_message, created_at
+       FROM notification_log
+       WHERE application_id = ? AND category = 'reminder'
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [applicationId]
+    )
+
+    return { auditEntries, notificationEntries, approvalChecklist, paymentRows, transactionRows, drawAllocationRows, reminderLogRows }
+  })
+
+  const [connectionA, connectionB, permissions] = await Promise.all([
+    connectionAPromise,
+    connectionBPromise,
+    getCurrentUserPermissions()
+  ])
+
+  const { app, fieldValues, checkedFieldRows, documents, documentVersionRows, prevApplicationId, nextApplicationId } =
+    connectionA
+
+  // Grouped by application_document_id so each document row can look up
+  // its own previous versions (newest-superseded first, since the source
+  // query is already ordered that way) without re-filtering the full list
+  // per row.
+  const documentVersionsByDocumentId = new Map<number, typeof documentVersionRows>()
+
+  for (const version of documentVersionRows) {
+    const list = documentVersionsByDocumentId.get(version.application_document_id) ?? []
+
+    list.push(version)
+    documentVersionsByDocumentId.set(version.application_document_id, list)
+  }
+
+  const {
+    auditEntries,
+    notificationEntries,
+    approvalChecklist,
+    paymentRows,
+    transactionRows,
+    drawAllocationRows,
+    reminderLogRows
+  } = connectionB
+
+  // Merged, time-ordered history feed for the Audit Trail tab: audit_logs
+  // entries (system/admin actions) interleaved with notification_log
+  // entries (actual WhatsApp/SMS/email sends) — two separate tables
+  // previously shown nowhere together, so an admin had no way to see
+  // whether a status-update/approval/rejection/reminder message actually
+  // reached the applicant alongside the action that triggered it.
+  const historyTimeline = [
+    ...auditEntries.map(entry => ({ kind: 'audit' as const, timestamp: entry.created_at, entry })),
+    ...notificationEntries.map(entry => ({ kind: 'notification' as const, timestamp: entry.created_at, entry }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   // Full Aadhaar number is shown (not masked) to any admin with
   // application:view, per explicit instruction — every view is audit-logged
@@ -402,6 +526,13 @@ const ApplicationDetailPage = async ({
     : !permissions?.has('application:reject')
       ? 'You do not have permission to reject applications.'
       : `Reject is only available while the application is under review, has a query raised, or was approved by mistake (current status: ${statusCfg.label}).`
+
+  // Plain undo — puts a mistakenly approved/rejected application back to
+  // Under Review without re-deciding it the other way, per explicit
+  // request. Gated by application:edit since this is a correction, not an
+  // approval/rejection decision itself.
+  const canRevertToReview =
+    (app.status === 'approved' || app.status === 'rejected') && !!permissions?.has('application:edit')
 
   const canVerifyDocuments = !!permissions?.has('document:verify')
   const canEditApplication = !!permissions?.has('application:edit')
@@ -598,6 +729,22 @@ const ApplicationDetailPage = async ({
       return { id: entry.id, remarks: value?.remarks ?? '', createdAt: entry.created_at }
     })
 
+  // Most recent rejection reason — shown right under the status badge when
+  // the application is currently 'rejected', so an admin doesn't have to
+  // open the Audit Trail tab to see why it was rejected. auditEntries is
+  // already ordered newest-first, so the first match is the latest
+  // rejection (relevant if it was rejected more than once across its
+  // history — e.g. approved, reverted, rejected again).
+  const latestRejection =
+    app.status === 'rejected'
+      ? (() => {
+          const entry = auditEntries.find(e => e.action === 'application.rejected')
+          const value = entry?.new_value as unknown as { reason?: string } | null
+
+          return entry ? { reason: value?.reason ?? '', createdAt: entry.created_at } : null
+        })()
+      : null
+
   const regIsPaid = registrationPayment?.status === 'success' || registrationPayment?.status === 'paid'
 
   // app.fee_amount_paise comes back from a raw COALESCE() over a numeric
@@ -704,6 +851,16 @@ const ApplicationDetailPage = async ({
           </div>
         </div>
 
+        {latestRejection && (
+          <div className='rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-red-700'>Rejection Reason</p>
+            <p className='mt-0.5 text-sm text-red-900'>{latestRejection.reason}</p>
+            <p className='mt-1 text-[11px] text-red-700/80'>
+              {new Date(latestRejection.createdAt).toLocaleString('en-IN')}
+            </p>
+          </div>
+        )}
+
         {approvalBlockedByDocs && (
           <p className='text-xs font-medium text-amber-700'>
             Approve will be available once every required document is verified
@@ -720,6 +877,7 @@ const ApplicationDetailPage = async ({
             canReject={canReject}
             approveDisabledReason={approveDisabledReason}
             rejectDisabledReason={rejectDisabledReason}
+            canRevertToReview={canRevertToReview}
           />
           {canEditApplication && (
             <EditApplicationDialog
@@ -817,7 +975,11 @@ const ApplicationDetailPage = async ({
                   initiallyChecked={checkedFieldKeys.has('aadhaar_number')}
                 />
                 {aadhaarDocument && (
-                  <PersonalDocumentCard document={aadhaarDocument} canVerifyDocuments={canVerifyDocuments} />
+                  <PersonalDocumentCard
+                    document={aadhaarDocument}
+                    canVerifyDocuments={canVerifyDocuments}
+                    previousVersions={documentVersionsByDocumentId.get(aadhaarDocument.id) ?? []}
+                  />
                 )}
               </div>
 
@@ -1017,7 +1179,12 @@ const ApplicationDetailPage = async ({
                             initiallyChecked={checkedFieldKeys.has(fieldKey)}
                           />
                           {anchoredDocuments.map(doc => (
-                            <PersonalDocumentCard key={doc.id} document={doc} canVerifyDocuments={canVerifyDocuments} />
+                            <PersonalDocumentCard
+                              key={doc.id}
+                              document={doc}
+                              canVerifyDocuments={canVerifyDocuments}
+                              previousVersions={documentVersionsByDocumentId.get(doc.id) ?? []}
+                            />
                           ))}
                         </Fragment>
                       )
@@ -1040,6 +1207,7 @@ const ApplicationDetailPage = async ({
               canVerifyDocuments && (isReviewStage || app.status === 'query_raised')
             }
             applicationQueryHistory={applicationQueryHistory}
+            documentVersionsByDocumentId={documentVersionsByDocumentId}
           />
         </TabsContent>
 
@@ -1080,32 +1248,7 @@ const ApplicationDetailPage = async ({
         )}
 
         <TabsContent value='audit'>
-          <Card className='shadow-xs'>
-            <CardHeader>
-              <CardTitle className='text-base'>Audit Trail</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {auditEntries.length === 0 ? (
-                <p className='py-8 text-center text-sm text-muted-foreground'>No audit entries for this application yet.</p>
-              ) : (
-                <div className='space-y-3'>
-                  {auditEntries.map(entry => (
-                    <div key={entry.id} className='rounded-md border border-border/60 px-3 py-2 text-sm'>
-                      <div className='flex items-center justify-between'>
-                        <span className='font-semibold text-[#0c2847]'>{getAuditActionLabel(entry.action)}</span>
-                        <span className='text-xs text-muted-foreground'>
-                          {new Date(entry.created_at).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <p className='text-xs text-muted-foreground'>
-                        By: {entry.actor_role_key ? getRoleDisplayName(entry.actor_role_key) : 'System'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ApplicationHistoryTab history={historyTimeline} />
         </TabsContent>
       </ApplicationTabsNav>
     </div>

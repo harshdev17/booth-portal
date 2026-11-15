@@ -1,5 +1,7 @@
+import ResultsDeclaredBanner from '@/components/public/ResultsDeclaredBanner'
 import { getFeeBreakdown, getPortalApplicationSchedule, listOpenCategories } from '@/lib/applications/categories'
-import { query } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
+import { anyDrawCompleted, getResultsBannerSettings } from '@/lib/draw/results-declared'
 import { parseIstDateTime } from '@/lib/format-date'
 import PublicHomeClient from './PublicHomeClient'
 
@@ -25,6 +27,9 @@ interface CachedHomeData {
   eventEndsOn: string | null
   applicationOpensAt: string | null
   applicationClosesAt: string | null
+  resultsDeclared: boolean
+  resultsBannerTextEn: string
+  resultsBannerTextHi: string
 }
 
 let cachedHomeData: CachedHomeData | null = null
@@ -41,27 +46,46 @@ const PublicHome = async () => {
 
   if (cachedHomeData && now - homeDataCachedAt < HOME_CACHE_TTL_MS) {
     return (
-      <PublicHomeClient
-        categories={cachedHomeData.categories}
-        eventStartsOn={cachedHomeData.eventStartsOn}
-        eventEndsOn={cachedHomeData.eventEndsOn}
-        applicationOpensAt={cachedHomeData.applicationOpensAt}
-        applicationClosesAt={cachedHomeData.applicationClosesAt}
-      />
+      <>
+        <ResultsDeclaredBanner
+          show={cachedHomeData.resultsDeclared}
+          textEn={cachedHomeData.resultsBannerTextEn}
+          textHi={cachedHomeData.resultsBannerTextHi}
+        />
+        <PublicHomeClient
+          categories={cachedHomeData.categories}
+          eventStartsOn={cachedHomeData.eventStartsOn}
+          eventEndsOn={cachedHomeData.eventEndsOn}
+          applicationOpensAt={cachedHomeData.applicationOpensAt}
+          applicationClosesAt={cachedHomeData.applicationClosesAt}
+        />
+      </>
     )
   }
 
-  // Fetch all 4 data sources in parallel instead of sequentially
-  const [rawCategories, availableCounts, eventRows, schedule] = await Promise.all([
-    listOpenCategories(),
-    query<Array<{ category_id: number; available_count: number }>>(
-      `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
-    ),
-    query<Array<{ starts_on: string | null; ends_on: string | null }>>(
-      `SELECT starts_on, ends_on FROM events ORDER BY id ASC LIMIT 1`
-    ),
-    getPortalApplicationSchedule()
-  ])
+  // All reads share ONE pooled connection instead of each checking out its
+  // own — this is the single most-visited public page, so its old 4-way
+  // Promise.all fan-out (run once per HOME_CACHE_TTL_MS window, but still 4
+  // simultaneous connections every time the cache expires) was a meaningful
+  // contributor to Hostinger's connection cap (see .ai/CHANGELOG.md
+  // 2026-11-14, same pattern as the admin dashboard/list pages). The
+  // "Results declared" banner check is folded into this same batch rather
+  // than adding a new separate connection.
+  const [rawCategories, availableCounts, eventRows, schedule, resultsDeclared, bannerSettings] =
+    await withPooledConnection(query =>
+      Promise.all([
+        listOpenCategories(query),
+        query<Array<{ category_id: number; available_count: number }>>(
+          `SELECT category_id, COUNT(*) AS available_count FROM shop_units WHERE status = 'available' GROUP BY category_id`
+        ),
+        query<Array<{ starts_on: string | null; ends_on: string | null }>>(
+          `SELECT starts_on, ends_on FROM events ORDER BY id ASC LIMIT 1`
+        ),
+        getPortalApplicationSchedule(query),
+        anyDrawCompleted(query),
+        getResultsBannerSettings(query)
+      ])
+    )
 
   const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, Number(row.available_count)]))
 
@@ -102,18 +126,24 @@ const PublicHome = async () => {
     eventStartsOn: event.starts_on,
     eventEndsOn: event.ends_on,
     applicationOpensAt: schedule.applicationOpensAt,
-    applicationClosesAt: schedule.applicationClosesAt
+    applicationClosesAt: schedule.applicationClosesAt,
+    resultsDeclared,
+    resultsBannerTextEn: bannerSettings.textEn,
+    resultsBannerTextHi: bannerSettings.textHi
   }
   homeDataCachedAt = now
 
   return (
-    <PublicHomeClient
-      categories={categories}
-      eventStartsOn={event.starts_on}
-      eventEndsOn={event.ends_on}
-      applicationOpensAt={schedule.applicationOpensAt}
-      applicationClosesAt={schedule.applicationClosesAt}
-    />
+    <>
+      <ResultsDeclaredBanner show={resultsDeclared} textEn={bannerSettings.textEn} textHi={bannerSettings.textHi} />
+      <PublicHomeClient
+        categories={categories}
+        eventStartsOn={event.starts_on}
+        eventEndsOn={event.ends_on}
+        applicationOpensAt={schedule.applicationOpensAt}
+        applicationClosesAt={schedule.applicationClosesAt}
+      />
+    </>
   )
 }
 

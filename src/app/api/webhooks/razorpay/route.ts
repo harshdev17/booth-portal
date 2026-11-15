@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
     if (event === 'payment.captured') {
       if (payment.status !== 'success') {
-        await recordWebhookConfirmed({
+        const transition = await recordWebhookConfirmed({
           paymentId: payment.id,
           applicationId: payment.application_id,
           amountPaise: payment.amount_paise,
@@ -96,7 +96,12 @@ export async function POST(request: Request) {
           module: 'payments',
           entityType: 'application',
           entityId: String(payment.application_id),
-          newValue: { razorpayOrderId: paymentEntity.order_id, razorpayPaymentId: paymentEntity.id }
+          previousValue: transition ? { status: transition.previousStatus } : undefined,
+          newValue: {
+            razorpayOrderId: paymentEntity.order_id,
+            razorpayPaymentId: paymentEntity.id,
+            ...(transition ? { status: transition.newStatus } : {})
+          }
         })
 
         if (payment.purpose === 'pay_now' || payment.purpose === 'auction_final') {

@@ -1122,14 +1122,6 @@ const StatusLookup = () => {
               <ArrowLeftIcon className='size-3.5 mr-1.5' />
               {lang === 'hi' ? 'अन्य आवेदन जांचें' : 'Check Another Application'}
             </Button>
-            <Link
-              href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
-              target='_blank'
-              className='inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition'
-            >
-              <FileTextIcon className='size-3.5 text-slate-600' />
-              {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Form'}
-            </Link>
           </div>
         </div>
       )}
@@ -1422,32 +1414,43 @@ const StatusLookup = () => {
               </div>
             )}
 
-            {/* Allotment Payment Required Alert Card */}
+            {/* Allotment Payment Required Alert Card — red/urgent styling and
+                an explicit cancellation warning, per explicit request
+                ("due date se phele fee pay kar do, nahi to cancel hoje gi
+                allotment"). The deadline shown here is categories.allotment_payment_deadline_at
+                (category-level — see src/lib/allotment/cancel-and-promote.ts
+                for what happens if it passes unpaid). */}
             {effectiveStatus === 'payment_required' && (
-              <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
+              <div className='overflow-hidden rounded-xl border-2 border-red-400 bg-linear-to-br from-red-50 via-rose-50/70 to-red-50 p-5 sm:p-6 shadow-sm'>
                 <div className='flex items-start gap-4'>
-                  <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
+                  <div className='rounded-xl bg-red-600 p-2.5 text-white shrink-0 shadow-xs'>
                     <StoreIcon className='size-6' />
                   </div>
                   <div className='flex-1'>
                     <div className='flex flex-wrap items-center justify-between gap-2'>
-                      <h2 className='text-lg font-bold text-amber-950'>
+                      <h2 className='text-lg font-bold text-red-950'>
                         {lang === 'hi'
                           ? 'आवंटन सूचना: आवंटन शुल्क भुगतान आवश्यक'
                           : 'Allotment Notice: Allotment Fee Payment Required'}
                       </h2>
-                      <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
+                      <span className='rounded-full bg-red-200/90 px-3 py-1 text-xs font-extrabold text-red-900 border border-red-300 shadow-2xs'>
                         {lang === 'hi' ? 'भुगतान आवश्यक' : 'Payment Required'}
                       </span>
                     </div>
 
-                    <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
+                    <p className='mt-2 text-xs sm:text-sm font-bold text-red-900 leading-relaxed'>
+                      {lang === 'hi'
+                        ? 'निर्धारित अंतिम तिथि से पहले भुगतान कर दें, अन्यथा आपका आवंटन रद्द कर दिया जाएगा।'
+                        : 'Pay before the due date, or your allotment will be cancelled.'}
+                    </p>
+
+                    <p className='mt-1.5 text-xs sm:text-sm text-red-900/90 leading-relaxed'>
                       {lang === 'hi'
                         ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 के अंतर्गत आपके स्टॉल/बूथ का आवंटन निर्धारित किया गया है। अपना आवंटन पुष्टीकृत करने हेतु कृपया निर्धारित अंतिम तिथि से पूर्व आवंटन शुल्क का भुगतान करें।'
                         : 'Your booth/stall has been allocated for International Gita Mahotsav 2026. To secure and confirm your stall allotment, please complete the payment of the allotment fee before the deadline.'}
                     </p>
 
-                    <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg bg-white/90 p-3.5 text-xs border border-amber-200/80 shadow-2xs'>
+                    <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg bg-white/90 p-3.5 text-xs border border-red-200/80 shadow-2xs'>
                       {result.stallNumber && (
                         <div>
                           <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
@@ -1464,19 +1467,19 @@ const StatusLookup = () => {
                           <span className='text-slate-500 block text-[11px] font-semibold uppercase tracking-wider'>
                             {lang === 'hi' ? 'देय आवंटन शुल्क' : 'Allotment Fee Payable'}
                           </span>
-                          <span className='text-base font-extrabold text-amber-950'>
+                          <span className='text-base font-extrabold text-red-950'>
                             ₹{(Number(result.allotmentAmountPaise) / 100).toLocaleString('en-IN')}
                           </span>
                         </div>
                       )}
 
                       {result.allotmentPaymentDeadlineAt && (
-                        <div className='col-span-1 sm:col-span-2 pt-2 border-t border-amber-100 flex items-center justify-between flex-wrap gap-2'>
-                          <span className='text-amber-800 font-semibold text-xs flex items-center gap-1.5'>
-                            <ClockIcon className='size-3.5 text-amber-700' />
+                        <div className='col-span-1 sm:col-span-2 pt-2 border-t border-red-100 flex items-center justify-between flex-wrap gap-2'>
+                          <span className='text-red-800 font-semibold text-xs flex items-center gap-1.5'>
+                            <ClockIcon className='size-3.5 text-red-700' />
                             {lang === 'hi' ? 'भुगतान की अंतिम तिथि:' : 'Payment Deadline:'}
                           </span>
-                          <span className='text-amber-950 font-bold text-xs bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200'>
+                          <span className='text-red-950 font-bold text-xs bg-red-100/80 px-2 py-0.5 rounded border border-red-200'>
                             {new Date(result.allotmentPaymentDeadlineAt).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
                               day: 'numeric',
                               month: 'short',
@@ -1503,7 +1506,7 @@ const StatusLookup = () => {
                         type='button'
                         onClick={handlePayAllotmentFee}
                         disabled={isPayingAllotment}
-                        className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
+                        className='w-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md h-11'
                       >
                         {isPayingAllotment ? (
                           <>
@@ -1989,6 +1992,19 @@ const StatusLookup = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {phase === 'result' && result && (
+        <div className='mt-6 flex justify-center border-t border-slate-200 pt-5'>
+          <Link
+            href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+            target='_blank'
+            className='inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition'
+          >
+            <FileTextIcon className='size-3.5 text-slate-600' />
+            {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Form'}
+          </Link>
         </div>
       )}
     </div>

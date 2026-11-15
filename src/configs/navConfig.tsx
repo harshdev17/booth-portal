@@ -124,6 +124,12 @@ export const navItems: NavItem[] = [
         label: 'Booth/Stall Allotment',
         href: '/admin/allotment',
         permission: 'allotment:perform'
+      },
+      {
+        icon: 'FileCheck2',
+        label: 'Results',
+        href: '/admin/results',
+        permission: 'config:manage'
       }
     ]
   },
@@ -140,6 +146,12 @@ export const navItems: NavItem[] = [
         icon: 'ShieldAlert',
         label: 'Audit Logs',
         href: '/admin/audit-logs',
+        permission: 'audit:view'
+      },
+      {
+        icon: 'BellRing',
+        label: 'Notification Logs',
+        href: '/admin/notification-logs',
         permission: 'audit:view'
       }
     ]

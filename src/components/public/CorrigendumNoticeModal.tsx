@@ -53,6 +53,11 @@ const CorrigendumNoticeModal = () => {
             particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख',
             previous: '10 नवंबर 2026, शाम 5:00 बजे',
             revised: '15 नवंबर 2026, शाम 5:00 बजे'
+          },
+          {
+            particular: 'Refreshment & Ice Cream Category के लिए आवेदन की अंतिम तारीख',
+            previous: '10 नवंबर 2026, शाम 5:00 बजे',
+            revised: '16 नवंबर 2026, रात 11:59 बजे'
           }
         ]
       : [
@@ -75,6 +80,11 @@ const CorrigendumNoticeModal = () => {
             particular: 'Application for Brand Promotion Category',
             previous: '10 November 2026 (5:00 PM)',
             revised: '15 November 2026 (5:00 PM)'
+          },
+          {
+            particular: 'Application for Refreshment & Ice Cream Category',
+            previous: '10 November 2026 (5:00 PM)',
+            revised: '16 November 2026 (11:59 PM)'
           }
         ]
 

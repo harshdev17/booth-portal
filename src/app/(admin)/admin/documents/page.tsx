@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import TablePagination from '@/components/shared/TablePagination'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
-import { query } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
@@ -83,7 +83,9 @@ const DocumentsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'ad.created_at'
   const sortDir = dir.toLowerCase() === 'desc' ? 'DESC' : 'ASC'
 
-  const [documents, countRows] = await Promise.all([
+  // Both queries share ONE pooled connection — see .ai/CHANGELOG.md 2026-11-14.
+  const [documents, countRows] = await withPooledConnection(query =>
+    Promise.all([
     query<DocumentQueueRow[]>(
       `SELECT ad.id, ad.application_id, a.application_number, a.representative_name, c.name AS category_name,
               cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks, ad.reuploaded_at, ad.created_at
@@ -104,7 +106,8 @@ const DocumentsAdminPage = async ({
        ${whereClause}`,
       params
     )
-  ])
+    ])
+  )
 
   const total = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize))
