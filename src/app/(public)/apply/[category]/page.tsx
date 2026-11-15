@@ -12,6 +12,7 @@ import {
   getShopOptionsForCategory,
   isCategoryAcceptingApplications
 } from '@/lib/applications/categories'
+import { withPooledConnection } from '@/lib/db/client'
 import { getCategoryMapBySlug } from '@/lib/settings/category-maps'
 import ApplicationFormOrchestrator from '@/views/public/apply/ApplicationFormOrchestrator'
 import ApplicationsClosedNotice from '@/views/public/apply/ApplicationsClosedNotice'
@@ -80,11 +81,34 @@ const ApplyPage = async ({
   const { edit } = await searchParams
   const parsedEditId = edit ? Number(edit) : NaN
   const editApplicationId = Number.isInteger(parsedEditId) && parsedEditId > 0 ? parsedEditId : undefined
-  const category = await getCategoryBySlug(slug)
 
-  if (!category || category.status === 'draft' || category.status === 'archived') {
-    notFound()
-  }
+  // The category lookup plus its 4 dependent reads all share ONE pooled
+  // connection instead of each checking out its own — this page is hit by
+  // every applicant starting/resuming a form, so its old 5-way connection
+  // fan-out (1 for getCategoryBySlug + 4 more in Promise.all) was a
+  // meaningful contributor to Hostinger's connection cap, especially during
+  // an active submission window (see .ai/CHANGELOG.md 2026-11-14, same
+  // pattern as the public homepage).
+  const { category, shopOptions, fieldDefinitions, documentDefinitions, mapRow } = await withPooledConnection(
+    async query => {
+      const category = await getCategoryBySlug(slug, query)
+
+      if (!category || category.status === 'draft' || category.status === 'archived') {
+        return { category: null, shopOptions: [], fieldDefinitions: [], documentDefinitions: [], mapRow: null }
+      }
+
+      const [shopOptions, fieldDefinitions, documentDefinitions, mapRow] = await Promise.all([
+        getShopOptionsForCategory(category.id, query),
+        getFieldDefinitionsForCategory(category.id, query),
+        getDocumentDefinitionsForCategory(category.id, query),
+        getCategoryMapBySlug(category.slug, query)
+      ])
+
+      return { category, shopOptions, fieldDefinitions, documentDefinitions, mapRow }
+    }
+  )
+
+  if (!category) notFound()
 
   if (!isCategoryAcceptingApplications(category)) {
     return (
@@ -97,13 +121,6 @@ const ApplyPage = async ({
       </>
     )
   }
-
-  const [shopOptions, fieldDefinitions, documentDefinitions, mapRow] = await Promise.all([
-    getShopOptionsForCategory(category.id),
-    getFieldDefinitionsForCategory(category.id),
-    getDocumentDefinitionsForCategory(category.id),
-    getCategoryMapBySlug(category.slug)
-  ])
 
   const fee = getFeeBreakdown(category)
 

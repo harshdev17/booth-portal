@@ -88,7 +88,7 @@ export async function reconcilePaymentAction(
     return { error: 'This payment is already recorded as successful.' }
   }
 
-  await recordAdminReconciled({
+  const transition = await recordAdminReconciled({
     paymentId: payment.id,
     applicationId: payment.application_id,
     amountPaise: payment.amount_paise,
@@ -103,11 +103,13 @@ export async function reconcilePaymentAction(
     module: 'payments',
     entityType: 'payment',
     entityId: String(payment.id),
+    previousValue: transition ? { status: transition.previousStatus } : undefined,
     newValue: {
       applicationId: payment.application_id,
       razorpayOrderId: payment.razorpay_order_id,
       razorpayPaymentId: captured.id,
-      amountPaise: payment.amount_paise
+      amountPaise: payment.amount_paise,
+      ...(transition ? { status: transition.newStatus } : {})
     }
   })
 

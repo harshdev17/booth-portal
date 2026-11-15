@@ -24,27 +24,41 @@ import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
  */
 let cachedCategoryCounts: Array<{ name: string; slug: string; count: number }> | null = null
 let categoryCountsCachedAt = 0
+
+// Kept at the original 30s per explicit instruction — the real fix for DB
+// overload under this short TTL is the error-fallback below (serve the
+// last-known-good counts on a DB hiccup instead of throwing), not a longer
+// TTL (see .ai/CHANGELOG.md 2026-11-14).
 const CATEGORY_COUNTS_TTL_MS = 30_000
 
 async function getCachedCategoryCounts(): Promise<Array<{ name: string; slug: string; count: number }>> {
   const now = Date.now()
+
   if (cachedCategoryCounts && now - categoryCountsCachedAt < CATEGORY_COUNTS_TTL_MS) {
     return cachedCategoryCounts
   }
 
-  const counts = await query<Array<{ name: string; slug: string; count: number }>>(
-    `SELECT c.name, c.slug, COUNT(a.id) AS count
-     FROM categories c
-     LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
-     WHERE c.status != 'archived'
-     GROUP BY c.id, c.name, c.slug, c.display_order
-     ORDER BY c.display_order ASC`
-  )
+  try {
+    const counts = await query<Array<{ name: string; slug: string; count: number }>>(
+      `SELECT c.name, c.slug, COUNT(a.id) AS count
+       FROM categories c
+       LEFT JOIN applications a ON a.category_id = c.id AND a.status != 'draft'
+       WHERE c.status != 'archived'
+       GROUP BY c.id, c.name, c.slug, c.display_order
+       ORDER BY c.display_order ASC`
+    )
 
-  cachedCategoryCounts = counts
-  categoryCountsCachedAt = now
+    cachedCategoryCounts = counts
+    categoryCountsCachedAt = now
 
-  return counts
+    return counts
+  } catch (error) {
+    // DB unreachable/busy — serve the last-known-good counts (even if
+    // stale beyond the TTL) rather than letting a sidebar fetch fail the
+    // whole admin layout render.
+    if (cachedCategoryCounts) return cachedCategoryCounts
+    throw error
+  }
 }
 
 const AdminLayout = async ({ children }: Readonly<{ children: ReactNode }>) => {

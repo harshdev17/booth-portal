@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { query } from '@/lib/db/client'
+import { query, type TransactionQuery } from '@/lib/db/client'
 import { parseIstDateTime } from '@/lib/format-date'
 
 export type CategoryRow = {
@@ -94,8 +94,8 @@ export type DocumentDefinitionRow = {
  * PublicHome/CategoryCard). Per explicit request: a card used to simply
  * vanish from the grid once closed, with no explanation.
  */
-export async function listOpenCategories(): Promise<CategoryRow[]> {
-  return query<CategoryRow[]>(
+export async function listOpenCategories(runQuery: TransactionQuery = query): Promise<CategoryRow[]> {
+  return runQuery<CategoryRow[]>(
     `SELECT * FROM categories
      WHERE status = 'open'
        AND show_on_homepage = 1
@@ -104,8 +104,11 @@ export async function listOpenCategories(): Promise<CategoryRow[]> {
   )
 }
 
-export async function getCategoryBySlug(slug: string): Promise<CategoryRow | null> {
-  const rows = await query<CategoryRow[]>(`SELECT * FROM categories WHERE slug = ? LIMIT 1`, [slug])
+export async function getCategoryBySlug(
+  slug: string,
+  runQuery: TransactionQuery = query
+): Promise<CategoryRow | null> {
+  const rows = await runQuery<CategoryRow[]>(`SELECT * FROM categories WHERE slug = ? LIMIT 1`, [slug])
 
   return rows[0] ?? null
 }
@@ -116,22 +119,31 @@ export async function getCategoryById(id: number): Promise<CategoryRow | null> {
   return rows[0] ?? null
 }
 
-export async function getShopOptionsForCategory(categoryId: number): Promise<ShopOptionRow[]> {
-  return query<ShopOptionRow[]>(
+export async function getShopOptionsForCategory(
+  categoryId: number,
+  runQuery: TransactionQuery = query
+): Promise<ShopOptionRow[]> {
+  return runQuery<ShopOptionRow[]>(
     `SELECT * FROM category_shop_options WHERE category_id = ? AND status = 'active' ORDER BY display_order ASC`,
     [categoryId]
   )
 }
 
-export async function getFieldDefinitionsForCategory(categoryId: number): Promise<FieldDefinitionRow[]> {
-  return query<FieldDefinitionRow[]>(
+export async function getFieldDefinitionsForCategory(
+  categoryId: number,
+  runQuery: TransactionQuery = query
+): Promise<FieldDefinitionRow[]> {
+  return runQuery<FieldDefinitionRow[]>(
     `SELECT * FROM category_field_definitions WHERE category_id = ? AND status = 'active' ORDER BY display_order ASC`,
     [categoryId]
   )
 }
 
-export async function getDocumentDefinitionsForCategory(categoryId: number): Promise<DocumentDefinitionRow[]> {
-  return query<DocumentDefinitionRow[]>(
+export async function getDocumentDefinitionsForCategory(
+  categoryId: number,
+  runQuery: TransactionQuery = query
+): Promise<DocumentDefinitionRow[]> {
+  return runQuery<DocumentDefinitionRow[]>(
     `SELECT * FROM category_document_definitions WHERE category_id = ? AND status = 'active' ORDER BY display_order ASC`,
     [categoryId]
   )
@@ -195,11 +207,11 @@ export function isCategoryAcceptingApplications(category: CategoryRow, now: Date
  * this date dynamically (hero banner, guidelines, category detail) instead
  * of hardcoding it, per CLAUDE.md §5.
  */
-export async function getPortalApplicationSchedule(): Promise<{
+export async function getPortalApplicationSchedule(runQuery: TransactionQuery = query): Promise<{
   applicationOpensAt: string | null
   applicationClosesAt: string | null
 }> {
-  const rows = await query<Array<{ application_opens_at: string | null; application_closes_at: string | null }>>(
+  const rows = await runQuery<Array<{ application_opens_at: string | null; application_closes_at: string | null }>>(
     `SELECT application_opens_at, application_closes_at FROM categories
      WHERE status != 'archived' AND application_opens_at IS NOT NULL
      LIMIT 1`

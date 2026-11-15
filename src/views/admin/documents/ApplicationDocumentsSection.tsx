@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { verifyAllDocumentsAction, type DocumentActionState } from '@/app/server/document-actions'
 import DocumentDecisionActions, { RaiseApplicationQueryButton } from '@/views/admin/documents/DocumentDecisionActions'
+import DocumentVersionHistory, { type DocumentVersionRow } from '@/views/admin/documents/DocumentVersionHistory'
 
 const verifyAllInitialState: DocumentActionState = {}
 
@@ -150,17 +151,23 @@ const ApplicationDocumentsSection = ({
   applicationId,
   numericApplicationId,
   canRaiseApplicationQuery,
-  applicationQueryHistory
+  applicationQueryHistory,
+  documentVersionsByDocumentId
 }: {
   documents: ApplicationDocumentRow[]
   canVerifyDocuments: boolean
   canEditApplication: boolean
+
   /** Opaque-encoded id, for the admin upload route (decodeId()-based auth). */
   applicationId: string
+
   /** Raw numeric id, for RaiseApplicationQueryButton's server action (z.coerce.number(), not opaque-id based). */
   numericApplicationId: number
   canRaiseApplicationQuery: boolean
   applicationQueryHistory: ApplicationQueryHistoryEntry[]
+
+  /** Previous (superseded) versions per document, keyed by application_documents.id — see migration 0077. */
+  documentVersionsByDocumentId?: Map<number, DocumentVersionRow[]>
 }) => {
   const reloadAfterUpload = () => window.location.reload()
 
@@ -219,52 +226,56 @@ const ApplicationDocumentsSection = ({
           const docCfg = getDocumentStatusConfig(doc.verification_status!)
 
           return (
-            <div key={doc.id} className='flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div>
-                <div className='flex items-center gap-2'>
-                  <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
-                    {docCfg.label}
-                  </span>
-                  {doc.reuploaded_at && (
-                    <span className='shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800'>
-                      Re-uploaded {new Date(doc.reuploaded_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            <div key={doc.id} className='flex flex-col gap-3 py-3'>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                <div>
+                  <div className='flex items-center gap-2'>
+                    <p className='text-sm font-semibold text-[#0c2847]'>{doc.label}</p>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${docCfg.color}`}>
+                      {docCfg.label}
                     </span>
+                    {doc.reuploaded_at && (
+                      <span className='shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800'>
+                        Re-uploaded {new Date(doc.reuploaded_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
+                  {doc.verification_remarks && (
+                    <p className='mt-1 text-xs text-amber-700'>Remark: {doc.verification_remarks}</p>
                   )}
                 </div>
-                <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
-                {doc.verification_remarks && (
-                  <p className='mt-1 text-xs text-amber-700'>Remark: {doc.verification_remarks}</p>
-                )}
+
+                <div className='flex shrink-0 items-center gap-2'>
+                  <a
+                    href={`/api/documents/${doc.id}/preview`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                  >
+                    <EyeIcon className='size-3.5' /> Preview
+                  </a>
+                  <a
+                    href={`/api/documents/${doc.id}/preview?download=true`}
+                    className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
+                  >
+                    <DownloadIcon className='size-3.5' /> Download
+                  </a>
+                  {canVerifyDocuments && (
+                    <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status!} />
+                  )}
+                  {canEditApplication && (
+                    <AdminUploadButton
+                      applicationId={applicationId}
+                      documentKey={doc.document_key}
+                      isReplace
+                      onUploaded={reloadAfterUpload}
+                    />
+                  )}
+                </div>
               </div>
 
-              <div className='flex shrink-0 items-center gap-2'>
-                <a
-                  href={`/api/documents/${doc.id}/preview`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                >
-                  <EyeIcon className='size-3.5' /> Preview
-                </a>
-                <a
-                  href={`/api/documents/${doc.id}/preview?download=true`}
-                  className='inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-muted transition'
-                >
-                  <DownloadIcon className='size-3.5' /> Download
-                </a>
-                {canVerifyDocuments && (
-                  <DocumentDecisionActions documentId={doc.id} currentStatus={doc.verification_status!} />
-                )}
-                {canEditApplication && (
-                  <AdminUploadButton
-                    applicationId={applicationId}
-                    documentKey={doc.document_key}
-                    isReplace
-                    onUploaded={reloadAfterUpload}
-                  />
-                )}
-              </div>
+              <DocumentVersionHistory versions={documentVersionsByDocumentId?.get(doc.id) ?? []} />
             </div>
           )
         })}

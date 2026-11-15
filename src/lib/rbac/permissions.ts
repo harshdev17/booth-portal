@@ -33,7 +33,8 @@ export const PERMISSIONS = [
   'user:manage',
   'role:manage',
   'audit:view',
-  'police:view'
+  'police:view',
+  'notification:resend'
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]

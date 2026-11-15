@@ -94,10 +94,29 @@ async function decideDocument(
   // Keep the application's own status in step with its documents: an open
   // query puts it in 'query_raised'; once none remain it returns to
   // 'under_review'. Only these two review-stage statuses are ever touched.
+  // Each transition is audited against entityType 'application' (distinct
+  // from the document-level entry logged above) only when the conditional
+  // UPDATE actually changed a row — otherwise this document's query was
+  // raised/resolved while the application was already in some other status
+  // (e.g. a second query raised while the first is still open), and no
+  // application-level transition really happened.
   if (toStatus === 'query') {
-    await query(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [
-      current.application_id
-    ])
+    const result = await query<{ affectedRows: number }>(
+      `UPDATE applications SET status = 'query_raised' WHERE id = ? AND status IN ('under_review', 'payment_success')`,
+      [current.application_id]
+    )
+
+    if (result.affectedRows > 0) {
+      await logAudit({
+        actorUserId: session.userId,
+        actorRoleKey: session.role.key,
+        action: 'application.query_raised',
+        module: 'applications',
+        entityType: 'application',
+        entityId: String(current.application_id),
+        newValue: { status: 'query_raised', documentLabel: current.document_label }
+      })
+    }
   } else {
     const [open] = await query<Array<{ n: number }>>(
       `SELECT COUNT(*) AS n FROM application_documents WHERE application_id = ? AND verification_status = 'query'`,
@@ -105,9 +124,22 @@ async function decideDocument(
     )
 
     if (Number(open.n) === 0) {
-      await query(`UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`, [
-        current.application_id
-      ])
+      const result = await query<{ affectedRows: number }>(
+        `UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`,
+        [current.application_id]
+      )
+
+      if (result.affectedRows > 0) {
+        await logAudit({
+          actorUserId: session.userId,
+          actorRoleKey: session.role.key,
+          action: 'application.query_resolved',
+          module: 'applications',
+          entityType: 'application',
+          entityId: String(current.application_id),
+          newValue: { status: 'under_review' }
+        })
+      }
     }
   }
 
@@ -212,7 +244,7 @@ export async function verifyAllDocumentsAction(
   )
 
   for (const row of rows) {
-    // eslint-disable-next-line no-await-in-loop
+     
     await logAudit({
       actorUserId: session.userId,
       actorRoleKey: session.role.key,

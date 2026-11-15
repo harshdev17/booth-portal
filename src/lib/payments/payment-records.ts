@@ -91,43 +91,65 @@ async function insertTransaction(
   )
 }
 
+export type ApplicationStatusTransition = { previousStatus: string; newStatus: string } | null
+
 /**
  * The state transition a successful payment triggers, by purpose — shared
  * by recordCheckoutSuccess/recordWebhookConfirmed/recordAdminReconciled so
- * the 4 purposes' effects are defined in exactly one place.
+ * the 4 purposes' effects are defined in exactly one place. Returns the
+ * applications.status transition it actually performed (or null if its
+ * conditional UPDATE matched zero rows — e.g. the application was already
+ * past this stage), so callers can record the real before/after in their
+ * own audit log entry instead of only the Razorpay IDs.
  */
 async function applySuccessfulPaymentEffects(
   txQuery: TransactionQuery,
   purpose: PaymentPurpose,
   applicationId: number
-): Promise<void> {
+): Promise<ApplicationStatusTransition> {
   if (purpose === 'pay_now') {
-    await txQuery(`UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`, [applicationId])
+    const result = await txQuery<{ affectedRows: number }>(
+      `UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'payment_required'`,
+      [applicationId]
+    )
+
     await txQuery(`UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`, [applicationId])
     await txQuery(
       `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
       [applicationId]
     )
+
+    return result.affectedRows > 0 ? { previousStatus: 'payment_required', newStatus: 'allotted' } : null
   } else if (purpose === 'auction_fee') {
     // No stall is touched here — this only confirms the fixed participation
     // fee; a stall is reserved only once the results CSV is uploaded after
     // the physical auction.
-    await txQuery(
+    const result = await txQuery<{ affectedRows: number }>(
       `UPDATE applications SET status = 'auction_fee_paid' WHERE id = ? AND status = 'selected_for_auction'`,
       [applicationId]
     )
+
+    return result.affectedRows > 0 ? { previousStatus: 'selected_for_auction', newStatus: 'auction_fee_paid' } : null
   } else if (purpose === 'auction_final') {
     // The results CSV upload already reserved this applicant's specific
     // stall (shop_units.allotted_to_application_id) and set the winning
     // application to 'auction_won' — there's no draw_allocations row to
     // confirm here, since this stall was never part of a draw allocation.
-    await txQuery(`UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'auction_won'`, [applicationId])
+    const result = await txQuery<{ affectedRows: number }>(
+      `UPDATE applications SET status = 'allotted' WHERE id = ? AND status = 'auction_won'`,
+      [applicationId]
+    )
+
     await txQuery(`UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`, [applicationId])
+
+    return result.affectedRows > 0 ? { previousStatus: 'auction_won', newStatus: 'allotted' } : null
   } else {
-    await txQuery(
+    const result = await txQuery<{ affectedRows: number }>(
       `UPDATE applications SET status = 'under_review' WHERE id = ? AND status IN ('payment_pending', 'payment_failed')`,
       [applicationId]
     )
+
+    return result.affectedRows > 0 ? { previousStatus: 'payment_pending', newStatus: 'under_review' } : null
   }
 }
 
@@ -176,8 +198,8 @@ export async function recordCheckoutSuccess(input: {
   amountPaise: number
   razorpayOrderId: string
   razorpayPaymentId: string
-}): Promise<void> {
-  await withTransaction(async (txQuery: TransactionQuery) => {
+}): Promise<ApplicationStatusTransition> {
+  return withTransaction(async (txQuery: TransactionQuery) => {
     const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
@@ -186,7 +208,7 @@ export async function recordCheckoutSuccess(input: {
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
+    const transition = await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -197,6 +219,8 @@ export async function recordCheckoutSuccess(input: {
       signatureValid: true,
       source: 'applicant'
     })
+
+    return transition
   })
 }
 
@@ -244,8 +268,8 @@ export async function recordWebhookConfirmed(input: {
   razorpayOrderId: string
   razorpayPaymentId: string
   webhookEventId: string
-}): Promise<void> {
-  await withTransaction(async (txQuery: TransactionQuery) => {
+}): Promise<ApplicationStatusTransition> {
+  return withTransaction(async (txQuery: TransactionQuery) => {
     const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
@@ -254,7 +278,7 @@ export async function recordWebhookConfirmed(input: {
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
+    const transition = await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -266,6 +290,8 @@ export async function recordWebhookConfirmed(input: {
       source: 'webhook',
       webhookEventId: input.webhookEventId
     })
+
+    return transition
   })
 }
 
@@ -289,8 +315,8 @@ export async function recordAdminReconciled(input: {
   amountPaise: number
   razorpayOrderId: string
   razorpayPaymentId: string
-}): Promise<void> {
-  await withTransaction(async (txQuery: TransactionQuery) => {
+}): Promise<ApplicationStatusTransition> {
+  return withTransaction(async (txQuery: TransactionQuery) => {
     const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
       `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
       [input.paymentId]
@@ -299,7 +325,7 @@ export async function recordAdminReconciled(input: {
     const purpose = paymentRows[0]?.purpose ?? 'registration'
 
     await txQuery(`UPDATE payments SET status = 'success' WHERE id = ?`, [input.paymentId])
-    await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
+    const transition = await applySuccessfulPaymentEffects(txQuery, purpose, input.applicationId)
 
     await insertTransaction(txQuery, {
       paymentId: input.paymentId,
@@ -310,6 +336,8 @@ export async function recordAdminReconciled(input: {
       signatureValid: true,
       source: 'admin'
     })
+
+    return transition
   })
 }
 

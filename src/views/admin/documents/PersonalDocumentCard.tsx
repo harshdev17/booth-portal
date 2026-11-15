@@ -7,6 +7,7 @@ import { DownloadIcon, EyeIcon, Loader2Icon } from 'lucide-react'
 import { previewKindFor } from '@/lib/applications/document-preview-kind'
 import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import DocumentDecisionActions from '@/views/admin/documents/DocumentDecisionActions'
+import DocumentVersionHistory, { type DocumentVersionRow } from '@/views/admin/documents/DocumentVersionHistory'
 
 export type PersonalDocumentRow = {
   id: number
@@ -28,10 +29,12 @@ export type PersonalDocumentRow = {
  */
 const PersonalDocumentCard = ({
   document,
-  canVerifyDocuments
+  canVerifyDocuments,
+  previousVersions = []
 }: {
   document: PersonalDocumentRow
   canVerifyDocuments: boolean
+  previousVersions?: DocumentVersionRow[]
 }) => {
   const docCfg = getDocumentStatusConfig(document.verification_status)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -87,6 +90,8 @@ const PersonalDocumentCard = ({
         </div>
       </div>
 
+      <DocumentVersionHistory versions={previousVersions} />
+
       {isPreviewOpen && (
         <div className='mt-3 border-t pt-3'>
           {previewKind === 'pdf' && (
@@ -113,7 +118,7 @@ const PersonalDocumentCard = ({
                   <p className='text-sm font-medium text-muted-foreground'>Loading preview…</p>
                 </div>
               )}
-              {/* eslint-disable-next-line @next/next/no-img-element -- admin-only authenticated document bytes, not a next/image-optimizable public asset */}
+              { }
               <img
                 src={previewSrc}
                 alt={document.label}

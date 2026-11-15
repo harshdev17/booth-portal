@@ -7,7 +7,7 @@ import { CheckCircle2Icon, ClockIcon, FileTextIcon, ListOrderedIcon, ShieldCheck
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
-import { query, withPooledConnection } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
@@ -180,14 +180,22 @@ const ApplicationsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'a.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  // Grouped onto 2 shared connections (withPooledConnection, see client.ts)
-  // instead of each query() call below checking out its own — same
-  // pool-saturation fix as the application detail page and dashboard (see
-  // .ai/CHANGELOG.md 2026-11-13); this is the list page admins repeatedly
-  // reload while browsing/verifying, so its old 5-way fan-out added up fast.
-  const [batchA, batchB] = await Promise.all([
-    withPooledConnection(async q => ({
-      applications: await q<ApplicationItem[]>(
+  // Split across 2 pooled connections run concurrently, not 1 — a single
+  // MySQL connection executes commands one at a time no matter how they're
+  // issued, so the previous single-connection Promise.all here only LOOKED
+  // parallel: all 5 queries actually ran sequentially on the wire (confirmed
+  // live, 2026-11-15: 5 queries at ~170ms round-trip each summed to ~1s for
+  // the full page load, matching sequential execution exactly, not
+  // parallel). Connection A holds the main paginated list (the query every
+  // other value on this page is derived from) plus its dependent
+  // documents-for-rows follow-up; Connection B holds the 4 independent
+  // lookups (categories, stats, total count, waitlist count), which now run
+  // genuinely concurrently with Connection A instead of queued behind it.
+  // Still only 2 connections per page load, same safe pattern as the
+  // application detail page (see .ai/CHANGELOG.md 2026-11-15).
+  const [{ applications, documentRows }, { categories, statsRows, countRows, waitlistRows }] = await Promise.all([
+    withPooledConnection(async query => {
+      const applications = await query<ApplicationItem[]>(
         `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
                 a.organisation_name, a.representative_name, a.mobile_number, a.email,
                 a.status, c.fee_paise, a.submitted_at, a.created_at,
@@ -220,55 +228,59 @@ const ApplicationsAdminPage = async ({
          ORDER BY ${sortCol} ${sortDir}
          LIMIT ${limit} OFFSET ${offset}`,
         params
-      ),
-      categories: await q<Array<{ id: number; name: string; slug: string }>>(
-        `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
       )
-    })),
 
-    withPooledConnection(async q => ({
-      statsRows: await q<Array<{ status: string; count: number }>>(
-        `SELECT a.status, COUNT(*) AS count
-         FROM applications a
-         JOIN categories c ON c.id = a.category_id
-         ${statsWhereClause}
-         GROUP BY a.status`,
-        statsParams
-      ),
-      countRows: await q<Array<{ total: number }>>(
-        `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
-        params
-      ),
-      waitlistRows: await q<Array<{ total: number }>>(
-        `SELECT COUNT(DISTINCT a.id) AS total
-         FROM applications a
-         JOIN categories c ON c.id = a.category_id
-         JOIN draw_allocations da ON da.application_id = a.id
-         ${statsWhereClause} AND da.allocation_type = 'waitlist' AND da.status = 'allotted'`,
-        statsParams
-      )
-    }))
-  ])
+      // Only this page's rows' documents — so "Raise Query" from the list can
+      // offer a document picker (per explicit request) without loading every
+      // application's documents up front. Grouped client-side below, not via
+      // GROUP_CONCAT, so each row keeps its own label/verification_status.
+      const applicationIds = applications.map(app => app.id)
 
-  const { applications, categories } = batchA
-  const { statsRows, countRows, waitlistRows } = batchB
+      const documentRows =
+        applicationIds.length > 0
+          ? await query<Array<{ application_id: number; id: number; label: string; verification_status: string }>>(
+              `SELECT ad.application_id, ad.id, cdd.label, ad.verification_status
+               FROM application_documents ad
+               JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
+               WHERE ad.application_id IN (${applicationIds.map(() => '?').join(', ')})
+               ORDER BY cdd.display_order ASC`,
+              applicationIds
+            )
+          : []
 
-  // Only this page's rows' documents — so "Raise Query" from the list can
-  // offer a document picker (per explicit request) without loading every
-  // application's documents up front. Grouped client-side below, not via
-  // GROUP_CONCAT, so each row keeps its own label/verification_status.
-  const applicationIds = applications.map(app => app.id)
-  const documentRows =
-    applicationIds.length > 0
-      ? await query<Array<{ application_id: number; id: number; label: string; verification_status: string }>>(
-          `SELECT ad.application_id, ad.id, cdd.label, ad.verification_status
-           FROM application_documents ad
-           JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
-           WHERE ad.application_id IN (${applicationIds.map(() => '?').join(', ')})
-           ORDER BY cdd.display_order ASC`,
-          applicationIds
+      return { applications, documentRows }
+    }),
+
+    withPooledConnection(async query => {
+      const [categories, statsRows, countRows, waitlistRows] = await Promise.all([
+        query<Array<{ id: number; name: string; slug: string }>>(
+          `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
+        ),
+        query<Array<{ status: string; count: number }>>(
+          `SELECT a.status, COUNT(*) AS count
+           FROM applications a
+           JOIN categories c ON c.id = a.category_id
+           ${statsWhereClause}
+           GROUP BY a.status`,
+          statsParams
+        ),
+        query<Array<{ total: number }>>(
+          `SELECT COUNT(*) AS total FROM applications a JOIN categories c ON c.id = a.category_id ${whereClause}`,
+          params
+        ),
+        query<Array<{ total: number }>>(
+          `SELECT COUNT(DISTINCT a.id) AS total
+           FROM applications a
+           JOIN categories c ON c.id = a.category_id
+           JOIN draw_allocations da ON da.application_id = a.id
+           ${statsWhereClause} AND da.allocation_type = 'waitlist' AND da.status = 'allotted'`,
+          statsParams
         )
-      : []
+      ])
+
+      return { categories, statsRows, countRows, waitlistRows }
+    })
+  ])
 
   const documentsByApplicationId = new Map<number, ApplicationDocumentSummary[]>()
 
@@ -283,8 +295,10 @@ const ApplicationsAdminPage = async ({
   // list query's `conditions` above, which only excludes 'draft') — no
   // filtering needed here, statsRows already excludes only 'draft'.
   const totalSubmitted = statsRows.reduce((acc, row) => acc + Number(row.count), 0)
+
   const getStatusCount = (statuses: string[]) =>
     statsRows.filter(row => statuses.includes(row.status)).reduce((total, row) => total + Number(row.count), 0)
+
   const pendingCount = getStatusCount(['under_review', 'payment_success'])
   const approvedCount = getStatusCount(['approved'])
   const selectedCount = getStatusCount(['selected', 'allotted', 're_allotted'])
@@ -292,6 +306,7 @@ const ApplicationsAdminPage = async ({
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
   const selectedCategory = categories.find(item => item.slug === category)
+
   const statsScopeHint = selectedCategory
     ? `Within ${selectedCategory.name}`
     : 'Submitted across all commercial booth/stall categories'
@@ -507,9 +522,11 @@ const ApplicationsAdminPage = async ({
               }
 
               const encodedId = encodeId(app.id)
+
               const canApprove =
                 (app.status === 'under_review' || app.status === 'payment_success' || app.status === 'rejected') &&
                 !!permissions?.has('application:approve')
+
               const canReject =
                 (app.status === 'under_review' ||
                   app.status === 'payment_success' ||
@@ -533,10 +550,12 @@ const ApplicationsAdminPage = async ({
                 app.registration_payment_status !== 'success' &&
                 app.registration_payment_status !== 'paid' &&
                 app.registration_payment_status !== 'exempt'
+
               const allotmentPending =
                 Boolean(app.is_direct_allotment) &&
                 app.allotment_payment_status !== 'success' &&
                 app.allotment_payment_status !== 'paid'
+
               const isPaymentPending = (registrationPending || allotmentPending) && !!permissions?.has('payment:reminder')
 
               return {

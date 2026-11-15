@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSession } from '@/lib/auth/session'
-import { query } from '@/lib/db/client'
+import { withPooledConnection } from '@/lib/db/client'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
+import CancelOverdueAndPromoteDialog from '@/views/admin/inventory/CancelOverdueAndPromoteDialog'
 import ImportInventoryDialog from '@/views/admin/inventory/ImportInventoryDialog'
 import InventoryTable, { type ShopUnitRowData } from '@/views/admin/inventory/InventoryTable'
 
@@ -14,6 +15,7 @@ type ShopUnitRow = {
   id: number
   stall_number: string
   shop_type: 'single' | 'double'
+  category_id: number
   category_name: string
   category_status: string
   direction: string | null
@@ -96,9 +98,13 @@ export default async function InventoryAdminPage() {
   // allotment counts since police doesn't need that distinction.
   const simplifiedTabs = session?.role.key === 'police_user'
 
-  const [rows, categories, logs] = await Promise.all([
+  // All 3 queries share ONE pooled connection instead of each checking out
+  // its own — see .ai/CHANGELOG.md 2026-11-14 (same pattern as the
+  // dashboard/applications-list pages).
+  const [rows, categories, logs] = await withPooledConnection(query =>
+    Promise.all([
     query<ShopUnitRow[]>(
-      `SELECT su.id, su.stall_number, su.shop_type, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
+      `SELECT su.id, su.stall_number, su.shop_type, c.id AS category_id, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
               su.status,
               COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
               COALESCE(a.id, da.application_id) AS application_id,
@@ -153,7 +159,8 @@ export default async function InventoryAdminPage() {
            LIMIT 30`
         )
       : Promise.resolve([])
-  ])
+    ])
+  )
 
   const counts = rows.reduce(
     (acc, row) => {
@@ -202,6 +209,26 @@ export default async function InventoryAdminPage() {
   }
 
   const categoryBreakdown = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])
+
+  // Overdue unpaid allotments per category, for the super-admin-only
+  // "Cancel Overdue & Set New Deadline" action (src/lib/allotment/cancel-and-promote.ts).
+  // Scoped to draw-produced allotments only (direct allotments have no
+  // waitlist concept, so are out of scope for this action entirely).
+  const overdueByCategory = new Map<number, { categoryName: string; count: number }>()
+
+  for (const row of rows) {
+    if (!row.is_payment_overdue || row.is_direct_allotment) continue
+
+    const existing = overdueByCategory.get(row.category_id)
+
+    overdueByCategory.set(row.category_id, {
+      categoryName: row.category_name,
+      count: (existing?.count ?? 0) + 1
+    })
+  }
+
+  const isSuperAdmin = session?.role.key === 'super_admin'
+
   const directionBreakdown = Array.from(byDirection.entries())
     .map(([key, count]): [string, number] => [directionDisplay.get(key) ?? key, count])
     .sort((a, b) => b[1] - a[1])
@@ -301,6 +328,29 @@ export default async function InventoryAdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      {isSuperAdmin && overdueByCategory.size > 0 && (
+        <Card className='shadow-xs border-red-200/70 bg-red-50/20'>
+          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
+            <CardTitle className='text-sm font-bold text-red-800'>Overdue Unpaid Allotments</CardTitle>
+            <CardDescription className='text-xs'>
+              These categories have booths/stalls still unpaid past their deadline. Cancelling frees the booth/stall
+              and auto-promotes the next waitlisted applicant(s).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='flex flex-col gap-3 pt-4'>
+            {Array.from(overdueByCategory.entries()).map(([categoryId, { categoryName, count }]) => (
+              <div key={categoryId} className='flex items-center justify-between gap-3 rounded-lg border border-red-200/60 bg-white p-3'>
+                <div>
+                  <p className='text-sm font-bold text-[#0c2847]'>{categoryName}</p>
+                  <p className='text-xs text-muted-foreground'>{count} overdue unpaid allotment(s)</p>
+                </div>
+                <CancelOverdueAndPromoteDialog categoryId={categoryId} categoryName={categoryName} overdueCount={count} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
         <Card className='shadow-xs flex flex-col'>

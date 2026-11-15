@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { query } from '@/lib/db/client'
+import { query, type TransactionQuery } from '@/lib/db/client'
 
 export type CategoryMapRow = {
   categoryId: number | null
@@ -38,9 +38,11 @@ export function clearCategoryMapsCache(): void {}
  * Categories with no uploaded map simply don't appear in the per-category
  * list — there's nothing to invent per the no-assumptions rule.
  */
-export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] }> {
+export async function listCategoryMaps(
+  runQuery: TransactionQuery = query
+): Promise<{ fullMap: CategoryMapRow | null; byCategory: CategoryMapRow[] }> {
 
-  const rows = await query<
+  const rows = await runQuery<
     Array<{
       category_id: number | null
       slug: string | null
@@ -77,8 +79,11 @@ export async function listCategoryMaps(): Promise<{ fullMap: CategoryMapRow | nu
 }
 
 /** The map PDF for one specific category, if an admin has uploaded one. */
-export async function getCategoryMapBySlug(slug: string): Promise<CategoryMapRow | null> {
-  const { byCategory } = await listCategoryMaps()
+export async function getCategoryMapBySlug(
+  slug: string,
+  runQuery: TransactionQuery = query
+): Promise<CategoryMapRow | null> {
+  const { byCategory } = await listCategoryMaps(runQuery)
 
   return byCategory.find(row => row.categorySlug === slug) ?? null
 }
