@@ -462,6 +462,7 @@ const ApplicationsAdminPage = async ({
               <li key={filter.key || 'all'}>
                 <Link
                   href={getStatusFilterUrl(filter.key)}
+                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
                   className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-sm font-medium whitespace-nowrap transition ${
                     active

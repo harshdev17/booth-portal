@@ -167,19 +167,19 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
                 className='sticky left-12 z-10 w-40 py-3 px-4 whitespace-nowrap border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'
                 style={{ background: '#f9f9f9' }}
               >
-                <Link href={sortLinks.appNo} className='inline-flex items-center hover:text-[#0c2847] transition group'>
+                <Link href={sortLinks.appNo} prefetch={false} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   App Number
                   <SortIndicator icon={sortIcons.appNo} />
                 </Link>
               </th>
               <th className='w-56 bg-muted/40 py-3 px-4 whitespace-nowrap'>
-                <Link href={sortLinks.name} className='inline-flex items-center hover:text-[#0c2847] transition group'>
+                <Link href={sortLinks.name} prefetch={false} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Applicant / Firm
                   <SortIndicator icon={sortIcons.name} />
                 </Link>
               </th>
               <th className='w-44 bg-muted/40 py-3 px-4 whitespace-nowrap'>
-                <Link href={sortLinks.category} className='inline-flex items-center hover:text-[#0c2847] transition group'>
+                <Link href={sortLinks.category} prefetch={false} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Category
                   <SortIndicator icon={sortIcons.category} />
                 </Link>
@@ -187,13 +187,13 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
               <th className='w-44 bg-muted/40 py-3 px-4 whitespace-nowrap'>Contact</th>
               <th className='w-28 bg-muted/40 py-3 px-4 whitespace-nowrap'>Booth / Stall</th>
               <th className='w-36 bg-muted/40 py-3 px-4 whitespace-nowrap'>
-                <Link href={sortLinks.status} className='inline-flex items-center hover:text-[#0c2847] transition group'>
+                <Link href={sortLinks.status} prefetch={false} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Status
                   <SortIndicator icon={sortIcons.status} />
                 </Link>
               </th>
               <th className='w-40 bg-muted/40 py-3 px-4 whitespace-nowrap'>
-                <Link href={sortLinks.date} className='inline-flex items-center hover:text-[#0c2847] transition group'>
+                <Link href={sortLinks.date} prefetch={false} className='inline-flex items-center hover:text-[#0c2847] transition group'>
                   Submitted At
                   <SortIndicator icon={sortIcons.date} />
                 </Link>
@@ -223,7 +223,7 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
                   )}
                 </td>
                 <td className='sticky left-12 z-10 w-40 bg-white py-3.5 px-4 font-mono font-bold text-[#0c2847] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)]'>
-                  <Link href={`/admin/applications/${app.encodedId}?${fromParam}`} className='hover:underline'>
+                  <Link href={`/admin/applications/${app.encodedId}?${fromParam}`} prefetch={false} className='hover:underline'>
                     {app.application_number}
                   </Link>
                 </td>
