@@ -205,17 +205,16 @@ export function buildEmailContent(
       break
 
     case 'document_query': {
-      // Two distinct cases share this one notification category:
-      // 1. A specific uploaded document needs correcting (document-level
-      //    query, document-actions.ts's decideDocument) — third is the
-      //    real document label, e.g. "Aadhaar Card".
-      // 2. The application has no uploaded documents at all to query
-      //    individually (application-level query, queryApplicationAction)
-      //    — third is always the literal placeholder "Required Documents".
-      //    The old single wording ("your document "Required Documents"
-      //    needs to be corrected") read as nonsense in this case, since
-      //    nothing was ever uploaded to "correct".
+      // Three distinct cases share this one notification category:
+      // 1. Field-level query or bundled multi-field query (notifyFieldQueries /
+      //    notifyDocumentQuery) where templateParams has 3 items: third is the
+      //    complete query string ("<label>: <remarks>" or numbered list), fourth is empty.
+      // 2. Application-level query (queryApplicationAction) where third is
+      //    literally "Required Documents" and fourth is the remark.
+      // 3. Legacy 4-param document-level query where third is the document label
+      //    and fourth is the reviewer note.
       const isApplicationLevelQuery = third === 'Required Documents'
+      const isSingleFieldOrMultiQuery = !fourth
 
       c = {
         subject: `Action needed on application ${appNo}`,
@@ -225,22 +224,36 @@ export function buildEmailContent(
               `Regarding your application ${appNo}: ${fourth}`,
               'Please log in using your application number and mobile number to respond, or contact the helpdesk below.'
             ]
-          : [
-              `Dear ${name},`,
-              `Regarding your application ${appNo}: your document "${third}" needs to be corrected. Reviewer's note: ${fourth}`,
-              'Please upload the corrected document using the link below.'
-            ],
+          : isSingleFieldOrMultiQuery
+            ? [
+                `Dear ${name},`,
+                `Regarding your application ${appNo}, the following detail(s) require correction:`,
+                third,
+                'Please log in using your application number and mobile number to correct this and resubmit.'
+              ]
+            : [
+                `Dear ${name},`,
+                `Regarding your application ${appNo}: your document "${third}" needs to be corrected. Reviewer's note: ${fourth}`,
+                'Please upload the corrected document using the link below.'
+              ],
         hi: isApplicationLevelQuery
           ? [
               `प्रिय ${name},`,
               `आपके आवेदन ${appNo} के संबंध में: ${fourth}`,
               'कृपया अपना आवेदन क्रमांक और मोबाइल नंबर उपयोग करके लॉगिन करें, या नीचे दिए गए हेल्पडेस्क से संपर्क करें।'
             ]
-          : [
-              `प्रिय ${name},`,
-              `आपके आवेदन ${appNo} के संबंध में: आपका दस्तावेज़ "${third}" सुधारा जाना है। समीक्षक की टिप्पणी: ${fourth}`,
-              'कृपया नीचे दिए गए लिंक से सही दस्तावेज़ अपलोड करें।'
-            ],
+          : isSingleFieldOrMultiQuery
+            ? [
+                `प्रिय ${name},`,
+                `आपके आवेदन ${appNo} के संबंध में निम्नलिखित विवरण में सुधार की आवश्यकता है:`,
+                third,
+                'कृपया अपना आवेदन क्रमांक और मोबाइल नंबर उपयोग करके स्टेटस पेज पर लॉगिन करें और सुधार करें।'
+              ]
+            : [
+                `प्रिय ${name},`,
+                `आपके आवेदन ${appNo} के संबंध में: आपका दस्तावेज़ "${third}" सुधारा जाना है। समीक्षक की टिप्पणी: ${fourth}`,
+                'कृपया नीचे दिए गए लिंक से सही दस्तावेज़ अपलोड करें।'
+              ],
         link: statusUrl
       }
       break

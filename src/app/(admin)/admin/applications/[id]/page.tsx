@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { withPooledConnection } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
-import { isStaticQueryableField, listFieldQueries } from '@/lib/applications/field-queries'
+import { isStaticQueryableField, listFieldQueries, STATIC_QUERYABLE_FIELDS } from '@/lib/applications/field-queries'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
@@ -21,6 +21,7 @@ import { decodeId, encodeId } from '@/lib/security/opaque-id'
 import { formatDateTime, parseIstDateTime } from '@/lib/format-date'
 import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
+import MultiFieldQueryDialog from '@/views/admin/applications/MultiFieldQueryDialog'
 import ApplicationFieldRow, { type FieldQuerySummary } from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationHistoryTab from '@/views/admin/applications/ApplicationHistoryTab'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
@@ -214,6 +215,7 @@ const ApplicationDetailPage = async ({
         original_filename: string | null
         verification_status: string | null
         verification_remarks: string | null
+        reupload_notes: string | null
         verified_at: string | null
         reuploaded_at: string | null
         created_at: string | null
@@ -228,7 +230,7 @@ const ApplicationDetailPage = async ({
       // live: an admin had no way to see that "Work/Product Photographs"
       // was still pending for an application sitting in query_raised.
       `SELECT ad.id, cdd.document_key, cdd.label, ad.original_filename, ad.verification_status, ad.verification_remarks,
-              ad.verified_at, ad.reuploaded_at, ad.created_at
+              ad.reupload_notes, ad.verified_at, ad.reuploaded_at, ad.created_at
        FROM category_document_definitions cdd
        LEFT JOIN application_documents ad
          ON ad.document_definition_id = cdd.id AND ad.application_id = ?
@@ -465,6 +467,7 @@ const ApplicationDetailPage = async ({
   const fieldQueryByKey = new Map<string, FieldQuerySummary>()
 
   for (const row of fieldQueryRows) {
+    if (row.status === 'cancelled') continue
     if (fieldQueryByKey.has(row.field_key)) continue
 
     fieldQueryByKey.set(row.field_key, {
@@ -472,7 +475,8 @@ const ApplicationDetailPage = async ({
       status: row.status === 'open' ? 'open' : 'responded',
       remarks: row.remarks,
       previousValue: row.previous_value,
-      newValue: row.new_value
+      newValue: row.new_value,
+      applicantNotes: row.applicant_notes
     })
   }
 
@@ -557,8 +561,19 @@ const ApplicationDetailPage = async ({
   // query was raised (they can differ), newest first. An application-level
   // query has no per-item state, so its most recent one is listed while the
   // application is in query_raised.
+  // Only treat a whole-application query as currently open when it's
+  // actually what explains the current query_raised status — if a document
+  // or field query is open, THAT is what's keeping the application in
+  // query_raised, so a long-resolved historical application.query_raised
+  // audit entry must not be resurrected as a false "Whole application" item
+  // (previously happened whenever a field/document query was raised on an
+  // application that had ANY whole-application query anywhere in its past,
+  // since applications.status is a single flag shared by all 3 query
+  // mechanisms but only document/field queries have real per-item state).
   const latestApplicationQuery =
-    app.status === 'query_raised' ? auditEntries.find(e => e.action === 'application.query_raised') : undefined
+    app.status === 'query_raised' && openDocumentQueries.length === 0 && openFieldQueryRows.length === 0
+      ? auditEntries.find(e => e.action === 'application.query_raised')
+      : undefined
 
   const openQueryItems = [
     ...openDocumentQueries.map(d => ({ key: `doc-${d.document_key}`, kind: 'Document', label: d.label, at: d.verified_at })),
@@ -618,6 +633,30 @@ const ApplicationDetailPage = async ({
 
   const canQueryField = (fieldKey: string) =>
     canRaiseFieldQueries && (isStaticQueryableField(fieldKey) || fieldKey.startsWith('dynamic:'))
+
+  // Flat candidate list for the "Raise Query on Multiple Fields" dialog —
+  // every queryable field this application actually has, with its current
+  // value and whether it already has an open query (so the dialog can show
+  // it as disabled rather than letting the admin double-query it). Static
+  // fields come from STATIC_QUERYABLE_FIELDS directly off `app`; dynamic
+  // (category-specific) fields come from `fieldValues`, same `dynamic:<id>`
+  // key the per-row ApplicationFieldRow instances already use.
+  const multiQueryCandidates = canRaiseFieldQueries
+    ? [
+        ...(Object.keys(STATIC_QUERYABLE_FIELDS) as Array<keyof typeof STATIC_QUERYABLE_FIELDS>).map(key => ({
+          fieldKey: key as string,
+          label: STATIC_QUERYABLE_FIELDS[key].label,
+          currentValue: (app[key as keyof typeof app] as string | null) ?? '',
+          alreadyOpen: fieldQueryByKey.get(key)?.status === 'open'
+        })),
+        ...fieldValues.map(fv => ({
+          fieldKey: `dynamic:${fv.field_definition_id}`,
+          label: fv.label,
+          currentValue: fv.value ?? '',
+          alreadyOpen: fieldQueryByKey.get(`dynamic:${fv.field_definition_id}`)?.status === 'open'
+        }))
+      ]
+    : []
 
   const canEditApplication = !!permissions?.has('application:edit')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
@@ -1003,6 +1042,7 @@ const ApplicationDetailPage = async ({
               categoryFields={editableCategoryFields}
             />
           )}
+          <MultiFieldQueryDialog applicationId={id} candidates={multiQueryCandidates} />
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 
 import { useRouter } from 'next/navigation'
 
-import { AlertCircleIcon, CheckCircle2Icon, DownloadIcon, HistoryIcon, Loader2Icon, MegaphoneIcon, PencilIcon, Trash2Icon, UploadIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCircle2Icon, ChevronDownIcon, ChevronUpIcon, DownloadIcon, HistoryIcon, Loader2Icon, MegaphoneIcon, PencilIcon, Trash2Icon, UploadIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import type { ResultHistoryEntry, ResultRowView } from '@/lib/allotment/declare-result'
+import type { ResultHistoryEntry, ResultRowView, ResultSheetPreview } from '@/lib/allotment/declare-result'
 
 type RowError = { rowNumber: number; message: string }
 
@@ -49,6 +49,186 @@ function describeHistoryEntry(entry: ResultHistoryEntry): string {
     default:
       return entry.action
   }
+}
+
+const HistoryEntryItem = ({ entry }: { entry: ResultHistoryEntry }) => {
+  const [expanded, setExpanded] = useState(false)
+  const hasStalls = Boolean(entry.stalls && entry.stalls.length > 0)
+  const diff = entry.diff
+
+  return (
+    <li className='rounded-md border bg-white px-3.5 py-2.5 text-sm transition'>
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <div className='flex items-center gap-2'>
+          <span className='font-semibold text-[#0c2847]'>{HISTORY_LABELS[entry.action] ?? entry.action}</span>
+          {entry.action === 'result.sheet_uploaded' && (
+            <span className='rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200'>
+              Upload
+            </span>
+          )}
+          {entry.action === 'result.declared' && (
+            <span className='rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200'>
+              Declared
+            </span>
+          )}
+          {entry.action === 'result.row_updated' && (
+            <span className='rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200'>
+              Edited
+            </span>
+          )}
+          {entry.action === 'result.row_removed' && (
+            <span className='rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-800 border border-red-200'>
+              Removed
+            </span>
+          )}
+        </div>
+        <span className='text-xs text-muted-foreground'>
+          {entry.actorName ?? 'System'} · {formatHistoryTime(entry.createdAt)}
+        </span>
+      </div>
+
+      <p className='mt-1 text-xs text-slate-700 font-medium'>{describeHistoryEntry(entry)}</p>
+
+      {/* Highlights: What was added, updated, or created in this sheet */}
+      {diff && (
+        <div className='mt-2 flex flex-col gap-1.5'>
+          {/* New booths created in inventory */}
+          {diff.newBoothsCreated && diff.newBoothsCreated.length > 0 && (
+            <div className='flex flex-wrap items-center gap-1.5 text-xs'>
+              <span className='rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-300'>
+                ✨ {diff.newBoothsCreated.length} New Booth(s) Created in Inventory:
+              </span>
+              <span className='font-mono font-bold text-emerald-900'>
+                {diff.newBoothsCreated.join(', ')}
+              </span>
+            </div>
+          )}
+
+          {/* Added to Sheet */}
+          {diff.addedBooths && diff.addedBooths.length > 0 && (
+            <div className='rounded bg-emerald-50/70 border border-emerald-200 p-2 text-xs'>
+              <span className='font-bold text-emerald-900 block mb-1'>
+                + Added to Sheet ({diff.addedBooths.length} booth{diff.addedBooths.length > 1 ? 's' : ''}):
+              </span>
+              <div className='flex flex-wrap gap-1.5'>
+                {diff.addedBooths.map(b => (
+                  <span
+                    key={b.stall}
+                    className='rounded bg-white px-2 py-0.5 border border-emerald-200 font-mono text-[11px] text-emerald-950'
+                  >
+                    Booth <strong className='text-[#0c2847]'>{b.stall}</strong> → {b.applicationNumber}
+                    {b.applicantName ? ` (${b.applicantName})` : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Changed / Updated in Sheet */}
+          {diff.changedBooths && diff.changedBooths.length > 0 && (
+            <div className='rounded bg-amber-50/70 border border-amber-200 p-2 text-xs'>
+              <span className='font-bold text-amber-900 block mb-1'>
+                ~ Application Changed for Booths ({diff.changedBooths.length}):
+              </span>
+              <div className='flex flex-col gap-1'>
+                {diff.changedBooths.map(c => (
+                  <div key={c.stall} className='text-[11px] text-amber-950'>
+                    Booth <strong className='font-mono text-[#0c2847]'>{c.stall}</strong>:{' '}
+                    <span className='line-through text-slate-400'>{c.oldApp}</span> →{' '}
+                    <strong className='text-[#0c2847]'>{c.newApp}</strong>
+                    {c.newName ? ` (${c.newName})` : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Removed from Sheet */}
+          {diff.removedBooths && diff.removedBooths.length > 0 && (
+            <div className='rounded bg-red-50/70 border border-red-200 p-2 text-xs'>
+              <span className='font-bold text-red-900 block mb-1'>
+                - Removed from Sheet ({diff.removedBooths.length} booth{diff.removedBooths.length > 1 ? 's' : ''}):
+              </span>
+              <div className='flex flex-wrap gap-1.5'>
+                {diff.removedBooths.map(b => (
+                  <span
+                    key={b.stall}
+                    className='rounded bg-white px-2 py-0.5 border border-red-200 font-mono text-[11px] text-red-950'
+                  >
+                    Booth <strong>{b.stall}</strong> ({b.applicationNumber})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expandable toggle to view all booths in this upload/declaration */}
+      {hasStalls && (
+        <div className='mt-2.5 pt-2 border-t border-slate-100'>
+          <button
+            type='button'
+            onClick={() => setExpanded(!expanded)}
+            className='inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900 transition'
+          >
+            {expanded ? (
+              <>
+                <ChevronUpIcon className='size-3.5' /> Hide booth details ({entry.stalls!.length})
+              </>
+            ) : (
+              <>
+                <ChevronDownIcon className='size-3.5' /> View all booths in this{' '}
+                {entry.action === 'result.declared' ? 'declaration' : 'sheet'} ({entry.stalls!.length})
+              </>
+            )}
+          </button>
+
+          {expanded && (
+            <div className='mt-2 overflow-x-auto rounded border border-slate-200 bg-slate-50/50 p-2'>
+              <table className='w-full text-left text-xs'>
+                <thead>
+                  <tr className='border-b text-slate-500 font-semibold'>
+                    <th className='pb-1 pr-2'>Booth</th>
+                    <th className='pb-1 pr-2'>Application No.</th>
+                    <th className='pb-1 pr-2'>Applicant</th>
+                    <th className='pb-1 pr-2'>Category</th>
+                    <th className='pb-1 text-right'>Allocation / Fee</th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-slate-100'>
+                  {entry.stalls!.map((s, idx) => (
+                    <tr key={idx} className='hover:bg-white/80 transition'>
+                      <td className='py-1 pr-2 font-mono font-bold text-[#0c2847]'>{s.stall}</td>
+                      <td className='py-1 pr-2 font-mono text-slate-700'>{s.applicationNumber}</td>
+                      <td className='py-1 pr-2 font-medium text-slate-800'>{s.applicantName || '—'}</td>
+                      <td className='py-1 pr-2 text-slate-500'>{s.categoryName || '—'}</td>
+                      <td className='py-1 text-right'>
+                        {s.isPaymentRequired !== undefined && (
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                              s.isPaymentRequired ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {s.isPaymentRequired ? 'Payment Required' : 'Allotted'}
+                          </span>
+                        )}
+                        {s.isNewStall && (
+                          <span className='ml-1 rounded bg-blue-100 px-1 py-0.5 text-[9px] font-bold text-blue-800'>
+                            New Booth
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  )
 }
 
 const formatHistoryTime = (value: string) => new Date(value.replace(' ', 'T') + '+05:30').toLocaleString('en-IN')
@@ -136,6 +316,11 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
   const [rowErrors, setRowErrors] = useState<RowError[]>([])
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
 
+  // Sheet preview state
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+  const [previewData, setPreviewData] = useState<(ResultSheetPreview & { filename: string }) | null>(null)
+
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isDeclaring, setIsDeclaring] = useState(false)
   const [declareError, setDeclareError] = useState<string | null>(null)
@@ -207,6 +392,88 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
     }
   }
 
+  const handlePreview = async () => {
+    const file = fileRef.current?.files?.[0]
+
+    setUploadError(null)
+    setRowErrors([])
+    setUploadSuccess(null)
+    setDeclareSuccess(null)
+
+    if (!file) {
+      setUploadError('Choose a CSV file first.')
+
+      return
+    }
+
+    setIsPreviewing(true)
+
+    try {
+      const formData = new FormData()
+
+      formData.append('file', file)
+      formData.append('action', 'preview')
+
+      const response = await fetch('/api/admin/declare-result', { method: 'POST', body: formData })
+      const body = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setUploadError(body.error ?? 'Validation failed.')
+        setRowErrors(Array.isArray(body.rowErrors) ? body.rowErrors : [])
+
+        return
+      }
+
+      setPreviewData(body)
+      setPreviewOpen(true)
+    } catch {
+      setUploadError('Could not reach the server. Please try again.')
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
+
+  const confirmAndStageFromPreview = async () => {
+    const file = fileRef.current?.files?.[0]
+
+    if (!file) return
+
+    setIsUploading(true)
+    setUploadError(null)
+
+    try {
+      const formData = new FormData()
+
+      formData.append('file', file)
+      formData.append('action', 'stage')
+
+      const response = await fetch('/api/admin/declare-result', { method: 'POST', body: formData })
+      const body = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setUploadError(body.error ?? 'Upload failed.')
+        setRowErrors(Array.isArray(body.rowErrors) ? body.rowErrors : [])
+        setPreviewOpen(false)
+
+        return
+      }
+
+      setPreviewOpen(false)
+      setUploadSuccess(
+        `Sheet saved: ${body.rowCount} booth(s) ready to declare` +
+          (body.createdStalls > 0 ? `, ${body.createdStalls} new booth(s) added to inventory.` : '.') +
+          ' No one has been notified yet.'
+      )
+
+      if (fileRef.current) fileRef.current.value = ''
+      router.refresh()
+    } catch {
+      setUploadError('Could not reach the server. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const upload = async () => {
     const file = fileRef.current?.files?.[0]
 
@@ -221,36 +488,8 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
       return
     }
 
-    setIsUploading(true)
-
-    try {
-      const formData = new FormData()
-
-      formData.append('file', file)
-
-      const response = await fetch('/api/admin/declare-result', { method: 'POST', body: formData })
-      const body = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        setUploadError(body.error ?? 'Upload failed.')
-        setRowErrors(Array.isArray(body.rowErrors) ? body.rowErrors : [])
-
-        return
-      }
-
-      setUploadSuccess(
-        `Sheet saved: ${body.rowCount} booth(s) ready to declare` +
-          (body.createdStalls > 0 ? `, ${body.createdStalls} new booth(s) added to inventory.` : '.') +
-          ' No one has been notified yet.'
-      )
-
-      if (fileRef.current) fileRef.current.value = ''
-      router.refresh()
-    } catch {
-      setUploadError('Could not reach the server. Please try again.')
-    } finally {
-      setIsUploading(false)
-    }
+    // Trigger preview directly so user sees the preview and issues first
+    await handlePreview()
   }
 
   const declare = async () => {
@@ -314,10 +553,24 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
               <DownloadIcon className='size-4' />
               Download Template
             </Button>
-            <Input ref={fileRef} type='file' accept='.csv' className='max-w-xs' />
-            <Button type='button' onClick={upload} disabled={isUploading}>
-              {isUploading ? <Loader2Icon className='animate-spin' /> : <UploadIcon className='size-4' />}
-              Upload Sheet
+            <Input
+              ref={fileRef}
+              type='file'
+              accept='.csv'
+              className='max-w-xs'
+              onChange={() => {
+                setUploadError(null)
+                setRowErrors([])
+              }}
+            />
+            <Button
+              type='button'
+              onClick={handlePreview}
+              disabled={isPreviewing || isUploading}
+              className='bg-[#0c2847] text-white hover:bg-[#071a30]'
+            >
+              {isPreviewing ? <Loader2Icon className='size-4 animate-spin' /> : <UploadIcon className='size-4' />}
+              Upload &amp; Preview Sheet
             </Button>
           </div>
 
@@ -430,17 +683,9 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
           {history.length === 0 ? (
             <p className='text-sm text-muted-foreground'>No actions recorded yet.</p>
           ) : (
-            <ul className='flex flex-col gap-2'>
+            <ul className='flex flex-col gap-2.5'>
               {history.map(entry => (
-                <li key={entry.id} className='rounded-md border px-3 py-2 text-sm'>
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <span className='font-semibold text-[#0c2847]'>{HISTORY_LABELS[entry.action] ?? entry.action}</span>
-                    <span className='text-xs text-muted-foreground'>
-                      {entry.actorName ?? 'System'} · {formatHistoryTime(entry.createdAt)}
-                    </span>
-                  </div>
-                  <p className='mt-0.5 text-xs text-muted-foreground'>{describeHistoryEntry(entry)}</p>
-                </li>
+                <HistoryEntryItem key={entry.id} entry={entry} />
               ))}
             </ul>
           )}
@@ -514,6 +759,156 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
               {isDeclaring && <Loader2Icon className='animate-spin' />}
               Yes, Declare &amp; Notify
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sheet Preview & Validation Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className='sm:max-w-4xl max-h-[85vh] flex flex-col p-6'>
+          <DialogHeader>
+            <DialogTitle className='flex flex-wrap items-center justify-between text-base font-bold text-[#0c2847] gap-2'>
+              <span>Sheet Preview &amp; Verification — {previewData?.filename}</span>
+            </DialogTitle>
+            <DialogDescription className='text-xs'>
+              Review all booth allotments, candidate match, and verification checks before staging the pending result.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewData && (
+            <div className='flex flex-col gap-4 overflow-hidden flex-1'>
+              {/* Summary counters */}
+              <div className='flex flex-wrap items-center gap-2 pt-1'>
+                <span className='rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800'>
+                  Total: {previewData.totalCount} Booths
+                </span>
+                <span className='rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800'>
+                  ✓ Valid: {previewData.validCount}
+                </span>
+                {previewData.errorCount > 0 ? (
+                  <span className='rounded-md bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800 animate-pulse'>
+                    ⚠️ Issues: {previewData.errorCount}
+                  </span>
+                ) : null}
+                {previewData.newStallsCount > 0 && (
+                  <span className='rounded-md bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800'>
+                    ✨ New Booths: {previewData.newStallsCount}
+                  </span>
+                )}
+              </div>
+
+              {previewData.errorCount > 0 && (
+                <Alert variant='destructive' className='py-2.5'>
+                  <AlertCircleIcon className='size-4' />
+                  <AlertDescription className='text-xs'>
+                    <strong>{previewData.errorCount} row(s) have issues</strong> preventing declaration. Please review the highlighted rows below, fix them in your CSV file, and re-upload.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {previewData.errorCount === 0 && (
+                <Alert className='border-emerald-200 bg-emerald-50 text-emerald-900 py-2.5'>
+                  <CheckCircle2Icon className='size-4 text-emerald-600' />
+                  <AlertDescription className='text-xs'>
+                    All <strong>{previewData.totalCount}</strong> rows verified successfully. No conflicts found. Ready to save as pending result.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Scrollable Preview Table */}
+              <div className='overflow-y-auto max-h-[46vh] rounded-lg border border-slate-200'>
+                <Table>
+                  <TableHeader className='bg-slate-50 sticky top-0 z-10'>
+                    <TableRow className='text-xs font-bold uppercase'>
+                      <TableHead className='w-12'>#</TableHead>
+                      <TableHead>Booth/Stall</TableHead>
+                      <TableHead>Type / Facing</TableHead>
+                      <TableHead>Application No.</TableHead>
+                      <TableHead>Candidate / Firm</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Result Type</TableHead>
+                      <TableHead className='min-w-[180px]'>Verification / Issues</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className='text-xs'>
+                    {previewData.rows.map(row => (
+                      <TableRow
+                        key={row.rowNumber}
+                        className={row.isValid ? 'hover:bg-slate-50/60' : 'bg-rose-50/70 hover:bg-rose-50'}
+                      >
+                        <TableCell className='font-mono font-medium text-slate-500'>{row.rowNumber}</TableCell>
+                        <TableCell className='font-mono font-bold text-[#0c2847] whitespace-nowrap'>
+                          Stall #{row.stallNumber}
+                          {row.isNewStall && (
+                            <span className='ml-1.5 inline-block text-[9px] font-bold bg-blue-100 text-blue-800 rounded px-1.5 py-0.5'>
+                              New
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className='capitalize text-muted-foreground whitespace-nowrap'>
+                          {[row.shopType, row.direction ? `${row.direction} Facing` : null].filter(Boolean).join(' · ')}
+                        </TableCell>
+                        <TableCell className='font-mono font-bold text-slate-800 whitespace-nowrap'>
+                          {row.applicationNumber}
+                        </TableCell>
+                        <TableCell>
+                          <p className='font-bold text-[#0c2847]'>{row.applicantName || '—'}</p>
+                          {row.fatherName && <p className='text-[10px] text-slate-500'>S/O: {row.fatherName}</p>}
+                        </TableCell>
+                        <TableCell className='whitespace-nowrap'>{row.categoryName}</TableCell>
+                        <TableCell className='whitespace-nowrap'>
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                              row.isPaymentRequired
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}
+                          >
+                            {row.isPaymentRequired ? 'Payment Required' : 'Allotted (₹0 Fee)'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {row.isValid ? (
+                            <span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700'>
+                              <CheckCircle2Icon className='size-3.5' /> Ready
+                            </span>
+                          ) : (
+                            <div className='flex flex-col gap-1'>
+                              {row.issues.map((issue, idx) => (
+                                <span
+                                  key={idx}
+                                  className='rounded bg-rose-100 border border-rose-300 px-1.5 py-0.5 text-[10px] font-bold text-rose-900'
+                                >
+                                  ⚠️ {issue}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className='pt-3 border-t mt-3 flex items-center justify-between sm:justify-between w-full'>
+            <Button type='button' variant='outline' onClick={() => setPreviewOpen(false)} disabled={isUploading}>
+              Close &amp; Adjust File
+            </Button>
+
+            {previewData?.canStage && (
+              <Button
+                type='button'
+                onClick={confirmAndStageFromPreview}
+                disabled={isUploading}
+                className='bg-emerald-700 hover:bg-emerald-800 text-white font-bold'
+              >
+                {isUploading ? <Loader2Icon className='animate-spin size-4' /> : <CheckCircle2Icon className='size-4' />}
+                Confirm &amp; Save Pending Result
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

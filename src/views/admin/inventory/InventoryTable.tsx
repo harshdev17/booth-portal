@@ -1942,7 +1942,7 @@ const InventoryTable = ({
                           <ClockIcon className='size-2.5' /> Pending
                         </Badge>
                       )}
-                      {!row.isPaymentOverdue && row.isDirectAllotment && (row.paymentAmountPaise === 0 || !row.paymentAmountPaise) && row.status === 'allotted' && (
+                      {!row.isPaymentOverdue && (row.paymentAmountPaise === 0 || !row.paymentAmountPaise) && row.status === 'allotted' && (
                         <Badge className='bg-slate-600 text-white text-[10px] px-1.5 py-0 w-fit font-medium'>
                           Free Allotment
                         </Badge>

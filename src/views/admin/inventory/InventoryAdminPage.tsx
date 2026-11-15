@@ -132,7 +132,16 @@ export default async function InventoryAdminPage() {
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
        LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
-       LEFT JOIN payments p ON p.application_id = COALESCE(a.id, da.application_id) AND p.status IN ('success', 'paid', 'pending', 'not_initiated')
+       LEFT JOIN (
+         SELECT p1.application_id, p1.status, p1.amount_paise
+         FROM payments p1
+         JOIN (
+           SELECT application_id, MAX(id) AS max_id
+           FROM payments
+           WHERE purpose = 'pay_now'
+           GROUP BY application_id
+         ) p_max ON p_max.max_id = p1.id
+       ) p ON p.application_id = COALESCE(a.id, da.application_id)
        LEFT JOIN (
          SELECT shop_unit_id, MAX(id) AS max_id
          FROM direct_allotments

@@ -7,6 +7,7 @@ import { CheckCircle2Icon, MailIcon, MessageSquareIcon, SearchIcon, XCircleIcon 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { getAuditActionLabel, getRoleDisplayName } from '@/lib/audit/action-labels'
+import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 
 type AuditEntry = {
   id: number
@@ -39,16 +40,83 @@ export type HistoryTimelineItem =
 // readable rather than exhaustive.
 const AUDIT_DIFF_SKIP_KEYS = new Set(['razorpayOrderId', 'razorpayPaymentId', 'filename', 'applicationNumber'])
 
+const CUSTOM_KEY_LABELS: Record<string, string> = {
+  mobile_number: 'Mobile Number',
+  phone_number: 'Phone Number',
+  pin_code: 'PIN Code',
+  pincode: 'PIN Code',
+  aadhaar_last4: 'Aadhaar (Last 4)',
+  police_station_name: 'Police Station Name',
+  police_station_address: 'Police Station Address',
+  representative_name: 'Representative Name',
+  father_name: "Father's Name",
+  organisation_name: 'Organisation Name',
+  applicantNotes: 'Applicant Notes',
+  returnedToReview: 'Returned to Review',
+  fieldsMarkedChecked: 'Fields Verified',
+  categoryFields: 'Category Specific Fields',
+  status: 'Status',
+  reason: 'Reason',
+  remarks: 'Remarks',
+  notified: 'Applicant Notified',
+  email: 'Email',
+  address: 'Address',
+  city: 'City',
+  state: 'State',
+  district: 'District'
+}
+
 function humanizeAuditKey(key: string): string {
+  if (CUSTOM_KEY_LABELS[key]) return CUSTOM_KEY_LABELS[key]
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/_/g, ' ')
     .replace(/^./, c => c.toUpperCase())
 }
 
+function parseJsonSafe(val: unknown): unknown {
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        return JSON.parse(trimmed)
+      } catch {}
+    }
+  }
+  return val
+}
+
+function isEmptyValue(val: unknown): boolean {
+  if (val === null || val === undefined) return true
+  if (typeof val === 'string' && val.trim() === '') return true
+  if (Array.isArray(val) && val.length === 0) return true
+  if (typeof val === 'object' && Object.keys(val as object).length === 0) return true
+  return false
+}
+
+function formatPrimitive(val: unknown): string {
+  if (val === null || val === undefined || val === '') return '—'
+  if (typeof val === 'boolean') return val ? 'Yes' : 'No'
+  if (typeof val === 'object') {
+    try {
+      return JSON.stringify(val)
+    } catch {
+      return String(val)
+    }
+  }
+  return String(val)
+}
+
 function renderAuditDiff(previousValue: unknown, newValue: unknown): ReactNode {
-  const prev = (previousValue && typeof previousValue === 'object' ? previousValue : {}) as Record<string, unknown>
-  const next = (newValue && typeof newValue === 'object' ? newValue : {}) as Record<string, unknown>
+  const prevParsed = parseJsonSafe(previousValue)
+  const nextParsed = parseJsonSafe(newValue)
+
+  const prev = (prevParsed && typeof prevParsed === 'object' && !Array.isArray(prevParsed)
+    ? prevParsed
+    : {}) as Record<string, unknown>
+  const next = (nextParsed && typeof nextParsed === 'object' && !Array.isArray(nextParsed)
+    ? nextParsed
+    : {}) as Record<string, unknown>
 
   const keys = Array.from(new Set([...Object.keys(prev), ...Object.keys(next)])).filter(
     key => !AUDIT_DIFF_SKIP_KEYS.has(key)
@@ -57,24 +125,201 @@ function renderAuditDiff(previousValue: unknown, newValue: unknown): ReactNode {
   if (keys.length === 0) return null
 
   return (
-    <div className='mt-1.5 flex flex-col gap-0.5'>
+    <div className='mt-1.5 flex flex-col gap-1.5'>
       {keys.map(key => {
         const hasOld = key in prev
-        const oldVal = prev[key]
-        const newVal = next[key]
+        let oldVal = parseJsonSafe(prev[key])
+        let newVal = parseJsonSafe(next[key])
 
+        // Suppress key if both old and new are completely empty
+        if (isEmptyValue(oldVal) && isEmptyValue(newVal)) return null
         if (newVal === undefined && !hasOld) return null
 
+        // 1. STATUS change with clean labels and colored transition
+        if (key === 'status') {
+          const oldLabel = oldVal ? getApplicationStatusConfig(String(oldVal)).label : null
+          const newLabel = newVal ? getApplicationStatusConfig(String(newVal)).label : null
+
+          return (
+            <div key={key} className='mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-700'>
+              <span className='font-semibold text-slate-500'>Status:</span>
+              {hasOld && oldLabel ? (
+                <>
+                  <span className='rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 line-through'>
+                    {oldLabel}
+                  </span>
+                  <span className='text-slate-400 font-bold'>→</span>
+                  <span className='rounded bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-800'>
+                    {newLabel}
+                  </span>
+                </>
+              ) : (
+                <span className='rounded bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-800'>
+                  {newLabel}
+                </span>
+              )}
+            </div>
+          )
+        }
+
+        // 2. FIELDS (both plain objects from application edit, and arrays from query response)
+        if (key === 'fields') {
+          // Case A: Plain key-value object (from application edit)
+          if (
+            (oldVal && typeof oldVal === 'object' && !Array.isArray(oldVal)) ||
+            (newVal && typeof newVal === 'object' && !Array.isArray(newVal))
+          ) {
+            const oldObj = (oldVal && typeof oldVal === 'object' && !Array.isArray(oldVal) ? oldVal : {}) as Record<string, unknown>
+            const newObj = (newVal && typeof newVal === 'object' && !Array.isArray(newVal) ? newVal : {}) as Record<string, unknown>
+            const innerKeys = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]))
+            const changed = innerKeys.filter(k => {
+              const o = oldObj[k]
+              const n = newObj[k]
+              if (isEmptyValue(o) && isEmptyValue(n)) return false
+              return String(o ?? '') !== String(n ?? '')
+            })
+
+            if (changed.length === 0) return null
+
+            return (
+              <div key={key} className='mt-1 flex flex-col gap-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-2.5'>
+                <span className='text-xs font-semibold text-[#0c2847]'>Edited Application Fields:</span>
+                <div className='flex flex-col gap-1 pl-1'>
+                  {changed.map(k => {
+                    const o = oldObj[k]
+                    const n = newObj[k]
+                    const hasO = !isEmptyValue(o)
+
+                    return (
+                      <div key={k} className='flex flex-wrap items-center gap-1.5 text-xs text-slate-600'>
+                        <span className='font-semibold text-slate-700'>{humanizeAuditKey(k)}:</span>
+                        {hasO && <span className='text-slate-400 line-through mr-1'>{formatPrimitive(o)}</span>}
+                        <span className='font-bold text-[#0c2847]'>{formatPrimitive(n)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+
+          // Case B: Array of field items (from applicant field query response)
+          if (Array.isArray(newVal) || Array.isArray(oldVal)) {
+            const oldList = (Array.isArray(oldVal) ? oldVal : []) as Array<{ fieldKey?: string; value?: unknown }>
+            const newList = (Array.isArray(newVal) ? newVal : []) as Array<{ fieldKey?: string; fieldLabel?: string; value?: unknown }>
+
+            if (newList.length === 0 && oldList.length === 0) return null
+
+            return (
+              <div key={key} className='mt-1 flex flex-col gap-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-2.5'>
+                <span className='text-xs font-semibold text-[#0c2847]'>Corrected Fields:</span>
+                <div className='flex flex-col gap-1 pl-1'>
+                  {newList.map((item, idx) => {
+                    const oldItem = oldList.find(o => o?.fieldKey === item?.fieldKey)
+                    const label = item?.fieldLabel || humanizeAuditKey(item?.fieldKey || 'Field')
+                    const hasOldValue =
+                      oldItem &&
+                      !isEmptyValue(oldItem.value) &&
+                      String(oldItem.value) !== String(item?.value)
+
+                    return (
+                      <div key={idx} className='flex flex-wrap items-center gap-1.5 text-xs text-slate-600'>
+                        <span className='font-semibold text-slate-700'>{label}:</span>
+                        {hasOldValue && (
+                          <span className='text-slate-400 line-through mr-1'>{formatPrimitive(oldItem.value)}</span>
+                        )}
+                        <span className='font-bold text-[#0c2847]'>{formatPrimitive(item?.value)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+        }
+
+        // 3. CATEGORY FIELDS
+        if (key === 'categoryFields') {
+          if (isEmptyValue(oldVal) && isEmptyValue(newVal)) return null
+          if (Array.isArray(newVal)) {
+            if (newVal.length === 0) return null
+            return (
+              <div key={key} className='mt-1 flex flex-col gap-1 rounded border border-slate-200 bg-slate-50 p-2 text-xs'>
+                <span className='font-semibold text-slate-700'>Category Specific Fields:</span>
+                <div className='flex flex-col gap-0.5 pl-1'>
+                  {newVal.map((item: any, idx: number) => (
+                    <div key={idx} className='text-slate-600'>
+                      <span className='font-medium'>{item.label || `Field #${item.fieldDefinitionId}`}:</span>{' '}
+                      <span className='font-semibold text-[#0c2847]'>{formatPrimitive(item.value ?? item.next)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          return null
+        }
+
+        // 4. FIELDS MARKED CHECKED (approval checklist)
+        if (key === 'fieldsMarkedChecked') {
+          if (isEmptyValue(newVal)) return null
+          const list = Array.isArray(newVal) ? newVal : [newVal]
+          if (list.length === 0) return null
+
+          return (
+            <p key={key} className='text-xs text-slate-600'>
+              <span className='font-semibold text-slate-500'>Verified Fields:</span>{' '}
+              <span className='font-semibold text-[#0c2847]'>
+                {list.map(f => humanizeAuditKey(String(f))).join(', ')}
+              </span>
+            </p>
+          )
+        }
+
+        // 5. NOTIFIED
+        if (key === 'notified') {
+          if (!newVal) return null // Hide noisy "Notified: false"
+          return (
+            <p key={key} className='text-xs text-emerald-700 font-semibold'>
+              Applicant notified via SMS/WhatsApp
+            </p>
+          )
+        }
+
+        // 6. RETURNED TO REVIEW
+        if (key === 'returnedToReview') {
+          if (!newVal) return null // Hide noisy false
+          return (
+            <p key={key} className='text-xs text-blue-700 font-medium'>
+              Status returned to Under Review automatically
+            </p>
+          )
+        }
+
+        // 7. APPLICANT NOTES
+        if (key === 'applicantNotes') {
+          if (isEmptyValue(newVal)) return null
+          return (
+            <div key={key} className='mt-1 rounded border border-blue-100 bg-blue-50/70 p-2 text-xs text-blue-900'>
+              <span className='font-bold text-blue-950'>Applicant Notes:</span> {String(newVal)}
+            </div>
+          )
+        }
+
+        // 8. IDENTICAL VALUES CHECK
+        if (hasOld && String(oldVal ?? '') === String(newVal ?? '')) return null
+
+        // 9. GENERIC CLEAN RENDERER
         return (
           <p key={key} className='text-xs text-slate-600'>
-            <span className='font-medium text-slate-500'>{humanizeAuditKey(key)}:</span>{' '}
-            {hasOld ? (
+            <span className='font-semibold text-slate-500'>{humanizeAuditKey(key)}:</span>{' '}
+            {hasOld && !isEmptyValue(oldVal) ? (
               <>
-                <span className='text-slate-400 line-through'>{String(oldVal)}</span>{' '}
-                <span className='font-semibold text-[#0c2847]'>{String(newVal)}</span>
+                <span className='text-slate-400 line-through mr-1'>{formatPrimitive(oldVal)}</span>
+                <span className='font-semibold text-[#0c2847]'>{formatPrimitive(newVal)}</span>
               </>
             ) : (
-              <span className='font-semibold text-[#0c2847]'>{String(newVal)}</span>
+              <span className='font-semibold text-[#0c2847]'>{formatPrimitive(newVal)}</span>
             )}
           </p>
         )

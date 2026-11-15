@@ -129,6 +129,7 @@ export type ApplicationDocumentRow = {
   original_filename: string | null
   verification_status: string | null
   verification_remarks: string | null
+  reupload_notes?: string | null
   reuploaded_at: string | null
 }
 
@@ -243,6 +244,11 @@ const ApplicationDocumentsSection = ({
                   <p className='text-xs text-muted-foreground'>{doc.original_filename}</p>
                   {doc.verification_remarks && (
                     <p className='mt-1 text-xs text-amber-700'>Remark: {doc.verification_remarks}</p>
+                  )}
+                  {doc.reupload_notes && (
+                    <p className='mt-1 text-xs text-blue-800 font-medium'>
+                      <span className='font-bold text-slate-800'>Applicant note:</span> {doc.reupload_notes}
+                    </p>
                   )}
                 </div>
 

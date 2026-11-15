@@ -30,10 +30,11 @@ export default async function AdminPoliceStallsPage({
   const limit = resolveLimit(pageSize)
   const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
 
-  // Show all stalls on which allotment has actually taken place (Commercial + Custom/Direct)
+  // Show all stalls on which allotment has actually been COMPLETED (Commercial with payment/exempt + Custom/Direct)
+  // Pending payment applications (status = 'payment_required') are excluded until payment is confirmed.
   const conditions: string[] = [
     'su.stall_number IS NOT NULL',
-    "(su.status = 'allotted' OR su.allotted_to_application_id IS NOT NULL OR da.id IS NOT NULL)"
+    "((da.id IS NOT NULL AND da.status = 'active') OR (su.allotted_to_application_id IS NOT NULL AND a.status = 'allotted') OR (su.status = 'allotted' AND su.allotted_to_application_id IS NULL))"
   ]
   const params: unknown[] = []
 
@@ -69,8 +70,9 @@ export default async function AdminPoliceStallsPage({
     query<Array<{ count: number }>>(
       `SELECT COUNT(DISTINCT su.id) AS count
        FROM shop_units su
+       LEFT JOIN applications a ON a.id = su.allotted_to_application_id
        LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
-       WHERE su.status = 'allotted' OR su.allotted_to_application_id IS NOT NULL OR da.id IS NOT NULL`
+       WHERE ((da.id IS NOT NULL AND da.status = 'active') OR (su.allotted_to_application_id IS NOT NULL AND a.status = 'allotted') OR (su.status = 'allotted' AND su.allotted_to_application_id IS NULL))`
     )
   ])
 

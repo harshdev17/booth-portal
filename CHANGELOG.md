@@ -2,6 +2,30 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.6.0 (2026-11-15)
+
+### Added
+- **Multi-Field Query Dialog (`src/views/admin/applications/MultiFieldQueryDialog.tsx`)**:
+  - Staff can select multiple application fields (both standard and category-specific dynamic fields) via checkboxes, specify a single shared remark, and raise queries simultaneously.
+  - Automatically disables already-queried fields and leaves individual per-row "Raise query" buttons available.
+- **Batch Field Queries API Endpoint (`src/app/api/admin/applications/[id]/field-queries/route.ts`)**:
+  - Accepts `{ fieldKeys: string[], remarks }`, executes atomic transactional validation and record creation in `application_field_queries`, and transitions application status to `query_raised`.
+- **Consolidated Applicant Notifications (`src/lib/notifications/document-query.ts`)**:
+  - `notifyFieldQueries()` aggregates all queried fields into a single WhatsApp + Email dispatch with numbered field entries.
+- **Declare Result Management Flow (`src/app/(admin)/admin/declare-result/page.tsx`)**:
+  - Complete bulk booth-sheet result upload, preview, transactional shop allotment, and applicant notification system.
+- **Database Migrations Applied**:
+  - `0080_application_field_queries.sql`: table for field-level corrections.
+  - `0081_result_declaration_rows.sql`: table for booth-sheet result declarations.
+
+### Fixed
+- **Query Banner "Whole Application" Stale History Bug (`src/app/(admin)/admin/applications/[id]/page.tsx`)**:
+  - Fixed issue where historical whole-application queries falsely surfaced in the active banner when only field-level queries were open.
+- **Hostinger MySQL Connection Pool Optimization (`src/lib/db/client.ts`)**:
+  - Reduced `connectionLimit` to 10 and aligned `maxIdle: 10` to prevent reaching Hostinger's 500 connections/hour cap.
+  - Raised `idleTimeout` to `55000ms` and implemented auto-retry on transient disconnects.
+  - Batched queries across admin pages via `withPooledConnection()`.
+
 ## v1.5.0 (2026-11-01)
 
 ### Added

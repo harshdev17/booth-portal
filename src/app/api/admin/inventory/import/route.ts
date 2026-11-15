@@ -224,6 +224,8 @@ export async function POST(request: Request) {
     const reservedDirectCount = resolvedRows.filter(r => !r.isDirectAllotment && r.status === 'reserved_for_direct_allotment').length
 
     if (mode === 'validate') {
+      const categoryNameByRow = new Map(parsed.rows.map(pr => [pr.rowNumber, pr.categoryName]))
+
       return NextResponse.json({
         errors: [],
         warnings,
@@ -232,7 +234,18 @@ export async function POST(request: Request) {
         directAllottedCount,
         reservedPaymentCount,
         availableCount,
-        reservedDirectCount
+        reservedDirectCount,
+        previewRows: resolvedRows.slice(0, 100).map(r => ({
+          rowNumber: r.rowNumber,
+          stallNumber: r.stallNumber,
+          shopType: r.shopType,
+          direction: r.direction,
+          categoryName: categoryNameByRow.get(r.rowNumber) || '—',
+          status: r.status,
+          stallAmountRupees: r.stallAmountRupees,
+          allotteeName: r.allotteeName,
+          isDirectAllotment: r.isDirectAllotment
+        }))
       })
     }
 

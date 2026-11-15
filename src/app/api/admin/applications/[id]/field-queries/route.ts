@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { countOpenFieldQueries, resolveQueryableField } from '@/lib/applications/field-queries'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
-import { notifyDocumentQuery } from '@/lib/notifications/document-query'
+import { notifyFieldQueries } from '@/lib/notifications/document-query'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { decodeId } from '@/lib/security/opaque-id'
@@ -13,8 +13,12 @@ import { decodeId } from '@/lib/security/opaque-id'
 // (see queryApplicationAction in src/app/server/document-actions.ts).
 const QUERYABLE_STATUSES = ['under_review', 'payment_success', 'query_raised']
 
+// Accepts EITHER the original single-field shape (fieldKey) or a new
+// multi-select shape (fieldKeys) — the existing single-field "Raise query"
+// buttons on ApplicationFieldRow keep sending the original shape unchanged.
 const raiseSchema = z.object({
-  fieldKey: z.string().trim().min(1).max(64),
+  fieldKey: z.string().trim().min(1).max(64).optional(),
+  fieldKeys: z.array(z.string().trim().min(1).max(64)).min(1).max(30).optional(),
   remarks: z.string().trim().min(1, 'A remark is required.').max(512)
 })
 
@@ -57,7 +61,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request.' }, { status: 400 })
   }
 
-  const { fieldKey, remarks } = parsed.data
+  const { remarks } = parsed.data
+  const fieldKeys = parsed.data.fieldKeys ?? (parsed.data.fieldKey ? [parsed.data.fieldKey] : [])
+  const isMultiRequest = Array.isArray(parsed.data.fieldKeys)
+
+  if (fieldKeys.length === 0) {
+    return NextResponse.json({ error: 'No field specified.' }, { status: 400 })
+  }
 
   try {
     const [application] = await query<ApplicationRow[]>(
@@ -77,70 +87,102 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    const field = await resolveQueryableField(query, applicationId, fieldKey)
+    const raised: Array<{ fieldKey: string; label: string; queryId: number }> = []
+    const skipped: Array<{ fieldKey: string; reason: string }> = []
 
-    if (!field) {
-      return NextResponse.json({ error: 'A query cannot be raised on this field.' }, { status: 400 })
+    // Each field is resolved + conflict-checked + inserted inside its own
+    // transaction (same pattern as the original single-field flow) — one
+    // field failing (already queried, not queryable) never aborts the rest
+    // of the batch, it's just reported back as skipped.
+    for (const fieldKey of fieldKeys) {
+       
+      const field = await resolveQueryableField(query, applicationId, fieldKey)
+
+      if (!field) {
+        skipped.push({ fieldKey, reason: 'not queryable' })
+        continue
+      }
+
+       
+      const result = await withTransaction(async q => {
+        const existing = await q<Array<{ id: number }>>(
+          `SELECT id FROM application_field_queries
+           WHERE application_id = ? AND field_key = ? AND status = 'open'
+           LIMIT 1 FOR UPDATE`,
+          [applicationId, fieldKey]
+        )
+
+        if (existing.length > 0) return { conflict: true as const }
+
+        const inserted = await q<{ insertId: number }>(
+          `INSERT INTO application_field_queries
+             (application_id, field_key, field_label, remarks, previous_value, raised_by_user_id)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [applicationId, fieldKey, field.label, remarks, field.currentValue, session.userId]
+        )
+
+        return { conflict: false as const, queryId: inserted.insertId }
+      })
+
+      if (result.conflict) {
+        skipped.push({ fieldKey, reason: 'already has an open query' })
+        continue
+      }
+
+      raised.push({ fieldKey, label: field.label, queryId: result.queryId })
     }
 
-    const result = await withTransaction(async q => {
-      const existing = await q<Array<{ id: number }>>(
-        `SELECT id FROM application_field_queries
-         WHERE application_id = ? AND field_key = ? AND status = 'open'
-         LIMIT 1 FOR UPDATE`,
-        [applicationId, fieldKey]
+    if (raised.length === 0) {
+      return NextResponse.json(
+        { error: isMultiRequest ? 'No fields could be queried.' : 'There is already an open query on this field.', skipped },
+        { status: 409 }
       )
-
-      if (existing.length > 0) return { conflict: true as const }
-
-      const inserted = await q<{ insertId: number }>(
-        `INSERT INTO application_field_queries
-           (application_id, field_key, field_label, remarks, previous_value, raised_by_user_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [applicationId, fieldKey, field.label, remarks, field.currentValue, session.userId]
-      )
-
-      await q(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [
-        applicationId
-      ])
-
-      return { conflict: false as const, queryId: inserted.insertId }
-    })
-
-    if (result.conflict) {
-      return NextResponse.json({ error: 'There is already an open query on this field.' }, { status: 409 })
     }
 
-    await logAudit({
-      actorUserId: session.userId,
-      actorRoleKey: session.role.key,
-      action: 'field.query_raised',
-      module: 'applications',
-      entityType: 'application',
-      entityId: String(applicationId),
-      previousValue: { status: application.status },
-      newValue: { status: 'query_raised', fieldKey, fieldLabel: field.label, remarks }
-    })
+    // Single status update covering the whole batch, regardless of how many
+    // fields were queried.
+    await query(`UPDATE applications SET status = 'query_raised' WHERE id = ? AND status IN ('under_review', 'payment_success')`, [
+      applicationId
+    ])
 
-    // notifyDocumentQuery swallows send failures and is bounded by the
-    // provider timeouts, so it never blocks or fails the query itself.
-    await notifyDocumentQuery({
+    for (const item of raised) {
+       
+      await logAudit({
+        actorUserId: session.userId,
+        actorRoleKey: session.role.key,
+        action: 'field.query_raised',
+        module: 'applications',
+        entityType: 'application',
+        entityId: String(applicationId),
+        previousValue: { status: application.status },
+        newValue: { status: 'query_raised', fieldKey: item.fieldKey, fieldLabel: item.label, remarks }
+      })
+    }
+
+    // One combined notification for the whole batch (not one per field) —
+    // swallows send failures internally and is bounded by provider
+    // timeouts, so it never blocks or fails the query action itself.
+    await notifyFieldQueries({
       applicationId,
       applicationNumber: application.application_number,
       mobileNumber: application.mobile_number,
       email: application.email,
       representativeName: application.representative_name,
-      documentLabel: field.label,
-      remarks
+      remarks,
+      fields: raised.map(r => ({ label: r.label, remarks }))
     })
 
-    return NextResponse.json({ success: true, queryId: result.queryId })
+    return NextResponse.json(
+      isMultiRequest
+        ? { success: true, raised, skipped }
+        : { success: true, queryId: raised[0].queryId }
+    )
   } catch (error) {
     if ((error as { code?: string } | null)?.code === 'ER_NO_SUCH_TABLE') {
       return NextResponse.json({ error: 'Field queries are not enabled yet (migration 0080 pending).' }, { status: 503 })
     }
 
-    logServerError('api.admin.applications.field_queries.raise', error, { applicationId, fieldKey })
+    logServerError('api.admin.applications.field_queries.raise', error, { applicationId, fieldKeys })
 
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }

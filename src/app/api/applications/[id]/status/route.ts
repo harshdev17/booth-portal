@@ -128,13 +128,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     >(
       `(SELECT NULL AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
         FROM audit_logs al
-        WHERE al.entity_type = 'application' AND al.entity_id = ? AND al.action = 'application.query_raised')
+        WHERE al.entity_type = 'application' AND al.entity_id = ? AND al.action = 'application.query_raised'
+          AND JSON_EXTRACT(al.new_value, '$.remarks') IS NOT NULL
+          AND JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) != 'null'
+          AND TRIM(JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks'))) != '')
        UNION ALL
        (SELECT cdd.label AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
         FROM audit_logs al
         JOIN application_documents ad ON ad.id = al.entity_id
         JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
-        WHERE al.entity_type = 'application_document' AND al.action = 'document.query' AND ad.application_id = ?)
+        WHERE al.entity_type = 'application_document' AND al.action = 'document.query' AND ad.application_id = ?
+          AND JSON_EXTRACT(al.new_value, '$.remarks') IS NOT NULL
+          AND JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) != 'null'
+          AND TRIM(JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks'))) != '')
        ORDER BY createdAt DESC`,
       [String(application.id), application.id]
     )

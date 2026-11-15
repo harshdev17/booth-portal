@@ -38,6 +38,7 @@ import { downloadBlob } from '@/lib/browser/download-blob'
 import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
 import type { CategoryDocumentDto } from '@/views/public/apply/types'
 import FieldCorrectionsCard, { type FieldQueryForApplicant } from '@/views/public/status/FieldCorrectionsCard'
+import QueryTrailCard, { type FieldQueryTrailEntry } from '@/views/public/status/QueryTrailCard'
 import { clearStatusSession, readStatusSession, storeStatusSession } from '@/views/public/status/status-session'
 
 const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
@@ -98,6 +99,8 @@ type DocumentRow = {
   verificationStatus: string | null
   verificationRemarks: string | null
   originalFilename: string | null
+  reuploadNotes?: string | null
+  reuploadedAt?: string | null
 }
 
 type QueryHistoryEntry = { documentLabel: string | null; remarks: string; createdAt: string }
@@ -108,6 +111,7 @@ type StatusResult = {
   status: string
   applicationQueryRemarks?: string | null
   queryHistory?: QueryHistoryEntry[]
+  fieldQueryTrail?: FieldQueryTrailEntry[]
   stallNumber: string | null
   allotmentPaymentEnabled: boolean
   allotmentAmountPaise: number | null
@@ -224,6 +228,8 @@ const StatusLookup = () => {
   const [uploadMessage, setUploadMessage] = useState<string | null>(null)
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null)
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
+  const [docNotes, setDocNotes] = useState<Record<string, string>>({})
+  const [docGeneralNote, setDocGeneralNote] = useState('')
 
   // Allotment payment state
   const [isPayingAllotment, setIsPayingAllotment] = useState(false)
@@ -470,6 +476,12 @@ const StatusLookup = () => {
       formData.append('documentKey', documentKey)
       formData.append('file', file)
 
+      const note = docNotes[documentKey]?.trim() || docGeneralNote.trim()
+
+      if (note) {
+        formData.append('notes', note)
+      }
+
       const headers: Record<string, string> = {}
 
       if (result.accessToken) {
@@ -507,7 +519,9 @@ const StatusLookup = () => {
                   documentId: body.documentId ?? d.documentId,
                   verificationStatus: 'pending',
                   verificationRemarks: null,
-                  originalFilename: file.name
+                  originalFilename: file.name,
+                  reuploadNotes: note ?? null,
+                  reuploadedAt: new Date().toISOString()
                 }
               : d
           )
@@ -1101,7 +1115,7 @@ const StatusLookup = () => {
   return (
     <div
       className={`mx-auto px-4 py-8 sm:px-6 lg:px-8 transition-all duration-200 ${
-        isResult ? 'max-w-6xl' : 'max-w-xl py-12'
+        isResult ? 'max-w-4xl' : 'max-w-xl py-12'
       }`}
     >
       {/* Page Header */}
@@ -1251,9 +1265,7 @@ const StatusLookup = () => {
 
       {/* Result Phase */}
       {phase === 'result' && result && (
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
-          {/* Main / Primary Column */}
-          <div className='lg:col-span-7 xl:col-span-8 flex flex-col gap-5'>
+        <div className='flex flex-col gap-6'>
             {/* Query Raised Alert — moved to the very top of the page per
                 explicit feedback (2026-11-02): this previously only showed
                 as a muted blue info-line at the bottom of the Application
@@ -1273,22 +1285,28 @@ const StatusLookup = () => {
                       <h2 className='text-base font-bold text-amber-950'>
                         {lang === 'hi' ? 'कार्रवाई आवश्यक: स्पष्टीकरण' : 'Action Needed: Query Raised'}
                       </h2>
-                      {(result.queryHistory?.length ?? 0) > 1 && (
-                        <span className='rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900'>
-                          {result.queryHistory?.length}{' '}
-                          {lang === 'hi' ? 'टिप्पणियाँ' : result.queryHistory!.length === 1 ? 'note' : 'notes'}
-                        </span>
-                      )}
+                      {(() => {
+                        const activeCount = openFieldQueries.length + actionableDocuments.length
+
+                        return activeCount > 1 ? (
+                          <span className='rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900'>
+                            {activeCount} {lang === 'hi' ? 'बिंदु' : 'items'}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
 
-                    {/* Every query raised so far — not just the latest —
-                        per explicit feedback (2026-11-03): a second or
-                        third round of back-and-forth previously lost
-                        everything before the most recent remark. */}
+                    <p className='mt-1 text-xs text-amber-900/90 leading-relaxed'>
+                      {lang === 'hi'
+                        ? 'समीक्षा टीम ने निम्नलिखित विवरण/दस्तावेज़ में सुधार के लिए कहा है। कृपया नीचे आवश्यक सुधार पूर्ण करें:'
+                        : 'The review team has requested corrections on the following item(s). Please complete the required action below:'}
+                    </p>
+
+                    {/* Active Open Field Queries */}
                     {openFieldQueries.length > 0 && (
                       <ul className='mt-2.5 flex flex-col gap-2'>
                         {openFieldQueries.map(fq => (
-                          <li key={`field-${fq.id}`} className='rounded-lg bg-white/70 px-3 py-2 text-xs sm:text-sm text-amber-900'>
+                          <li key={`field-${fq.id}`} className='rounded-lg bg-white/80 border border-amber-200/60 px-3 py-2 text-xs sm:text-sm text-amber-950'>
                             <span className='mr-1.5 font-bold'>{lang === 'hi' && fq.labelHi ? fq.labelHi : fq.label}:</span>
                             <span className='leading-relaxed'>{fq.remarks}</span>
                           </li>
@@ -1296,50 +1314,27 @@ const StatusLookup = () => {
                       </ul>
                     )}
 
-                    {result.queryHistory && result.queryHistory.length > 0 ? (
+                    {/* Active Actionable Documents that currently need re-upload */}
+                    {actionableDocuments.length > 0 && (
                       <ul className='mt-2.5 flex flex-col gap-2'>
-                        {result.queryHistory.map((entry, idx) => (
-                          <li key={idx} className='rounded-lg bg-white/70 px-3 py-2 text-xs sm:text-sm text-amber-900'>
-                            {entry.documentLabel && (
-                              <span className='mr-1.5 font-bold'>{entry.documentLabel}:</span>
-                            )}
-                            <span className='leading-relaxed'>{entry.remarks}</span>
-                            <span className='ml-2 text-[11px] text-amber-700/80'>
-                              {new Date(entry.createdAt).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
-                                day: 'numeric',
-                                month: 'short'
-                              })}
+                        {actionableDocuments.map(doc => (
+                          <li key={`doc-${doc.documentKey}`} className='rounded-lg bg-white/80 border border-amber-200/60 px-3 py-2 text-xs sm:text-sm text-amber-950'>
+                            <span className='mr-1.5 font-bold'>{lang === 'hi' && doc.labelHi ? doc.labelHi : doc.label}:</span>
+                            <span className='leading-relaxed'>
+                              {doc.verificationRemarks ||
+                                (lang === 'hi' ? 'दस्तावेज़ पुनः अपलोड आवश्यक है।' : 'Please re-upload a valid document.')}
                             </span>
                           </li>
                         ))}
                       </ul>
-                    ) : openFieldQueries.length > 0 ? null : (
-                      <p className='mt-2 text-xs sm:text-sm text-amber-900 leading-relaxed'>
-                        {lang === 'hi'
-                          ? 'समीक्षा टीम को एक सही दस्तावेज़ की आवश्यकता है। कृपया नीचे दिए गए अनुभाग में अपलोड करें।'
-                          : 'The review team needs a corrected document. Please upload it in the section below.'}
-                      </p>
                     )}
 
-                    <div className='mt-3 flex flex-wrap gap-2'>
-                      {openFieldQueries.length > 0 && (
-                        <a
-                          href='#field-corrections'
-                          className='inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
-                        >
-                          {lang === 'hi' ? 'विवरण सुधारने के लिए जाएं' : 'Go to Correct Details'}
-                        </a>
-                      )}
-                      {(actionableDocuments.length > 0 || openFieldQueries.length === 0) && (
-                        <a
-                          href='#documents-status'
-                          className='inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
-                        >
-                          <UploadIcon className='size-3.5' />
-                          {lang === 'hi' ? 'दस्तावेज़ अपलोड करने के लिए जाएं' : 'Go to Upload Documents'}
-                        </a>
-                      )}
-                    </div>
+                    {/* General application query (if no specific field or document remarks) */}
+                    {openFieldQueries.length === 0 && actionableDocuments.length === 0 && result.applicationQueryRemarks && (
+                      <div className='mt-2.5 rounded-lg bg-white/80 border border-amber-200/60 px-3 py-2 text-xs sm:text-sm text-amber-950'>
+                        <span className='leading-relaxed'>{result.applicationQueryRemarks}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1856,9 +1851,19 @@ const StatusLookup = () => {
                   </p>
                   <p className='font-mono text-lg font-bold text-[#0c2847]'>{applicationNumber}</p>
                 </div>
-                <span className='rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 border border-slate-200'>
-                  {statusText}
-                </span>
+                <div className='flex items-center gap-2'>
+                  <span className='rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 border border-slate-200'>
+                    {statusText}
+                  </span>
+                  <Link
+                    href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
+                    target='_blank'
+                    className='inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs transition'
+                  >
+                    <FileTextIcon className='size-3.5 text-slate-500' />
+                    {lang === 'hi' ? 'प्रिंट' : 'Print'}
+                  </Link>
+                </div>
               </div>
               <dl className='divide-y divide-slate-100 text-sm'>
                 <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
@@ -1975,6 +1980,28 @@ const StatusLookup = () => {
                   )}
 
                   {actionableDocuments.length > 0 && (
+                    <div className='mb-3.5 rounded-lg bg-slate-50 border border-slate-200 p-3'>
+                      <label htmlFor='doc-reupload-notes' className='block text-xs font-semibold text-slate-700 mb-1.5'>
+                        {lang === 'hi'
+                          ? 'दस्तावेज़ पुनः अपलोड के संबंध में स्पष्टीकरण / नोट (वैकल्पिक)'
+                          : 'Explanation / Note for reviewer regarding document(s) (Optional)'}
+                      </label>
+                      <Input
+                        id='doc-reupload-notes'
+                        value={docGeneralNote}
+                        onChange={e => setDocGeneralNote(e.target.value)}
+                        placeholder={
+                          lang === 'hi'
+                            ? 'यदि आप समीक्षा अधिकारी को कोई स्पष्टीकरण देना चाहें...'
+                            : 'Any clarification for the verification officer regarding this upload...'
+                        }
+                        className='bg-white text-xs h-9'
+                        maxLength={500}
+                      />
+                    </div>
+                  )}
+
+                  {actionableDocuments.length > 0 && (
                     <DocumentsStep
                       documents={documentsForStep}
                       uploadState={uploadStateForStep}
@@ -2014,58 +2041,13 @@ const StatusLookup = () => {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Side / Secondary Column */}
-          <div className='lg:col-span-5 xl:col-span-4 flex flex-col gap-5'>
-            {/* Quick Actions Card */}
-            <div className='overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-xs'>
-              <h3 className='text-sm font-bold text-[#0c2847] uppercase tracking-wider mb-3'>
-                {lang === 'hi' ? 'त्वरित सेवाएं' : 'Quick Services'}
-              </h3>
-              <div className='flex flex-col gap-2'>
-                <Link
-                  href={`/print-application?appNo=${encodeURIComponent(applicationNumber)}`}
-                  className='flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 text-xs font-semibold text-slate-800 transition'
-                >
-                  <span className='flex items-center gap-2'>
-                    <FileTextIcon className='size-4 text-[#0c2847]' />
-                    {lang === 'hi' ? 'आवेदन पत्र प्रिंट करें' : 'Print Application Form'}
-                  </span>
-                  <ExternalLinkIcon className='size-3.5 text-slate-400' />
-                </Link>
-
-                {effectiveStatus === 'allotted' && (
-                  <button
-                    type='button'
-                    onClick={downloadAllotmentLetter}
-                    disabled={isDownloadingAllotmentLetter}
-                    className='flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 hover:bg-emerald-50 text-xs font-semibold text-emerald-950 transition disabled:opacity-60'
-                  >
-                    <span className='flex items-center gap-2'>
-                      {isDownloadingAllotmentLetter ? (
-                        <Loader2Icon className='size-4 animate-spin text-emerald-700' />
-                      ) : (
-                        <DownloadIcon className='size-4 text-emerald-700' />
-                      )}
-                      {lang === 'hi' ? 'आवंटन पत्र डाउनलोड करें' : 'Download Allotment Letter'}
-                    </span>
-                  </button>
-                )}
-
-                <Link
-                  href='/guidelines'
-                  className='flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 text-xs font-semibold text-slate-800 transition'
-                >
-                  <span className='flex items-center gap-2'>
-                    <InfoIcon className='size-4 text-slate-600' />
-                    {lang === 'hi' ? 'नियम एवं दिशानिर्देश' : 'Rules & Guidelines'}
-                  </span>
-                  <ExternalLinkIcon className='size-3.5 text-slate-400' />
-                </Link>
-              </div>
-            </div>
-          </div>
+            <QueryTrailCard
+              lang={lang}
+              fieldQueryTrail={result.fieldQueryTrail}
+              queryHistory={result.queryHistory}
+              documents={result.documents}
+            />
         </div>
       )}
 

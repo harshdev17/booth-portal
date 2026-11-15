@@ -93,9 +93,11 @@ export async function POST(request: Request) {
         const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(app.application_number)}` : ''
         const isDirectAllotment = Boolean(app.direct_allotment_id)
 
-        const campaignOverride = isDirectAllotment
-          ? (process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER || 'direct_allotment_payment')
-          : (process.env.AISENSY_CAMPAIGN_REGISTRATION_PAYMENT_REMINDER || 'pay_now_activation')
+        const campaignOverride =
+          process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER ||
+          (isDirectAllotment
+            ? (process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT || 'direct_allotment_payment')
+            : (process.env.AISENSY_CAMPAIGN_REGISTRATION_PAYMENT_REMINDER || 'pay_now_activation'))
 
         // Sequential, not Promise.all — avoids bursting AiSensy's API with
         // dozens of simultaneous requests from one admin click.

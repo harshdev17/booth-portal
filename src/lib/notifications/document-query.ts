@@ -33,3 +33,40 @@ export async function notifyDocumentQuery(params: {
     email: params.email
   })
 }
+
+/**
+ * Sends ONE notification covering every field queried in a single
+ * multi-select "Raise Query on Multiple Fields" action, instead of one
+ * notification per field — per explicit request. Reuses the same
+ * 'document_query' category/template as notifyDocumentQuery() (same
+ * approved AiSensy template, 3 placeholders), since this is the same kind
+ * of "something needs correcting" message, just covering more than one
+ * item. A single-field call produces the exact same {{3}} text
+ * notifyDocumentQuery() would have ("<label>: <remarks>") — no numbering
+ * noise for the common one-field case; numbering only appears once there's
+ * more than one field in the same notification.
+ */
+export async function notifyFieldQueries(params: {
+  applicationId: number
+  applicationNumber: string
+  mobileNumber: string
+  email?: string | null
+  representativeName: string
+  remarks?: string
+  fields?: Array<{ label: string; remarks: string }>
+}): Promise<void> {
+  // Use the admin's remarks directly without field name prefixes, per user request.
+  // Meta/AiSensy template variables reject raw newline characters (\n) — replace with spaces.
+  const rawQuery = params.remarks?.trim() || params.fields?.[0]?.remarks?.trim() || ''
+  const queryText = rawQuery.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  await sendNotification({
+    category: 'document_query',
+    campaignOverride: process.env.AISENSY_CAMPAIGN_APPLICATION_FIELD_QUERY || 'igm_application_field_query',
+    destination: params.mobileNumber.startsWith('+') ? params.mobileNumber : `+91${params.mobileNumber}`,
+    userName: params.representativeName,
+    templateParams: [params.representativeName, params.applicationNumber, queryText],
+    applicationId: params.applicationId,
+    email: params.email
+  })
+}

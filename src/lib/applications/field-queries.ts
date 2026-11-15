@@ -218,6 +218,7 @@ export type FieldQueryRow = {
   status: 'open' | 'responded' | 'cancelled'
   previous_value: string | null
   new_value: string | null
+  applicant_notes?: string | null
   created_at: string
   responded_at: string | null
 }
@@ -234,9 +235,9 @@ function isMissingTable(error: unknown): boolean {
 export async function listFieldQueries(applicationId: number, runQuery: TransactionQuery = poolQuery): Promise<FieldQueryRow[]> {
   try {
     return await runQuery<FieldQueryRow[]>(
-      `SELECT id, field_key, field_label, remarks, status, previous_value, new_value, created_at, responded_at
+      `SELECT id, field_key, field_label, remarks, status, previous_value, new_value, applicant_notes, created_at, responded_at
        FROM application_field_queries
-       WHERE application_id = ? AND status IN ('open', 'responded')
+       WHERE application_id = ? AND status IN ('open', 'responded', 'cancelled')
        ORDER BY id DESC
        LIMIT 100`,
       [applicationId]
@@ -275,12 +276,49 @@ export type ApplicantFieldQuery = {
   createdAt: string
 }
 
+export type ApplicantFieldQueryTrail = {
+  id: number
+  fieldKey: string
+  label: string
+  labelHi: string | null
+  remarks: string
+  status: 'open' | 'responded'
+  previousValue: string | null
+  newValue: string | null
+  applicantNotes: string | null
+  createdAt: string
+  respondedAt: string | null
+}
+
+export async function listApplicantFieldQueryTrail(applicationId: number): Promise<ApplicantFieldQueryTrail[]> {
+  const all = await listFieldQueries(applicationId)
+
+  return all
+    .filter(q => q.status === 'open' || q.status === 'responded')
+    .map(q => {
+      const staticField = isStaticQueryableField(q.field_key) ? STATIC_QUERYABLE_FIELDS[q.field_key] : null
+
+      return {
+        id: q.id,
+        fieldKey: q.field_key,
+        label: q.field_label,
+        labelHi: staticField?.labelHi ?? null,
+        remarks: q.remarks,
+        status: q.status as 'open' | 'responded',
+        previousValue: q.previous_value,
+        newValue: q.new_value,
+        applicantNotes: q.applicant_notes ?? null,
+        createdAt: q.created_at,
+        respondedAt: q.responded_at
+      }
+    })
+}
+
 export async function getApplicantFieldQueries(applicationId: number): Promise<ApplicantFieldQuery[]> {
   const open = (await listFieldQueries(applicationId)).filter(q => q.status === 'open')
   const result: ApplicantFieldQuery[] = []
 
   for (const q of open) {
-     
     const field = await resolveQueryableField(poolQuery, applicationId, q.field_key)
 
     if (!field) continue

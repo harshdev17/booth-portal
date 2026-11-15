@@ -110,6 +110,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const formData = await request.formData()
     const documentKey = formData.get('documentKey')
     const file = formData.get('file')
+    const applicantNotes = (formData.get('notes') as string | null)?.trim() || null
 
     if (typeof documentKey !== 'string' || !(file instanceof File)) {
       return NextResponse.json({ error: 'Malformed upload.' }, { status: 400 })
@@ -227,14 +228,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       await tx(
         `INSERT INTO application_documents
-           (application_id, document_definition_id, original_filename, storage_path, mime_type, size_bytes, content_sha256)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+           (application_id, document_definition_id, original_filename, storage_path, mime_type, size_bytes, content_sha256, reupload_notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            original_filename = VALUES(original_filename),
            storage_path = VALUES(storage_path),
            mime_type = VALUES(mime_type),
            size_bytes = VALUES(size_bytes),
            content_sha256 = VALUES(content_sha256),
+           reupload_notes = VALUES(reupload_notes),
            verification_status = 'pending',
            verification_remarks = NULL,
            verified_by_user_id = NULL,
@@ -250,7 +252,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           storagePath,
           detectedType,
           buffer.length,
-          contentHash
+          contentHash,
+          applicantNotes
         ]
       )
     })
@@ -296,7 +299,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       module: 'applications',
       entityType: 'application',
       entityId: String(applicationId),
-      newValue: { documentKey, mimeType: detectedType, sizeBytes: buffer.length },
+      newValue: { documentKey, mimeType: detectedType, sizeBytes: buffer.length, applicantNotes },
       ipAddress
     })
 

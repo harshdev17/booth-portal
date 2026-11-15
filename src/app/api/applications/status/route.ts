@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { getSession } from '@/lib/auth/session'
 import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
-import { getApplicantFieldQueries } from '@/lib/applications/field-queries'
+import { getApplicantFieldQueries, listApplicantFieldQueryTrail } from '@/lib/applications/field-queries'
 import { isTransientConnectionError, query } from '@/lib/db/client'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
@@ -233,13 +233,16 @@ async function handleStatusLookup(request: Request, requestId: string): Promise<
         maxSizeBytes: number
         verificationStatus: string
         verificationRemarks: string | null
+        reuploadNotes: string | null
+        reuploadedAt: string | null
         originalFilename: string | null
       }>
     >(
       `SELECT ad.id AS documentId, cdd.document_key AS documentKey, cdd.label, cdd.label_hi AS labelHi,
               cdd.is_required AS isRequired, cdd.allowed_mime_types AS allowedMimeTypes, cdd.max_size_bytes AS maxSizeBytes,
               ad.verification_status AS verificationStatus,
-              ad.verification_remarks AS verificationRemarks, ad.original_filename AS originalFilename
+              ad.verification_remarks AS verificationRemarks, ad.reupload_notes AS reuploadNotes,
+              ad.reuploaded_at AS reuploadedAt, ad.original_filename AS originalFilename
        FROM category_document_definitions cdd
        LEFT JOIN application_documents ad
          ON ad.document_definition_id = cdd.id AND ad.application_id = ?
@@ -263,13 +266,19 @@ async function handleStatusLookup(request: Request, requestId: string): Promise<
     >(
       `(SELECT NULL AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
         FROM audit_logs al
-        WHERE al.entity_type = 'application' AND al.entity_id = ? AND al.action = 'application.query_raised')
+        WHERE al.entity_type = 'application' AND al.entity_id = ? AND al.action = 'application.query_raised'
+          AND JSON_EXTRACT(al.new_value, '$.remarks') IS NOT NULL
+          AND JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) != 'null'
+          AND TRIM(JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks'))) != '')
        UNION ALL
        (SELECT cdd.label AS documentLabel, JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) AS remarks, al.created_at AS createdAt
         FROM audit_logs al
         JOIN application_documents ad ON ad.id = al.entity_id
         JOIN category_document_definitions cdd ON cdd.id = ad.document_definition_id
-        WHERE al.entity_type = 'application_document' AND al.action = 'document.query' AND ad.application_id = ?)
+        WHERE al.entity_type = 'application_document' AND al.action = 'document.query' AND ad.application_id = ?
+          AND JSON_EXTRACT(al.new_value, '$.remarks') IS NOT NULL
+          AND JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks')) != 'null'
+          AND TRIM(JSON_UNQUOTE(JSON_EXTRACT(al.new_value, '$.remarks'))) != '')
        ORDER BY createdAt DESC`,
       [String(application.id), application.id]
     )
@@ -296,7 +305,8 @@ async function handleStatusLookup(request: Request, requestId: string): Promise<
       gstPercent: application.gst_percent ? Number(application.gst_percent) : null,
       submittedAt: application.submitted_at,
       documents,
-      fieldQueries: await getApplicantFieldQueries(application.id)
+      fieldQueries: await getApplicantFieldQueries(application.id),
+      fieldQueryTrail: await listApplicantFieldQueryTrail(application.id)
     })
   } catch (error) {
     logServerError('api.applications.status', error, { requestId })

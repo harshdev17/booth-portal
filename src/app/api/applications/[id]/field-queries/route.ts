@@ -18,7 +18,8 @@ const respondSchema = z.object({
       })
     )
     .min(1)
-    .max(25)
+    .max(25),
+  notes: z.string().max(1000).optional()
 })
 
 class FieldValidationError extends Error {
@@ -108,11 +109,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await writeFieldValue(q, applicationId, open.field_key, result.value)
 
          
+        const applicantNotes = parsed.data.notes?.trim() || null
+
         await q(
           `UPDATE application_field_queries
-           SET status = 'responded', previous_value = ?, new_value = ?, responded_at = NOW()
+           SET status = 'responded', previous_value = ?, new_value = ?, applicant_notes = ?, responded_at = NOW()
            WHERE id = ?`,
-          [field.currentValue, result.value, answer.queryId]
+          [field.currentValue, result.value, applicantNotes, answer.queryId]
         )
 
         applied.push({
@@ -164,6 +167,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       previousValue: { fields: changes.applied.map(c => ({ fieldKey: c.fieldKey, value: c.previous })) },
       newValue: {
         fields: changes.applied.map(c => ({ fieldKey: c.fieldKey, fieldLabel: c.fieldLabel, value: c.next })),
+        applicantNotes: parsed.data.notes?.trim() || null,
         returnedToReview: changes.returnedToReview
       },
       ipAddress

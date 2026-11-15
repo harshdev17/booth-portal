@@ -132,6 +132,168 @@ type StallLookup = {
   allotted_to_application_id: number | null
 }
 
+export type ResultPreviewRow = {
+  rowNumber: number
+  stallNumber: string
+  shopType: 'single' | 'double'
+  direction: string | null
+  categoryName: string
+  applicationNumber: string
+  applicantName: string | null
+  fatherName: string | null
+  isPaymentRequired: boolean
+  isNewStall: boolean
+  isValid: boolean
+  issues: string[]
+}
+
+export type ResultSheetPreview = {
+  rows: ResultPreviewRow[]
+  totalCount: number
+  validCount: number
+  errorCount: number
+  newStallsCount: number
+  canStage: boolean
+}
+
+export async function previewResultSheet(rows: ResultSheetRow[]): Promise<ResultSheetPreview> {
+  if (rows.length === 0) {
+    return {
+      rows: [],
+      totalCount: 0,
+      validCount: 0,
+      errorCount: 0,
+      newStallsCount: 0,
+      canStage: false
+    }
+  }
+
+  const applications = await query<
+    Array<{
+      id: number
+      application_number: string
+      status: string
+      category_id: number
+      category_name: string
+      selection_method: string
+      representative_name: string
+      father_name: string
+      allotment_payment_enabled: number
+      allotment_amount_paise: number
+      existing_stall: string | null
+      existing_direct_allotment: number | null
+    }>
+  >(
+    `SELECT a.id, a.application_number, a.status, a.category_id, c.name AS category_name, c.selection_method,
+            a.representative_name, a.father_name, c.allotment_payment_enabled, c.allotment_amount_paise,
+            (SELECT su.stall_number FROM shop_units su WHERE su.allotted_to_application_id = a.id LIMIT 1) AS existing_stall,
+            (SELECT da.id FROM direct_allotments da WHERE da.application_id = a.id AND da.status = 'active' LIMIT 1) AS existing_direct_allotment
+     FROM applications a
+     JOIN categories c ON c.id = a.category_id
+     WHERE a.application_number IN (${rows.map(() => '?').join(', ')})`,
+    rows.map(r => r.applicationNumber)
+  )
+
+  const stalls = await query<StallLookup[]>(
+    `SELECT id, stall_number, category_id, status, allotted_to_application_id
+     FROM shop_units WHERE stall_number IN (${rows.map(() => '?').join(', ')})`,
+    rows.map(r => r.stallNumber)
+  )
+
+  const applicationByNumber = new Map(applications.map(a => [a.application_number.toUpperCase(), a]))
+  const stallByNumber = new Map(stalls.map(s => [s.stall_number.toLowerCase(), s]))
+
+  const stallCountInSheet = new Map<string, number>()
+  const appCountInSheet = new Map<string, number>()
+  for (const r of rows) {
+    const sKey = r.stallNumber.trim().toLowerCase()
+    const aKey = r.applicationNumber.trim().toUpperCase()
+    stallCountInSheet.set(sKey, (stallCountInSheet.get(sKey) ?? 0) + 1)
+    appCountInSheet.set(aKey, (appCountInSheet.get(aKey) ?? 0) + 1)
+  }
+
+  let validCount = 0
+  let errorCount = 0
+  let newStallsCount = 0
+
+  const previewRows: ResultPreviewRow[] = rows.map(row => {
+    const issues: string[] = []
+    const app = applicationByNumber.get(row.applicationNumber.trim().toUpperCase())
+    const stall = stallByNumber.get(row.stallNumber.trim().toLowerCase())
+
+    const sKey = row.stallNumber.trim().toLowerCase()
+    const aKey = row.applicationNumber.trim().toUpperCase()
+
+    if ((stallCountInSheet.get(sKey) ?? 0) > 1) {
+      issues.push(`Booth "${row.stallNumber}" appears multiple times in this sheet.`)
+    }
+    if ((appCountInSheet.get(aKey) ?? 0) > 1) {
+      issues.push(`Application "${row.applicationNumber}" appears multiple times in this sheet.`)
+    }
+
+    if (!app) {
+      issues.push(`Application "${row.applicationNumber}" not found in database.`)
+    } else {
+      if (app.status !== 'approved') {
+        issues.push(`Application status is "${app.status}" (must be "approved" to allot).`)
+      }
+      if (app.selection_method === 'auction') {
+        issues.push(`Category "${app.category_name}" uses auction allotment, not result declaration.`)
+      }
+      if (row.categoryName && row.categoryName.trim().toLowerCase() !== app.category_name.toLowerCase()) {
+        issues.push(`Sheet category "${row.categoryName}" does not match applicant category "${app.category_name}".`)
+      }
+      if (app.existing_stall || app.existing_direct_allotment) {
+        issues.push(`Applicant already allotted a stall (${app.existing_stall ? `Stall #${app.existing_stall}` : 'Direct Allotment'}).`)
+      }
+    }
+
+    let isNewStall = false
+    if (stall) {
+      if (app && stall.category_id !== app.category_id) {
+        issues.push(`Existing booth "${row.stallNumber}" belongs to a different category.`)
+      }
+      if (stall.status !== 'available' || stall.allotted_to_application_id !== null) {
+        issues.push(`Booth "${row.stallNumber}" is currently "${stall.status}" (not available).`)
+      }
+    } else {
+      isNewStall = true
+      newStallsCount++
+    }
+
+    const isValid = issues.length === 0
+    if (isValid) {
+      validCount++
+    } else {
+      errorCount++
+    }
+
+    return {
+      rowNumber: row.rowNumber,
+      stallNumber: row.stallNumber,
+      shopType: row.shopType,
+      direction: row.direction,
+      categoryName: app?.category_name ?? row.categoryName ?? '—',
+      applicationNumber: row.applicationNumber,
+      applicantName: app?.representative_name ?? null,
+      fatherName: app?.father_name ?? null,
+      isPaymentRequired: Boolean(app && app.allotment_payment_enabled && Number(app.allotment_amount_paise) > 0),
+      isNewStall,
+      isValid,
+      issues
+    }
+  })
+
+  return {
+    rows: previewRows,
+    totalCount: rows.length,
+    validCount,
+    errorCount,
+    newStallsCount,
+    canStage: errorCount === 0 && previewRows.length > 0
+  }
+}
+
 /**
  * Validates the sheet against live data and, only if every row is valid,
  * saves it as the pending result: creates any booth/stall that doesn't
@@ -142,7 +304,7 @@ type StallLookup = {
 export async function stageResultSheet(
   rows: ResultSheetRow[],
   uploadedByUserId: number
-): Promise<{ ok: true; batchId: string; rowCount: number; createdStalls: number } | { ok: false; errors: RowError[] }> {
+): Promise<{ ok: true; batchId: string; rowCount: number; createdStalls: number; createdStallNumbers: string[] } | { ok: false; errors: RowError[] }> {
   const applications = await query<ApplicationLookup[]>(
     `SELECT a.id, a.application_number, a.status, a.category_id, c.name AS category_name, c.selection_method,
             (SELECT su.stall_number FROM shop_units su WHERE su.allotted_to_application_id = a.id LIMIT 1) AS existing_stall,
@@ -206,10 +368,10 @@ export async function stageResultSheet(
 
   const batchId = randomUUID()
 
-  const createdStalls = await withTransaction(async q => {
+  const createdStallResult = await withTransaction(async q => {
     await q(`UPDATE result_declaration_rows SET status = 'discarded' WHERE status = 'pending'`)
 
-    let created = 0
+    const createdStallNumbers: string[] = []
 
     for (const row of rows) {
       const app = applicationByNumber.get(row.applicationNumber)!
@@ -224,7 +386,7 @@ export async function stageResultSheet(
         )
 
         stallId = inserted.insertId
-        created++
+        createdStallNumbers.push(row.stallNumber)
       }
 
        
@@ -235,10 +397,16 @@ export async function stageResultSheet(
       )
     }
 
-    return created
+    return { created: createdStallNumbers.length, createdStallNumbers }
   })
 
-  return { ok: true, batchId, rowCount: rows.length, createdStalls }
+  return {
+    ok: true,
+    batchId,
+    rowCount: rows.length,
+    createdStalls: createdStallResult.created,
+    createdStallNumbers: createdStallResult.createdStallNumbers
+  }
 }
 
 export type ResultRowView = {
@@ -419,6 +587,22 @@ export async function updatePendingRowApplication(
   return { ok: true as const }
 }
 
+export type ResultHistoryStallItem = {
+  stall: string
+  applicationNumber: string
+  applicantName?: string
+  categoryName?: string
+  isPaymentRequired?: boolean
+  isNewStall?: boolean
+}
+
+export type ResultHistoryDiff = {
+  addedBooths?: ResultHistoryStallItem[]
+  removedBooths?: ResultHistoryStallItem[]
+  changedBooths?: Array<{ stall: string; oldApp: string; newApp: string; oldName?: string; newName?: string }>
+  newBoothsCreated?: string[]
+}
+
 export type ResultHistoryEntry = {
   id: number
   action: string
@@ -426,6 +610,9 @@ export type ResultHistoryEntry = {
   previousValue: unknown
   newValue: unknown
   createdAt: string
+  entityId?: string | null
+  stalls?: ResultHistoryStallItem[]
+  diff?: ResultHistoryDiff
 }
 
 /**
@@ -434,10 +621,18 @@ export type ResultHistoryEntry = {
  * transparent trail shown on the Declare Result page.
  */
 export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
-  const rows = await query<
-    Array<{ id: number; action: string; actor_name: string | null; previous_value: unknown; new_value: unknown; created_at: string }>
+  const auditRows = await query<
+    Array<{
+      id: number
+      action: string
+      entity_id: string | null
+      actor_name: string | null
+      previous_value: unknown
+      new_value: unknown
+      created_at: string
+    }>
   >(
-    `SELECT al.id, al.action, u.full_name AS actor_name, al.previous_value, al.new_value, al.created_at
+    `SELECT al.id, al.action, al.entity_id, u.full_name AS actor_name, al.previous_value, al.new_value, al.created_at
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.actor_user_id
      WHERE al.action IN ('result.sheet_uploaded', 'result.row_updated', 'result.row_removed', 'result.declared')
@@ -445,8 +640,6 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
      LIMIT 200`
   )
 
-  // JSON columns usually arrive already parsed from mysql2; a string value
-  // (older drivers / edge cases) is parsed here.
   const parse = (value: unknown): unknown => {
     if (typeof value !== 'string') return value
 
@@ -457,14 +650,159 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
     }
   }
 
-  return rows.map(r => ({
-    id: r.id,
-    action: r.action,
-    actorName: r.actor_name,
-    previousValue: parse(r.previous_value),
-    newValue: parse(r.new_value),
-    createdAt: r.created_at
-  }))
+  // Find all batchIds referenced in audit logs
+  const batchIds = Array.from(
+    new Set(auditRows.map(r => r.entity_id).filter((id): id is string => typeof id === 'string' && id.length > 10))
+  )
+
+  const batchRowsMap = new Map<string, ResultHistoryStallItem[]>()
+  const newStallsByBatch = new Map<string, string[]>()
+
+  if (batchIds.length > 0) {
+    try {
+      const decRows = await query<
+        Array<{
+          batch_id: string
+          stall_number: string
+          shop_type: string
+          stall_created_at: string
+          application_number: string
+          representative_name: string
+          category_name: string
+          allotment_payment_enabled: number
+          allotment_amount_paise: number
+          staged_at: string
+        }>
+      >(
+        `SELECT r.batch_id, su.stall_number, su.shop_type, su.created_at AS stall_created_at,
+                a.application_number, a.representative_name, c.name AS category_name,
+                c.allotment_payment_enabled, c.allotment_amount_paise,
+                r.created_at AS staged_at
+         FROM result_declaration_rows r
+         JOIN shop_units su ON su.id = r.shop_unit_id
+         JOIN applications a ON a.id = r.application_id
+         JOIN categories c ON c.id = a.category_id
+         WHERE r.batch_id IN (${batchIds.map(() => '?').join(', ')})
+         ORDER BY su.stall_number ASC`,
+        batchIds
+      )
+
+      for (const row of decRows) {
+        const list = batchRowsMap.get(row.batch_id) ?? []
+        const isPaymentRequired = Boolean(row.allotment_payment_enabled && Number(row.allotment_amount_paise) > 0)
+
+        const stallCreatedTime = new Date(row.stall_created_at).getTime()
+        const stagedTime = new Date(row.staged_at).getTime()
+        const isNewStall = Math.abs(stallCreatedTime - stagedTime) < 30000
+
+        if (isNewStall) {
+          const newSet = newStallsByBatch.get(row.batch_id) ?? []
+          if (!newSet.includes(row.stall_number)) {
+            newSet.push(row.stall_number)
+            newStallsByBatch.set(row.batch_id, newSet)
+          }
+        }
+
+        list.push({
+          stall: row.stall_number,
+          applicationNumber: row.application_number,
+          applicantName: row.representative_name,
+          categoryName: row.category_name,
+          isPaymentRequired,
+          isNewStall
+        })
+        batchRowsMap.set(row.batch_id, list)
+      }
+    } catch {
+      // Safe fallback if table doesn't exist
+    }
+  }
+
+  // Compute diffs between sheet uploads chronologically (oldest to newest)
+  const uploadEntriesChronological = auditRows
+    .filter(r => r.action === 'result.sheet_uploaded')
+    .sort((a, b) => a.id - b.id)
+
+  const diffByAuditId = new Map<number, ResultHistoryDiff>()
+
+  for (let i = 0; i < uploadEntriesChronological.length; i++) {
+    const curr = uploadEntriesChronological[i]
+    const currBatchId = curr.entity_id
+    const currStalls = currBatchId ? batchRowsMap.get(currBatchId) ?? [] : []
+    const parsedNext = (parse(curr.new_value) as Record<string, unknown>) ?? {}
+    const createdFromAudit = Array.isArray(parsedNext.createdStallNumbers)
+      ? (parsedNext.createdStallNumbers as string[])
+      : null
+    const newBoothsCreated = createdFromAudit ?? (currBatchId ? newStallsByBatch.get(currBatchId) ?? [] : [])
+
+    if (i === 0) {
+      diffByAuditId.set(curr.id, {
+        addedBooths: currStalls.length > 0 ? currStalls : undefined,
+        newBoothsCreated: newBoothsCreated.length > 0 ? newBoothsCreated : undefined
+      })
+      continue
+    }
+
+    const prev = uploadEntriesChronological[i - 1]
+    const prevBatchId = prev.entity_id
+    const prevStalls = prevBatchId ? batchRowsMap.get(prevBatchId) ?? [] : []
+
+    const prevMap = new Map(prevStalls.map(s => [s.stall.toLowerCase(), s]))
+    const currMap = new Map(currStalls.map(s => [s.stall.toLowerCase(), s]))
+
+    const addedBooths = currStalls.filter(s => !prevMap.has(s.stall.toLowerCase()))
+    const removedBooths = prevStalls.filter(s => !currMap.has(s.stall.toLowerCase()))
+    const changedBooths: Array<{ stall: string; oldApp: string; newApp: string; oldName?: string; newName?: string }> = []
+
+    for (const currStall of currStalls) {
+      const p = prevMap.get(currStall.stall.toLowerCase())
+      if (p && p.applicationNumber.toUpperCase() !== currStall.applicationNumber.toUpperCase()) {
+        changedBooths.push({
+          stall: currStall.stall,
+          oldApp: p.applicationNumber,
+          newApp: currStall.applicationNumber,
+          oldName: p.applicantName,
+          newName: currStall.applicantName
+        })
+      }
+    }
+
+    diffByAuditId.set(curr.id, {
+      addedBooths: addedBooths.length > 0 ? addedBooths : undefined,
+      removedBooths: removedBooths.length > 0 ? removedBooths : undefined,
+      changedBooths: changedBooths.length > 0 ? changedBooths : undefined,
+      newBoothsCreated: newBoothsCreated.length > 0 ? newBoothsCreated : undefined
+    })
+  }
+
+  return auditRows.map(r => {
+    const prevVal = parse(r.previous_value)
+    const nextVal = parse(r.new_value)
+    const batchId = r.entity_id
+    let stalls = batchId ? batchRowsMap.get(batchId) : undefined
+
+    if ((!stalls || stalls.length === 0) && nextVal && typeof nextVal === 'object' && 'stalls' in (nextVal as object)) {
+      const nextStalls = (nextVal as { stalls?: Array<{ stall: string; applicationNumber: string }> }).stalls
+      if (Array.isArray(nextStalls)) {
+        stalls = nextStalls.map(s => ({
+          stall: s.stall,
+          applicationNumber: s.applicationNumber
+        }))
+      }
+    }
+
+    return {
+      id: r.id,
+      action: r.action,
+      actorName: r.actor_name,
+      previousValue: prevVal,
+      newValue: nextVal,
+      createdAt: r.created_at,
+      entityId: r.entity_id,
+      stalls,
+      diff: diffByAuditId.get(r.id)
+    }
+  })
 }
 
 type DeclareRow = {
@@ -639,9 +977,9 @@ async function notifyDeclaredApplicants(rows: Array<DeclareRow & { isPaymentRequ
       if (row.isPaymentRequired) {
         const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(row.application_number)}` : ''
 
-         
         await sendNotification({
           category: 'pay_now_activation',
+          campaignOverride: process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER || undefined,
           destination,
           userName: row.representative_name,
           templateParams: [row.representative_name, row.application_number, payLink],
@@ -649,6 +987,25 @@ async function notifyDeclaredApplicants(rows: Array<DeclareRow & { isPaymentRequ
           applicationId: row.application_id,
           email: row.email
         }).catch(error => logServerError('result.declare.notify.pay_now', error, { applicationId: row.application_id }))
+      } else {
+        const statusLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(row.application_number)}` : ''
+        const zeroFeeCampaign = process.env.AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT || 'zero_fee_allotment'
+
+        await sendNotification({
+          category: 'direct_allotment_confirmed',
+          campaignOverride: zeroFeeCampaign,
+          destination,
+          userName: row.representative_name,
+          templateParams: [
+            row.representative_name,
+            row.application_number,
+            row.stall_number,
+            statusLink
+          ],
+          buttonParam: row.application_number,
+          applicationId: row.application_id,
+          email: row.email
+        }).catch(error => logServerError('result.declare.notify.zero_fee', error, { applicationId: row.application_id }))
       }
     }
   }

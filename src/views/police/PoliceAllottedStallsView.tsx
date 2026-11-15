@@ -134,142 +134,105 @@ export default function PoliceAllottedStallsView({
                 </p>
               </div>
             ) : (
-              <table className='w-full text-left text-sm'>
-                <thead className='border-b bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider'>
+              <table className='w-full table-auto border-separate border-spacing-0 text-left text-sm'>
+                <thead className='border-b bg-muted/40 text-xs font-bold text-muted-foreground uppercase'>
                   <tr>
-                    <th className='py-3.5 px-4'>Booth/Stall</th>
-                    <th className='py-3.5 px-4'>App Number</th>
-                    <th className='py-3.5 px-4'>Allottee / Representative</th>
-                    <th className='py-3.5 px-4'>Category</th>
-                    <th className='py-3.5 px-4'>Address &amp; Police Station</th>
-                    <th className='py-3.5 px-4'>Contact Details</th>
-                    <th className='py-3.5 px-4'>Identity Status</th>
-                    <th className='py-3.5 px-4 text-right'>Action</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Booth / Stall</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>App Number</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Allottee / Representative</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Category</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Address &amp; Police Station</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Contact</th>
+                    <th className='py-3 px-4 whitespace-nowrap border-b border-slate-200'>Status</th>
+                    <th className='py-3 px-4 text-right whitespace-nowrap border-b border-slate-200'>Action</th>
                   </tr>
                 </thead>
-                <tbody className='divide-y'>
+                <tbody className='divide-y divide-slate-100'>
                   {allottedApps.map(item => {
                     const encodedId = encodeId(item.id)
 
                     return (
-                      <tr key={item.id} className='hover:bg-muted/30 transition group'>
+                      <tr key={item.id} className='hover:bg-muted/30 transition'>
                         {/* Stall Number */}
-                        <td className='py-3.5 px-4 font-mono font-bold text-sm text-[#0c2847]'>
-                          <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-[#0c2847] border border-blue-200 text-xs font-bold'>
-                            <StoreIcon className='size-3.5 text-blue-700' />
-                            <span>Stall #{item.stall_number}</span>
-                          </div>
-                          {item.direction && (
-                            <span className='block text-[11px] text-muted-foreground font-sans mt-0.5'>
-                              Facing: {item.direction}
-                            </span>
-                          )}
-                          {item.shop_type && (
-                            <span className='block text-[10px] text-muted-foreground font-sans'>
-                              Type: {item.shop_type}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Application Number */}
-                        <td className='py-3.5 px-4 font-mono text-xs font-bold text-[#0c2847]'>
-                          {item.application_number}
-                        </td>
-
-                        {/* Allottee & Organisation */}
-                        <td className='py-3.5 px-4'>
-                          <div className='font-bold text-[#0c2847] text-sm'>
-                            {item.representative_name}
-                          </div>
-                          {item.organisation_name && item.organisation_name !== '—' && (
-                            <div className='flex items-center gap-1 text-xs text-muted-foreground font-medium mt-0.5'>
-                              <BuildingIcon className='size-3 text-muted-foreground shrink-0' />
-                              <span>{item.organisation_name}</span>
-                            </div>
-                          )}
-                          <p className='text-xs text-muted-foreground mt-0.5'>S/O, D/O: {item.father_name}</p>
-                          {item.work_purpose && (
-                            <p className='text-[11px] text-muted-foreground line-clamp-1 italic max-w-xs mt-0.5' title={item.work_purpose}>
-                              Craft: {item.work_purpose}
+                        <td className='py-3 px-4 whitespace-nowrap'>
+                          <p className='font-mono font-bold text-[#0c2847] text-sm'>Stall #{item.stall_number}</p>
+                          {(item.direction || item.shop_type) && (
+                            <p className='text-[11px] font-sans font-normal text-muted-foreground capitalize mt-0.5'>
+                              {[item.direction ? `${item.direction} Facing` : null, item.shop_type ? item.shop_type : null].filter(Boolean).join(' · ')}
                             </p>
                           )}
                         </td>
 
-                        {/* Category */}
-                        <td className='py-3.5 px-4'>
-                          <div className='flex flex-wrap items-center gap-1.5'>
-                            <span className='inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800'>
-                              {item.category_name}
-                            </span>
-                            {Boolean(item.is_direct_allotment) ? (
-                              <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200'>
-                                Custom / Direct
-                              </span>
-                            ) : (
-                              <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200'>
-                                Commercial
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Address & Police Station */}
-                        <td className='py-3.5 px-4 text-xs text-slate-700'>
-                          <div className='flex items-start gap-1'>
-                            <MapPinIcon className='size-3.5 text-muted-foreground shrink-0 mt-0.5' />
-                            <div>
-                              <span className='font-semibold text-[#0c2847] block'>
-                                {item.district}, {item.state} {item.pin_code ? `- ${item.pin_code}` : ''}
-                              </span>
-                              {item.address && (
-                                <p className='text-[11px] text-muted-foreground line-clamp-1 max-w-xs mt-0.5' title={item.address}>
-                                  {item.address}
-                                </p>
-                              )}
-                              <p className='text-[11px] text-blue-900 font-semibold mt-1'>
-                                PS: {item.police_station_name}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Contact Details */}
-                        <td className='py-3.5 px-4 font-mono text-xs text-slate-800'>
-                          <div className='flex items-center gap-1.5'>
-                            <PhoneIcon className='size-3 text-muted-foreground' />
-                            <span className='font-medium'>+91 {item.mobile_number}</span>
-                          </div>
-                          {item.alternate_mobile && (
-                            <div className='flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5'>
-                              <span>Alt: +91 {item.alternate_mobile}</span>
-                            </div>
+                        {/* Application Number */}
+                        <td className='py-3.5 px-4 font-mono text-xs font-bold text-[#0c2847] whitespace-nowrap'>
+                          {item.id > 0 ? (
+                            <Link
+                              href={viewMode === 'admin' ? `/admin/applications/${encodedId}` : `/police/applications/${encodedId}`}
+                              className='hover:underline'
+                            >
+                              {item.application_number}
+                            </Link>
+                          ) : (
+                            item.application_number
                           )}
                         </td>
 
+                        {/* Allottee & Organisation */}
+                        <td className='py-3 px-4'>
+                          <p className='font-bold text-[#0c2847] text-sm'>{item.representative_name}</p>
+                          {item.organisation_name && item.organisation_name !== '—' && (
+                            <p className='text-xs text-muted-foreground truncate max-w-[220px]'>{item.organisation_name}</p>
+                          )}
+                          <p className='text-xs text-slate-500 mt-0.5'>S/O: {item.father_name}</p>
+                        </td>
+
+                        {/* Category */}
+                        <td className='py-3 px-4 whitespace-nowrap'>
+                          <span className='inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800'>
+                            {item.category_name}
+                          </span>
+                          {Boolean(item.is_direct_allotment) && (
+                            <span className='block text-[10px] font-semibold text-purple-700 mt-0.5'>Direct Allotment</span>
+                          )}
+                        </td>
+
+                        {/* Address & Police Station */}
+                        <td className='py-3 px-4 text-xs'>
+                          <p className='font-semibold text-slate-800'>{item.district}, {item.state}{item.pin_code ? ` - ${item.pin_code}` : ''}</p>
+                          {item.address && (
+                            <p className='text-muted-foreground truncate max-w-[220px] text-[11px] mt-0.5' title={item.address}>
+                              {item.address}
+                            </p>
+                          )}
+                          <p className='font-semibold text-blue-900 mt-0.5 text-[11px]'>
+                            PS: {item.police_station_name}
+                          </p>
+                        </td>
+
+                        {/* Contact Details */}
+                        <td className='py-3 px-4 font-mono text-xs text-slate-800 whitespace-nowrap'>
+                          <p className='font-medium text-slate-800'>+91 {item.mobile_number}</p>
+                          {item.alternate_mobile && (
+                            <p className='text-[11px] text-muted-foreground'>Alt: +91 {item.alternate_mobile}</p>
+                          )}
+                          <p className='text-[11px] font-mono text-slate-500 mt-0.5'>Aadhaar: •••• {item.aadhaar_last4}</p>
+                        </td>
+
                         {/* Identity Status */}
-                        <td className='py-3.5 px-4'>
-                          <div className='flex flex-col gap-1'>
-                            <span className='inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 w-fit'>
-                              <CheckCircle2Icon className='size-3 text-emerald-600' />
-                              Allotted
-                            </span>
-                            <span className='text-[10px] font-mono text-muted-foreground'>
-                              Aadhaar: •••• {item.aadhaar_last4}
-                            </span>
-                          </div>
+                        <td className='py-3 px-4 whitespace-nowrap'>
+                          <span className='inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800'>
+                            Allotted
+                          </span>
                         </td>
 
                         {/* Action */}
-                        <td className='py-3.5 px-4 text-right'>
+                        <td className='py-3 px-4 text-right whitespace-nowrap'>
                           {item.id > 0 ? (
-                            <Link href={viewMode === 'admin' ? `/admin/applications/${encodedId}` : `/police/applications/${encodedId}`}>
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                className='h-8 text-xs font-semibold text-[#0c2847] hover:bg-slate-50 flex items-center gap-1.5 ml-auto'
-                              >
-                                <EyeIcon className='size-3.5' /> Full Dossier
-                              </Button>
+                            <Link
+                              href={viewMode === 'admin' ? `/admin/applications/${encodedId}` : `/police/applications/${encodedId}`}
+                              className='inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#0c2847] hover:bg-slate-50 transition shadow-2xs'
+                            >
+                              <EyeIcon className='size-3.5 text-blue-700' /> Full Dossier
                             </Link>
                           ) : (
                             <span className='text-xs font-medium text-muted-foreground'>Direct Stall</span>

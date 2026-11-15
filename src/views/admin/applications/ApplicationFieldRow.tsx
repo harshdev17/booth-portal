@@ -17,6 +17,7 @@ export type FieldQuerySummary = {
   remarks: string
   previousValue: string | null
   newValue: string | null
+  applicantNotes?: string | null
 }
 
 type Props = {
@@ -188,8 +189,15 @@ const ApplicationFieldRow = ({
 
         {fieldQuery?.status === 'responded' && (
           <div className='mt-1.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs text-sky-900'>
-            <span className='font-bold'>Corrected by applicant</span> (query: {fieldQuery.remarks}). Previously:{' '}
-            <span className='font-semibold'>{fieldQuery.previousValue || '—'}</span>
+            <div>
+              <span className='font-bold'>Corrected by applicant</span> (query: {fieldQuery.remarks}). Previously:{' '}
+              <span className='font-semibold'>{fieldQuery.previousValue || '—'}</span>
+            </div>
+            {fieldQuery.applicantNotes && (
+              <p className='mt-1.5 rounded bg-white/80 p-1.5 text-slate-700 border border-sky-100'>
+                <span className='font-bold text-sky-950'>Applicant note:</span> {fieldQuery.applicantNotes}
+              </p>
+            )}
           </div>
         )}
       </div>

@@ -73,9 +73,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // "direct_allotment_payment" — NOT the same as the existing
     // gita_mahotsav_draw_payment / gita_mahotsav_direct_allotment_pay_iavxd
     // campaigns, despite the similar-sounding name.
-    const campaignOverride = isDirectAllotment
-      ? (process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER || 'direct_allotment_payment')
-      : (process.env.AISENSY_CAMPAIGN_REGISTRATION_PAYMENT_REMINDER || 'pay_now_activation')
+    const campaignOverride =
+      process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER ||
+      (isDirectAllotment
+        ? (process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT || 'direct_allotment_payment')
+        : (process.env.AISENSY_CAMPAIGN_REGISTRATION_PAYMENT_REMINDER || 'pay_now_activation'))
 
     // Fire notification in background so admin UI responds instantaneously (<100ms)
     // without waiting for Gmail SMTP and external WhatsApp API handshakes.

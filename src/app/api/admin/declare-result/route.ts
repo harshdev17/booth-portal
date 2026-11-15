@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { buildResultSheetTemplate, parseResultSheet, stageResultSheet } from '@/lib/allotment/declare-result'
+import { buildResultSheetTemplate, parseResultSheet, previewResultSheet, stageResultSheet } from '@/lib/allotment/declare-result'
 import { logAudit } from '@/lib/audit/log'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
@@ -21,19 +21,22 @@ export async function GET() {
 }
 
 /**
- * Uploads a result sheet (booth ↔ application number). Validates every row
- * against live data and, only if all are valid, saves it as the pending
- * result, replacing any earlier pending sheet. Nothing is assigned and no
- * one is notified until the result is declared.
+ * Uploads a result sheet (booth ↔ application number).
+ * If action === 'preview' or mode === 'validate', returns row-by-row preview with highlighted issues without saving.
+ * Otherwise, validates every row against live data and saves it as the pending result.
  */
 export async function POST(request: Request) {
   const session = await requirePermission('allotment:perform')
   const { ipAddress } = getRequestMeta(request)
 
+  let formData: FormData
   let file: FormDataEntryValue | null
+  let action: string | null
 
   try {
-    file = (await request.formData()).get('file')
+    formData = await request.formData()
+    file = formData.get('file')
+    action = (formData.get('action') as string) || (formData.get('mode') as string) || 'stage'
   } catch {
     return NextResponse.json({ error: 'Malformed upload.' }, { status: 400 })
   }
@@ -49,7 +52,28 @@ export async function POST(request: Request) {
   const parsed = parseResultSheet(await file.text())
 
   if (parsed.errors.length > 0) {
-    return NextResponse.json({ error: 'The sheet has errors. Nothing was saved.', rowErrors: parsed.errors }, { status: 400 })
+    return NextResponse.json(
+      { error: 'The sheet has formatting errors.', rowErrors: parsed.errors },
+      { status: 400 }
+    )
+  }
+
+  // Preview / Validate mode: returns row-level preview with detailed issues
+  if (action === 'preview' || action === 'validate') {
+    try {
+      const preview = await previewResultSheet(parsed.rows)
+
+      return NextResponse.json({
+        success: true,
+        preview: true,
+        filename: file.name,
+        ...preview
+      })
+    } catch (error) {
+      logServerError('api.admin.declare_result.preview', error)
+
+      return NextResponse.json({ error: 'Could not generate preview for sheet.' }, { status: 500 })
+    }
   }
 
   try {
@@ -67,7 +91,16 @@ export async function POST(request: Request) {
       entityType: 'result_batch',
       entityId: result.batchId,
       ipAddress,
-      newValue: { filename: file.name, rowCount: result.rowCount, createdStalls: result.createdStalls }
+      newValue: {
+        filename: file.name,
+        rowCount: result.rowCount,
+        createdStalls: result.createdStalls,
+        createdStallNumbers: result.createdStallNumbers,
+        stalls: parsed.rows.map(r => ({
+          stall: r.stallNumber,
+          applicationNumber: r.applicationNumber
+        }))
+      }
     })
 
     return NextResponse.json({ success: true, ...result })

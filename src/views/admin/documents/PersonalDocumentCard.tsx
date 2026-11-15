@@ -15,6 +15,7 @@ export type PersonalDocumentRow = {
   original_filename: string
   verification_status: string
   verification_remarks: string | null
+  reupload_notes?: string | null
   reuploaded_at: string | null
 }
 
@@ -60,6 +61,11 @@ const PersonalDocumentCard = ({
           <p className='text-xs text-muted-foreground'>{document.original_filename}</p>
           {document.verification_remarks && (
             <p className='mt-1 text-xs text-amber-700'>Remark: {document.verification_remarks}</p>
+          )}
+          {document.reupload_notes && (
+            <p className='mt-1 text-xs text-blue-800 font-medium'>
+              <span className='font-bold text-slate-800'>Applicant note:</span> {document.reupload_notes}
+            </p>
           )}
         </div>
 
