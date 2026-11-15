@@ -46,6 +46,17 @@ export class RazorpayApiError extends Error {
   }
 }
 
+// fetch has no default timeout; a stalled Razorpay call would otherwise hold
+// the request open indefinitely. Surfaced as RazorpayApiError so callers'
+// existing gateway-failure handling applies.
+async function razorpayFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) })
+  } catch {
+    throw new RazorpayApiError('Could not reach Razorpay. Please try again.')
+  }
+}
+
 /**
  * Creates a Razorpay order server-side. `amountPaise` must always be derived
  * from configuration (category fee) by the caller — never accepted from
@@ -59,7 +70,7 @@ export async function createRazorpayOrder(input: {
   receipt: string
   notes?: Record<string, string>
 }): Promise<RazorpayOrder> {
-  const response = await fetch(`${RAZORPAY_API_BASE}/orders`, {
+  const response = await razorpayFetch(`${RAZORPAY_API_BASE}/orders`, {
     method: 'POST',
     headers: {
       Authorization: getAuthHeader(),
@@ -153,7 +164,7 @@ export type RazorpayPayment = {
  * truth for what actually happened.
  */
 export async function fetchRazorpayOrderPayments(orderId: string): Promise<RazorpayPayment[]> {
-  const response = await fetch(`${RAZORPAY_API_BASE}/orders/${orderId}/payments`, {
+  const response = await razorpayFetch(`${RAZORPAY_API_BASE}/orders/${orderId}/payments`, {
     headers: { Authorization: getAuthHeader() }
   })
 

@@ -3,6 +3,7 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { NodeHttpHandler } from '@smithy/node-http-handler'
 
 /**
  * Cloudflare R2 (S3-compatible) storage for uploaded documents. Replaces the
@@ -38,7 +39,18 @@ function getR2Client(): S3Client {
   cachedClient = new S3Client({
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey }
+    credentials: { accessKeyId, secretAccessKey },
+
+    // The AWS SDK v3's default HTTP handler has no timeout at all — confirmed
+    // live (2026-11-15): a document preview request hung for ~325 seconds
+    // while R2 was slow to respond, with the Node process otherwise idle the
+    // whole time (normal CPU/memory) rather than any resource or DB problem.
+    // connectionTimeout bounds how long establishing the TCP connection to
+    // R2 can take; requestTimeout bounds the whole request once sent.
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      requestTimeout: 15_000
+    })
   })
 
   return cachedClient
