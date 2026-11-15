@@ -126,6 +126,12 @@ export const navItems: NavItem[] = [
         permission: 'allotment:perform'
       },
       {
+        icon: 'Megaphone',
+        label: 'Declare Result',
+        href: '/admin/declare-result',
+        permission: 'allotment:perform'
+      },
+      {
         icon: 'FileCheck2',
         label: 'Results',
         href: '/admin/results',

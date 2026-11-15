@@ -173,7 +173,7 @@ export function buildTemplateCsv(categoryNames: string[]): string {
 }
 
 /** Parses one CSV line respecting double-quoted fields (which may contain commas). */
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const fields: string[] = []
   let current = ''
   let inQuotes = false
