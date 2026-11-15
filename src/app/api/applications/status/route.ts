@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { getSession } from '@/lib/auth/session'
 import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
+import { getApplicantFieldQueries } from '@/lib/applications/field-queries'
 import { isTransientConnectionError, query } from '@/lib/db/client'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
@@ -294,7 +295,8 @@ async function handleStatusLookup(request: Request, requestId: string): Promise<
       feeBasePaise: application.fee_base_paise,
       gstPercent: application.gst_percent ? Number(application.gst_percent) : null,
       submittedAt: application.submitted_at,
-      documents
+      documents,
+      fieldQueries: await getApplicantFieldQueries(application.id)
     })
   } catch (error) {
     logServerError('api.applications.status', error, { requestId })

@@ -13,13 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { withPooledConnection } from '@/lib/db/client'
 import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { getApprovalChecklist } from '@/lib/applications/approval-checklist'
+import { isStaticQueryableField, listFieldQueries } from '@/lib/applications/field-queries'
 import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { logAudit } from '@/lib/audit/log'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { decodeId, encodeId } from '@/lib/security/opaque-id'
 import ApplicationAllotmentPaymentTab from '@/views/admin/applications/ApplicationAllotmentPaymentTab'
 import ApplicationDecisionActions from '@/views/admin/applications/ApplicationDecisionActions'
-import ApplicationFieldRow from '@/views/admin/applications/ApplicationFieldRow'
+import ApplicationFieldRow, { type FieldQuerySummary } from '@/views/admin/applications/ApplicationFieldRow'
 import ApplicationHistoryTab from '@/views/admin/applications/ApplicationHistoryTab'
 import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDownloads'
 import ApplicationRegistrationPaymentTab from '@/views/admin/applications/ApplicationRegistrationPaymentTab'
@@ -255,6 +256,8 @@ const ApplicationDetailPage = async ({
       [applicationId]
     )
 
+    const fieldQueryRows = await listFieldQueries(applicationId, q)
+
     const prevRows = await q<Array<{ id: number }>>(
       `SELECT applications.id FROM applications
        ${categoryFilterJoin}
@@ -277,6 +280,7 @@ const ApplicationDetailPage = async ({
       checkedFieldRows,
       documents,
       documentVersionRows,
+      fieldQueryRows,
       prevApplicationId: prevRows[0]?.id ?? null,
       nextApplicationId: nextRows[0]?.id ?? null
     }
@@ -440,8 +444,31 @@ const ApplicationDetailPage = async ({
     getCurrentUserPermissions()
   ])
 
-  const { app, fieldValues, checkedFieldRows, documents, documentVersionRows, prevApplicationId, nextApplicationId } =
-    connectionA
+  const {
+    app,
+    fieldValues,
+    checkedFieldRows,
+    documents,
+    documentVersionRows,
+    fieldQueryRows,
+    prevApplicationId,
+    nextApplicationId
+  } = connectionA
+
+  // Latest open-or-answered query per field (rows arrive newest first).
+  const fieldQueryByKey = new Map<string, FieldQuerySummary>()
+
+  for (const row of fieldQueryRows) {
+    if (fieldQueryByKey.has(row.field_key)) continue
+
+    fieldQueryByKey.set(row.field_key, {
+      id: row.id,
+      status: row.status === 'open' ? 'open' : 'responded',
+      remarks: row.remarks,
+      previousValue: row.previous_value,
+      newValue: row.new_value
+    })
+  }
 
   // Grouped by application_document_id so each document row can look up
   // its own previous versions (newest-superseded first, since the source
@@ -535,6 +562,16 @@ const ApplicationDetailPage = async ({
     (app.status === 'approved' || app.status === 'rejected') && !!permissions?.has('application:edit')
 
   const canVerifyDocuments = !!permissions?.has('document:verify')
+
+  // Field queries: same permission and same review-stage statuses as the
+  // document/application queries; identity fields (email, mobile, Aadhaar)
+  // are excluded — see STATIC_QUERYABLE_FIELDS in field-queries.ts.
+  const canRaiseFieldQueries =
+    canVerifyDocuments && ['under_review', 'payment_success', 'query_raised'].includes(app.status)
+
+  const canQueryField = (fieldKey: string) =>
+    canRaiseFieldQueries && (isStaticQueryableField(fieldKey) || fieldKey.startsWith('dynamic:'))
+
   const canEditApplication = !!permissions?.has('application:edit')
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
 
@@ -942,6 +979,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='representative_name'
+                  canQuery={canQueryField('representative_name')}
+                  fieldQuery={fieldQueryByKey.get('representative_name')}
                   label='Representative Name'
                   value={app.representative_name}
                   canCheck={canVerifyDocuments}
@@ -950,6 +989,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='father_name'
+                  canQuery={canQueryField('father_name')}
+                  fieldQuery={fieldQueryByKey.get('father_name')}
                   label="Father's Name"
                   value={app.father_name}
                   canCheck={canVerifyDocuments}
@@ -959,6 +1000,8 @@ const ApplicationDetailPage = async ({
                   <ApplicationFieldRow
                     applicationId={id}
                     fieldKey='organisation_name'
+                    canQuery={canQueryField('organisation_name')}
+                    fieldQuery={fieldQueryByKey.get('organisation_name')}
                     label='Organisation / Firm Name'
                     value={app.organisation_name}
                     canCheck={canVerifyDocuments}
@@ -968,6 +1011,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='aadhaar_number'
+                  canQuery={canQueryField('aadhaar_number')}
+                  fieldQuery={fieldQueryByKey.get('aadhaar_number')}
                   label='Aadhaar Number'
                   value={`${aadhaarNumber.slice(0, 4)}-${aadhaarNumber.slice(4, 8)}-${aadhaarNumber.slice(8, 12)}`}
                   mono
@@ -988,6 +1033,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='email'
+                  canQuery={canQueryField('email')}
+                  fieldQuery={fieldQueryByKey.get('email')}
                   label='Email'
                   value={app.email}
                   canCheck={canVerifyDocuments}
@@ -996,6 +1043,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='mobile_number'
+                  canQuery={canQueryField('mobile_number')}
+                  fieldQuery={fieldQueryByKey.get('mobile_number')}
                   label='WhatsApp Number'
                   value={app.mobile_number}
                   mono
@@ -1005,6 +1054,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='alternate_mobile'
+                  canQuery={canQueryField('alternate_mobile')}
+                  fieldQuery={fieldQueryByKey.get('alternate_mobile')}
                   label='Alternate Mobile'
                   value={app.alternate_mobile ?? '—'}
                   mono
@@ -1014,6 +1065,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='pin_code'
+                  canQuery={canQueryField('pin_code')}
+                  fieldQuery={fieldQueryByKey.get('pin_code')}
                   label='PIN Code'
                   value={app.pin_code}
                   mono
@@ -1023,6 +1076,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='address'
+                  canQuery={canQueryField('address')}
+                  fieldQuery={fieldQueryByKey.get('address')}
                   label='Address'
                   value={app.address}
                   full
@@ -1032,6 +1087,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='district'
+                  canQuery={canQueryField('district')}
+                  fieldQuery={fieldQueryByKey.get('district')}
                   label='District'
                   value={app.district}
                   canCheck={canVerifyDocuments}
@@ -1040,6 +1097,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='state'
+                  canQuery={canQueryField('state')}
+                  fieldQuery={fieldQueryByKey.get('state')}
                   label='State'
                   value={app.state}
                   canCheck={canVerifyDocuments}
@@ -1048,6 +1107,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='police_station_name'
+                  canQuery={canQueryField('police_station_name')}
+                  fieldQuery={fieldQueryByKey.get('police_station_name')}
                   label='Police Station Name'
                   value={app.police_station_name}
                   canCheck={canVerifyDocuments}
@@ -1056,6 +1117,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='police_station_address'
+                  canQuery={canQueryField('police_station_address')}
+                  fieldQuery={fieldQueryByKey.get('police_station_address')}
                   label='Police Station Address'
                   value={app.police_station_address}
                   canCheck={canVerifyDocuments}
@@ -1077,6 +1140,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='category'
+                  canQuery={canQueryField('category')}
+                  fieldQuery={fieldQueryByKey.get('category')}
                   label='Category'
                   value={app.category_name}
                   canCheck={canVerifyDocuments}
@@ -1085,6 +1150,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='selection_method'
+                  canQuery={canQueryField('selection_method')}
+                  fieldQuery={fieldQueryByKey.get('selection_method')}
                   label='Selection Method'
                   value={app.selection_method}
                   canCheck={canVerifyDocuments}
@@ -1093,6 +1160,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='shop_option'
+                  canQuery={canQueryField('shop_option')}
+                  fieldQuery={fieldQueryByKey.get('shop_option')}
                   label='Booth/Stall Option'
                   value={app.shop_option_label ?? '—'}
                   canCheck={canVerifyDocuments}
@@ -1101,6 +1170,8 @@ const ApplicationDetailPage = async ({
                 <ApplicationFieldRow
                   applicationId={id}
                   fieldKey='submitted_at'
+                  canQuery={canQueryField('submitted_at')}
+                  fieldQuery={fieldQueryByKey.get('submitted_at')}
                   label='Submitted At'
                   value={
                     app.submitted_at
@@ -1114,6 +1185,8 @@ const ApplicationDetailPage = async ({
                   <ApplicationFieldRow
                     applicationId={id}
                     fieldKey='work_purpose'
+                    canQuery={canQueryField('work_purpose')}
+                    fieldQuery={fieldQueryByKey.get('work_purpose')}
                     label='Purpose of Work'
                     value={app.work_purpose}
                     full
@@ -1125,6 +1198,8 @@ const ApplicationDetailPage = async ({
                   <ApplicationFieldRow
                     applicationId={id}
                     fieldKey='achievement_experience'
+                    canQuery={canQueryField('achievement_experience')}
+                    fieldQuery={fieldQueryByKey.get('achievement_experience')}
                     label='Achievements / Experience'
                     value={app.achievement_experience}
                     full
@@ -1136,6 +1211,8 @@ const ApplicationDetailPage = async ({
                   <ApplicationFieldRow
                     applicationId={id}
                     fieldKey='remarks'
+                    canQuery={canQueryField('remarks')}
+                    fieldQuery={fieldQueryByKey.get('remarks')}
                     label='Applicant Remarks'
                     value={app.remarks}
                     full
@@ -1172,6 +1249,8 @@ const ApplicationDetailPage = async ({
                           <ApplicationFieldRow
                             applicationId={id}
                             fieldKey={fieldKey}
+                            canQuery={canQueryField(fieldKey)}
+                            fieldQuery={fieldQueryByKey.get(fieldKey)}
                             label={fv.label}
                             value={fv.value}
                             full={isFull}

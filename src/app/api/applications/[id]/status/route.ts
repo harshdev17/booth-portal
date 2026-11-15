@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { verifyAccessToken } from '@/lib/applications/access-token'
+import { getApplicantFieldQueries } from '@/lib/applications/field-queries'
 import { query } from '@/lib/db/client'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -159,7 +160,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       feeBasePaise: application.fee_base_paise,
       gstPercent: application.gst_percent ? Number(application.gst_percent) : null,
       submittedAt: application.submitted_at,
-      documents
+      documents,
+      fieldQueries: await getApplicantFieldQueries(application.id)
     })
   } catch (error) {
     logServerError('api.applications.status.refresh', error, { applicationId })

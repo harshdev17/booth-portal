@@ -37,6 +37,7 @@ import { getDocumentStatusConfig } from '@/lib/applications/status-config'
 import { downloadBlob } from '@/lib/browser/download-blob'
 import DocumentsStep, { type DocumentUploadState } from '@/views/public/apply/DocumentsStep'
 import type { CategoryDocumentDto } from '@/views/public/apply/types'
+import FieldCorrectionsCard, { type FieldQueryForApplicant } from '@/views/public/status/FieldCorrectionsCard'
 import { clearStatusSession, readStatusSession, storeStatusSession } from '@/views/public/status/status-session'
 
 const RAZORPAY_CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
@@ -123,6 +124,7 @@ type StatusResult = {
   gstPercent: number | null
   submittedAt: string | null
   documents: DocumentRow[]
+  fieldQueries?: FieldQueryForApplicant[]
 }
 
 const STATUS_LABEL: Record<string, { en: string; hi: string }> = {
@@ -318,6 +320,24 @@ const StatusLookup = () => {
       cancelled = true
     }
   }, [])
+
+  // Re-reads the status after the applicant corrects queried fields, keeping
+  // the same access token (the GET response doesn't re-issue one).
+  const reloadStatus = async () => {
+    const accessToken = result?.accessToken ?? readStatusSession()?.accessToken
+
+    if (!result || !accessToken) return
+
+    const response = await fetch(`/api/applications/${result.applicationId}/status`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+
+    if (!response.ok) return
+
+    const body = await response.json()
+
+    setResult({ ...body, accessToken })
+  }
 
   // Phase 1: application number triggers a WhatsApp OTP to mobile on file
   const requestOtpForLookup = async (values: LookupValues) => {
@@ -1022,7 +1042,12 @@ const StatusLookup = () => {
   // flipped to "Under Review" and hid the upload option for the 2 still
   // genuinely missing documents.
   const allDocumentsUploaded = result?.documents.every(doc => !!doc.verificationStatus) ?? false
-  const hasOpenQuery = !allDocumentsUploaded || (result?.documents.some(doc => doc.verificationStatus === 'query') ?? false)
+  const openFieldQueries = result?.fieldQueries ?? []
+
+  const hasOpenQuery =
+    !allDocumentsUploaded ||
+    (result?.documents.some(doc => doc.verificationStatus === 'query') ?? false) ||
+    openFieldQueries.length > 0
 
   const effectiveStatus =
     result && result.status === 'query_raised' && !hasOpenQuery ? 'under_review' : (result?.status ?? '')
@@ -1260,6 +1285,17 @@ const StatusLookup = () => {
                         per explicit feedback (2026-11-03): a second or
                         third round of back-and-forth previously lost
                         everything before the most recent remark. */}
+                    {openFieldQueries.length > 0 && (
+                      <ul className='mt-2.5 flex flex-col gap-2'>
+                        {openFieldQueries.map(fq => (
+                          <li key={`field-${fq.id}`} className='rounded-lg bg-white/70 px-3 py-2 text-xs sm:text-sm text-amber-900'>
+                            <span className='mr-1.5 font-bold'>{lang === 'hi' && fq.labelHi ? fq.labelHi : fq.label}:</span>
+                            <span className='leading-relaxed'>{fq.remarks}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
                     {result.queryHistory && result.queryHistory.length > 0 ? (
                       <ul className='mt-2.5 flex flex-col gap-2'>
                         {result.queryHistory.map((entry, idx) => (
@@ -1277,7 +1313,7 @@ const StatusLookup = () => {
                           </li>
                         ))}
                       </ul>
-                    ) : (
+                    ) : openFieldQueries.length > 0 ? null : (
                       <p className='mt-2 text-xs sm:text-sm text-amber-900 leading-relaxed'>
                         {lang === 'hi'
                           ? 'समीक्षा टीम को एक सही दस्तावेज़ की आवश्यकता है। कृपया नीचे दिए गए अनुभाग में अपलोड करें।'
@@ -1285,13 +1321,25 @@ const StatusLookup = () => {
                       </p>
                     )}
 
-                    <a
-                      href='#documents-status'
-                      className='mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
-                    >
-                      <UploadIcon className='size-3.5' />
-                      {lang === 'hi' ? 'दस्तावेज़ अपलोड करने के लिए जाएं' : 'Go to Upload Documents'}
-                    </a>
+                    <div className='mt-3 flex flex-wrap gap-2'>
+                      {openFieldQueries.length > 0 && (
+                        <a
+                          href='#field-corrections'
+                          className='inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
+                        >
+                          {lang === 'hi' ? 'विवरण सुधारने के लिए जाएं' : 'Go to Correct Details'}
+                        </a>
+                      )}
+                      {(actionableDocuments.length > 0 || openFieldQueries.length === 0) && (
+                        <a
+                          href='#documents-status'
+                          className='inline-flex items-center gap-1.5 rounded-md bg-[#0c2847] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#071a2f] transition'
+                        >
+                          <UploadIcon className='size-3.5' />
+                          {lang === 'hi' ? 'दस्तावेज़ अपलोड करने के लिए जाएं' : 'Go to Upload Documents'}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1883,6 +1931,17 @@ const StatusLookup = () => {
                 main column (was the narrow sidebar) per a further request
                 (2026-11-03) — DocumentsStep's table layout needs more width
                 than the sidebar column gives it; labels were truncating. */}
+            {effectiveStatus === 'query_raised' && openFieldQueries.length > 0 && (
+              <FieldCorrectionsCard
+                key={openFieldQueries.map(q => q.id).join(',')}
+                applicationId={result.applicationId}
+                accessToken={result.accessToken ?? readStatusSession()?.accessToken ?? null}
+                queries={openFieldQueries}
+                lang={lang}
+                onSaved={reloadStatus}
+              />
+            )}
+
             {result.documents.length > 0 && (
               <div id='documents-status' className='overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs scroll-mt-4'>
                 <div className='border-b border-slate-200 px-5 py-3.5 bg-slate-50/60'>

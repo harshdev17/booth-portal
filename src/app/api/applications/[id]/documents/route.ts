@@ -12,6 +12,7 @@ import { generateStoragePath, storeFile } from '@/lib/uploads/storage'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
+import { countOpenFieldQueries } from '@/lib/applications/field-queries'
 
 // Hard ceiling independent of any per-document-definition max, so an
 // oversized request is rejected before it is even fully buffered.
@@ -282,7 +283,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         [applicationId, application.category_id]
       )
 
-      if (Number(open.n) === 0 && Number(missing.n) === 0) {
+      // An open field query still needs the applicant (see field-queries.ts).
+      if (Number(open.n) === 0 && Number(missing.n) === 0 && (await countOpenFieldQueries(applicationId)) === 0) {
         await query(`UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`, [applicationId])
       }
     }

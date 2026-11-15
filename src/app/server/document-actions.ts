@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { z } from 'zod'
 
+import { countOpenFieldQueries } from '@/lib/applications/field-queries'
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
 import { notifyDocumentQuery } from '@/lib/notifications/document-query'
@@ -123,7 +124,9 @@ async function decideDocument(
       [current.application_id]
     )
 
-    if (Number(open.n) === 0) {
+    // An open field query (see field-queries.ts) still needs the applicant,
+    // so the application stays in query_raised until that is answered too.
+    if (Number(open.n) === 0 && (await countOpenFieldQueries(current.application_id)) === 0) {
       const result = await query<{ affectedRows: number }>(
         `UPDATE applications SET status = 'under_review' WHERE id = ? AND status = 'query_raised'`,
         [current.application_id]
