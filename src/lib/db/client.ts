@@ -115,7 +115,7 @@ const TRANSIENT_CONNECTION_ERROR_CODES = new Set([
   'ER_SERVER_SHUTDOWN'
 ])
 
-function isTransientConnectionError(error: unknown): boolean {
+export function isTransientConnectionError(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code
 
   return typeof code === 'string' && TRANSIENT_CONNECTION_ERROR_CODES.has(code)

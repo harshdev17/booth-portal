@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto'
+
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getSession } from '@/lib/auth/session'
 import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
-import { query } from '@/lib/db/client'
+import { isTransientConnectionError, query } from '@/lib/db/client'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
@@ -57,12 +59,46 @@ function maskMobile(mobile: string): string {
   return `XXXXXX${mobile.slice(-4)}`
 }
 
+// Hard ceiling for the whole request. Every dependency already has its own
+// timeout, but they add up (DB + WhatsApp + email); this guarantees the
+// applicant gets a clear answer instead of a request held open for minutes.
+// Work already in flight is not cancelled — it finishes or hits its own
+// timeout in the background.
+const ROUTE_DEADLINE_MS = 30_000
+
+export async function POST(request: Request) {
+  const requestId = randomUUID()
+  const startedAt = Date.now()
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const deadline = new Promise<Response>(resolve => {
+    timer = setTimeout(() => {
+      logServerError('api.applications.status.deadline', new Error('Route deadline exceeded'), {
+        requestId,
+        elapsedMs: Date.now() - startedAt
+      })
+      resolve(
+        NextResponse.json(
+          { error: 'The server is taking too long to respond. Please try again in a minute.', requestId },
+          { status: 503, headers: { 'Retry-After': '30' } }
+        )
+      )
+    }, ROUTE_DEADLINE_MS)
+  })
+
+  try {
+    return await Promise.race([handleStatusLookup(request, requestId), deadline])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Public status lookup by application number + WhatsApp OTP.
  * When accessed by an authenticated staff/admin session, OTP is bypassed so admins
  * can view anyone's status & download allotment letters directly.
  */
-export async function POST(request: Request) {
+async function handleStatusLookup(request: Request, requestId: string): Promise<Response> {
   const { ipAddress } = getRequestMeta(request)
   const rateLimitKey = ipAddress ?? 'unknown'
 
@@ -261,8 +297,15 @@ export async function POST(request: Request) {
       documents
     })
   } catch (error) {
-    logServerError('api.applications.status', error)
+    logServerError('api.applications.status', error, { requestId })
 
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    if (isTransientConnectionError(error)) {
+      return NextResponse.json(
+        { error: 'The server is busy right now. Please try again in a minute.', requestId },
+        { status: 503, headers: { 'Retry-After': '30' } }
+      )
+    }
+
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', requestId }, { status: 500 })
   }
 }

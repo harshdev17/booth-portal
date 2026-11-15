@@ -138,12 +138,19 @@ export async function sendNotification(original: SendTemplateMessageInput): Prom
     }
   })()
 
-  const [waOk, emailOk] = await Promise.all([waTask, emailTask])
-
   // Success if EITHER channel delivered — previously this returned waOk
   // alone, so a caller that gates on the result (e.g. the OTP flow) would
   // report failure to the applicant even when email went through fine,
   // whether because WhatsApp is intentionally off or just had a transient
   // failure.
-  return waOk || emailOk
+  //
+  // Once WhatsApp has delivered, the result is already known to be true, so
+  // return without waiting for email: a slow/unreachable SMTP server used to
+  // hold every OTP request open (nodemailer's default socket timeout is 10
+  // minutes — the ~600s /api/applications/status requests seen live). The
+  // email task keeps running in the background, is bounded by the SMTP
+  // timeouts in email.ts, and never rejects (it catches its own errors).
+  if (await waTask) return true
+
+  return emailTask
 }
