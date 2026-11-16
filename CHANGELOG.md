@@ -2,6 +2,36 @@
 
 All notable changes to this portal will be documented in this file.
 
+## v1.7.0 (2026-11-16)
+
+### Added
+- **Result Sheet Pre-Flight Preview & Issue Detection (`src/lib/allotment/declare-result.ts`, `src/app/api/admin/declare-result/route.ts`, `src/views/admin/declare-result/DeclareResultClient.tsx`)**:
+  - Added `previewResultSheet()` and `action: 'preview'` API mode to validate sheet rows before committing to database.
+  - Interactive Preview Modal displays all rows with live verification: highlights approved vs non-approved status, category matches, duplicate stalls/applications within sheet, occupied stalls, and new booths to be created.
+  - Blocks staging if any row contains errors, allowing admins to inspect issues directly before saving.
+- **Zero-Fee Allotment WhatsApp Campaign (`zero_fee_allotment`)**:
+  - Wired automated WhatsApp allotment confirmation for zero-fee/free categories (Artisan, SARAS, etc.) using `zero_fee_allotment` campaign.
+  - Passes applicant name, application number, stall number, and possession/status link parameters.
+  - Configured `AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT=zero_fee_allotment` in `.env.local` and `.env.example`.
+- **Candidate Full Dossier Redesign (`src/app/police/applications/[id]/page.tsx`)**:
+  - Redesigned police dossier view into an executive verification layout with official police badge, candidate banner card, unmasked monospace Aadhaar with inspection badge, designated police station callout box, category declarations, and document preview actions.
+- **Inventory Import Dialog Viewport & Preview Enhancements (`src/views/admin/inventory/ImportInventoryDialog.tsx`)**:
+  - Pinned modal footer to ensure "Import", "Validate", and "Cancel" buttons remain 100% visible across all viewport sizes.
+  - Converted active categories list into a collapsible accordion to conserve screen real estate.
+  - Added row-level preview table in the validation step.
+
+### Fixed
+- **Duplicate Booth Rows in Inventory (`src/views/admin/inventory/InventoryAdminPage.tsx`, `src/views/admin/inventory/InventoryTable.tsx`)**:
+  - **Bug**: Stalls with both registration fee and allotment payment appeared twice in `/admin/inventory` because `LEFT JOIN payments p` matched multiple payment purposes.
+  - **Fix**: Restricted join to latest allotment payment (`purpose = 'pay_now'`), guaranteeing exactly 1 row per shop unit.
+  - Cleanly displays `Free Allotment` badge for confirmed zero-fee allotments instead of registration fee.
+- **Police Dashboard Allotted Stalls Table Polish (`src/views/police/PoliceAllottedStallsView.tsx`)**:
+  - Replaced bulky blue badges with clean `font-mono font-bold text-[#0c2847]` typography matching `ApplicationsTableClient.tsx`.
+  - Filtered `/police/dashboard` and `/admin/police-stalls` to only include completed allotments (excluding candidates with pending payments until paid).
+  - Made application numbers clickable links directly opening the dossier.
+- **Nodemailer Socket Timeout Conflict Resolution (`src/lib/notifications/email.ts`)**:
+  - Resolved merge conflict in `email.ts` by standardizing `socketTimeout: 20_000` (20 seconds) for resilient outbound SMTP connections.
+
 ## v1.6.0 (2026-11-15)
 
 ### Added

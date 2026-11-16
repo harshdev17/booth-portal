@@ -100,7 +100,7 @@ const CorrigendumNoticeModal = () => {
 
   return (
     <div className='fixed inset-0 z-[100] flex items-center justify-center bg-[#071f3a]/60 px-4 py-8 backdrop-blur-sm'>
-      <div className='flex max-h-full w-full max-w-3xl flex-col rounded-2xl border border-[#ebe4db] bg-white shadow-2xl'>
+      <div className='flex max-h-full w-full max-w-4xl flex-col rounded-2xl border border-[#ebe4db] bg-white shadow-2xl'>
         <div className='overflow-y-auto p-7 sm:p-9'>
           <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
             {lang === 'hi' ? 'संशोधन सूचना-02' : 'Corrigendum Notice-02'}
