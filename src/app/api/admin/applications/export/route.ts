@@ -17,11 +17,22 @@ import { logServerError } from '@/lib/security/error-log'
 // actually exposed to that risk.
 export const dynamic = 'force-dynamic'
 
+// Must stay in sync with QUICK_FILTERS on the applications list page
+// (src/app/(admin)/admin/applications/page.tsx) — every tab key the list
+// page can put in ?status= needs an entry here too. 'approved' and
+// 'payment_pending' were missing (see .ai/CHANGELOG.md): an unrecognized
+// statusParam silently fell through to applying NO status filter at all,
+// so "Export Current Filtered View" from the "Approved for Draw" tab
+// exported every non-draft application regardless of status, not just the
+// 552 approved ones shown on screen. 'waitlist' isn't a real a.status value
+// (it's a draw_allocations lookup) and is handled separately below.
 const QUICK_FILTERS: Record<string, string[]> = {
   under_review: ['under_review', 'payment_success'],
+  approved: ['approved'],
   query_raised: ['query_raised'],
   selected: ['selected', 'allotted', 're_allotted'],
-  rejected: ['rejected', 'not_selected', 'cancelled']
+  rejected: ['rejected', 'not_selected', 'cancelled'],
+  payment_pending: ['payment_pending', 'payment_failed']
 }
 
 const CSV_COLUMNS: Array<{ key: string; label: string }> = [
@@ -77,7 +88,16 @@ export async function GET(request: NextRequest) {
     conditions.push(`a.status != 'draft'`)
 
     if (!isAll) {
-      if (statusParam && QUICK_FILTERS[statusParam]) {
+      if (statusParam === 'waitlist') {
+        // Not a real a.status value — matches the list page's own waitlist
+        // tab (same EXISTS subquery, see applications/page.tsx).
+        conditions.push(
+          `EXISTS (SELECT 1 FROM draw_allocations waitlist_allocation
+            WHERE waitlist_allocation.application_id = a.id
+              AND waitlist_allocation.allocation_type = 'waitlist'
+              AND waitlist_allocation.status = 'allotted')`
+        )
+      } else if (statusParam && QUICK_FILTERS[statusParam]) {
         const statuses = QUICK_FILTERS[statusParam]
         conditions.push(`a.status IN (${statuses.map(() => '?').join(', ')})`)
         params.push(...statuses)
