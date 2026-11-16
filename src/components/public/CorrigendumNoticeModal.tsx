@@ -35,6 +35,11 @@ const CorrigendumNoticeModal = () => {
     lang === 'hi'
       ? [
           {
+            particular: 'Social Organizations (पंजीकृत) Category के लिए आवेदन की अंतिम तारीख',
+            previous: '10 नवंबर 2026, शाम 5:00 बजे',
+            revised: '19 नवंबर 2026, रात 11:59 बजे तक'
+          },
+          {
             particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख',
             previous: '15 नवंबर 2026, शाम 5:00 बजे',
             revised: '19 नवंबर 2026, रात 11:59 बजे तक'
@@ -61,6 +66,11 @@ const CorrigendumNoticeModal = () => {
           }
         ]
       : [
+          {
+            particular: 'Application for Social Organizations (Registered) Category',
+            previous: '10 November 2026 (5:00 PM)',
+            revised: '19 November 2026 (up to 11:59 PM)'
+          },
           {
             particular: 'Application for Brand Promotion Category',
             previous: '15 November 2026 (5:00 PM)',
