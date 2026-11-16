@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   title: 'Payments — IGM Admin Portal'
 }
 
+const PURPOSE_LABELS: Record<string, string> = {
+  registration: 'Registration Fee',
+  pay_now: 'Allotment Payment',
+  auction_fee: 'Auction Participation Fee',
+  auction_final: 'Auction Final Payment'
+}
+
 const DEFAULT_PAGE_SIZE = 25
 
 const VALID_SORT_FIELDS: Record<string, string> = {
@@ -317,8 +324,8 @@ const PaymentsAdminPage = async ({
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.color}`}>
                           {cfg.label}
                         </span>
-                        <span className='rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 capitalize'>
-                          {payment.purpose.replace('_', ' ')}
+                        <span className='rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600'>
+                          {PURPOSE_LABELS[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')}
                         </span>
                       </div>
                       <p className='text-sm text-slate-700'>

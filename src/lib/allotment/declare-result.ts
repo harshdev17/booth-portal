@@ -2,10 +2,10 @@ import 'server-only'
 
 import { randomUUID } from 'node:crypto'
 
+import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
 import { buildCsv, parseCsvLine } from '@/lib/inventory/shop-units-csv'
-import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
 import { sendNotification } from '@/lib/notifications/service'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -179,13 +179,16 @@ export async function previewResultSheet(rows: ResultSheetRow[]): Promise<Result
       representative_name: string
       father_name: string
       allotment_payment_enabled: number
-      allotment_amount_paise: number
+      allotment_amount_paise: number | null
+      allotment_amount_single_paise: number | null
+      allotment_amount_double_paise: number | null
       existing_stall: string | null
       existing_direct_allotment: number | null
     }>
   >(
     `SELECT a.id, a.application_number, a.status, a.category_id, c.name AS category_name, c.selection_method,
             a.representative_name, a.father_name, c.allotment_payment_enabled, c.allotment_amount_paise,
+            c.allotment_amount_single_paise, c.allotment_amount_double_paise,
             (SELECT su.stall_number FROM shop_units su WHERE su.allotted_to_application_id = a.id LIMIT 1) AS existing_stall,
             (SELECT da.id FROM direct_allotments da WHERE da.application_id = a.id AND da.status = 'active' LIMIT 1) AS existing_direct_allotment
      FROM applications a
@@ -277,7 +280,9 @@ export async function previewResultSheet(rows: ResultSheetRow[]): Promise<Result
       applicationNumber: row.applicationNumber,
       applicantName: app?.representative_name ?? null,
       fatherName: app?.father_name ?? null,
-      isPaymentRequired: Boolean(app && app.allotment_payment_enabled && Number(app.allotment_amount_paise) > 0),
+      isPaymentRequired: Boolean(
+        app && app.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(app, row.shopType)) > 0
+      ),
       isNewStall,
       isValid,
       issues
@@ -413,21 +418,30 @@ export type ResultRowView = {
   id: number
   batchId: string
   stallNumber: string
-  shopType: string
+  shopType: 'single' | 'double'
   direction: string | null
   categoryName: string
   applicationNumber: string
   applicantName: string
   applicationStatus: string
   paymentRequired: boolean
+  allotmentAmountPaise: number | null
   declaredAt: string | null
+}
+
+type ResultRowViewQuery = Omit<ResultRowView, 'paymentRequired' | 'allotmentAmountPaise'> & {
+  allotmentPaymentEnabled: number
+  allotment_amount_paise: number | null
+  allotment_amount_single_paise: number | null
+  allotment_amount_double_paise: number | null
 }
 
 const ROW_VIEW_SELECT = `
   SELECT r.id, r.batch_id AS batchId, su.stall_number AS stallNumber, su.shop_type AS shopType, su.direction,
          c.name AS categoryName, a.application_number AS applicationNumber, a.representative_name AS applicantName,
          a.status AS applicationStatus,
-         (c.allotment_payment_enabled = 1 AND COALESCE(c.allotment_amount_paise, 0) > 0) AS paymentRequired,
+         c.allotment_payment_enabled AS allotmentPaymentEnabled,
+         c.allotment_amount_paise, c.allotment_amount_single_paise, c.allotment_amount_double_paise,
          r.declared_at AS declaredAt
   FROM result_declaration_rows r
   JOIN shop_units su ON su.id = r.shop_unit_id
@@ -438,19 +452,36 @@ function isMissingTable(error: unknown): boolean {
   return (error as { code?: string } | null)?.code === 'ER_NO_SUCH_TABLE'
 }
 
+function toResultRowView(row: ResultRowViewQuery): ResultRowView {
+  const allotmentAmountPaise = resolveAllotmentAmountPaise(row, row.shopType)
+
+  return {
+    id: row.id,
+    batchId: row.batchId,
+    stallNumber: row.stallNumber,
+    shopType: row.shopType,
+    direction: row.direction,
+    categoryName: row.categoryName,
+    applicationNumber: row.applicationNumber,
+    applicantName: row.applicantName,
+    applicationStatus: row.applicationStatus,
+    paymentRequired: Boolean(Number(row.allotmentPaymentEnabled) && Number(allotmentAmountPaise) > 0),
+    allotmentAmountPaise,
+    declaredAt: row.declaredAt
+  }
+}
+
 export async function listResultRows(): Promise<{ pending: ResultRowView[]; declared: ResultRowView[]; tableMissing: boolean }> {
   try {
-    const pending = await query<ResultRowView[]>(
+    const pending = await query<ResultRowViewQuery[]>(
       `${ROW_VIEW_SELECT} WHERE r.status = 'pending' ORDER BY c.name, su.stall_number`
     )
 
-    const declared = await query<ResultRowView[]>(
+    const declared = await query<ResultRowViewQuery[]>(
       `${ROW_VIEW_SELECT} WHERE r.status = 'declared' ORDER BY r.declared_at DESC, su.stall_number LIMIT 500`
     )
 
-    const toBool = (rows: ResultRowView[]) => rows.map(r => ({ ...r, paymentRequired: Boolean(Number(r.paymentRequired)) }))
-
-    return { pending: toBool(pending), declared: toBool(declared), tableMissing: false }
+    return { pending: pending.map(toResultRowView), declared: declared.map(toResultRowView), tableMissing: false }
   } catch (error) {
     if (isMissingTable(error)) return { pending: [], declared: [], tableMissing: true }
     throw error
@@ -809,6 +840,7 @@ type DeclareRow = {
   id: number
   shop_unit_id: number
   stall_number: string
+  shop_type: 'single' | 'double'
   stall_status: string
   stall_application_id: number | null
   application_id: number
@@ -819,6 +851,8 @@ type DeclareRow = {
   email: string
   allotment_payment_enabled: number
   allotment_amount_paise: number | null
+  allotment_amount_single_paise: number | null
+  allotment_amount_double_paise: number | null
 }
 
 export class DeclareResultError extends Error {
@@ -843,9 +877,11 @@ export class DeclareResultError extends Error {
 export async function declareResult(batchId: string, declaredByUserId: number, ipAddress?: string | null) {
   const applied = await withTransaction(async q => {
     const rows = await q<DeclareRow[]>(
-      `SELECT r.id, r.shop_unit_id, su.stall_number, su.status AS stall_status, su.allotted_to_application_id AS stall_application_id,
+      `SELECT r.id, r.shop_unit_id, su.stall_number, su.shop_type, su.status AS stall_status,
+              su.allotted_to_application_id AS stall_application_id,
               r.application_id, a.application_number, a.status AS application_status, a.representative_name,
-              a.mobile_number, a.email, c.allotment_payment_enabled, c.allotment_amount_paise
+              a.mobile_number, a.email, c.allotment_payment_enabled, c.allotment_amount_paise,
+              c.allotment_amount_single_paise, c.allotment_amount_double_paise
        FROM result_declaration_rows r
        JOIN shop_units su ON su.id = r.shop_unit_id
        JOIN applications a ON a.id = r.application_id
@@ -887,25 +923,26 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
     }
 
     for (const row of rows) {
-      const isPaymentRequired = Boolean(row.allotment_payment_enabled && Number(row.allotment_amount_paise) > 0)
+      const resolvedAmountPaise = resolveAllotmentAmountPaise(row, row.shop_type)
+      const isPaymentRequired = Boolean(row.allotment_payment_enabled && Number(resolvedAmountPaise) > 0)
 
-       
+
       await q(`UPDATE shop_units SET status = ?, allotted_to_application_id = ? WHERE id = ?`, [
         isPaymentRequired ? 'reserved' : 'allotted',
         row.application_id,
         row.shop_unit_id
       ])
 
-       
+
       await q(`UPDATE applications SET status = ? WHERE id = ? AND status = 'approved'`, [
         isPaymentRequired ? 'payment_required' : 'allotted',
         row.application_id
       ])
 
       if (isPaymentRequired) {
-        const amountPaise = Number(row.allotment_amount_paise)
+        const amountPaise = Number(resolvedAmountPaise)
 
-         
+
         await q(
           `INSERT INTO payments (application_id, purpose, amount_paise, status)
            VALUES (?, 'pay_now', ?, 'not_initiated')
@@ -923,7 +960,9 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
 
     return rows.map(row => ({
       ...row,
-      isPaymentRequired: Boolean(row.allotment_payment_enabled && Number(row.allotment_amount_paise) > 0)
+      isPaymentRequired: Boolean(
+        row.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(row, row.shop_type)) > 0
+      )
     }))
   })
 
@@ -965,25 +1004,15 @@ async function notifyDeclaredApplicants(rows: Array<DeclareRow & { isPaymentRequ
       const destination = row.mobile_number.startsWith('+') ? row.mobile_number : `+91${row.mobile_number}`
 
        
-      await notifyApplicationStatusChange({
-        applicationId: row.application_id,
-        applicationNumber: row.application_number,
-        mobileNumber: row.mobile_number,
-        email: row.email,
-        representativeName: row.representative_name,
-        newStatus: row.isPaymentRequired ? 'payment_required' : 'allotted'
-      }).catch(error => logServerError('result.declare.notify.status', error, { applicationId: row.application_id }))
-
       if (row.isPaymentRequired) {
         const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(row.application_number)}` : ''
 
         await sendNotification({
           category: 'pay_now_activation',
-          campaignOverride: process.env.AISENSY_CAMPAIGN_ALLOTMENT_PAYMENT_REMINDER || undefined,
+          campaignOverride: process.env.AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION || 'gita_mahotsav_draw_payment_dyhmi',
           destination,
           userName: row.representative_name,
           templateParams: [row.representative_name, row.application_number, payLink],
-          buttonParam: row.application_number,
           applicationId: row.application_id,
           email: row.email
         }).catch(error => logServerError('result.declare.notify.pay_now', error, { applicationId: row.application_id }))
@@ -1002,7 +1031,6 @@ async function notifyDeclaredApplicants(rows: Array<DeclareRow & { isPaymentRequ
             row.stall_number,
             statusLink
           ],
-          buttonParam: row.application_number,
           applicationId: row.application_id,
           email: row.email
         }).catch(error => logServerError('result.declare.notify.zero_fee', error, { applicationId: row.application_id }))

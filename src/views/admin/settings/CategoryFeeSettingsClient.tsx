@@ -44,6 +44,8 @@ type CategoryFeeItem = {
   auction_venue: string | null
   auction_venue_hi: string | null
   allotment_amount_paise?: number | null
+  allotment_amount_single_paise?: number | null
+  allotment_amount_double_paise?: number | null
   allotment_payment_enabled?: number | boolean
   allotment_payment_deadline_at?: string | null
   auction_participation_fee_paise?: number | null
@@ -367,6 +369,14 @@ export default function CategoryFeeSettingsClient({
       cat.allotment_amount_paise !== undefined && cat.allotment_amount_paise !== null
         ? Number(cat.allotment_amount_paise)
         : null
+    const amountSinglePaise =
+      cat.allotment_amount_single_paise !== undefined && cat.allotment_amount_single_paise !== null
+        ? Number(cat.allotment_amount_single_paise)
+        : null
+    const amountDoublePaise =
+      cat.allotment_amount_double_paise !== undefined && cat.allotment_amount_double_paise !== null
+        ? Number(cat.allotment_amount_double_paise)
+        : null
     const deadlineAt = cat.allotment_payment_deadline_at
       ? new Date(cat.allotment_payment_deadline_at).toISOString()
       : null
@@ -385,6 +395,8 @@ export default function CategoryFeeSettingsClient({
           categoryId: cat.id,
           enabled,
           amountPaise,
+          amountSinglePaise,
+          amountDoublePaise,
           deadlineAt
         })
       })
@@ -1075,7 +1087,7 @@ export default function CategoryFeeSettingsClient({
                                 </div>
 
                                 <div className='flex flex-col gap-1.5'>
-                                  <label className='text-xs font-semibold text-slate-700'>Allotment Amount (₹)</label>
+                                  <label className='text-xs font-semibold text-slate-700'>Default Amount (₹)</label>
                                   <div className='relative'>
                                     <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
                                     <Input
@@ -1127,6 +1139,61 @@ export default function CategoryFeeSettingsClient({
                                     )}
                                     Save Allotment Settings
                                   </Button>
+                                </div>
+                              </div>
+
+                              <div className='mt-1 border-t border-dashed border-slate-300 pt-3'>
+                                <p className='text-[11px] font-semibold text-slate-600 mb-2'>
+                                  Optional: different amount for Single vs. Double booths/stalls — leave either blank to fall back to the Default Amount above.
+                                </p>
+                                <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                                  <div className='flex flex-col gap-1.5'>
+                                    <label className='text-xs font-semibold text-slate-700'>Single Booth/Stall (₹)</label>
+                                    <div className='relative'>
+                                      <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+                                      <Input
+                                        type='number'
+                                        min={0}
+                                        value={
+                                          cat.allotment_amount_single_paise !== null && cat.allotment_amount_single_paise !== undefined
+                                            ? cat.allotment_amount_single_paise / 100
+                                            : ''
+                                        }
+                                        onChange={e => {
+                                          const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+                                          setCategories(prev =>
+                                            prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_single_paise: val } : c))
+                                          )
+                                        }}
+                                        placeholder='Same as default'
+                                        className='pl-7 h-9 text-sm'
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className='flex flex-col gap-1.5'>
+                                    <label className='text-xs font-semibold text-slate-700'>Double Booth/Stall (₹)</label>
+                                    <div className='relative'>
+                                      <span className='absolute left-3 top-2 text-xs font-bold text-muted-foreground'>₹</span>
+                                      <Input
+                                        type='number'
+                                        min={0}
+                                        value={
+                                          cat.allotment_amount_double_paise !== null && cat.allotment_amount_double_paise !== undefined
+                                            ? cat.allotment_amount_double_paise / 100
+                                            : ''
+                                        }
+                                        onChange={e => {
+                                          const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+                                          setCategories(prev =>
+                                            prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_double_paise: val } : c))
+                                          )
+                                        }}
+                                        placeholder='Same as default'
+                                        className='pl-7 h-9 text-sm'
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>

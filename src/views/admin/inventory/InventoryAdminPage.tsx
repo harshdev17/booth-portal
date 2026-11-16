@@ -101,7 +101,7 @@ export default async function InventoryAdminPage() {
   // All 3 queries share ONE pooled connection instead of each checking out
   // its own — see .ai/CHANGELOG.md 2026-11-14 (same pattern as the
   // dashboard/applications-list pages).
-  const [rows, categories, logs] = await withPooledConnection(query =>
+  const [rows, categories, logs, allotmentPaymentRows] = await withPooledConnection(query =>
     Promise.all([
     query<ShopUnitRow[]>(
       `SELECT su.id, su.stall_number, su.shop_type, c.id AS category_id, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
@@ -131,7 +131,16 @@ export default async function InventoryAdminPage() {
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
-       LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
+       LEFT JOIN (
+         SELECT da1.*
+         FROM direct_allotments da1
+         JOIN (
+           SELECT shop_unit_id, MAX(id) AS max_id
+           FROM direct_allotments
+           WHERE status = 'active'
+           GROUP BY shop_unit_id
+         ) da_max ON da_max.max_id = da1.id
+       ) da ON da.shop_unit_id = su.id
        LEFT JOIN (
          SELECT p1.application_id, p1.status, p1.amount_paise
          FROM payments p1
@@ -167,9 +176,14 @@ export default async function InventoryAdminPage() {
            ORDER BY al.created_at DESC
            LIMIT 30`
         )
-      : Promise.resolve([])
+      : Promise.resolve([]),
+    query<Array<{ count: number }>>(
+      `SELECT COUNT(*) AS count FROM payments WHERE purpose = 'pay_now' AND status = 'success'`
+    )
     ])
   )
+
+  const allotmentPaymentsCount = Number(allotmentPaymentRows[0]?.count ?? 0)
 
   const counts = rows.reduce(
     (acc, row) => {
@@ -288,7 +302,7 @@ export default async function InventoryAdminPage() {
         </div>
       </div>
 
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
         <Card className='shadow-xs border-slate-200/80'>
           <CardContent className='pt-5 pb-5'>
             <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
@@ -333,6 +347,18 @@ export default async function InventoryAdminPage() {
             <div className='flex items-baseline justify-between mt-1'>
               <p className='text-2xl font-black text-amber-700'>{reservedCount}</p>
               <span className='text-[11px] text-amber-700/80'>On Hold</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='shadow-xs border-teal-200/60 bg-teal-50/20'>
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-teal-800'>
+              Allotment Payments
+            </p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-teal-700'>{allotmentPaymentsCount}</p>
+              <span className='text-[11px] text-teal-700/80'>Fees Paid</span>
             </div>
           </CardContent>
         </Card>

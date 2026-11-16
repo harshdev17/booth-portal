@@ -249,6 +249,7 @@ const ResultTable = ({ rows, showDeclaredAt, actions }: { rows: ResultRowView[];
           <TableHead>Category</TableHead>
           <TableHead>Application No.</TableHead>
           <TableHead>Applicant</TableHead>
+          <TableHead>Stall Amount</TableHead>
           <TableHead>{showDeclaredAt ? 'Status' : 'On Declare'}</TableHead>
           {showDeclaredAt && <TableHead>Declared</TableHead>}
           {actions && <TableHead className='text-right'>Actions</TableHead>}
@@ -262,6 +263,15 @@ const ResultTable = ({ rows, showDeclaredAt, actions }: { rows: ResultRowView[];
             <TableCell>{row.categoryName}</TableCell>
             <TableCell className='font-mono text-xs'>{row.applicationNumber}</TableCell>
             <TableCell>{row.applicantName}</TableCell>
+            <TableCell className='text-xs'>
+              {/* Only shown when the category actually charges for this stall —
+                  a category with payment NOT enabled can still have a leftover/
+                  unrelated allotment_amount_paise value configured, which must
+                  never be displayed here as if it were being charged. */}
+              {row.paymentRequired && row.allotmentAmountPaise
+                ? `₹${(row.allotmentAmountPaise / 100).toLocaleString('en-IN')}`
+                : '—'}
+            </TableCell>
             <TableCell className='text-xs'>
               {showDeclaredAt
                 ? row.applicationStatus.replace(/_/g, ' ')

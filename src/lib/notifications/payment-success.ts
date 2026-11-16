@@ -33,6 +33,10 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
     if (amountPaise > 0) {
       await sendNotification({
         category: 'payment_confirmation',
+        campaignOverride:
+          process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
+          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
+          undefined,
         destination,
         userName,
         templateParams: [userName, application.application_number, String(amountPaise / 100)],
@@ -76,6 +80,10 @@ export async function notifyAllotmentPaymentSuccess(applicationId: number, amoun
     if (amountPaise > 0) {
       await sendNotification({
         category: 'payment_confirmation',
+        campaignOverride:
+          process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
+          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
+          undefined,
         destination,
         userName,
         templateParams: [userName, application.application_number, String(amountPaise / 100)],
@@ -120,6 +128,10 @@ export async function notifyAuctionFeePaymentSuccess(applicationId: number, amou
     if (amountPaise > 0) {
       await sendNotification({
         category: 'payment_confirmation',
+        campaignOverride:
+          process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
+          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
+          undefined,
         destination,
         userName,
         templateParams: [userName, application.application_number, String(amountPaise / 100)],

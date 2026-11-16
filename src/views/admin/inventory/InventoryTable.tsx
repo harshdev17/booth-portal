@@ -1901,7 +1901,7 @@ const InventoryTable = ({
                     )}
                   </button>
                 </TableHead>
-                {canManage && <TableHead className='text-right min-w-[160px]'>Actions</TableHead>}
+                {canManage && <TableHead className='text-right min-w-[190px]'>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1924,9 +1924,28 @@ const InventoryTable = ({
                   <TableCell>{row.direction ?? '—'}</TableCell>
                   <TableCell>
                     <div className='flex flex-col gap-1'>
-                      <span className='font-medium text-slate-800 dark:text-slate-200'>
-                        {row.emdAmountPaise !== null ? `₹${(row.emdAmountPaise / 100).toLocaleString('en-IN')}` : '—'}
-                      </span>
+                      {(() => {
+                        const amount =
+                          row.emdAmountPaise && row.emdAmountPaise > 0
+                            ? row.emdAmountPaise
+                            : row.paymentAmountPaise && row.paymentAmountPaise > 0
+                            ? row.paymentAmountPaise
+                            : null
+
+                        if (!row.isPaymentOverdue && !amount && row.status === 'allotted') {
+                          return (
+                            <Badge className='bg-slate-600 text-white text-[10px] px-1.5 py-0 w-fit font-medium'>
+                              Free Allotment
+                            </Badge>
+                          )
+                        }
+
+                        return (
+                          <span className='font-medium text-slate-800 dark:text-slate-200'>
+                            {amount ? `₹${(amount / 100).toLocaleString('en-IN')}` : '—'}
+                          </span>
+                        )
+                      })()}
                       {row.isPaymentOverdue && (
                         <Badge variant='destructive' className='bg-red-600 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-bold animate-pulse'>
                           <ClockIcon className='size-2.5' /> Overdue
@@ -1934,17 +1953,12 @@ const InventoryTable = ({
                       )}
                       {!row.isPaymentOverdue && (row.paymentStatus === 'success' || row.paymentStatus === 'paid') && (
                         <Badge className='bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-semibold'>
-                          <CheckCircle2Icon className='size-2.5' /> Paid (₹{((row.paymentAmountPaise || row.emdAmountPaise || 0) / 100).toLocaleString('en-IN')})
+                          <CheckCircle2Icon className='size-2.5' /> Paid (₹{(((row.paymentAmountPaise && row.paymentAmountPaise > 0 ? row.paymentAmountPaise : row.emdAmountPaise) || 0) / 100).toLocaleString('en-IN')})
                         </Badge>
                       )}
                       {!row.isPaymentOverdue && (row.paymentStatus === 'pending' || row.paymentStatus === 'initiated') && (
                         <Badge className='bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-semibold'>
                           <ClockIcon className='size-2.5' /> Pending
-                        </Badge>
-                      )}
-                      {!row.isPaymentOverdue && (row.paymentAmountPaise === 0 || !row.paymentAmountPaise) && row.status === 'allotted' && (
-                        <Badge className='bg-slate-600 text-white text-[10px] px-1.5 py-0 w-fit font-medium'>
-                          Free Allotment
                         </Badge>
                       )}
                     </div>
@@ -1986,7 +2000,7 @@ const InventoryTable = ({
                   </TableCell>
                   {canManage && (
                     <TableCell>
-                      <div className='flex flex-nowrap items-center gap-1 justify-end'>
+                      <div className='flex flex-nowrap items-center gap-1 justify-end min-w-[170px]'>
                         {/* Actions dropdown: Re-allocate, Cancel, Reminder, and the
                             Downloads (Application/Receipt/Letter) submenu items — grouped
                             into one menu so the row's visible buttons never wrap onto a
@@ -2140,34 +2154,34 @@ const InventoryTable = ({
                           <HistoryIcon className='size-3.5' />
                         </Button>
 
-                        {/* Edit & Delete: always visible, icon-only, for unallotted/uncancelled stalls */}
-                        {row.status !== 'allotted' && !row.isCancelled && (
-                          <>
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='icon'
-                              className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847] shrink-0'
-                              title='Edit Stall Details'
-                              onClick={() => openEditDialog(row)}
-                            >
-                              <PencilIcon className='size-3.5' />
-                            </Button>
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='icon'
-                              className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700 shrink-0'
-                              title='Delete Stall'
-                              onClick={() => {
-                                setError(null)
-                                setDeletingSingle(row)
-                              }}
-                            >
-                              <Trash2Icon className='size-3.5' />
-                            </Button>
-                          </>
-                        )}
+                        {/* Edit & Delete: always rendered (disabled, not hidden, for
+                            allotted/cancelled stalls) so every row keeps the same icon
+                            count and row heights stay consistent down the table. */}
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon'
+                          disabled={row.status === 'allotted' || row.isCancelled}
+                          className='size-7 text-muted-foreground hover:bg-slate-100 hover:text-[#0c2847] shrink-0 disabled:opacity-30'
+                          title={row.status === 'allotted' || row.isCancelled ? 'Cannot edit an allotted/cancelled stall' : 'Edit Stall Details'}
+                          onClick={() => openEditDialog(row)}
+                        >
+                          <PencilIcon className='size-3.5' />
+                        </Button>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon'
+                          disabled={row.status === 'allotted' || row.isCancelled}
+                          className='size-7 text-red-600 hover:bg-red-50 hover:text-red-700 shrink-0 disabled:opacity-30 disabled:text-red-600'
+                          title={row.status === 'allotted' || row.isCancelled ? 'Cannot delete an allotted/cancelled stall' : 'Delete Stall'}
+                          onClick={() => {
+                            setError(null)
+                            setDeletingSingle(row)
+                          }}
+                        >
+                          <Trash2Icon className='size-3.5' />
+                        </Button>
                       </div>
                     </TableCell>
                   )}

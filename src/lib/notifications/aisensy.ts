@@ -45,9 +45,26 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
 }
 
 function getCampaignName(category: NotificationCategory): string | null {
+  if (category === 'payment_confirmation') {
+    return (
+      process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
+      process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
+      null
+    )
+  }
+
+  if (category === 'pay_now_activation') {
+    return (
+      process.env.AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION ||
+      process.env.AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION ||
+      null
+    )
+  }
+
   if (category === 'direct_allotment_payment') {
     return (
       process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_PAYMENT ||
+      process.env.AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION ||
       process.env.AISENSY_CAMPAIGN_PAY_NOW_ACTIVATION ||
       null
     )
@@ -77,6 +94,7 @@ function getCampaignName(category: NotificationCategory): string | null {
 
   if (category === 'direct_allotment_confirmed') {
     return (
+      process.env.AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT ||
       process.env.AISENSY_CAMPAIGN_DIRECT_ALLOTMENT_CONFIRMED ||
       process.env.AISENSY_CAMPAIGN_STATUS_UPDATE ||
       null

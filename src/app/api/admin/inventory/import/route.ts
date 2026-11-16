@@ -396,6 +396,13 @@ export async function POST(request: Request) {
             if (appInsertResult) {
               const newAppId = appInsertResult.insertId
 
+              // Deactivate any previous active direct allotments for this stall
+              await txQuery(
+                `UPDATE direct_allotments SET status = 'cancelled', notes = 'Superseded by new bulk CSV direct allotment'
+                 WHERE shop_unit_id = ? AND status = 'active'`,
+                [shopUnitId]
+              )
+
               await txQuery(
                 `INSERT INTO direct_allotments (
                    category_id, shop_unit_id, allottee_name, contact_person,

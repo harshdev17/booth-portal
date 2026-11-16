@@ -9,10 +9,11 @@ All notable changes to this portal will be documented in this file.
   - Added `previewResultSheet()` and `action: 'preview'` API mode to validate sheet rows before committing to database.
   - Interactive Preview Modal displays all rows with live verification: highlights approved vs non-approved status, category matches, duplicate stalls/applications within sheet, occupied stalls, and new booths to be created.
   - Blocks staging if any row contains errors, allowing admins to inspect issues directly before saving.
-- **Zero-Fee Allotment WhatsApp Campaign (`zero_fee_allotment`)**:
-  - Wired automated WhatsApp allotment confirmation for zero-fee/free categories (Artisan, SARAS, etc.) using `zero_fee_allotment` campaign.
-  - Passes applicant name, application number, stall number, and possession/status link parameters.
-  - Configured `AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT=zero_fee_allotment` in `.env.local` and `.env.example`.
+- **WhatsApp Notification Triad for Allotment & Payment (`src/lib/notifications/aisensy.ts`, `src/lib/draw/draw-service.ts`, `src/lib/allotment/declare-result.ts`, `src/lib/notifications/payment-success.ts`)**:
+  - `AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION=gita_mahotsav_draw_payment_dyhmi`: Used whenever a candidate receives a booth allotment requiring payment (Lucky Draw & Result Declaration) to deliver the direct payment link.
+  - `AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT=zero_fee_allotment`: Used whenever a candidate receives a free/zero-fee stall allotment (Artisan, SARAS, Social Organizations, etc.) with booth number and status link.
+  - `AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION=gita_mahotsav_payment_confirmation_new`: Sent upon successful completion of allotment payment (`purpose = 'pay_now'`) to deliver payment receipt confirmation.
+  - Omitted extraneous `buttonParam` on body-text link templates to prevent Meta/AiSensy 400 Bad Request parameter mismatches.
 - **Candidate Full Dossier Redesign (`src/app/police/applications/[id]/page.tsx`)**:
   - Redesigned police dossier view into an executive verification layout with official police badge, candidate banner card, unmasked monospace Aadhaar with inspection badge, designated police station callout box, category declarations, and document preview actions.
 - **Inventory Import Dialog Viewport & Preview Enhancements (`src/views/admin/inventory/ImportInventoryDialog.tsx`)**:
@@ -21,14 +22,19 @@ All notable changes to this portal will be documented in this file.
   - Added row-level preview table in the validation step.
 
 ### Fixed
-- **Duplicate Booth Rows in Inventory (`src/views/admin/inventory/InventoryAdminPage.tsx`, `src/views/admin/inventory/InventoryTable.tsx`)**:
-  - **Bug**: Stalls with both registration fee and allotment payment appeared twice in `/admin/inventory` because `LEFT JOIN payments p` matched multiple payment purposes.
-  - **Fix**: Restricted join to latest allotment payment (`purpose = 'pay_now'`), guaranteeing exactly 1 row per shop unit.
-  - Cleanly displays `Free Allotment` badge for confirmed zero-fee allotments instead of registration fee.
-- **Police Dashboard Allotted Stalls Table Polish (`src/views/police/PoliceAllottedStallsView.tsx`)**:
-  - Replaced bulky blue badges with clean `font-mono font-bold text-[#0c2847]` typography matching `ApplicationsTableClient.tsx`.
-  - Filtered `/police/dashboard` and `/admin/police-stalls` to only include completed allotments (excluding candidates with pending payments until paid).
-  - Made application numbers clickable links directly opening the dossier.
+- **Suppressed Redundant Generic Status Update on Allotment (`src/lib/draw/draw-service.ts`, `src/lib/allotment/declare-result.ts`)**:
+  - **Bug**: Draw and Declare Result previously called `notifyApplicationStatusChange`, dispatching a generic `gita_mahotsav_status_update` ("Your status has been updated") before or instead of the proper allotment campaign.
+  - **Fix**: Removed generic status change notification; both draw and declare-result now route directly and exclusively to either `gita_mahotsav_draw_payment_dyhmi` (for fee-bearing categories) or `zero_fee_allotment` (for zero-fee categories).
+- **Strict Exclusion of Pending Payment Stalls on Police Dashboard (`src/app/police/dashboard/page.tsx`, `src/app/(admin)/admin/police-stalls/page.tsx`)**:
+  - **Bug**: Stalls reserved for payment (`su.status = 'reserved'` or `da.payment_status = 'pending'`) were displaying in `/police/dashboard` because query included any `da.status = 'active'`.
+  - **Fix**: Restricted queries to stalls with `su.status = 'allotted'`, `(a.id IS NULL OR a.status = 'allotted')`, and `(da.id IS NULL OR da.payment_status IN ('paid', 'success', 'exempt', 'not_required') OR da.payment_status IS NULL)`. Stalls awaiting allotment payment are excluded until payment is confirmed.
+- **Duplicate Booth Rows in Inventory & Direct Allotment Superseding (`src/views/admin/inventory/InventoryAdminPage.tsx`, `src/views/admin/inventory/InventoryTable.tsx`, `src/app/api/admin/inventory/import/route.ts`, `src/app/api/admin/inventory/[id]/direct-allot/route.ts`, `src/app/api/admin/direct-allotments/route.ts`)**:
+  - **Bug**: Stalls re-allotted or updated via CSV appeared multiple times in `/admin/inventory` because multiple active rows existed in `direct_allotments` for the same `shop_unit_id`.
+  - **Fix**:
+    1. Joined `direct_allotments` using `MAX(id)` per `shop_unit_id` in `InventoryAdminPage.tsx`, guaranteeing exactly 1 row per shop unit even if legacy duplicate active rows exist.
+    2. Added automatic deactivation (`status = 'cancelled', notes = 'Superseded'`) of prior active direct allotments whenever a stall is re-allotted or updated.
+    3. Synchronized `direct_allotments.payment_status = 'paid'` in `applySuccessfulPaymentEffects()` when `pay_now` payment succeeds.
+    4. Cleanly displays `Free Allotment` badge for confirmed zero-fee allotments instead of showing blank `—`.
 - **Nodemailer Socket Timeout Conflict Resolution (`src/lib/notifications/email.ts`)**:
   - Resolved merge conflict in `email.ts` by standardizing `socketTimeout: 20_000` (20 seconds) for resilient outbound SMTP connections.
 

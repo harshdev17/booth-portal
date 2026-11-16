@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { aadhaarLast4, encryptAadhaar, hashAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-token'
 import { generateApplicationNumber } from '@/lib/applications/application-number'
+import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
 import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
@@ -120,16 +121,22 @@ export async function POST(request: Request) {
       id: number
       is_direct_allotment: number
       allotment_amount_paise: number | null
+      allotment_amount_single_paise: number | null
+      allotment_amount_double_paise: number | null
       allotment_payment_enabled: number
     }>>(
-      `SELECT id, is_direct_allotment, allotment_amount_paise, allotment_payment_enabled FROM categories
+      `SELECT id, is_direct_allotment, allotment_amount_paise, allotment_amount_single_paise,
+              allotment_amount_double_paise, allotment_payment_enabled
+       FROM categories
        WHERE status != 'archived' AND (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(slug)) = LOWER(TRIM(?)))
        LIMIT 1`,
       [categoryName, categoryName]
     )
 
     let categoryId = categoryRows[0]?.id
-    let categoryAllotmentPaise = categoryRows[0]?.allotment_amount_paise ? Number(categoryRows[0].allotment_amount_paise) : 0
+    let categoryAllotmentPaise = categoryRows[0]
+      ? Number(resolveAllotmentAmountPaise(categoryRows[0], shopType) ?? 0)
+      : 0
     let categoryPaymentEnabled = Boolean(categoryRows[0]?.allotment_payment_enabled)
     const isNewCategory = !categoryId
 

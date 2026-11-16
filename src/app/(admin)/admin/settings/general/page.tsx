@@ -24,6 +24,8 @@ type CategoryRow = {
   auction_venue: string | null
   auction_venue_hi: string | null
   allotment_amount_paise: number | null
+  allotment_amount_single_paise: number | null
+  allotment_amount_double_paise: number | null
   allotment_payment_enabled: number
   allotment_payment_deadline_at: string | null
   auction_participation_fee_paise: number | null
@@ -43,7 +45,8 @@ const GeneralSettingsPage = async () => {
   const categories = await query<CategoryRow[]>(
     `SELECT id, name, name_hi, slug, selection_method, fee_paise, fee_base_paise, gst_percent, status,
             application_opens_at, application_closes_at, auction_date, auction_venue, auction_venue_hi,
-            allotment_amount_paise, allotment_payment_enabled, allotment_payment_deadline_at,
+            allotment_amount_paise, allotment_amount_single_paise, allotment_amount_double_paise,
+            allotment_payment_enabled, allotment_payment_deadline_at,
             auction_participation_fee_paise,
             description, description_hi, allotment_amount_note, allotment_amount_note_hi,
             important_dates_note, important_dates_note_hi, show_on_homepage

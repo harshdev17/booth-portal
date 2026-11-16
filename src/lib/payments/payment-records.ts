@@ -114,6 +114,7 @@ async function applySuccessfulPaymentEffects(
     )
 
     await txQuery(`UPDATE shop_units SET status = 'allotted' WHERE allotted_to_application_id = ?`, [applicationId])
+    await txQuery(`UPDATE direct_allotments SET payment_status = 'paid' WHERE application_id = ?`, [applicationId])
     await txQuery(
       `UPDATE draw_allocations SET status = 'confirmed' WHERE application_id = ? AND allocation_type = 'allotted'`,
       [applicationId]

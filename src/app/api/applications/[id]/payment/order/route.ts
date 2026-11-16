@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { verifyAccessToken } from '@/lib/applications/access-token'
+import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { getCategoryById } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
 import { parseIstDateTime } from '@/lib/format-date'
@@ -94,14 +95,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         name: string
         allotment_payment_enabled: number
         allotment_amount_paise: number | null
+        allotment_amount_single_paise: number | null
+        allotment_amount_double_paise: number | null
         allotment_payment_deadline_at: string | Date | null
       }>>(
-        `SELECT name, allotment_payment_enabled, allotment_amount_paise, allotment_payment_deadline_at
+        `SELECT name, allotment_payment_enabled, allotment_amount_paise, allotment_amount_single_paise,
+                allotment_amount_double_paise, allotment_payment_deadline_at
          FROM categories WHERE id = ? LIMIT 1`,
         [application.category_id]
       )
 
       const category = categoryRows[0]
+
+      const stallRows = await query<Array<{ shop_type: 'single' | 'double' }>>(
+        `SELECT shop_type FROM shop_units WHERE allotted_to_application_id = ? LIMIT 1`,
+        [applicationId]
+      )
+      const resolvedCategoryAmountPaise = category
+        ? resolveAllotmentAmountPaise(category, stallRows[0]?.shop_type)
+        : null
 
       // Check seeded payment record first (for direct allotments or pre-configured amounts)
       const existingPayments = await query<Array<{ amount_paise: number }>>(
@@ -112,7 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       let amountPaise = existingPayments[0]?.amount_paise ? Number(existingPayments[0].amount_paise) : 0
 
       if (amountPaise <= 0) {
-        if (!category || !category.allotment_payment_enabled || !category.allotment_amount_paise || category.allotment_amount_paise <= 0) {
+        if (!category || !category.allotment_payment_enabled || !resolvedCategoryAmountPaise || resolvedCategoryAmountPaise <= 0) {
           return NextResponse.json({ error: 'Allotment payment is not enabled for this category.' }, { status: 409 })
         }
 
@@ -133,7 +145,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           }
         }
 
-        amountPaise = Number(category.allotment_amount_paise)
+        amountPaise = Number(resolvedCategoryAmountPaise)
       }
 
       const order = await createRazorpayOrder({

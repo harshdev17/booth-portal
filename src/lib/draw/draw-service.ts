@@ -4,10 +4,10 @@ import { randomBytes, createHash } from 'node:crypto'
 
 import type { PoolConnection } from 'mysql2/promise'
 
+import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { getPool } from '@/lib/db/client'
 import { ProvablyFairRandom } from '@/lib/draw/provably-fair'
 import { logAudit } from '@/lib/audit/log'
-import { notifyApplicationStatusChange } from '@/lib/notifications/application-status'
 import { sendNotification } from '@/lib/notifications/service'
 
 export interface DrawSimulationParams {
@@ -187,7 +187,8 @@ export class LuckyDrawService {
       // 1. Lock category
       const [categoryRows] = await conn.query<any[]>(
         `SELECT id, name, selection_method, allotment_payment_enabled, allotment_payment_deadline_at,
-                allotment_amount_paise, auction_participation_fee_paise
+                allotment_amount_paise, allotment_amount_single_paise, allotment_amount_double_paise,
+                auction_participation_fee_paise
          FROM categories WHERE id = ? FOR UPDATE`,
         [params.categoryId]
       )
@@ -429,15 +430,21 @@ export class LuckyDrawService {
             )
           }
         } else if (isPaymentRequired) {
-          // Seed initial payment record for each winner if payment is required
-          const amountPaise = Number(category.allotment_amount_paise)
+          // Seed initial payment record for each winner if payment is
+          // required — the amount can differ by the actual stall's shop_type
+          // (Single vs. Double), per resolveAllotmentAmountPaise(), so this
+          // reads each winner's own assigned stall rather than one flat
+          // category-wide figure.
+          for (let idx = 0; idx < allottedCount; idx++) {
+            const stall = shuffledStalls[idx]
+            const candidate = shuffledCandidates[idx]
+            const amountPaise = Number(resolveAllotmentAmountPaise(category, stall.shopType) ?? 0)
 
-          for (const appId of allottedAppIds) {
             await conn.query(
               `INSERT INTO payments (application_id, purpose, amount_paise, status)
                VALUES (?, 'pay_now', ?, 'not_initiated')
                ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
-              [appId, amountPaise, amountPaise]
+              [candidate.applicationId, amountPaise, amountPaise]
             )
           }
         }
@@ -458,40 +465,53 @@ export class LuckyDrawService {
       // half-complete state. Only actual booth/stall winners are notified;
       // waitlisted and unallocated candidates receive no draw notification.
       await Promise.allSettled(
-        shuffledCandidates.slice(0, allottedCount).flatMap(candidate => {
-          const promises: Promise<unknown>[] = [
-            notifyApplicationStatusChange({
+        shuffledCandidates.slice(0, allottedCount).map((candidate, idx) => {
+          const assignedStall = shuffledStalls[idx]
+          const destination = candidate.mobileNumber.startsWith('+')
+            ? candidate.mobileNumber
+            : `+91${candidate.mobileNumber}`
+
+          const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+          const link = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
+
+          if (isAuctionCategory) {
+            return sendNotification({
+              category: 'auction_fee_activation',
+              destination,
+              userName: candidate.representativeName,
+              templateParams: [candidate.representativeName, candidate.applicationNumber, link],
               applicationId: candidate.applicationId,
-              applicationNumber: candidate.applicationNumber,
-              mobileNumber: candidate.mobileNumber,
-              email: candidate.email,
-              representativeName: candidate.representativeName,
-              newStatus: applicationNewStatus
+              email: candidate.email
             })
-          ]
-
-          if (isAuctionCategory || isPaymentRequired) {
-            const destination = candidate.mobileNumber.startsWith('+')
-              ? candidate.mobileNumber
-              : `+91${candidate.mobileNumber}`
-
-            const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
-            const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(candidate.applicationNumber)}` : ''
-
-            promises.push(
-              sendNotification({
-                category: isAuctionCategory ? 'auction_fee_activation' : 'pay_now_activation',
-                destination,
-                userName: candidate.representativeName,
-                templateParams: [candidate.representativeName, candidate.applicationNumber, payLink],
-                buttonParam: candidate.applicationNumber,
-                applicationId: candidate.applicationId,
-                email: candidate.email
-              })
-            )
           }
 
-          return promises
+          if (isPaymentRequired) {
+            return sendNotification({
+              category: 'pay_now_activation',
+              campaignOverride: process.env.AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION || 'gita_mahotsav_draw_payment_dyhmi',
+              destination,
+              userName: candidate.representativeName,
+              templateParams: [candidate.representativeName, candidate.applicationNumber, link],
+              applicationId: candidate.applicationId,
+              email: candidate.email
+            })
+          }
+
+          // Zero-fee / Free allotment notification
+          return sendNotification({
+            category: 'direct_allotment_confirmed',
+            campaignOverride: process.env.AISENSY_CAMPAIGN_ZERO_FEE_ALLOTMENT || 'zero_fee_allotment',
+            destination,
+            userName: candidate.representativeName,
+            templateParams: [
+              candidate.representativeName,
+              candidate.applicationNumber,
+              assignedStall?.stallNumber || '—',
+              link
+            ],
+            applicationId: candidate.applicationId,
+            email: candidate.email
+          })
         })
       )
 

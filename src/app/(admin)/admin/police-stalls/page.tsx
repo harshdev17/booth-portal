@@ -31,10 +31,14 @@ export default async function AdminPoliceStallsPage({
   const offset = pageSize === 'all' ? 0 : (page - 1) * pageSize
 
   // Show all stalls on which allotment has actually been COMPLETED (Commercial with payment/exempt + Custom/Direct)
-  // Pending payment applications (status = 'payment_required') are excluded until payment is confirmed.
+  // Pending payment applications (status = 'payment_required' or su.status = 'reserved' or da.payment_status = 'pending')
+  // are strictly excluded until payment is confirmed.
   const conditions: string[] = [
     'su.stall_number IS NOT NULL',
-    "((da.id IS NOT NULL AND da.status = 'active') OR (su.allotted_to_application_id IS NOT NULL AND a.status = 'allotted') OR (su.status = 'allotted' AND su.allotted_to_application_id IS NULL))"
+    "su.status = 'allotted'",
+    "(a.id IS NULL OR a.status = 'allotted')",
+    "(da.id IS NULL OR da.payment_status IS NULL OR da.payment_status IN ('paid', 'success', 'exempt', 'not_required'))",
+    "((da.id IS NOT NULL AND da.status = 'active') OR su.allotted_to_application_id IS NOT NULL)"
   ]
   const params: unknown[] = []
 
@@ -60,7 +64,16 @@ export default async function AdminPoliceStallsPage({
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
-       LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
+       LEFT JOIN (
+         SELECT da1.*
+         FROM direct_allotments da1
+         JOIN (
+           SELECT shop_unit_id, MAX(id) AS max_id
+           FROM direct_allotments
+           WHERE status = 'active'
+           GROUP BY shop_unit_id
+         ) da_max ON da_max.max_id = da1.id
+       ) da ON da.shop_unit_id = su.id
        WHERE ${whereClause}`,
       params
     ),
@@ -71,8 +84,21 @@ export default async function AdminPoliceStallsPage({
       `SELECT COUNT(DISTINCT su.id) AS count
        FROM shop_units su
        LEFT JOIN applications a ON a.id = su.allotted_to_application_id
-       LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
-       WHERE ((da.id IS NOT NULL AND da.status = 'active') OR (su.allotted_to_application_id IS NOT NULL AND a.status = 'allotted') OR (su.status = 'allotted' AND su.allotted_to_application_id IS NULL))`
+       LEFT JOIN (
+         SELECT da1.*
+         FROM direct_allotments da1
+         JOIN (
+           SELECT shop_unit_id, MAX(id) AS max_id
+           FROM direct_allotments
+           WHERE status = 'active'
+           GROUP BY shop_unit_id
+         ) da_max ON da_max.max_id = da1.id
+       ) da ON da.shop_unit_id = su.id
+       WHERE su.stall_number IS NOT NULL
+         AND su.status = 'allotted'
+         AND (a.id IS NULL OR a.status = 'allotted')
+         AND (da.id IS NULL OR da.payment_status IS NULL OR da.payment_status IN ('paid', 'success', 'exempt', 'not_required'))
+         AND ((da.id IS NOT NULL AND da.status = 'active') OR su.allotted_to_application_id IS NOT NULL)`
     )
   ])
 
@@ -115,7 +141,16 @@ export default async function AdminPoliceStallsPage({
      FROM shop_units su
      JOIN categories c ON c.id = su.category_id
      LEFT JOIN applications a ON a.id = su.allotted_to_application_id
-     LEFT JOIN direct_allotments da ON da.shop_unit_id = su.id AND da.status = 'active'
+     LEFT JOIN (
+       SELECT da1.*
+       FROM direct_allotments da1
+       JOIN (
+         SELECT shop_unit_id, MAX(id) AS max_id
+         FROM direct_allotments
+         WHERE status = 'active'
+         GROUP BY shop_unit_id
+       ) da_max ON da_max.max_id = da1.id
+     ) da ON da.shop_unit_id = su.id
      WHERE ${whereClause}
      ORDER BY su.stall_number ASC, su.id DESC
      ${limitClause}`,

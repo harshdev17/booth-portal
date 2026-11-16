@@ -133,6 +133,13 @@ export async function POST(request: Request) {
 
       const applicationId = appInsertResult.insertId
 
+      // Deactivate any previous active direct allotments for this stall
+      await tx(
+        `UPDATE direct_allotments SET status = 'cancelled', notes = 'Superseded by new direct allotment'
+         WHERE shop_unit_id = ? AND status = 'active'`,
+        [shopUnitId]
+      )
+
       // Insert direct_allotments with new mandatory details
       const directResult = await tx<{ insertId: number }>(
         `INSERT INTO direct_allotments (
