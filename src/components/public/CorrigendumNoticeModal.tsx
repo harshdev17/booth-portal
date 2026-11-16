@@ -99,16 +99,17 @@ const CorrigendumNoticeModal = () => {
         ]
 
   return (
-    <div className='fixed inset-0 z-[100] flex items-center justify-center bg-[#071f3a]/60 px-4 backdrop-blur-sm'>
-      <div className='w-full max-w-2xl rounded-2xl border border-[#ebe4db] bg-white p-7 shadow-2xl sm:p-9'>
-        <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
-          {lang === 'hi' ? 'संशोधन सूचना-02' : 'Corrigendum Notice-02'}
-        </p>
-        <p className='mb-7 text-center text-2xl font-black text-[#072448]'>
-          {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}
-        </p>
+    <div className='fixed inset-0 z-[100] flex items-center justify-center bg-[#071f3a]/60 px-4 py-8 backdrop-blur-sm'>
+      <div className='flex max-h-full w-full max-w-3xl flex-col rounded-2xl border border-[#ebe4db] bg-white shadow-2xl'>
+        <div className='overflow-y-auto p-7 sm:p-9'>
+          <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
+            {lang === 'hi' ? 'संशोधन सूचना-02' : 'Corrigendum Notice-02'}
+          </p>
+          <p className='mb-7 text-center text-2xl font-black text-[#072448]'>
+            {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}
+          </p>
 
-        <div className='mb-7 overflow-x-auto rounded-xl border border-[#e8e2d8]'>
+          <div className='mb-7 overflow-x-auto rounded-xl border border-[#e8e2d8]'>
           <table className='w-full min-w-[480px] text-left text-base'>
             <thead>
               <tr className='border-b border-[#e8e2d8] bg-[#f3efe6]'>
@@ -160,6 +161,7 @@ const CorrigendumNoticeModal = () => {
         >
           {lang === 'hi' ? 'पूरी सूचना देखें' : 'View Full Notice'}
         </Link>
+        </div>
       </div>
     </div>
   )
