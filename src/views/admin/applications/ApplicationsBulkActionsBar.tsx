@@ -2,9 +2,17 @@
 
 import { useState } from 'react'
 
-import { BellRingIcon, CheckIcon, GavelIcon, Loader2Icon, XIcon } from 'lucide-react'
+import { BellRingIcon, CheckIcon, GavelIcon, Loader2Icon, SendIcon, XIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 type SelectedRow = {
   encodedId: string
@@ -12,6 +20,12 @@ type SelectedRow = {
   canApprove: boolean
   canReject: boolean
   canSelectForAuction: boolean
+  applicationNumber: string
+  representativeName: string
+  mobileNumber: string
+  email: string
+  categoryName: string
+  statusLabel: string
 }
 
 type Props = {
@@ -43,6 +57,7 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
   const [busy, setBusy] = useState<BusyAction>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [auctionPreviewOpen, setAuctionPreviewOpen] = useState(false)
 
   if (selectedRows.length === 0) return null
 
@@ -100,12 +115,8 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
     )
   }
 
-  const bulkSelectForAuction = () => {
-    const confirmed = window.confirm(
-      `Select ${auctionEligible.length} application${auctionEligible.length === 1 ? '' : 's'} for auction? Each one's status moves to "Selected For Auction", the Auction Participation Fee is seeded, and a WhatsApp/email message with the payment link is sent immediately.`
-    )
-
-    if (!confirmed) return
+  const confirmSelectForAuction = () => {
+    setAuctionPreviewOpen(false)
 
     runAction('auction', () =>
       fetch('/api/admin/applications/bulk-select-for-auction', {
@@ -184,7 +195,7 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
           size='sm'
           variant='outline'
           disabled={busy !== null}
-          onClick={bulkSelectForAuction}
+          onClick={() => setAuctionPreviewOpen(true)}
           className='gap-1.5 border-purple-300 text-purple-800 hover:bg-purple-50'
         >
           {busy === 'auction' ? <Loader2Icon className='size-3.5 animate-spin' /> : <GavelIcon className='size-3.5' />}
@@ -194,6 +205,65 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
 
       {error && <span className='text-xs font-semibold text-destructive'>{error}</span>}
       {message && <span className='text-xs font-semibold text-emerald-700'>{message}</span>}
+
+      <Dialog open={auctionPreviewOpen} onOpenChange={setAuctionPreviewOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <GavelIcon className='size-4 text-purple-700' />
+              Select {auctionEligible.length} application{auctionEligible.length === 1 ? '' : 's'} for auction?
+            </DialogTitle>
+            <DialogDescription>
+              Each application below moves to &ldquo;Selected For Auction&rdquo;, the Auction Participation Fee is
+              seeded, and a WhatsApp/email message with the payment link is sent immediately to the number/email
+              shown.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='max-h-80 overflow-y-auto rounded-lg border'>
+            <table className='w-full text-xs'>
+              <thead className='sticky top-0 bg-slate-50 text-left text-slate-600'>
+                <tr>
+                  <th className='px-3 py-2 font-semibold'>App No.</th>
+                  <th className='px-3 py-2 font-semibold'>Name</th>
+                  <th className='px-3 py-2 font-semibold'>Category</th>
+                  <th className='px-3 py-2 font-semibold'>Status</th>
+                  <th className='px-3 py-2 font-semibold'>Mobile</th>
+                  <th className='px-3 py-2 font-semibold'>Email</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y'>
+                {auctionEligible.map(row => (
+                  <tr key={row.encodedId}>
+                    <td className='px-3 py-2 font-medium text-[#0c2847]'>{row.applicationNumber}</td>
+                    <td className='px-3 py-2'>{row.representativeName}</td>
+                    <td className='px-3 py-2'>{row.categoryName}</td>
+                    <td className='px-3 py-2'>{row.statusLabel}</td>
+                    <td className='px-3 py-2'>{row.mobileNumber}</td>
+                    <td className='px-3 py-2'>{row.email}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <DialogFooter>
+            <Button type='button' variant='outline' size='sm' onClick={() => setAuctionPreviewOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type='button'
+              size='sm'
+              onClick={confirmSelectForAuction}
+              disabled={busy !== null}
+              className='gap-1.5 bg-purple-700 hover:bg-purple-800 text-white'
+            >
+              {busy === 'auction' ? <Loader2Icon className='size-3.5 animate-spin' /> : <SendIcon className='size-3.5' />}
+              Confirm &amp; Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

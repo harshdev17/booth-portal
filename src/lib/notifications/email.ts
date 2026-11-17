@@ -340,17 +340,23 @@ export function buildEmailContent(
       }
       break
     case 'auction_fee_activation':
+      // Sent both after a real draw and after an admin manually selects
+      // applications for auction (bulk-select-for-auction, 2026-11-17) — the
+      // wording must hold for both, so it says "selected to take part in the
+      // auction", never "selected in the draw"/"won", which this message is
+      // NOT: the auction itself (where a stall is actually won) happens
+      // later, offline.
       c = {
-        subject: `Draw Selection: Pay Auction Participation Fee for application ${appNo}`,
+        subject: `Pay Auction Participation Fee for application ${appNo}`,
         en: [
           `Dear ${name},`,
-          `Congratulations! Your application ${appNo} has been selected in the draw for International Geeta Jayanti Mahotsav 2026.`,
-          'This category is allotted through a physical auction held by the Kurukshetra Development Board (KDB). Please pay the Auction Participation Fee using the link below to confirm your place at the auction.'
+          `Your application ${appNo} has been selected to take part in the physical auction for International Geeta Jayanti Mahotsav 2026.`,
+          'This category is allotted through a physical auction held by the Kurukshetra Development Board (KDB). Please pay the Auction Participation Fee using the link below to confirm your participation — the actual stall/booth is decided at the auction itself.'
         ],
         hi: [
           `प्रिय ${name},`,
-          `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत ड्रा (Draw) में आपके आवेदन ${appNo} का चयन हुआ है।`,
-          'इस श्रेणी का आबंटन कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आयोजित भौतिक नीलामी (Physical Auction) के माध्यम से किया जाता है। कृपया नीलामी में अपनी भागीदारी सुनिश्चित करने के लिए नीचे दिए गए लिंक से नीलामी भागीदारी शुल्क (Auction Participation Fee) का भुगतान करें।'
+          `अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के अंतर्गत आपके आवेदन ${appNo} का चयन भौतिक नीलामी (Physical Auction) में भाग लेने हेतु हुआ है।`,
+          'इस श्रेणी का आबंटन कुरुक्षेत्र विकास बोर्ड (KDB) द्वारा आयोजित भौतिक नीलामी के माध्यम से किया जाता है। कृपया अपनी भागीदारी सुनिश्चित करने के लिए नीचे दिए गए लिंक से नीलामी भागीदारी शुल्क (Auction Participation Fee) का भुगतान करें — वास्तविक स्टॉल/बूथ नीलामी में ही तय होगा।'
         ],
         link: statusUrl
       }

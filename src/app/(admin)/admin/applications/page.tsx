@@ -9,6 +9,7 @@ import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { withPooledConnection } from '@/lib/db/client'
 import { parsePageSize, resolveLimit } from '@/lib/pagination'
+import { getApplicationStatusConfig } from '@/lib/applications/status-config'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
 import ApplicationsFilterBar from '@/views/admin/applications/ApplicationsFilterBar'
@@ -518,9 +519,14 @@ const ApplicationsAdminPage = async ({
           <ApplicationsTableClient
             backToListUrl={currentListUrl}
             applications={applications.map(app => {
+              // Falls back to the shared status-config map (status-config.ts)
+              // for any status not in this page's own richer STATUS_CONFIG
+              // above (e.g. the auction-flow intermediate statuses) — never
+              // the raw DB enum value, which used to show as a literal
+              // "selected_for_auction" string on this list (2026-11-17).
               const statusCfg = STATUS_CONFIG[app.status] ?? {
-                label: app.status,
-                color: 'bg-gray-100 text-gray-700'
+                ...getApplicationStatusConfig(app.status),
+                variant: 'outline' as const
               }
 
               const encodedId = encodeId(app.id)

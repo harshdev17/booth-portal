@@ -49,6 +49,7 @@ type CategoryFeeItem = {
   allotment_payment_enabled?: number | boolean
   allotment_payment_deadline_at?: string | null
   auction_participation_fee_paise?: number | null
+  auction_participation_fee_deadline_at?: string | null
   description: string | null
   description_hi: string | null
   allotment_amount_note: string | null
@@ -293,11 +294,19 @@ export default function CategoryFeeSettingsClient({
         ? Number(cat.auction_participation_fee_paise)
         : null
 
+    const deadlineAt = cat.auction_participation_fee_deadline_at
+      ? new Date(cat.auction_participation_fee_deadline_at).toISOString()
+      : null
+
     try {
       const response = await fetch('/api/admin/categories/auction-fee', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId: cat.id, auctionParticipationFeePaise: feePaise })
+        body: JSON.stringify({
+          categoryId: cat.id,
+          auctionParticipationFeePaise: feePaise,
+          auctionParticipationFeeDeadlineAt: deadlineAt
+        })
       })
 
       const data = await response.json()
@@ -1242,6 +1251,24 @@ export default function CategoryFeeSettingsClient({
                                       className='pl-7 h-9 text-sm'
                                     />
                                   </div>
+                                </div>
+
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Payment Due Date</label>
+                                  <Input
+                                    type='datetime-local'
+                                    value={toDatetimeLocalValue(cat.auction_participation_fee_deadline_at ?? null)}
+                                    onChange={e => {
+                                      const val = e.target.value || null
+
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, auction_participation_fee_deadline_at: val } : c
+                                        )
+                                      )
+                                    }}
+                                    className='h-9 text-sm'
+                                  />
                                 </div>
 
                                 <div className='flex items-end'>

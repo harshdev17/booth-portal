@@ -146,7 +146,19 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
   return (
     <>
       <ApplicationsBulkActionsBar
-        selectedRows={selectedRows.map(r => ({ encodedId: r.encodedId, isPaymentPending: r.isPaymentPending, canApprove: r.canApprove, canReject: r.canReject, canSelectForAuction: r.canSelectForAuction }))}
+        selectedRows={selectedRows.map(r => ({
+          encodedId: r.encodedId,
+          isPaymentPending: r.isPaymentPending,
+          canApprove: r.canApprove,
+          canReject: r.canReject,
+          canSelectForAuction: r.canSelectForAuction,
+          applicationNumber: r.application_number,
+          representativeName: r.representative_name,
+          mobileNumber: r.mobile_number,
+          email: r.email,
+          categoryName: r.category_name,
+          statusLabel: r.statusCfg.label
+        }))}
         onDone={handleDone}
       />
 

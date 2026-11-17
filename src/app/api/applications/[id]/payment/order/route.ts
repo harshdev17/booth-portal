@@ -191,8 +191,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         )
       }
 
-      const categoryRows = await query<Array<{ name: string; auction_participation_fee_paise: number | null }>>(
-        `SELECT name, auction_participation_fee_paise FROM categories WHERE id = ? LIMIT 1`,
+      const categoryRows = await query<Array<{
+        name: string
+        auction_participation_fee_paise: number | null
+        auction_participation_fee_deadline_at: string | Date | null
+      }>>(
+        `SELECT name, auction_participation_fee_paise, auction_participation_fee_deadline_at
+         FROM categories WHERE id = ? LIMIT 1`,
         [application.category_id]
       )
 
@@ -200,6 +205,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       if (!category || !category.auction_participation_fee_paise || category.auction_participation_fee_paise <= 0) {
         return NextResponse.json({ error: 'Auction participation fee is not configured for this category.' }, { status: 409 })
+      }
+
+      if (category.auction_participation_fee_deadline_at) {
+        // Same IST wall-clock parsing as the pay_now deadline above — the
+        // DB value is a plain DATETIME already in IST, never UTC.
+        const deadline = parseIstDateTime(category.auction_participation_fee_deadline_at)
+
+        if (Date.now() > deadline.getTime()) {
+          return NextResponse.json(
+            { error: 'Auction participation fee payment deadline has passed. Please contact the administration.' },
+            { status: 410 }
+          )
+        }
       }
 
       const amountPaise = Number(category.auction_participation_fee_paise)
