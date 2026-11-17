@@ -46,7 +46,12 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
 
 function getCampaignName(category: NotificationCategory): string | null {
   if (category === 'payment_confirmation') {
+    // AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION_NEW (gita_mahotsav_payment_confirmation_new,
+    // 2026-11-17) is the newer replacement template — checked first so it
+    // takes over the moment it's set, without needing the older env vars
+    // removed.
     return (
+      process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION_NEW ||
       process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
       process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
       null
