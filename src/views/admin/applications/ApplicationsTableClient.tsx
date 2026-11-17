@@ -43,6 +43,7 @@ export type ApplicationTableRow = {
   is_direct_allotment: number | boolean
   canApprove: boolean
   canReject: boolean
+  canSelectForAuction: boolean
   canRaiseQuery: boolean
   statusCfg: StatusConfig
   isPaymentPending: boolean
@@ -98,9 +99,10 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const actionableRows = useMemo(
-    () => applications.filter(a => a.isPaymentPending || a.canApprove || a.canReject),
+    () => applications.filter(a => a.isPaymentPending || a.canApprove || a.canReject || a.canSelectForAuction),
     [applications]
   )
+
   const allActionableSelected = actionableRows.length > 0 && actionableRows.every(a => selected.has(a.encodedId))
 
   const toggleOne = (encodedId: string) => {
@@ -144,7 +146,7 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
   return (
     <>
       <ApplicationsBulkActionsBar
-        selectedRows={selectedRows.map(r => ({ encodedId: r.encodedId, isPaymentPending: r.isPaymentPending, canApprove: r.canApprove, canReject: r.canReject }))}
+        selectedRows={selectedRows.map(r => ({ encodedId: r.encodedId, isPaymentPending: r.isPaymentPending, canApprove: r.canApprove, canReject: r.canReject, canSelectForAuction: r.canSelectForAuction }))}
         onDone={handleDone}
       />
 
@@ -212,7 +214,7 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
             {applications.map(app => (
               <tr key={app.id} className='hover:bg-muted/30 transition'>
                 <td className='sticky left-0 z-10 w-12 bg-white py-3.5 px-4 border-r border-slate-200'>
-                  {(app.isPaymentPending || app.canApprove || app.canReject) && (
+                  {(app.isPaymentPending || app.canApprove || app.canReject || app.canSelectForAuction) && (
                     <input
                       type='checkbox'
                       checked={selected.has(app.encodedId)}

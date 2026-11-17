@@ -31,6 +31,7 @@ type ApplicationItem = {
   mobile_number: string
   email: string
   status: string
+  selection_method: string
   open_queries: number
   reuploaded_pending: number
   fee_paise: number | null
@@ -198,7 +199,7 @@ const ApplicationsAdminPage = async ({
       const applications = await query<ApplicationItem[]>(
         `SELECT a.id, a.application_number, c.name AS category_name, c.slug AS category_slug,
                 a.organisation_name, a.representative_name, a.mobile_number, a.email,
-                a.status, c.fee_paise, a.submitted_at, a.created_at,
+                a.status, c.fee_paise, c.selection_method, a.submitted_at, a.created_at,
                 su.stall_number,
                 latest_draw.allocation_type AS draw_allocation_type,
                 latest_draw.waitlist_position,
@@ -559,12 +560,19 @@ const ApplicationsAdminPage = async ({
 
               const isPaymentPending = (registrationPending || allotmentPending) && !!permissions?.has('payment:reminder')
 
+              // Mirrors bulk-select-for-auction/route.ts's own eligibility
+              // check (status Approved, category is an auction category) —
+              // the server independently re-verifies both regardless.
+              const canSelectForAuction =
+                app.status === 'approved' && app.selection_method === 'auction' && !!permissions?.has('draw:run')
+
               return {
                 ...app,
                 encodedId,
                 canApprove,
                 canReject,
                 canRaiseQuery,
+                canSelectForAuction,
                 statusCfg,
                 isPaymentPending,
                 documents: documentsByApplicationId.get(app.id) ?? []
