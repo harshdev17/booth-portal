@@ -34,7 +34,6 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
       await sendNotification({
         category: 'payment_confirmation',
         campaignOverride:
-          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION_NEW ||
           process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
           process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
           undefined,
@@ -82,7 +81,6 @@ export async function notifyAllotmentPaymentSuccess(applicationId: number, amoun
       await sendNotification({
         category: 'payment_confirmation',
         campaignOverride:
-          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION_NEW ||
           process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
           process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
           undefined,
@@ -131,15 +129,15 @@ export async function notifyAuctionFeePaymentSuccess(applicationId: number, amou
       await sendNotification({
         category: 'payment_confirmation',
 
-        // Dedicated template (2026-11-17) — distinct from the generic
-        // allotment payment confirmation, since this one must say the
-        // participation fee (not a final stall amount) was paid. Not yet
-        // approved in AiSensy/Meta at integration time, so it falls back to
-        // the generic payment confirmation campaign until
-        // AISENSY_CAMPAIGN_AUCTION_PAYMENT_SUCCESS is set and live.
+        // Dedicated template (gita_mahotsav_auction_payment_success,
+        // 2026-11-17) — distinct from the generic allotment payment
+        // confirmation, since this one must say the participation fee (not
+        // a final stall amount) was paid. Not yet approved in AiSensy/Meta
+        // at integration time, so it falls back to the generic payment
+        // confirmation campaign until AISENSY_CAMPAIGN_AUCTION_PAYMENT_SUCCESS
+        // is set and live.
         campaignOverride:
           process.env.AISENSY_CAMPAIGN_AUCTION_PAYMENT_SUCCESS ||
-          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION_NEW ||
           process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
           process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
           undefined,
