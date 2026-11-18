@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { ClockIcon, CreditCardIcon, EyeIcon, SearchIcon, XCircleIcon } from 'lucide-react'
+import { ClockIcon, CreditCardIcon, EyeIcon, GavelIcon, IndianRupeeIcon, SearchIcon, XCircleIcon } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -100,7 +100,7 @@ const PaymentsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'p.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [payments, categories, statsRows, countRows] = await Promise.all([
+  const [payments, categories, statsRows, purposeRows, countRows] = await Promise.all([
     query<PaymentItem[]>(
       `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id, p.created_at,
               a.application_number, a.representative_name, c.name AS category_name, c.slug AS category_slug
@@ -118,6 +118,10 @@ const PaymentsAdminPage = async ({
     query<Array<{ status: string; count: number; total_amount: number }>>(
       `SELECT status, COUNT(*) AS count, COALESCE(SUM(amount_paise), 0) AS total_amount FROM payments GROUP BY status`
     ),
+    query<Array<{ purpose: string; count: number; total_amount: number }>>(
+      `SELECT purpose, COUNT(*) AS count, COALESCE(SUM(amount_paise), 0) AS total_amount
+       FROM payments WHERE status = 'success' GROUP BY purpose`
+    ),
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM payments p JOIN applications a ON a.id = p.application_id JOIN categories c ON c.id = a.category_id ${whereClause}`,
       params
@@ -128,6 +132,16 @@ const PaymentsAdminPage = async ({
   const pendingRow = statsRows.find(r => r.status === 'pending')
   const failedRow = statsRows.find(r => r.status === 'failed')
   const totalCollectedPaise = Number(successRow?.total_amount ?? 0)
+
+  const purposeMap = new Map(purposeRows.map(r => [r.purpose, r]))
+  const registrationPaise = Number(purposeMap.get('registration')?.total_amount ?? 0)
+  const registrationCount = Number(purposeMap.get('registration')?.count ?? 0)
+  const allotmentPaise = Number(purposeMap.get('pay_now')?.total_amount ?? 0)
+  const allotmentCount = Number(purposeMap.get('pay_now')?.count ?? 0)
+  const auctionPaise =
+    Number(purposeMap.get('auction_fee')?.total_amount ?? 0) + Number(purposeMap.get('auction_final')?.total_amount ?? 0)
+  const auctionCount =
+    Number(purposeMap.get('auction_fee')?.count ?? 0) + Number(purposeMap.get('auction_final')?.count ?? 0)
   const totalFiltered = countRows[0]?.total ?? 0
   const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalFiltered / pageSize))
 
@@ -191,13 +205,38 @@ const PaymentsAdminPage = async ({
         </p>
       </div>
 
-      <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6'>
         <KpiCard
           label='Total Collected'
           value={`₹${(totalCollectedPaise / 100).toLocaleString('en-IN')}`}
           icon={CreditCardIcon}
           accentColor='text-emerald-700'
           hint={`${successRow?.count ?? 0} successful payment(s)`}
+          compact
+        />
+        <KpiCard
+          label='Registration Fees'
+          value={`₹${(registrationPaise / 100).toLocaleString('en-IN')}`}
+          icon={IndianRupeeIcon}
+          accentColor='text-blue-700'
+          hint={`${registrationCount} payment(s)`}
+          compact
+        />
+        <KpiCard
+          label='Allotment Fees'
+          value={`₹${(allotmentPaise / 100).toLocaleString('en-IN')}`}
+          icon={IndianRupeeIcon}
+          accentColor='text-amber-700'
+          hint={`${allotmentCount} payment(s)`}
+          compact
+        />
+        <KpiCard
+          label='Auction Fees'
+          value={`₹${(auctionPaise / 100).toLocaleString('en-IN')}`}
+          icon={GavelIcon}
+          accentColor='text-rose-700'
+          hint={`${auctionCount} payment(s)`}
+          compact
         />
         <KpiCard
           label='Pending'
@@ -205,6 +244,7 @@ const PaymentsAdminPage = async ({
           icon={ClockIcon}
           accentColor='text-amber-700'
           hint='Order created, awaiting checkout'
+          compact
         />
         <KpiCard
           label='Failed'
@@ -212,6 +252,7 @@ const PaymentsAdminPage = async ({
           icon={XCircleIcon}
           accentColor='text-red-700'
           hint='Signature mismatch or gateway failure'
+          compact
         />
       </div>
 

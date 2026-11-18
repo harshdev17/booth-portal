@@ -15,6 +15,7 @@ const ACTION_LABELS: Record<string, string> = {
   'allotment.cancelled': 'Allotment cancelled',
   'application.aadhaar_viewed': 'Aadhaar number viewed',
   'application.allotment_letter_downloaded': 'Allotment letter downloaded',
+  'application.allotment_letter_released': 'Allotment letter released to applicant',
   'application.approved': 'Application approved',
   'application.edited': 'Application details edited',
   'application.exported': 'Applications exported',

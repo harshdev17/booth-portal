@@ -65,6 +65,8 @@ type Props = {
   transactions: TransactionItem[]
   drawAllocation?: DrawAllocationInfo
   canSendReminder: boolean
+  allotmentLetterReleasedAt: string | null
+  canReleaseAllotmentLetter: boolean
 }
 
 export default function ApplicationAllotmentPaymentTab({
@@ -79,7 +81,9 @@ export default function ApplicationAllotmentPaymentTab({
   payment,
   transactions,
   drawAllocation,
-  canSendReminder
+  canSendReminder,
+  allotmentLetterReleasedAt,
+  canReleaseAllotmentLetter
 }: Props) {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedOrder, setCopiedOrder] = useState(false)
@@ -87,6 +91,8 @@ export default function ApplicationAllotmentPaymentTab({
   const [sendingReminder, setSendingReminder] = useState(false)
   const [printing, setPrinting] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [releasing, setReleasing] = useState(false)
+  const [letterReleased, setLetterReleased] = useState(Boolean(allotmentLetterReleasedAt))
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -173,6 +179,28 @@ export default function ApplicationAllotmentPaymentTab({
       setError('Network error while sending payment reminder.')
     } finally {
       setSendingReminder(false)
+    }
+  }
+
+  const releaseAllotmentLetter = async () => {
+    setError(null)
+    setMessage(null)
+    setReleasing(true)
+    try {
+      const res = await fetch(`/api/admin/applications/${applicationId}/release-allotment-letter`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to release allotment letter.')
+        return
+      }
+      setLetterReleased(true)
+      setMessage(data.message ?? 'Allotment letter released to the applicant.')
+    } catch {
+      setError('Network error while releasing allotment letter.')
+    } finally {
+      setReleasing(false)
     }
   }
 
@@ -430,8 +458,37 @@ export default function ApplicationAllotmentPaymentTab({
                 <p className='text-xs text-muted-foreground'>
                   Download or print the official allotment order with board letterhead, reference number, and authority signature.
                 </p>
+                <div className='mt-1.5'>
+                  {letterReleased ? (
+                    <Badge className='border-emerald-300 bg-emerald-50 text-emerald-800'>
+                      <CheckCircle2Icon className='mr-1 size-3 text-emerald-600' />
+                      Released to applicant
+                    </Badge>
+                  ) : (
+                    <Badge className='border-amber-300 bg-amber-50 text-amber-800'>
+                      <ClockIcon className='mr-1 size-3 text-amber-600' />
+                      Not yet released to applicant
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className='flex items-center gap-2'>
+                {canReleaseAllotmentLetter && !letterReleased && (
+                  <Button
+                    type='button'
+                    size='sm'
+                    disabled={releasing}
+                    onClick={releaseAllotmentLetter}
+                    className='font-semibold bg-emerald-700 hover:bg-emerald-800 text-white'
+                  >
+                    {releasing ? (
+                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                    ) : (
+                      <CheckCircle2Icon className='size-3.5 mr-1.5' />
+                    )}
+                    Release Letter to Applicant
+                  </Button>
+                )}
                 <Button
                   type='button'
                   variant='outline'

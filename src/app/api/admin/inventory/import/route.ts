@@ -123,7 +123,16 @@ export async function POST(request: Request) {
         `SELECT id FROM events WHERE status = 'active' ORDER BY id DESC LIMIT 1`
       )
       const eventId = eventRows[0]?.id ?? 1
-      const existingSlugs = new Set(categories.map(c => c.slug))
+
+      // Must include archived categories too — uq_categories_event_slug is
+      // enforced across ALL rows regardless of status, but `categories`
+      // above only selected non-archived ones (so a reused slug from an
+      // archived category wouldn't be reusable as a real match, yet was
+      // still missing from this collision check, causing a live "Duplicate
+      // entry" 500 on a real 847-row import when the sheet had a category
+      // name slugifying to an archived category's slug).
+      const allSlugRows = await query<Array<{ slug: string }>>(`SELECT slug FROM categories`)
+      const existingSlugs = new Set(allSlugRows.map(c => c.slug))
 
       for (const [key, name] of newCategoryNames) {
         let slug = slugifyCategoryName(name)

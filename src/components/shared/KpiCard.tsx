@@ -31,7 +31,11 @@ const KpiCard = ({ label, value, icon: Icon, accentColor = 'text-[#0c2847]', hin
     <Card className={`h-full shadow-xs transition hover:shadow-sm ${compact ? 'gap-0 py-3' : ''}`}>
       <CardContent className={`flex items-start justify-between gap-3 ${compact ? 'px-3' : 'pt-5'}`}>
         <div className='min-w-0'>
-          <p className={`truncate font-bold text-muted-foreground uppercase ${compact ? 'text-[10px]' : 'text-xs tracking-wide'}`}>
+          <p
+            className={`font-bold text-muted-foreground uppercase ${
+              compact ? 'text-[10px] leading-tight' : 'truncate text-xs tracking-wide'
+            }`}
+          >
             {label}
           </p>
           <p className={`font-black leading-tight ${accentColor} ${compact ? 'text-xl' : 'mt-1 text-2xl'}`}>{value}</p>

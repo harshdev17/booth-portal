@@ -149,8 +149,11 @@ const DashboardPage = async () => {
            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS successful_payments
          FROM payments`
       ),
-      allotmentPaymentStats: await q<Array<{ count: number }>>(
-        `SELECT COUNT(*) AS count FROM payments WHERE purpose = 'pay_now' AND status = 'success'`
+      paymentsByPurpose: await q<Array<{ purpose: string; count: number; total_paise: number }>>(
+        `SELECT purpose, COUNT(*) AS count, COALESCE(SUM(amount_paise), 0) AS total_paise
+         FROM payments
+         WHERE status = 'success'
+         GROUP BY purpose`
       ),
       topDistricts: await q<Array<{ district: string; count: number }>>(
         `SELECT district, COUNT(*) AS count
@@ -163,14 +166,14 @@ const DashboardPage = async () => {
     })).catch(() => ({
       drawStats: [] as Array<{ total_draws: number; total_allotted: number; total_waitlisted: number }>,
       paymentStats: [] as Array<{ total_payments: number; total_paid_paise: number; successful_payments: number }>,
-      allotmentPaymentStats: [] as Array<{ count: number }>,
+      paymentsByPurpose: [] as Array<{ purpose: string; count: number; total_paise: number }>,
       topDistricts: [] as Array<{ district: string; count: number }>
     }))
   ])
 
   const { statusRows, categoryRows, trendRows } = batchA
   const { docStatusRows, stallStats, categoryStalls } = batchB
-  const { drawStats, paymentStats, allotmentPaymentStats, topDistricts } = batchC
+  const { drawStats, paymentStats, paymentsByPurpose, topDistricts } = batchC
 
   const getCount = (status: string) => statusRows.find(r => r.status === status)?.count ?? 0
   const totalSubmitted = statusRows.reduce((sum, r) => sum + Number(r.count), 0)
@@ -193,7 +196,17 @@ const DashboardPage = async () => {
   // Payments & Revenue
   const totalPaidINR = Math.round(Number(paymentStats[0]?.total_paid_paise ?? 0) / 100)
   const successfulPayments = Number(paymentStats[0]?.successful_payments ?? 0)
-  const allotmentPaymentsCount = Number(allotmentPaymentStats[0]?.count ?? 0)
+
+  const purposeMap = new Map(paymentsByPurpose.map(r => [r.purpose, r]))
+  const registrationPaidINR = Math.round(Number(purposeMap.get('registration')?.total_paise ?? 0) / 100)
+  const registrationCount = Number(purposeMap.get('registration')?.count ?? 0)
+  const allotmentPaidINR = Math.round(Number(purposeMap.get('pay_now')?.total_paise ?? 0) / 100)
+  const allotmentPaymentsCount = Number(purposeMap.get('pay_now')?.count ?? 0)
+  const auctionPaidINR = Math.round(
+    (Number(purposeMap.get('auction_fee')?.total_paise ?? 0) + Number(purposeMap.get('auction_final')?.total_paise ?? 0)) / 100
+  )
+  const auctionPaymentsCount =
+    Number(purposeMap.get('auction_fee')?.count ?? 0) + Number(purposeMap.get('auction_final')?.count ?? 0)
 
   // Fill in gap days for the 14-day trend chart
   const trendMap = new Map(trendRows.map(r => [r.date.slice(0, 10), Number(r.count)]))
@@ -250,7 +263,7 @@ const DashboardPage = async () => {
       hint: 'Uploaded documents to verify'
     },
     {
-      label: 'Fees Realized',
+      label: 'Total Fees',
       value: `₹${totalPaidINR.toLocaleString('en-IN')}`,
       icon: IndianRupeeIcon,
       color: 'text-emerald-700',
@@ -258,12 +271,28 @@ const DashboardPage = async () => {
       hint: `${successfulPayments} verified payments`
     },
     {
-      label: 'Allotment Payments',
-      value: allotmentPaymentsCount,
+      label: 'Reg. Fees',
+      value: `₹${registrationPaidINR.toLocaleString('en-IN')}`,
+      icon: IndianRupeeIcon,
+      color: 'text-blue-700',
+      href: '/admin/payments',
+      hint: `${registrationCount} payments`
+    },
+    {
+      label: 'Allotment Fees',
+      value: `₹${allotmentPaidINR.toLocaleString('en-IN')}`,
       icon: IndianRupeeIcon,
       color: 'text-amber-700',
       href: '/admin/payments',
-      hint: 'Stall/booth allotment fees paid'
+      hint: `${allotmentPaymentsCount} payments`
+    },
+    {
+      label: 'Auction Fees',
+      value: `₹${auctionPaidINR.toLocaleString('en-IN')}`,
+      icon: IndianRupeeIcon,
+      color: 'text-rose-700',
+      href: '/admin/payments',
+      hint: `${auctionPaymentsCount} payments`
     }
   ]
 
@@ -285,7 +314,7 @@ const DashboardPage = async () => {
       </div>
 
       {/* KPI strip */}
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
         {kpis.map(kpi => (
           <KpiCard
             key={kpi.label}

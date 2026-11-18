@@ -22,6 +22,7 @@ export type AllotmentLetterRow = {
   allotment_amount_paise: number | null
   allotment_payment_status: string | null
   allotment_paid_at: string | null
+  allotment_letter_released_at: string | null
 }
 
 /**
@@ -33,7 +34,7 @@ export type AllotmentLetterRow = {
 export async function findAllotmentLetterRow(where: 'a.id = ?' | 'a.application_number = ?', value: number | string) {
   const rows = await query<AllotmentLetterRow[]>(
     `SELECT a.id, a.application_number, a.access_token_hash, a.organisation_name, a.representative_name, a.father_name,
-            a.mobile_number, a.email, a.address, a.submitted_at, a.status,
+            a.mobile_number, a.email, a.address, a.submitted_at, a.status, a.allotment_letter_released_at,
             c.name AS category_name, c.name_hi AS category_name_hi,
             COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
             COALESCE(su.direction, da_su.direction) AS stall_direction,

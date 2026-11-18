@@ -52,6 +52,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       )
     }
 
+    if (!application.allotment_letter_released_at) {
+      return NextResponse.json(
+        {
+          error:
+            'Your allotment letter is being verified and will be available for download shortly. Please check back soon.'
+        },
+        { status: 403 }
+      )
+    }
+
     return await renderAllotmentLetterPdfResponse(application, lang)
   } catch (error) {
     logServerError('api.applications.allotment-letter.pdf', error, { applicationId })

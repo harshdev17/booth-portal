@@ -65,6 +65,7 @@ type ApplicationRow = {
   fee_amount_paise: number
   gst_percent: number
   allotment_amount_note: string | null
+  allotment_letter_released_at: string | null
   shop_option_label: string | null
   stall_number: string | null
   allotment_amount_paise: number | null
@@ -150,6 +151,7 @@ const ApplicationDetailPage = async ({
   const connectionAPromise = withPooledConnection(async q => {
     const rows = await q<ApplicationRow[]>(
       `SELECT a.id, a.application_number, a.status, a.email, a.organisation_name, a.representative_name,
+              a.allotment_letter_released_at,
               a.father_name, a.police_station_name, a.police_station_address,
               a.aadhaar_last4, a.aadhaar_ciphertext, a.address, a.state, a.district, a.pin_code, a.mobile_number,
               a.alternate_mobile, a.work_purpose, a.achievement_experience, a.remarks, a.submitted_at, a.created_at,
@@ -1442,6 +1444,8 @@ const ApplicationDetailPage = async ({
               transactions={allotmentTransactions}
               drawAllocation={drawAllocationRow}
               canSendReminder={!!permissions?.has('payment:reminder')}
+              allotmentLetterReleasedAt={app.allotment_letter_released_at}
+              canReleaseAllotmentLetter={!!permissions?.has('allotment:perform')}
             />
           </TabsContent>
         )}
