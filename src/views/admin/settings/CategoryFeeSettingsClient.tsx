@@ -390,8 +390,18 @@ export default function CategoryFeeSettingsClient({
       ? new Date(cat.allotment_payment_deadline_at).toISOString()
       : null
 
-    if (enabled && (amountPaise === null || amountPaise <= 0 || !deadlineAt)) {
-      setErrorMessage('Amount (₹) and payment deadline are required before enabling allotment payment.')
+    // The flat Default Amount is required UNLESS both the Single and Double
+    // overrides are set — in that case every shop_type is already covered
+    // and the flat amount would never actually be used (see
+    // resolveAllotmentAmountPaise()), so it shouldn't block saving.
+    const hasBothOverrides =
+      amountSinglePaise !== null && amountSinglePaise > 0 && amountDoublePaise !== null && amountDoublePaise > 0
+    const hasValidDefault = amountPaise !== null && amountPaise > 0
+
+    if (enabled && (!deadlineAt || (!hasValidDefault && !hasBothOverrides))) {
+      setErrorMessage(
+        'A payment deadline is required, along with either the Default Amount or both Single and Double amounts.'
+      )
       setSavingId(null)
       return
     }

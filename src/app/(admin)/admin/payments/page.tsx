@@ -100,7 +100,7 @@ const PaymentsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'p.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [payments, categories, statsRows, purposeRows, countRows] = await Promise.all([
+  const [payments, categories, statsRows, purposeRows, categoryAllotmentRows, countRows] = await Promise.all([
     query<PaymentItem[]>(
       `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id, p.created_at,
               a.application_number, a.representative_name, c.name AS category_name, c.slug AS category_slug
@@ -121,6 +121,27 @@ const PaymentsAdminPage = async ({
     query<Array<{ purpose: string; count: number; total_amount: number }>>(
       `SELECT purpose, COUNT(*) AS count, COALESCE(SUM(amount_paise), 0) AS total_amount
        FROM payments WHERE status = 'success' GROUP BY purpose`
+    ),
+    // Every category with a configured allotment fee (> 0, via the flat
+    // amount or either shop-type override) gets a card, even if nothing has
+    // been collected for it yet — not just categories with existing
+    // successful 'pay_now' payments. The card shows what's actually been
+    // collected so far (0 until the first payment comes in).
+    query<Array<{ category_slug: string; category_name: string; total_amount: number; count: number }>>(
+      `SELECT c.slug AS category_slug, c.name AS category_name,
+              COALESCE(SUM(CASE WHEN p.status = 'success' THEN p.amount_paise END), 0) AS total_amount,
+              COUNT(CASE WHEN p.status = 'success' THEN 1 END) AS count
+       FROM categories c
+       LEFT JOIN applications a ON a.category_id = c.id
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+       WHERE c.status != 'archived'
+         AND (
+           COALESCE(c.allotment_amount_paise, 0) > 0
+           OR COALESCE(c.allotment_amount_single_paise, 0) > 0
+           OR COALESCE(c.allotment_amount_double_paise, 0) > 0
+         )
+       GROUP BY c.id, c.slug, c.name
+       ORDER BY total_amount DESC, c.name ASC`
     ),
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM payments p JOIN applications a ON a.id = p.application_id JOIN categories c ON c.id = a.category_id ${whereClause}`,
@@ -255,6 +276,32 @@ const PaymentsAdminPage = async ({
           compact
         />
       </div>
+
+      {categoryAllotmentRows.length > 0 && (
+        <div>
+          <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>
+            Allotment Fee Collected by Category
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {categoryAllotmentRows.map(row => (
+              <Link
+                key={row.category_slug}
+                href={buildUrl({ category: row.category_slug, page: 1 })}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                  category === row.category_slug
+                    ? 'border-[#0c2847] bg-[#0c2847] text-white'
+                    : 'border-border bg-white text-slate-700 hover:border-[#0c2847]/40 hover:bg-muted'
+                }`}
+              >
+                <span className='block'>{row.category_name}</span>
+                <span className={`block text-sm font-black ${category === row.category_slug ? 'text-white' : 'text-emerald-700'}`}>
+                  ₹{(row.total_amount / 100).toLocaleString('en-IN')}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className='flex flex-wrap gap-2'>
         {statusTabs.map(tab => (

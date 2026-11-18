@@ -76,6 +76,8 @@ const QUICK_FILTERS: Array<{ key: string; label: string; statuses: string[] }> =
   { key: 'query_raised', label: 'Query Raised', statuses: ['query_raised'] },
   { key: 'selected', label: 'Allotted / Selected', statuses: ['selected', 'allotted', 're_allotted'] },
   { key: 'waitlist', label: 'Waitlist', statuses: [] },
+  { key: 'selected_for_auction', label: 'Select for Auction', statuses: ['selected_for_auction'] },
+  { key: 'auction_fee_paid', label: 'Auction Fee Paid', statuses: ['auction_fee_paid'] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected', 'not_selected', 'cancelled'] },
 
   // Added per explicit request (2026-10-28): the sidebar's per-category
