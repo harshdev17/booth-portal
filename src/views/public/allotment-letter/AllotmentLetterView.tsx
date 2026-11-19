@@ -17,6 +17,7 @@ import {
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
+import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -200,6 +201,7 @@ const AllotmentLetterView = () => {
             ? 'गीता जयंती महोत्सव 2026 के लिए अपना आधिकारिक स्टॉल आबंटन पत्र देखें व डाउनलोड करें।'
             : 'Download and print your official Booth/Stall Allotment Letter for Gita Jayanti Mahotsav 2026.'}
         </p>
+        <LetterAvailableNotice className='mt-4' />
       </div>
 
       {phase === 'lookup' && (

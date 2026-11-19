@@ -58,6 +58,7 @@ const ACTION_LABELS: Record<string, string> = {
   'notification_file.deleted': 'Notification file deleted',
   'notification_file.status_updated': 'Notification file status updated',
   'payment.admin_reconciled': 'Payment reconciled by admin',
+  'payment.admin_reconciled_failed': 'Payment marked failed by admin reconciliation',
   'payment.order_created': 'Payment order created',
   'payment.success': 'Payment successful',
   'payment.test_connection': 'Payment gateway test connection',

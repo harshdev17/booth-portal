@@ -26,6 +26,8 @@ import {
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
+import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
+import PaymentPendingNotice from '@/components/public/PaymentPendingNotice'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -1144,6 +1146,8 @@ const StatusLookup = () => {
                 ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
                 : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
           </p>
+          <PaymentPendingNotice size='lg' className='mt-5 text-left' />
+          <LetterAvailableNotice className='mt-3 text-left' />
         </div>
       ) : (
         <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5'>
@@ -2079,6 +2083,13 @@ const StatusLookup = () => {
             {lang === 'hi' ? 'आवेदन प्रिंट' : 'Print Form'}
           </Link>
         </div>
+      )}
+
+      {isResult && (
+        <>
+          <PaymentPendingNotice size='lg' className='mt-6' />
+          <LetterAvailableNotice className='mt-3' />
+        </>
       )}
     </div>
   )

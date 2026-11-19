@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { useLanguage } from '@/context/LanguageContext'
+import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
+import PaymentPendingNotice from '@/components/public/PaymentPendingNotice'
 
 /**
  * Popup for Corrigendum Notice-02 (revised schedule), shown right after the
@@ -34,6 +36,11 @@ const CorrigendumNoticeModal = () => {
   const rows =
     lang === 'hi'
       ? [
+          {
+            particular: 'SARAS Category के लिए आवेदन की अंतिम तारीख',
+            previous: '10 नवंबर 2026, शाम 5:00 बजे',
+            revised: '23 नवंबर 2026, रात 11:59 बजे तक'
+          },
           {
             particular: 'Social Organizations (पंजीकृत) Category के लिए आवेदन की अंतिम तारीख',
             previous: '10 नवंबर 2026, शाम 5:00 बजे',
@@ -66,6 +73,11 @@ const CorrigendumNoticeModal = () => {
           }
         ]
       : [
+          {
+            particular: 'Application for SARAS Category',
+            previous: '10 November 2026 (5:00 PM)',
+            revised: '23 November 2026 (up to 11:59 PM)'
+          },
           {
             particular: 'Application for Social Organizations (Registered) Category',
             previous: '10 November 2026 (5:00 PM)',
@@ -105,9 +117,12 @@ const CorrigendumNoticeModal = () => {
           <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
             {lang === 'hi' ? 'संशोधन सूचना-02' : 'Corrigendum Notice-02'}
           </p>
-          <p className='mb-7 text-center text-2xl font-black text-[#072448]'>
+          <p className='mb-5 text-center text-2xl font-black text-[#072448]'>
             {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}
           </p>
+
+          <PaymentPendingNotice size='lg' className='mb-3' />
+          <LetterAvailableNotice className='mb-7' />
 
           <div className='mb-7 overflow-x-auto rounded-xl border border-[#e8e2d8]'>
           <table className='w-full min-w-[480px] text-left text-base'>
@@ -140,7 +155,7 @@ const CorrigendumNoticeModal = () => {
           </table>
         </div>
 
-        <p className='mb-7 text-center text-sm text-[#64748b]'>
+        <p className='mb-3 text-center text-sm text-[#64748b]'>
           {lang === 'hi'
             ? 'जिन आवेदकों ने पहले ही अपना आवेदन सफलतापूर्वक जमा कर दिया है, उन्हें दोबारा आवेदन करने की जरूरत नहीं है।'
             : 'Applicants who have already submitted their applications successfully need not apply again.'}

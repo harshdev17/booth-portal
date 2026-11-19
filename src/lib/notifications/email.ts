@@ -137,8 +137,16 @@ export function buildEmailContent(
     case 'payment_confirmation':
       c = {
         subject: `Payment received for application ${appNo}`,
-        en: [`Dear ${name},`, `We have received your payment of Rs. ${third} for application ${appNo}. Thank you.`],
-        hi: [`प्रिय ${name},`, `आवेदन ${appNo} के लिए आपका रु. ${third} का भुगतान प्राप्त हो गया है। धन्यवाद।`],
+        en: [
+          `Dear ${name},`,
+          `We have received your payment of Rs. ${third} for application ${appNo}. Thank you.`,
+          'If your payment was successful but the status on the portal has not updated yet, please wait 24 hours before contacting us.'
+        ],
+        hi: [
+          `प्रिय ${name},`,
+          `आवेदन ${appNo} के लिए आपका रु. ${third} का भुगतान प्राप्त हो गया है। धन्यवाद।`,
+          'यदि आपका भुगतान सफल हो गया है परंतु पोर्टल पर स्थिति अभी तक अपडेट नहीं हुई है, तो कृपया संपर्क करने से पहले 24 घंटे प्रतीक्षा करें।'
+        ],
         link: statusUrl
       }
       break
@@ -154,14 +162,14 @@ export function buildEmailContent(
           ? [
               `Dear ${name},`,
               `Congratulations! A booth/stall has been successfully allotted to you for application ${appNo} for International Geeta Jayanti Mahotsav 2026.`,
-              'You can now view your allotment details and download your official Allotment Letter using the link below.'
+              'Your official Allotment Letter will be available for download starting 23 November 2026, using the link below.'
             ]
           : [`Dear ${name},`, `The status of your application ${appNo} is now: ${third}.`],
         hi: isAllotted
           ? [
               `प्रिय ${name},`,
               `बधाई हो! अंतर्राष्ट्रीय गीता जयंती महोत्सव 2026 के लिए आपके आवेदन ${appNo} के अंतर्गत बूथ/स्टॉल सफलतापूर्वक आवंटित कर दिया गया है।`,
-              'आप नीचे दिए गए लिंक से अपना आधिकारिक आवंटन पत्र (Allotment Letter) देख व डाउनलोड कर सकते हैं।'
+              'आपका आधिकारिक आवंटन पत्र (Allotment Letter) 23 नवंबर 2026 से नीचे दिए गए लिंक से डाउनलोड किया जा सकेगा।'
             ]
           : [`प्रिय ${name},`, `आपके आवेदन ${appNo} की स्थिति अब: ${third} है।`],
         link: isAllotted ? allotmentLetterUrl : statusUrl

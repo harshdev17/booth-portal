@@ -30,6 +30,24 @@ export type PaymentRow = {
 
 type QueryFn = <T = unknown>(sql: string, params?: ReadonlyArray<unknown>) => Promise<T>
 
+/**
+ * Records the exact raw attempt status Razorpay's own API returned for this
+ * payment (migration 0086) — 'created' | 'authorized' | 'captured' |
+ * 'failed', or null when Razorpay shows no attempt at all. Separate from
+ * `payments.status` (our own derived not_initiated/pending/success/failed/
+ * refunded state): this is purely informational, for an admin reviewing the
+ * Pending list to tell "no attempt was ever made" apart from "Razorpay shows
+ * it authorized/in-progress but not yet captured". Called by both the
+ * single-payment and bulk "Reconcile with Razorpay" actions on every check,
+ * independent of whether that check also changes payments.status.
+ */
+export async function recordRazorpayAttemptStatus(paymentId: number, attemptStatus: string | null): Promise<void> {
+  await query(
+    `UPDATE payments SET razorpay_attempt_status = ?, razorpay_attempt_checked_at = NOW() WHERE id = ?`,
+    [attemptStatus, paymentId]
+  )
+}
+
 export async function getPaymentForApplication(applicationId: number, purpose: PaymentPurpose): Promise<PaymentRow | null> {
   const rows = await query<PaymentRow[]>(
     `SELECT id, application_id, purpose, amount_paise, status, razorpay_order_id
@@ -339,6 +357,50 @@ export async function recordAdminReconciled(input: {
     })
 
     return transition
+  })
+}
+
+/**
+ * Marks a payment failed based on an admin-triggered reconciliation against
+ * Razorpay's own API (bulk or single), not the checkout callback or webhook
+ * paths — used when Razorpay itself reports the order's payment attempt as
+ * 'failed' and nothing else ever told this app. See `recordCheckoutFailure`
+ * for the client-callback equivalent.
+ */
+export async function recordAdminReconciledFailure(input: {
+  paymentId: number
+  applicationId: number
+  amountPaise: number
+  razorpayOrderId: string
+  razorpayPaymentId?: string | null
+  failureReason: string
+}): Promise<void> {
+  await withTransaction(async (txQuery: TransactionQuery) => {
+    const paymentRows = await txQuery<Array<{ purpose: PaymentPurpose }>>(
+      `SELECT purpose FROM payments WHERE id = ? LIMIT 1`,
+      [input.paymentId]
+    )
+
+    const purpose = paymentRows[0]?.purpose ?? 'registration'
+
+    await txQuery(`UPDATE payments SET status = 'failed' WHERE id = ? AND status != 'success'`, [input.paymentId])
+
+    if (purpose === 'registration') {
+      await txQuery(`UPDATE applications SET status = 'payment_failed' WHERE id = ? AND status = 'payment_pending'`, [
+        input.applicationId
+      ])
+    }
+
+    await insertTransaction(txQuery, {
+      paymentId: input.paymentId,
+      type: 'checkout_failed',
+      amountPaise: input.amountPaise,
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId ?? null,
+      signatureValid: false,
+      failureReason: input.failureReason,
+      source: 'admin'
+    })
   })
 }
 
