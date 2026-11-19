@@ -456,7 +456,7 @@ const PaymentsAdminPage = async ({
                         <p className='text-xs text-muted-foreground'>
                           {new Date(payment.created_at).toLocaleString('en-IN')}
                         </p>
-                        {payment.updated_at !== payment.created_at && (
+                        {new Date(payment.updated_at).getTime() !== new Date(payment.created_at).getTime() && (
                           <p className='text-[11px] text-muted-foreground'>
                             Updated: {new Date(payment.updated_at).toLocaleString('en-IN')}
                           </p>

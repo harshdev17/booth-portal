@@ -115,7 +115,7 @@ const CorrigendumNoticeModal = () => {
       <div className='flex max-h-full w-full max-w-4xl flex-col rounded-2xl border border-[#ebe4db] bg-white shadow-2xl'>
         <div className='overflow-y-auto p-7 sm:p-9'>
           <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
-            {lang === 'hi' ? 'संशोधन सूचना-02' : 'Corrigendum Notice-02'}
+            {lang === 'hi' ? 'महत्वपूर्ण सूचना' : 'Important Notice'}
           </p>
           <p className='mb-5 text-center text-2xl font-black text-[#072448]'>
             {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}

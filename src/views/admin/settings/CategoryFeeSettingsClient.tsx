@@ -50,6 +50,7 @@ type CategoryFeeItem = {
   allotment_payment_deadline_at?: string | null
   auction_participation_fee_paise?: number | null
   auction_participation_fee_deadline_at?: string | null
+  auction_final_payment_deadline_at?: string | null
   description: string | null
   description_hi: string | null
   allotment_amount_note: string | null
@@ -298,6 +299,10 @@ export default function CategoryFeeSettingsClient({
       ? new Date(cat.auction_participation_fee_deadline_at).toISOString()
       : null
 
+    const finalPaymentDeadlineAt = cat.auction_final_payment_deadline_at
+      ? new Date(cat.auction_final_payment_deadline_at).toISOString()
+      : null
+
     try {
       const response = await fetch('/api/admin/categories/auction-fee', {
         method: 'PATCH',
@@ -305,7 +310,8 @@ export default function CategoryFeeSettingsClient({
         body: JSON.stringify({
           categoryId: cat.id,
           auctionParticipationFeePaise: feePaise,
-          auctionParticipationFeeDeadlineAt: deadlineAt
+          auctionParticipationFeeDeadlineAt: deadlineAt,
+          auctionFinalPaymentDeadlineAt: finalPaymentDeadlineAt
         })
       })
 
@@ -1231,12 +1237,14 @@ export default function CategoryFeeSettingsClient({
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>
                                   Fixed fee draw-selected applicants pay to take part in the physical auction. The
-                                  final allotment amount (which varies per winner) is set separately, per person,
-                                  when uploading the auction results — see Draw → Upload Auction Results.
+                                  final allotment amount (which varies per winner) is set separately, per person, when
+                                  uploading the auction results — see Declare Result → Auction Result. The Final
+                                  Payment Due Date below is how long a winner has to pay that final amount after
+                                  results are declared.
                                 </p>
                               </div>
 
-                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end'>
+                              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end'>
                                 <div className='flex flex-col gap-1.5'>
                                   <label className='text-xs font-semibold text-slate-700'>Auction Participation Fee (₹)</label>
                                   <div className='relative'>
@@ -1264,7 +1272,7 @@ export default function CategoryFeeSettingsClient({
                                 </div>
 
                                 <div className='flex flex-col gap-1.5'>
-                                  <label className='text-xs font-semibold text-slate-700'>Payment Due Date</label>
+                                  <label className='text-xs font-semibold text-slate-700'>Participation Fee Due Date</label>
                                   <Input
                                     type='datetime-local'
                                     value={toDatetimeLocalValue(cat.auction_participation_fee_deadline_at ?? null)}
@@ -1274,6 +1282,24 @@ export default function CategoryFeeSettingsClient({
                                       setCategories(prev =>
                                         prev.map(c =>
                                           c.id === cat.id ? { ...c, auction_participation_fee_deadline_at: val } : c
+                                        )
+                                      )
+                                    }}
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Final Payment Due Date</label>
+                                  <Input
+                                    type='datetime-local'
+                                    value={toDatetimeLocalValue(cat.auction_final_payment_deadline_at ?? null)}
+                                    onChange={e => {
+                                      const val = e.target.value || null
+
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id ? { ...c, auction_final_payment_deadline_at: val } : c
                                         )
                                       )
                                     }}

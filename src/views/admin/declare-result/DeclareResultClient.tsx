@@ -17,11 +17,15 @@ import type { ResultHistoryEntry, ResultRowView, ResultSheetPreview } from '@/li
 type RowError = { rowNumber: number; message: string }
 
 type Props = {
-  pending: ResultRowView[]
-  declared: ResultRowView[]
+  drawPending: ResultRowView[]
+  drawDeclared: ResultRowView[]
+  auctionPending: ResultRowView[]
+  auctionDeclared: ResultRowView[]
   history: ResultHistoryEntry[]
   tableMissing: boolean
 }
+
+type ResultPurpose = 'draw_allotment' | 'auction_result'
 
 const HISTORY_LABELS: Record<string, string> = {
   'result.sheet_uploaded': 'Sheet uploaded',
@@ -275,9 +279,11 @@ const ResultTable = ({ rows, showDeclaredAt, actions }: { rows: ResultRowView[];
             <TableCell className='text-xs'>
               {showDeclaredAt
                 ? row.applicationStatus.replace(/_/g, ' ')
-                : row.paymentRequired
-                  ? 'Payment Required + Pay Now link'
-                  : 'Allotted'}
+                : row.purpose === 'auction_result'
+                  ? 'Auction Won + Final Payment link'
+                  : row.paymentRequired
+                    ? 'Payment Required + Pay Now link'
+                    : 'Allotted'}
             </TableCell>
             {showDeclaredAt && (
               <TableCell className='text-xs text-muted-foreground'>
@@ -318,9 +324,12 @@ const ResultTable = ({ rows, showDeclaredAt, actions }: { rows: ResultRowView[];
   </div>
 )
 
-const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props) => {
+const DeclareResultClient = ({ drawPending, drawDeclared, auctionPending, auctionDeclared, history, tableMissing }: Props) => {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [purpose, setPurpose] = useState<ResultPurpose>('draw_allotment')
+  const pending = purpose === 'auction_result' ? auctionPending : drawPending
+  const declared = purpose === 'auction_result' ? auctionDeclared : drawDeclared
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [rowErrors, setRowErrors] = useState<RowError[]>([])
@@ -423,6 +432,7 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
 
       formData.append('file', file)
       formData.append('action', 'preview')
+      formData.append('purpose', purpose)
 
       const response = await fetch('/api/admin/declare-result', { method: 'POST', body: formData })
       const body = await response.json().catch(() => ({}))
@@ -456,6 +466,7 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
 
       formData.append('file', file)
       formData.append('action', 'stage')
+      formData.append('purpose', purpose)
 
       const response = await fetch('/api/admin/declare-result', { method: 'POST', body: formData })
       const body = await response.json().catch(() => ({}))
@@ -548,18 +559,43 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
 
   return (
     <div className='flex flex-col gap-6'>
+      <div className='flex items-center gap-1.5 rounded-lg border bg-muted/30 p-1.5 w-fit'>
+        <button
+          type='button'
+          onClick={() => setPurpose('draw_allotment')}
+          className={`rounded-md px-3.5 py-1.5 text-sm font-semibold transition ${
+            purpose === 'draw_allotment' ? 'bg-[#0c2847] text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Draw / Manual Allotment
+        </button>
+        <button
+          type='button'
+          onClick={() => setPurpose('auction_result')}
+          className={`rounded-md px-3.5 py-1.5 text-sm font-semibold transition ${
+            purpose === 'auction_result' ? 'bg-[#0c2847] text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Auction Result
+        </button>
+      </div>
+
       <Card className='shadow-xs'>
         <CardHeader>
           <CardTitle className='text-base'>1. Upload Result Sheet</CardTitle>
           <CardDescription>
-            One row per booth: Booth/Stall No., Single/Double, Category, Direction, Application Number. Only Approved
-            applications can be given a booth. Booths not yet in inventory are added. Uploading a new sheet replaces the
-            current pending one. Nobody is notified at this step.
+            {purpose === 'auction_result'
+              ? 'One row per winner: Booth/Stall No., Single/Double, Category, Direction, Application Number, Final Auction Amount. Only applications currently "Auction Fee Paid" can be given a booth. Booths not yet in inventory are added. Uploading a new sheet replaces the current pending auction sheet. Nobody is notified at this step.'
+              : 'One row per booth: Booth/Stall No., Single/Double, Category, Direction, Application Number. Only Approved applications can be given a booth. Booths not yet in inventory are added. Uploading a new sheet replaces the current pending one. Nobody is notified at this step.'}
           </CardDescription>
         </CardHeader>
         <CardContent className='flex flex-col gap-3'>
           <div className='flex flex-wrap items-center gap-2'>
-            <Button type='button' variant='outline' render={<a href='/api/admin/declare-result' download />}>
+            <Button
+              type='button'
+              variant='outline'
+              render={<a href={`/api/admin/declare-result?purpose=${purpose}`} download />}
+            >
               <DownloadIcon className='size-4' />
               Download Template
             </Button>
@@ -876,6 +912,11 @@ const DeclareResultClient = ({ pending, declared, history, tableMissing }: Props
                           >
                             {row.isPaymentRequired ? 'Payment Required' : 'Allotted (₹0 Fee)'}
                           </span>
+                          {purpose === 'auction_result' && row.finalAmountPaise != null && (
+                            <span className='ml-1 font-mono text-[10px] font-bold text-slate-700'>
+                              ₹{(row.finalAmountPaise / 100).toLocaleString('en-IN')}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {row.isValid ? (

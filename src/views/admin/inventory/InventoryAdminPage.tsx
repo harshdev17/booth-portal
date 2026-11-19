@@ -108,7 +108,16 @@ export default async function InventoryAdminPage() {
               su.status,
               COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
               COALESCE(a.id, da.application_id) AS application_id,
-              (da.id IS NOT NULL OR c.is_direct_allotment = 1) AS is_direct_allotment,
+              -- Whether THIS stall was actually allotted via the Direct
+              -- Allotment flow — driven solely by a real direct_allotments
+              -- row, never by categories.is_direct_allotment (that flag only
+              -- controls how unallotted CSV-import rows default their
+              -- status, see api/admin/inventory/import/route.ts; a category
+              -- can carry it while still using draw/auction for its actual
+              -- allotments, e.g. Refreshment & Ice Cream — using the flag
+              -- here mislabeled every one of its auction-declared stalls as
+              -- "Direct Allotment").
+              (da.id IS NOT NULL) AS is_direct_allotment,
               COALESCE(p.status, da.payment_status) AS payment_status,
               COALESCE(p.amount_paise, da.payment_amount_paise, su.emd_amount_paise, c.allotment_amount_paise) AS payment_amount_paise,
               (da.id IS NULL AND (
@@ -125,8 +134,17 @@ export default async function InventoryAdminPage() {
                   (latest_cancel_audit.cancelled_at IS NULL OR su.updated_at <= latest_cancel_audit.cancelled_at))
               )) AS is_cancelled,
               da_cancelled.notes AS cancel_reason,
-              c.allotment_payment_deadline_at,
-              (c.allotment_payment_deadline_at IS NOT NULL AND c.allotment_payment_deadline_at < NOW() AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')) AS is_payment_overdue,
+              -- Draw/manual categories track their deadline in
+              -- allotment_payment_deadline_at; an auction category's winners
+              -- instead pay against auction_final_payment_deadline_at (the
+              -- participation-fee deadline, auction_participation_fee_deadline_at,
+              -- is a separate earlier step and not relevant to an already-won stall).
+              COALESCE(c.allotment_payment_deadline_at, c.auction_final_payment_deadline_at) AS allotment_payment_deadline_at,
+              (
+                COALESCE(c.allotment_payment_deadline_at, c.auction_final_payment_deadline_at) IS NOT NULL
+                AND COALESCE(c.allotment_payment_deadline_at, c.auction_final_payment_deadline_at) < NOW()
+                AND COALESCE(p.status, da.payment_status) NOT IN ('paid', 'success', 'exempt')
+              ) AS is_payment_overdue,
               su.created_at
        FROM shop_units su
        JOIN categories c ON c.id = su.category_id
@@ -147,7 +165,7 @@ export default async function InventoryAdminPage() {
          JOIN (
            SELECT application_id, MAX(id) AS max_id
            FROM payments
-           WHERE purpose = 'pay_now'
+           WHERE purpose IN ('pay_now', 'auction_final')
            GROUP BY application_id
          ) p_max ON p_max.max_id = p1.id
        ) p ON p.application_id = COALESCE(a.id, da.application_id)

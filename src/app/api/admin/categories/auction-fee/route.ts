@@ -9,7 +9,8 @@ import { logServerError } from '@/lib/security/error-log'
 const updateAuctionFeeSchema = z.object({
   categoryId: z.number().int().positive(),
   auctionParticipationFeePaise: z.number().int().min(0).nullable(),
-  auctionParticipationFeeDeadlineAt: z.string().datetime().nullable().optional()
+  auctionParticipationFeeDeadlineAt: z.string().datetime().nullable().optional(),
+  auctionFinalPaymentDeadlineAt: z.string().datetime().nullable().optional()
 })
 
 /**
@@ -31,7 +32,8 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Invalid auction fee configuration.' }, { status: 400 })
     }
 
-    const { categoryId, auctionParticipationFeePaise, auctionParticipationFeeDeadlineAt } = parsed.data
+    const { categoryId, auctionParticipationFeePaise, auctionParticipationFeeDeadlineAt, auctionFinalPaymentDeadlineAt } =
+      parsed.data
 
     const categoryRows = await query<Array<{ selection_method: string }>>(
       `SELECT selection_method FROM categories WHERE id = ? LIMIT 1`,
@@ -50,9 +52,16 @@ export async function PATCH(request: Request) {
       ? auctionParticipationFeeDeadlineAt.replace('T', ' ').slice(0, 19)
       : null
 
+    const finalPaymentDeadlineAt = auctionFinalPaymentDeadlineAt
+      ? auctionFinalPaymentDeadlineAt.replace('T', ' ').slice(0, 19)
+      : null
+
     await query(
-      `UPDATE categories SET auction_participation_fee_paise = ?, auction_participation_fee_deadline_at = ? WHERE id = ?`,
-      [auctionParticipationFeePaise, deadlineAt, categoryId]
+      `UPDATE categories
+       SET auction_participation_fee_paise = ?, auction_participation_fee_deadline_at = ?,
+           auction_final_payment_deadline_at = ?
+       WHERE id = ?`,
+      [auctionParticipationFeePaise, deadlineAt, finalPaymentDeadlineAt, categoryId]
     )
 
     await logAudit({
@@ -62,7 +71,11 @@ export async function PATCH(request: Request) {
       module: 'settings',
       entityType: 'category',
       entityId: String(categoryId),
-      newValue: { auctionParticipationFeePaise, auctionParticipationFeeDeadlineAt: deadlineAt }
+      newValue: {
+        auctionParticipationFeePaise,
+        auctionParticipationFeeDeadlineAt: deadlineAt,
+        auctionFinalPaymentDeadlineAt: finalPaymentDeadlineAt
+      }
     })
 
     return NextResponse.json({ success: true, message: 'Auction participation fee updated successfully.' })

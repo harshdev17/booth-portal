@@ -123,6 +123,7 @@ type StatusResult = {
   allotmentLetterReleased: boolean
   auctionParticipationFeePaise: number | null
   auctionFinalAmountPaise: number | null
+  auctionFinalPaymentDeadlineAt: string | null
   categoryName: string
   categoryNameHi: string | null
   categorySlug: string
@@ -1185,6 +1186,13 @@ const StatusLookup = () => {
         </div>
       )}
 
+      {isResult && (
+        <div className='mb-6 flex flex-col gap-3'>
+          <PaymentPendingNotice size='lg' />
+          <LetterAvailableNotice />
+        </div>
+      )}
+
       {/* Lookup Phase */}
       {phase === 'lookup' && (
         <form onSubmit={form.handleSubmit(requestOtpForLookup)} className='flex flex-col gap-4'>
@@ -1354,8 +1362,8 @@ const StatusLookup = () => {
                   </p>
                   <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
                     {lang === 'hi'
-                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आपका आधिकारिक आवंटन पत्र सत्यापन के बाद उपलब्ध कराया जाएगा — कृपया कुछ समय बाद दोबारा देखें।'
-                      : 'Your booth/stall has been successfully allotted. Your official Allotment Letter will be made available here after verification — please check back shortly.'}
+                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आपका आधिकारिक आवंटन पत्र 23 नवंबर 2026 से यहां उपलब्ध कराया जाएगा।'
+                      : 'Your booth/stall has been successfully allotted. Your official Allotment Letter will be made available here starting 23 November 2026.'}
                   </p>
                 </div>
               </div>
@@ -1384,8 +1392,8 @@ const StatusLookup = () => {
                   </p>
                   <p className='mt-1 text-emerald-800 text-xs sm:text-sm leading-relaxed'>
                     {lang === 'hi'
-                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आपका आधिकारिक आवंटन पत्र सत्यापन के बाद उपलब्ध कराया जाएगा — कृपया कुछ समय बाद दोबारा देखें।'
-                      : 'Your booth/stall has been successfully allotted. Your official Allotment Letter will be made available here after verification — please check back shortly.'}
+                      ? 'आपका बूथ/स्टॉल सफलतापूर्वक आवंटित हो गया है। आपका आधिकारिक आवंटन पत्र 23 नवंबर 2026 से यहां उपलब्ध कराया जाएगा।'
+                      : 'Your booth/stall has been successfully allotted. Your official Allotment Letter will be made available here starting 23 November 2026.'}
                   </p>
                 </div>
               </div>
@@ -1719,6 +1727,24 @@ const StatusLookup = () => {
                           </span>
                         </div>
                       )}
+
+                      {result.auctionFinalPaymentDeadlineAt && (
+                        <div className='col-span-1 sm:col-span-2 pt-2 border-t border-amber-200 flex items-center justify-between flex-wrap gap-2'>
+                          <span className='text-amber-800 font-semibold text-xs flex items-center gap-1.5'>
+                            <ClockIcon className='size-3.5 text-amber-700' />
+                            {lang === 'hi' ? 'भुगतान की अंतिम तिथि:' : 'Payment Deadline:'}
+                          </span>
+                          <span className='text-amber-950 font-bold text-xs bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200'>
+                            {new Date(result.auctionFinalPaymentDeadlineAt).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {auctionFinalPaymentError && (
@@ -1782,8 +1808,8 @@ const StatusLookup = () => {
                           ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 हेतु आपका स्टॉल आधिकारिक रूप से आवंटित व पुष्टीकृत कर दिया गया है। आप नीचे दिए गए बटन से अपना आधिकारिक आवंटन पत्र डाउनलोड कर सकते हैं।'
                           : 'Your stall allotment for International Gita Mahotsav 2026 is officially confirmed. You can view and download your official Allotment Letter below.'
                         : lang === 'hi'
-                          ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 हेतु आपका स्टॉल आधिकारिक रूप से आवंटित व पुष्टीकृत कर दिया गया है। आपका आधिकारिक आवंटन पत्र सत्यापन के बाद उपलब्ध कराया जाएगा — कृपया कुछ समय बाद दोबारा देखें।'
-                          : 'Your stall allotment for International Gita Mahotsav 2026 is officially confirmed. Your official Allotment Letter will be made available here after verification — please check back shortly.'}
+                          ? 'अंतर्राष्ट्रीय गीता महोत्सव 2026 हेतु आपका स्टॉल आधिकारिक रूप से आवंटित व पुष्टीकृत कर दिया गया है। आपका आधिकारिक आवंटन पत्र 23 नवंबर 2026 से यहां उपलब्ध कराया जाएगा।'
+                          : 'Your stall allotment for International Gita Mahotsav 2026 is officially confirmed. Your official Allotment Letter will be made available here starting 23 November 2026.'}
                     </p>
 
                     {result.stallNumber && (
@@ -1802,8 +1828,8 @@ const StatusLookup = () => {
                         <ClockIcon className='size-4 shrink-0 text-amber-700' />
                         <span>
                           {lang === 'hi'
-                            ? 'आवंटन पत्र सत्यापन में है और कुछ समय में उपलब्ध हो जाएगा। कृपया बाद में दोबारा देखें।'
-                            : 'Your allotment letter is being verified and will be available for download shortly. Please check back later.'}
+                            ? 'आवंटन पत्र सत्यापन में है और 23 नवंबर 2026 से डाउनलोड के लिए उपलब्ध होगा।'
+                            : 'Your allotment letter is being verified and will be available for download starting 23 November 2026.'}
                         </span>
                       </div>
                     )}
@@ -2085,12 +2111,6 @@ const StatusLookup = () => {
         </div>
       )}
 
-      {isResult && (
-        <>
-          <PaymentPendingNotice size='lg' className='mt-6' />
-          <LetterAvailableNotice className='mt-3' />
-        </>
-      )}
     </div>
   )
 }

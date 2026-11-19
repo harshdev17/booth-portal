@@ -544,8 +544,12 @@ const InventoryTable = ({
   const [isBulkCancellingOverdue, setIsBulkCancellingOverdue] = useState(false)
   const [bulkCancelOverdueError, setBulkCancelOverdueError] = useState<string | null>(null)
 
-  const selectedOverdueReservedIds = useMemo(
-    () => rows.filter(r => selectedIds.has(r.id) && r.status === 'reserved' && r.isPaymentOverdue).map(r => r.id),
+  // Any selected allotted or reserved-for-payment stall can be bulk
+  // cancelled — not just overdue ones (per explicit request: admin wants to
+  // cancel allotted stalls, and reserved ones before their deadline passes
+  // too, not only after).
+  const selectedCancelableIds = useMemo(
+    () => rows.filter(r => selectedIds.has(r.id) && (r.status === 'allotted' || r.status === 'reserved') && !r.isCancelled).map(r => r.id),
     [rows, selectedIds]
   )
 
@@ -555,11 +559,11 @@ const InventoryTable = ({
 
     try {
       const results = await Promise.all(
-        selectedOverdueReservedIds.map(id =>
+        selectedCancelableIds.map(id =>
           fetch(`/api/admin/inventory/${id}/cancel-allotment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: 'Payment deadline passed — bulk cancelled from Reserved for Payment tab', sendNotification: true })
+            body: JSON.stringify({ reason: 'Bulk cancelled from Inventory', sendNotification: true })
           }).then(res => ({ id, ok: res.ok }))
         )
       )
@@ -598,7 +602,7 @@ const InventoryTable = ({
         setBulkCancelOverdueDialogOpen(false)
       }
     } catch {
-      setBulkCancelOverdueError('Network error while cancelling overdue allotments.')
+      setBulkCancelOverdueError('Network error while cancelling allotments.')
     } finally {
       setIsBulkCancellingOverdue(false)
     }
@@ -796,7 +800,7 @@ const InventoryTable = ({
         const next = new Set(prev)
 
         for (const row of pageRows) {
-          if (row.status !== 'allotted') next.add(row.id)
+          if (!row.isCancelled) next.add(row.id)
         }
 
         return next
@@ -1180,8 +1184,8 @@ const InventoryTable = ({
     }
   }
 
-  const pageSelectableCount = pageRows.filter(r => r.status !== 'allotted').length
-  const pageSelectedCount = pageRows.filter(r => r.status !== 'allotted' && selectedIds.has(r.id)).length
+  const pageSelectableCount = pageRows.filter(r => !r.isCancelled).length
+  const pageSelectedCount = pageRows.filter(r => !r.isCancelled && selectedIds.has(r.id)).length
   const allSelected = pageSelectableCount > 0 && pageSelectedCount === pageSelectableCount
 
   const hasActiveFilters =
@@ -1489,19 +1493,18 @@ const InventoryTable = ({
               </div>
             )}
 
-            {canManage && selectedOverdueReservedIds.length > 0 && (
+            {canManage && selectedCancelableIds.length > 0 && (
               <Dialog open={bulkCancelOverdueDialogOpen} onOpenChange={setBulkCancelOverdueDialogOpen}>
                 <DialogTrigger render={<Button type='button' variant='destructive' size='sm' className='gap-1.5' />}>
                   <BanIcon className='size-3.5' />
-                  Cancel Overdue ({selectedOverdueReservedIds.length})
+                  Cancel Allotment ({selectedCancelableIds.length})
                 </DialogTrigger>
                 <DialogContent className='sm:max-w-sm'>
                   <DialogHeader>
-                    <DialogTitle>Cancel {selectedOverdueReservedIds.length} overdue reservation(s)?</DialogTitle>
+                    <DialogTitle>Cancel allotment for {selectedCancelableIds.length} stall(s)?</DialogTitle>
                     <DialogDescription>
-                      These stalls&apos; payment deadline has passed. This releases each stall back to Available and
-                      cancels the applicant&apos;s allotment — the applicant will be notified by WhatsApp &amp; Email.
-                      This cannot be undone.
+                      This releases each stall back to Available and cancels the applicant&apos;s allotment — the
+                      applicant will be notified by WhatsApp &amp; Email. This cannot be undone.
                     </DialogDescription>
                   </DialogHeader>
 
@@ -2029,7 +2032,7 @@ const InventoryTable = ({
                 <TableRow key={row.id}>
                   {canManage && (
                     <TableCell>
-                      {row.status !== 'allotted' && !row.isCancelled && (
+                      {!row.isCancelled && (
                         <Checkbox
                           checked={selectedIds.has(row.id)}
                           onCheckedChange={checked => toggleRow(row.id, checked === true)}
