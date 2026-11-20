@@ -13,7 +13,11 @@ export const dynamic = 'force-dynamic'
 const DeclareResultPage = async () => {
   await requirePermission('allotment:perform')
 
-  const { pending, declared, tableMissing } = await listResultRows()
+  const [draw, auction] = await Promise.all([
+    listResultRows('draw_allotment'),
+    listResultRows('auction_result')
+  ])
+  const tableMissing = draw.tableMissing || auction.tableMissing
   const history = tableMissing ? [] : await listResultHistory()
 
   return (
@@ -21,11 +25,19 @@ const DeclareResultPage = async () => {
       <div>
         <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Declare Result</h1>
         <p className='text-sm text-muted-foreground'>
-          Upload the booth-wise result sheet, review who gets which booth, then declare to notify applicants.
+          Upload the booth-wise result sheet (draw/manual, or an auction category's physical-auction winners), review
+          who gets which booth, then declare to notify applicants.
         </p>
       </div>
 
-      <DeclareResultClient pending={pending} declared={declared} history={history} tableMissing={tableMissing} />
+      <DeclareResultClient
+        drawPending={draw.pending}
+        drawDeclared={draw.declared}
+        auctionPending={auction.pending}
+        auctionDeclared={auction.declared}
+        history={history}
+        tableMissing={tableMissing}
+      />
     </div>
   )
 }

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 
-import { buildResultSheetTemplate, parseResultSheet, previewResultSheet, stageResultSheet } from '@/lib/allotment/declare-result'
+import {
+  buildAuctionResultSheetTemplate,
+  buildResultSheetTemplate,
+  parseResultSheet,
+  previewResultSheet,
+  stageResultSheet,
+  type ResultPurpose
+} from '@/lib/allotment/declare-result'
 import { logAudit } from '@/lib/audit/log'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
@@ -8,20 +15,31 @@ import { getRequestMeta } from '@/lib/security/request-meta'
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
-/** Downloads the blank result sheet template. */
-export async function GET() {
+function resolvePurpose(value: string | null): ResultPurpose {
+  return value === 'auction_result' ? 'auction_result' : 'draw_allotment'
+}
+
+/** Downloads the blank result sheet template — ?purpose=auction_result for the auction variant. */
+export async function GET(request: Request) {
   await requirePermission('allotment:perform')
 
-  return new Response(buildResultSheetTemplate(), {
+  const purpose = resolvePurpose(new URL(request.url).searchParams.get('purpose'))
+  const csv = purpose === 'auction_result' ? buildAuctionResultSheetTemplate() : buildResultSheetTemplate()
+  const filename = purpose === 'auction_result' ? 'auction-result-sheet-template.csv' : 'result-sheet-template.csv'
+
+  return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="result-sheet-template.csv"'
+      'Content-Disposition': `attachment; filename="${filename}"`
     }
   })
 }
 
 /**
- * Uploads a result sheet (booth ↔ application number).
+ * Uploads a result sheet (booth ↔ application number) — `purpose` form field
+ * selects draw/manual ('draw_allotment', the default) or the physical
+ * auction's winner sheet ('auction_result', which also carries a Final
+ * Auction Amount column).
  * If action === 'preview' or mode === 'validate', returns row-by-row preview with highlighted issues without saving.
  * Otherwise, validates every row against live data and saves it as the pending result.
  */
@@ -32,11 +50,13 @@ export async function POST(request: Request) {
   let formData: FormData
   let file: FormDataEntryValue | null
   let action: string | null
+  let purpose: ResultPurpose
 
   try {
     formData = await request.formData()
     file = formData.get('file')
     action = (formData.get('action') as string) || (formData.get('mode') as string) || 'stage'
+    purpose = resolvePurpose(formData.get('purpose') as string | null)
   } catch {
     return NextResponse.json({ error: 'Malformed upload.' }, { status: 400 })
   }
@@ -49,7 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'File too large (maximum 5 MB).' }, { status: 413 })
   }
 
-  const parsed = parseResultSheet(await file.text())
+  const parsed = parseResultSheet(await file.text(), purpose)
 
   if (parsed.errors.length > 0) {
     return NextResponse.json(
@@ -61,7 +81,7 @@ export async function POST(request: Request) {
   // Preview / Validate mode: returns row-level preview with detailed issues
   if (action === 'preview' || action === 'validate') {
     try {
-      const preview = await previewResultSheet(parsed.rows)
+      const preview = await previewResultSheet(parsed.rows, purpose)
 
       return NextResponse.json({
         success: true,
@@ -77,7 +97,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await stageResultSheet(parsed.rows, session.userId)
+    const result = await stageResultSheet(parsed.rows, session.userId, purpose)
 
     if (!result.ok) {
       return NextResponse.json({ error: 'The sheet has errors. Nothing was saved.', rowErrors: result.errors }, { status: 400 })
@@ -92,6 +112,7 @@ export async function POST(request: Request) {
       entityId: result.batchId,
       ipAddress,
       newValue: {
+        purpose,
         filename: file.name,
         rowCount: result.rowCount,
         createdStalls: result.createdStalls,

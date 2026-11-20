@@ -30,13 +30,15 @@ export async function notifyPaymentSuccess(applicationId: number, amountPaise: n
     const userName = application.representative_name
 
     // A free category has no payment to confirm — only the application confirmation.
+    // Registration fee confirmation uses its own dedicated template
+    // (AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION = gita_mahotsav_payment_confirmation),
+    // distinct from the allotment/auction payment confirmation template — do
+    // NOT fall back to AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION here, that is
+    // the allotment-specific one (see notifyAllotmentPaymentSuccess below).
     if (amountPaise > 0) {
       await sendNotification({
         category: 'payment_confirmation',
-        campaignOverride:
-          process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
-          process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
-          undefined,
+        campaignOverride: process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION || undefined,
         destination,
         userName,
         templateParams: [userName, application.application_number, String(amountPaise / 100)],

@@ -11,8 +11,16 @@ import { logServerError } from '@/lib/security/error-log'
 
 export const RESULT_SHEET_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Application Number'] as const
 
+// Auction Results sheet: same 5 columns as the draw/manual sheet above, plus
+// one extra the draw sheet doesn't have — the winning bid actually settled
+// at the (offline, in-person) auction, which varies per row and can't be
+// known ahead of time the way a draw category's flat allotment amount can.
+export const AUCTION_RESULT_SHEET_COLUMNS = [...RESULT_SHEET_COLUMNS, 'Final Auction Amount'] as const
+
 const APPLICATION_NUMBER_PATTERN = /^(?:IGM|KDB)-\d{4}-\d{6}$/
 const MAX_ROWS = 2000
+
+export type ResultPurpose = 'draw_allotment' | 'auction_result'
 
 export type ResultSheetRow = {
   rowNumber: number
@@ -21,6 +29,8 @@ export type ResultSheetRow = {
   categoryName: string | null
   direction: string | null
   applicationNumber: string
+  // Only present for an 'auction_result' sheet — see AUCTION_RESULT_SHEET_COLUMNS.
+  finalAmountPaise: number | null
 }
 
 export type RowError = { rowNumber: number; message: string }
@@ -33,8 +43,23 @@ export function buildResultSheetTemplate(): string {
   ])
 }
 
-/** Parses the uploaded sheet. Pure — no database access. */
-export function parseResultSheet(text: string): { rows: ResultSheetRow[]; errors: RowError[] } {
+export function buildAuctionResultSheetTemplate(): string {
+  return buildCsv([
+    [...AUCTION_RESULT_SHEET_COLUMNS],
+    ['S-101', 'Single', 'Refreshment and Ice Cream Booth/Stall', 'North', 'IGM-2026-000123', '55000']
+  ])
+}
+
+/**
+ * Parses the uploaded sheet. Pure — no database access. `purpose` controls
+ * whether the "Final Auction Amount" column is required (auction_result) or
+ * ignored if present (draw_allotment) — same 5 base columns either way, so
+ * one parser serves both upload modes.
+ */
+export function parseResultSheet(
+  text: string,
+  purpose: ResultPurpose = 'draw_allotment'
+): { rows: ResultSheetRow[]; errors: RowError[] } {
   const lines = text
     .replace(/^﻿/, '')
     .split(/\r?\n/)
@@ -57,11 +82,19 @@ export function parseResultSheet(text: string): { rows: ResultSheetRow[]; errors
   const categoryCol = findCol(['category', 'category name'])
   const directionCol = findCol(['direction', 'facing'])
   const appCol = findCol(['application number', 'application no.', 'application no', 'app no', 'app number'])
+  const amountCol = findCol(['final auction amount', 'final amount', 'auction amount', 'amount'])
 
   if (stallCol === -1 || appCol === -1) {
     return {
       rows: [],
       errors: [{ rowNumber: 1, message: 'Could not find the "Booth/Stall No." and "Application Number" columns. Use the template.' }]
+    }
+  }
+
+  if (purpose === 'auction_result' && amountCol === -1) {
+    return {
+      rows: [],
+      errors: [{ rowNumber: 1, message: 'Could not find the "Final Auction Amount" column. Use the auction template.' }]
     }
   }
 
@@ -97,6 +130,19 @@ export function parseResultSheet(text: string): { rows: ResultSheetRow[]; errors
       })
     }
 
+    let finalAmountPaise: number | null = null
+
+    if (purpose === 'auction_result') {
+      const amountRaw = fields[amountCol] ?? ''
+      const amountRupees = Number(amountRaw)
+
+      if (!amountRaw || !Number.isFinite(amountRupees) || amountRupees <= 0) {
+        return void errors.push({ rowNumber, message: 'Final Auction Amount must be a positive number.' })
+      }
+
+      finalAmountPaise = Math.round(amountRupees * 100)
+    }
+
     seenStalls.set(stallKey, rowNumber)
     seenApplications.set(applicationNumber, rowNumber)
 
@@ -106,7 +152,8 @@ export function parseResultSheet(text: string): { rows: ResultSheetRow[]; errors
       shopType: typeRaw.includes('double') || typeRaw === 'd' ? 'double' : 'single',
       categoryName: categoryCol !== -1 && fields[categoryCol] ? fields[categoryCol].replace(/\s+/g, ' ') : null,
       direction: directionCol !== -1 && fields[directionCol] ? fields[directionCol].slice(0, 64) : null,
-      applicationNumber
+      applicationNumber,
+      finalAmountPaise
     })
   })
 
@@ -145,6 +192,7 @@ export type ResultPreviewRow = {
   isNewStall: boolean
   isValid: boolean
   issues: string[]
+  finalAmountPaise: number | null
 }
 
 export type ResultSheetPreview = {
@@ -156,7 +204,10 @@ export type ResultSheetPreview = {
   canStage: boolean
 }
 
-export async function previewResultSheet(rows: ResultSheetRow[]): Promise<ResultSheetPreview> {
+export async function previewResultSheet(
+  rows: ResultSheetRow[],
+  purpose: ResultPurpose = 'draw_allotment'
+): Promise<ResultSheetPreview> {
   if (rows.length === 0) {
     return {
       rows: [],
@@ -236,6 +287,21 @@ export async function previewResultSheet(rows: ResultSheetRow[]): Promise<Result
 
     if (!app) {
       issues.push(`Application "${row.applicationNumber}" not found in database.`)
+    } else if (purpose === 'auction_result') {
+      const alreadyWon = app.status === 'auction_won'
+
+      if (app.status !== 'auction_fee_paid' && !alreadyWon) {
+        issues.push(`Application status is "${app.status}" (must be "Auction Fee Paid" before results can be recorded).`)
+      }
+      if (app.selection_method !== 'auction') {
+        issues.push(`Category "${app.category_name}" is not an auction category — use the draw/manual result flow.`)
+      }
+      if (row.categoryName && row.categoryName.trim().toLowerCase() !== app.category_name.toLowerCase()) {
+        issues.push(`Sheet category "${row.categoryName}" does not match applicant category "${app.category_name}".`)
+      }
+      if (!alreadyWon && (app.existing_stall || app.existing_direct_allotment)) {
+        issues.push(`Applicant already allotted a stall (${app.existing_stall ? `Stall #${app.existing_stall}` : 'Direct Allotment'}).`)
+      }
     } else {
       if (app.status !== 'approved') {
         issues.push(`Application status is "${app.status}" (must be "approved" to allot).`)
@@ -280,12 +346,14 @@ export async function previewResultSheet(rows: ResultSheetRow[]): Promise<Result
       applicationNumber: row.applicationNumber,
       applicantName: app?.representative_name ?? null,
       fatherName: app?.father_name ?? null,
-      isPaymentRequired: Boolean(
-        app && app.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(app, row.shopType)) > 0
-      ),
+      isPaymentRequired:
+        purpose === 'auction_result'
+          ? true
+          : Boolean(app && app.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(app, row.shopType)) > 0),
       isNewStall,
       isValid,
-      issues
+      issues,
+      finalAmountPaise: purpose === 'auction_result' ? row.finalAmountPaise : null
     }
   })
 
@@ -305,10 +373,16 @@ export async function previewResultSheet(rows: ResultSheetRow[]): Promise<Result
  * exist yet (as 'available', under the application's category) and stages
  * one pending row per booth. Nothing is assigned to any application and no
  * one is notified until declareResult() runs.
+ *
+ * Uploading a new sheet discards the previously pending rows of the SAME
+ * purpose only — an auction upload never discards a still-pending draw
+ * sheet and vice versa, since the two are independent workflows that happen
+ * to share this table (migration 0087).
  */
 export async function stageResultSheet(
   rows: ResultSheetRow[],
-  uploadedByUserId: number
+  uploadedByUserId: number,
+  purpose: ResultPurpose = 'draw_allotment'
 ): Promise<{ ok: true; batchId: string; rowCount: number; createdStalls: number; createdStallNumbers: string[] } | { ok: false; errors: RowError[] }> {
   const applications = await query<ApplicationLookup[]>(
     `SELECT a.id, a.application_number, a.status, a.category_id, c.name AS category_name, c.selection_method,
@@ -337,6 +411,44 @@ export async function stageResultSheet(
 
     if (!app) {
       fail(`Application ${row.applicationNumber} not found.`)
+      continue
+    }
+
+    if (purpose === 'auction_result') {
+      const alreadyWon = app.status === 'auction_won'
+
+      if (app.status !== 'auction_fee_paid' && !alreadyWon) {
+        fail(`Application ${row.applicationNumber} is "${app.status}" — it must be "Auction Fee Paid" before results can be recorded.`)
+        continue
+      }
+
+      if (app.selection_method !== 'auction') {
+        fail(`Application ${row.applicationNumber} is not in an auction category (${app.category_name}) — use the draw/manual result flow.`)
+        continue
+      }
+
+      if (row.categoryName && row.categoryName.toLowerCase() !== app.category_name.toLowerCase()) {
+        fail(`Category "${row.categoryName}" does not match application ${row.applicationNumber}'s category "${app.category_name}".`)
+        continue
+      }
+
+      if (!alreadyWon && (app.existing_stall || app.existing_direct_allotment)) {
+        fail(`Application ${row.applicationNumber} already has a booth${app.existing_stall ? ` (${app.existing_stall})` : ''}.`)
+        continue
+      }
+
+      if (stall) {
+        if (stall.category_id !== app.category_id) {
+          fail(`Booth/Stall "${row.stallNumber}" belongs to a different category than application ${row.applicationNumber}.`)
+        } else {
+          const stallBelongsToThisApplication = stall.allotted_to_application_id === app.id
+
+          if (!stallBelongsToThisApplication && (stall.status !== 'available' || stall.allotted_to_application_id !== null)) {
+            fail(`Booth/Stall "${row.stallNumber}" is not available (currently "${stall.status}").`)
+          }
+        }
+      }
+
       continue
     }
 
@@ -374,7 +486,7 @@ export async function stageResultSheet(
   const batchId = randomUUID()
 
   const createdStallResult = await withTransaction(async q => {
-    await q(`UPDATE result_declaration_rows SET status = 'discarded' WHERE status = 'pending'`)
+    await q(`UPDATE result_declaration_rows SET status = 'discarded' WHERE status = 'pending' AND purpose = ?`, [purpose])
 
     const createdStallNumbers: string[] = []
 
@@ -383,7 +495,7 @@ export async function stageResultSheet(
       let stallId = stallByNumber.get(row.stallNumber.toLowerCase())?.id
 
       if (!stallId) {
-         
+
         const inserted = await q<{ insertId: number }>(
           `INSERT INTO shop_units (category_id, stall_number, shop_type, direction, status)
            VALUES (?, ?, ?, ?, 'available')`,
@@ -394,11 +506,11 @@ export async function stageResultSheet(
         createdStallNumbers.push(row.stallNumber)
       }
 
-       
+
       await q(
-        `INSERT INTO result_declaration_rows (batch_id, shop_unit_id, application_id, uploaded_by_user_id)
-         VALUES (?, ?, ?, ?)`,
-        [batchId, stallId, app.id, uploadedByUserId]
+        `INSERT INTO result_declaration_rows (batch_id, purpose, shop_unit_id, application_id, final_amount_paise, uploaded_by_user_id)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [batchId, purpose, stallId, app.id, row.finalAmountPaise, uploadedByUserId]
       )
     }
 
@@ -417,6 +529,7 @@ export async function stageResultSheet(
 export type ResultRowView = {
   id: number
   batchId: string
+  purpose: ResultPurpose
   stallNumber: string
   shopType: 'single' | 'double'
   direction: string | null
@@ -434,14 +547,16 @@ type ResultRowViewQuery = Omit<ResultRowView, 'paymentRequired' | 'allotmentAmou
   allotment_amount_paise: number | null
   allotment_amount_single_paise: number | null
   allotment_amount_double_paise: number | null
+  final_amount_paise: number | null
 }
 
 const ROW_VIEW_SELECT = `
-  SELECT r.id, r.batch_id AS batchId, su.stall_number AS stallNumber, su.shop_type AS shopType, su.direction,
+  SELECT r.id, r.batch_id AS batchId, r.purpose, su.stall_number AS stallNumber, su.shop_type AS shopType, su.direction,
          c.name AS categoryName, a.application_number AS applicationNumber, a.representative_name AS applicantName,
          a.status AS applicationStatus,
          c.allotment_payment_enabled AS allotmentPaymentEnabled,
          c.allotment_amount_paise, c.allotment_amount_single_paise, c.allotment_amount_double_paise,
+         r.final_amount_paise,
          r.declared_at AS declaredAt
   FROM result_declaration_rows r
   JOIN shop_units su ON su.id = r.shop_unit_id
@@ -453,11 +568,13 @@ function isMissingTable(error: unknown): boolean {
 }
 
 function toResultRowView(row: ResultRowViewQuery): ResultRowView {
-  const allotmentAmountPaise = resolveAllotmentAmountPaise(row, row.shopType)
+  const allotmentAmountPaise =
+    row.purpose === 'auction_result' ? row.final_amount_paise : resolveAllotmentAmountPaise(row, row.shopType)
 
   return {
     id: row.id,
     batchId: row.batchId,
+    purpose: row.purpose,
     stallNumber: row.stallNumber,
     shopType: row.shopType,
     direction: row.direction,
@@ -465,20 +582,27 @@ function toResultRowView(row: ResultRowViewQuery): ResultRowView {
     applicationNumber: row.applicationNumber,
     applicantName: row.applicantName,
     applicationStatus: row.applicationStatus,
-    paymentRequired: Boolean(Number(row.allotmentPaymentEnabled) && Number(allotmentAmountPaise) > 0),
+    paymentRequired:
+      row.purpose === 'auction_result'
+        ? true
+        : Boolean(Number(row.allotmentPaymentEnabled) && Number(allotmentAmountPaise) > 0),
     allotmentAmountPaise,
     declaredAt: row.declaredAt
   }
 }
 
-export async function listResultRows(): Promise<{ pending: ResultRowView[]; declared: ResultRowView[]; tableMissing: boolean }> {
+export async function listResultRows(
+  purpose: ResultPurpose = 'draw_allotment'
+): Promise<{ pending: ResultRowView[]; declared: ResultRowView[]; tableMissing: boolean }> {
   try {
     const pending = await query<ResultRowViewQuery[]>(
-      `${ROW_VIEW_SELECT} WHERE r.status = 'pending' ORDER BY c.name, su.stall_number`
+      `${ROW_VIEW_SELECT} WHERE r.status = 'pending' AND r.purpose = ? ORDER BY c.name, su.stall_number`,
+      [purpose]
     )
 
     const declared = await query<ResultRowViewQuery[]>(
-      `${ROW_VIEW_SELECT} WHERE r.status = 'declared' ORDER BY r.declared_at DESC, su.stall_number LIMIT 500`
+      `${ROW_VIEW_SELECT} WHERE r.status = 'declared' AND r.purpose = ? ORDER BY r.declared_at DESC, su.stall_number LIMIT 500`,
+      [purpose]
     )
 
     return { pending: pending.map(toResultRowView), declared: declared.map(toResultRowView), tableMissing: false }
@@ -550,9 +674,17 @@ export async function updatePendingRowApplication(
 
   const result = await withTransaction(async q => {
     const rows = await q<
-      Array<{ id: number; batch_id: string; shop_unit_id: number; stall_number: string; stall_category_id: number; old_application_number: string }>
+      Array<{
+        id: number
+        batch_id: string
+        purpose: ResultPurpose
+        shop_unit_id: number
+        stall_number: string
+        stall_category_id: number
+        old_application_number: string
+      }>
     >(
-      `SELECT r.id, r.batch_id, r.shop_unit_id, su.stall_number, su.category_id AS stall_category_id,
+      `SELECT r.id, r.batch_id, r.purpose, r.shop_unit_id, su.stall_number, su.category_id AS stall_category_id,
               a.application_number AS old_application_number
        FROM result_declaration_rows r
        JOIN shop_units su ON su.id = r.shop_unit_id
@@ -565,6 +697,14 @@ export async function updatePendingRowApplication(
     const row = rows[0]
 
     if (!row) return { error: 'This row is no longer pending — it was already declared, removed or replaced.' }
+
+    // Re-assigning a pending auction row's application isn't supported yet —
+    // its eligibility rules (auction_fee_paid, not approved) differ from the
+    // draw-only checks below. Safer to require a fresh upload than risk a
+    // mismatched check passing a row through incorrectly.
+    if (row.purpose === 'auction_result') {
+      return { error: 'Editing the application on an auction result row is not supported — remove it and re-upload the sheet instead.' }
+    }
 
     if (row.old_application_number === applicationNumber) return { error: 'This booth already points to that application.' }
 
@@ -838,6 +978,8 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
 
 type DeclareRow = {
   id: number
+  purpose: ResultPurpose
+  final_amount_paise: number | null
   shop_unit_id: number
   stall_number: string
   shop_type: 'single' | 'double'
@@ -877,7 +1019,7 @@ export class DeclareResultError extends Error {
 export async function declareResult(batchId: string, declaredByUserId: number, ipAddress?: string | null) {
   const applied = await withTransaction(async q => {
     const rows = await q<DeclareRow[]>(
-      `SELECT r.id, r.shop_unit_id, su.stall_number, su.shop_type, su.status AS stall_status,
+      `SELECT r.id, r.purpose, r.final_amount_paise, r.shop_unit_id, su.stall_number, su.shop_type, su.status AS stall_status,
               su.allotted_to_application_id AS stall_application_id,
               r.application_id, a.application_number, a.status AS application_status, a.representative_name,
               a.mobile_number, a.email, c.allotment_payment_enabled, c.allotment_amount_paise,
@@ -895,6 +1037,8 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
       throw new DeclareResultError('There is no pending result for this sheet — it was already declared or replaced by a newer upload.')
     }
 
+    const purpose = rows[0].purpose
+
     const alreadyHaveStall = await q<Array<{ allotted_to_application_id: number; stall_number: string }>>(
       `SELECT allotted_to_application_id, stall_number FROM shop_units
        WHERE allotted_to_application_id IN (${rows.map(() => '?').join(', ')})`,
@@ -905,6 +1049,26 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
     const problems: string[] = []
 
     for (const row of rows) {
+      if (purpose === 'auction_result') {
+        const alreadyWon = row.application_status === 'auction_won'
+
+        if (row.application_status !== 'auction_fee_paid' && !alreadyWon) {
+          problems.push(`${row.application_number} is now "${row.application_status}" (not Auction Fee Paid).`)
+        }
+
+        const stallBelongsToThisApplication = row.stall_application_id === row.application_id
+
+        if (!stallBelongsToThisApplication && (row.stall_status !== 'available' || row.stall_application_id !== null)) {
+          problems.push(`Booth/Stall ${row.stall_number} is no longer available ("${row.stall_status}").`)
+        }
+
+        if (!alreadyWon && stallHeldBy.has(row.application_id)) {
+          problems.push(`${row.application_number} already has booth ${stallHeldBy.get(row.application_id)}.`)
+        }
+
+        continue
+      }
+
       if (row.application_status !== 'approved') {
         problems.push(`${row.application_number} is now "${row.application_status}" (not Approved).`)
       }
@@ -923,6 +1087,26 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
     }
 
     for (const row of rows) {
+      if (purpose === 'auction_result') {
+        const amountPaise = Number(row.final_amount_paise ?? 0)
+
+        await q(`UPDATE shop_units SET status = 'reserved', allotted_to_application_id = ? WHERE id = ?`, [
+          row.application_id,
+          row.shop_unit_id
+        ])
+
+        await q(`UPDATE applications SET status = 'auction_won' WHERE id = ?`, [row.application_id])
+
+        await q(
+          `INSERT INTO payments (application_id, purpose, amount_paise, status)
+           VALUES (?, 'auction_final', ?, 'not_initiated')
+           ON DUPLICATE KEY UPDATE amount_paise = ?, status = IF(status = 'success', 'success', 'not_initiated')`,
+          [row.application_id, amountPaise, amountPaise]
+        )
+
+        continue
+      }
+
       const resolvedAmountPaise = resolveAllotmentAmountPaise(row, row.shop_type)
       const isPaymentRequired = Boolean(row.allotment_payment_enabled && Number(resolvedAmountPaise) > 0)
 
@@ -960,9 +1144,10 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
 
     return rows.map(row => ({
       ...row,
-      isPaymentRequired: Boolean(
-        row.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(row, row.shop_type)) > 0
-      )
+      isPaymentRequired:
+        purpose === 'auction_result'
+          ? true
+          : Boolean(row.allotment_payment_enabled && Number(resolveAllotmentAmountPaise(row, row.shop_type)) > 0)
     }))
   })
 
@@ -1003,7 +1188,26 @@ async function notifyDeclaredApplicants(rows: Array<DeclareRow & { isPaymentRequ
     for (let row = queue.shift(); row; row = queue.shift()) {
       const destination = row.mobile_number.startsWith('+') ? row.mobile_number : `+91${row.mobile_number}`
 
-       
+      if (row.purpose === 'auction_result') {
+        // Template (gita_mahotsav_auction_msg) only has 2 body variables
+        // (name, application number) and NO button component at all —
+        // confirmed live 2026-11-20: AiSensy rejects every send with
+        // "Template does not contain button components, no parameters
+        // allowed" when buttonParam is sent. See .ai/CHANGELOG.md for the
+        // earlier fix (3rd templateParams entry) this complements.
+        await sendNotification({
+          category: 'auction_final_payment',
+          destination,
+          userName: row.representative_name,
+          templateParams: [row.representative_name, row.application_number],
+          applicationId: row.application_id,
+          email: row.email
+        }).catch(error => logServerError('result.declare.notify.auction_final', error, { applicationId: row.application_id }))
+
+        continue
+      }
+
+
       if (row.isPaymentRequired) {
         const payLink = baseUrl ? `${baseUrl}/status?appNo=${encodeURIComponent(row.application_number)}` : ''
 

@@ -91,11 +91,11 @@ function buildSampleParams(category: NotificationCategory): { templateParams: st
       return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
     }
 
-    case 'auction_final_payment': {
-      const link = 'http://192.168.1.3:3000/status?appNo=IGM-2026-000000'
-
-      return { templateParams: ['Test Applicant', 'IGM-2026-000000', link], buttonParam: 'IGM-2026-000000' }
-    }
+    // Template (gita_mahotsav_auction_msg) only has 2 body variables (name,
+    // application number) and no button component — see declare-result.ts's
+    // notifyDeclaredApplicants() for the same fix, confirmed live 2026-11-20.
+    case 'auction_final_payment':
+      return { templateParams: ['Test Applicant', 'IGM-2026-000000'] }
   }
 }
 

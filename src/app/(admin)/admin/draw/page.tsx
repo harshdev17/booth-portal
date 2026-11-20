@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ShuffleIcon, HistoryIcon, CheckCircle2Icon, ExternalLinkIcon, EyeIcon } from 'lucide-react'
+import { ShuffleIcon, HistoryIcon, CheckCircle2Icon, ExternalLinkIcon, EyeIcon, GavelIcon } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { query } from '@/lib/db/client'
 import { requirePermission, getCurrentUserPermissions } from '@/lib/rbac/authorize'
-import AuctionResultsUploadDialog from '@/views/admin/draw/AuctionResultsUploadDialog'
 import DrawDashboardControl from '@/views/admin/draw/DrawDashboardControl'
 
 export const metadata: Metadata = {
@@ -88,7 +88,12 @@ export default async function DrawProcessPage() {
           </p>
         </div>
 
-        {canUploadAuctionResults && <AuctionResultsUploadDialog />}
+        {canUploadAuctionResults && (
+          <Button type='button' variant='outline' render={<Link href='/admin/declare-result' />}>
+            <GavelIcon className='size-4' />
+            Upload Auction Results
+          </Button>
+        )}
       </div>
 
       {/* Interactive Controls (Simulation & Execution) */}

@@ -22,7 +22,18 @@ export async function PATCH(request: Request) {
   const parsed = schema.safeParse(await request.json())
   if (!parsed.success) return NextResponse.json({ error: 'Invalid allotment payment settings.' }, { status: 400 })
   const value = parsed.data
-  if (value.enabled && (value.amountPaise === null || value.deadlineAt === null)) return NextResponse.json({ error: 'Amount and payment deadline are required before enabling.' }, { status: 400 })
+  // Flat amountPaise is required UNLESS both Single and Double overrides are
+  // set (every shop_type already covered in that case) — mirrors the client
+  // validation in CategoryFeeSettingsClient.tsx.
+  const hasBothOverrides =
+    (value.amountSinglePaise ?? 0) > 0 && (value.amountDoublePaise ?? 0) > 0
+  const hasValidDefault = value.amountPaise !== null && value.amountPaise > 0
+  if (value.enabled && (value.deadlineAt === null || (!hasValidDefault && !hasBothOverrides))) {
+    return NextResponse.json(
+      { error: 'A payment deadline is required, along with either the default amount or both single and double amounts.' },
+      { status: 400 }
+    )
+  }
   await query(
     `UPDATE categories
      SET allotment_amount_paise = ?, allotment_amount_single_paise = ?, allotment_amount_double_paise = ?,

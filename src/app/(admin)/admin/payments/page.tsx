@@ -14,6 +14,7 @@ import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { maskIdentifier } from '@/lib/security/mask'
 import { encodeId } from '@/lib/security/opaque-id'
+import BulkReconcileButton from '@/views/admin/payments/BulkReconcileButton'
 
 export const metadata: Metadata = {
   title: 'Payments — IGM Admin Portal'
@@ -31,7 +32,8 @@ const DEFAULT_PAGE_SIZE = 25
 const VALID_SORT_FIELDS: Record<string, string> = {
   date: 'p.created_at',
   amount: 'p.amount_paise',
-  status: 'p.status'
+  status: 'p.status',
+  updated: 'p.updated_at'
 }
 
 type PaymentItem = {
@@ -41,7 +43,10 @@ type PaymentItem = {
   amount_paise: number
   status: string
   razorpay_order_id: string | null
+  razorpay_attempt_status: string | null
+  razorpay_attempt_checked_at: string | null
   created_at: string
+  updated_at: string
   application_number: string
   representative_name: string
   category_name: string
@@ -100,9 +105,10 @@ const PaymentsAdminPage = async ({
   const sortCol = VALID_SORT_FIELDS[sort] ?? 'p.created_at'
   const sortDir = dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-  const [payments, categories, statsRows, purposeRows, countRows] = await Promise.all([
+  const [payments, categories, statsRows, purposeRows, categoryAllotmentRows, countRows] = await Promise.all([
     query<PaymentItem[]>(
-      `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id, p.created_at,
+      `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id,
+              p.razorpay_attempt_status, p.razorpay_attempt_checked_at, p.created_at, p.updated_at,
               a.application_number, a.representative_name, c.name AS category_name, c.slug AS category_slug
        FROM payments p
        JOIN applications a ON a.id = p.application_id
@@ -121,6 +127,27 @@ const PaymentsAdminPage = async ({
     query<Array<{ purpose: string; count: number; total_amount: number }>>(
       `SELECT purpose, COUNT(*) AS count, COALESCE(SUM(amount_paise), 0) AS total_amount
        FROM payments WHERE status = 'success' GROUP BY purpose`
+    ),
+    // Every category with a configured allotment fee (> 0, via the flat
+    // amount or either shop-type override) gets a card, even if nothing has
+    // been collected for it yet — not just categories with existing
+    // successful 'pay_now' payments. The card shows what's actually been
+    // collected so far (0 until the first payment comes in).
+    query<Array<{ category_slug: string; category_name: string; total_amount: number; count: number }>>(
+      `SELECT c.slug AS category_slug, c.name AS category_name,
+              COALESCE(SUM(CASE WHEN p.status = 'success' THEN p.amount_paise END), 0) AS total_amount,
+              COUNT(CASE WHEN p.status = 'success' THEN 1 END) AS count
+       FROM categories c
+       LEFT JOIN applications a ON a.category_id = c.id
+       LEFT JOIN payments p ON p.application_id = a.id AND p.purpose = 'pay_now'
+       WHERE c.status != 'archived'
+         AND (
+           COALESCE(c.allotment_amount_paise, 0) > 0
+           OR COALESCE(c.allotment_amount_single_paise, 0) > 0
+           OR COALESCE(c.allotment_amount_double_paise, 0) > 0
+         )
+       GROUP BY c.id, c.slug, c.name
+       ORDER BY total_amount DESC, c.name ASC`
     ),
     query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM payments p JOIN applications a ON a.id = p.application_id JOIN categories c ON c.id = a.category_id ${whereClause}`,
@@ -197,12 +224,15 @@ const PaymentsAdminPage = async ({
 
   return (
     <div className='flex flex-col gap-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Payments</h1>
-        <p className='text-sm text-muted-foreground'>
-          Registration fee payments collected via Razorpay. Reconcile status/date/category against Razorpay
-          dashboard records.
-        </p>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight text-[#0c2847]'>Payments</h1>
+          <p className='text-sm text-muted-foreground'>
+            Registration fee payments collected via Razorpay. Reconcile status/date/category against Razorpay
+            dashboard records.
+          </p>
+        </div>
+        {canReconcile && <BulkReconcileButton />}
       </div>
 
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6'>
@@ -255,6 +285,32 @@ const PaymentsAdminPage = async ({
           compact
         />
       </div>
+
+      {categoryAllotmentRows.length > 0 && (
+        <div>
+          <p className='mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground'>
+            Allotment Fee Collected by Category
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {categoryAllotmentRows.map(row => (
+              <Link
+                key={row.category_slug}
+                href={buildUrl({ category: row.category_slug, page: 1 })}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                  category === row.category_slug
+                    ? 'border-[#0c2847] bg-[#0c2847] text-white'
+                    : 'border-border bg-white text-slate-700 hover:border-[#0c2847]/40 hover:bg-muted'
+                }`}
+              >
+                <span className='block'>{row.category_name}</span>
+                <span className={`block text-sm font-black ${category === row.category_slug ? 'text-white' : 'text-emerald-700'}`}>
+                  ₹{(row.total_amount / 100).toLocaleString('en-IN')}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className='flex flex-wrap gap-2'>
         {statusTabs.map(tab => (
@@ -338,6 +394,9 @@ const PaymentsAdminPage = async ({
               <Link href={getSortUrl('status')} className='hover:text-[#0c2847] transition'>
                 Status {getSortIcon('status')}
               </Link>
+              <Link href={getSortUrl('updated')} className='hover:text-[#0c2847] transition'>
+                Last Updated {getSortIcon('updated')}
+              </Link>
             </div>
           </div>
         </CardHeader>
@@ -368,6 +427,18 @@ const PaymentsAdminPage = async ({
                         <span className='rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600'>
                           {PURPOSE_LABELS[payment.purpose] ?? payment.purpose.replace(/_/g, ' ')}
                         </span>
+                        {canReconcile && payment.status !== 'success' && (
+                          <span
+                            className='rounded-full px-2 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200'
+                            title={
+                              payment.razorpay_attempt_checked_at
+                                ? `Checked against Razorpay on ${new Date(payment.razorpay_attempt_checked_at).toLocaleString('en-IN')}`
+                                : 'Not yet checked against Razorpay'
+                            }
+                          >
+                            Razorpay: {payment.razorpay_attempt_status ?? 'no attempt'}
+                          </span>
+                        )}
                       </div>
                       <p className='text-sm text-slate-700'>
                         {payment.representative_name} · {payment.category_name}
@@ -385,6 +456,11 @@ const PaymentsAdminPage = async ({
                         <p className='text-xs text-muted-foreground'>
                           {new Date(payment.created_at).toLocaleString('en-IN')}
                         </p>
+                        {new Date(payment.updated_at).getTime() !== new Date(payment.created_at).getTime() && (
+                          <p className='text-[11px] text-muted-foreground'>
+                            Updated: {new Date(payment.updated_at).toLocaleString('en-IN')}
+                          </p>
+                        )}
                       </div>
                       <Link
                         href={`/admin/payments/${encodeId(payment.id)}`}

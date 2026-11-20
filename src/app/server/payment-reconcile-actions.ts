@@ -6,7 +6,12 @@ import { z } from 'zod'
 
 import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
-import { getPaymentForApplication, recordAdminReconciled, type PaymentPurpose } from '@/lib/payments/payment-records'
+import {
+  getPaymentForApplication,
+  recordAdminReconciled,
+  recordRazorpayAttemptStatus,
+  type PaymentPurpose
+} from '@/lib/payments/payment-records'
 import { fetchRazorpayOrderPayments } from '@/lib/payments/razorpay'
 import { requirePermission } from '@/lib/rbac/authorize'
 
@@ -76,6 +81,12 @@ export async function reconcilePaymentAction(
   }
 
   const captured = razorpayPayments.find(p => p.status === 'captured' && p.captured)
+
+  // Record the raw Razorpay-side status regardless of outcome, so the admin
+  // can tell "no attempt made" apart from "in progress" even when nothing
+  // was captured/failed this check.
+  const latestAttempt = razorpayPayments[razorpayPayments.length - 1] ?? null
+  await recordRazorpayAttemptStatus(payment.id, latestAttempt?.status ?? null)
 
   if (!captured) {
     return { error: 'Razorpay does not show a captured payment for this order. Nothing was changed.' }

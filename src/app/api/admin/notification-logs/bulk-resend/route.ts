@@ -42,8 +42,12 @@ function buildReconstructableParams(category: string, app: ApplicationRow): stri
     case 'direct_allotment_payment':
       return [app.representative_name, app.application_number, payLinkFor(app.application_number)]
     case 'direct_allotment_confirmed':
-    case 'auction_final_payment':
       return [app.representative_name, app.application_number, payLinkFor(app.application_number)]
+    // Template (gita_mahotsav_auction_msg) only has 2 body variables (name,
+    // application number) and no button component — see declare-result.ts's
+    // notifyDeclaredApplicants() for the same fix, confirmed live 2026-11-20.
+    case 'auction_final_payment':
+      return [app.representative_name, app.application_number]
     default:
       return null
   }

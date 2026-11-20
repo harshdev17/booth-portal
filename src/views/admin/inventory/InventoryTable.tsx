@@ -232,7 +232,7 @@ const InventoryTable = ({
   const [bulkStatusError, setBulkStatusError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'available' | 'allotted' | 'public' | 'direct' | 'cancelled'>('all')
+  const [stallCategoryTab, setStallCategoryTab] = useState<'all' | 'available' | 'allotted' | 'reserved' | 'public' | 'direct' | 'cancelled'>('all')
   const [categoryFilter, setCategoryFilter] = useState(ALL)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
@@ -254,6 +254,7 @@ const InventoryTable = ({
   const tabCounts = useMemo(() => {
     const total = rows.length
     const available = rows.filter(r => r.status === 'available' && !r.isCancelled).length
+    const reserved = rows.filter(r => r.status === 'reserved' && !r.isCancelled).length
     const allotted = rows.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled).length
     const direct = rows.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled').length
     const publicStalls = rows.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
@@ -265,7 +266,7 @@ const InventoryTable = ({
       r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled'
     ).length
 
-    return { total, available, allotted, direct, public: publicStalls, cancelled, allottedCombined }
+    return { total, available, reserved, allotted, direct, public: publicStalls, cancelled, allottedCombined }
   }, [rows])
 
   type HistoryItem = {
@@ -539,6 +540,74 @@ const InventoryTable = ({
     }
   }
 
+  const [bulkCancelOverdueDialogOpen, setBulkCancelOverdueDialogOpen] = useState(false)
+  const [isBulkCancellingOverdue, setIsBulkCancellingOverdue] = useState(false)
+  const [bulkCancelOverdueError, setBulkCancelOverdueError] = useState<string | null>(null)
+
+  // Any selected allotted or reserved-for-payment stall can be bulk
+  // cancelled — not just overdue ones (per explicit request: admin wants to
+  // cancel allotted stalls, and reserved ones before their deadline passes
+  // too, not only after).
+  const selectedCancelableIds = useMemo(
+    () => rows.filter(r => selectedIds.has(r.id) && (r.status === 'allotted' || r.status === 'reserved') && !r.isCancelled).map(r => r.id),
+    [rows, selectedIds]
+  )
+
+  const handleBulkCancelOverdue = async () => {
+    setIsBulkCancellingOverdue(true)
+    setBulkCancelOverdueError(null)
+
+    try {
+      const results = await Promise.all(
+        selectedCancelableIds.map(id =>
+          fetch(`/api/admin/inventory/${id}/cancel-allotment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Bulk cancelled from Inventory', sendNotification: true })
+          }).then(res => ({ id, ok: res.ok }))
+        )
+      )
+
+      const succeededIds = new Set(results.filter(r => r.ok).map(r => r.id))
+      const failedCount = results.length - succeededIds.size
+
+      setRows(current =>
+        current.map(r =>
+          succeededIds.has(r.id)
+            ? {
+                ...r,
+                status: 'available',
+                applicationNumber: null,
+                applicationId: null,
+                isDirectAllotment: false,
+                isCancelled: true,
+                paymentStatus: null,
+                paymentAmountPaise: null,
+                isPaymentOverdue: false,
+                allotmentPaymentDeadlineAt: null
+              }
+            : r
+        )
+      )
+
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        succeededIds.forEach(id => next.delete(id))
+        return next
+      })
+
+      if (failedCount > 0) {
+        setBulkCancelOverdueError(`${failedCount} of ${results.length} could not be cancelled. Please retry those individually.`)
+      } else {
+        setBulkCancelOverdueDialogOpen(false)
+      }
+    } catch {
+      setBulkCancelOverdueError('Network error while cancelling allotments.')
+    } finally {
+      setIsBulkCancellingOverdue(false)
+    }
+  }
+
   const openDirectAllotRowDialog = (row: ShopUnitRowData) => {
     setAllottingRow(row)
     setAllotError(null)
@@ -632,6 +701,7 @@ const InventoryTable = ({
       // Tab filter: all vs available vs allotted by draw vs public/draw vs direct entry vs cancelled
       if (stallCategoryTab === 'cancelled' && !row.isCancelled && row.status !== 'cancelled') return false
       if (stallCategoryTab === 'available' && (row.status !== 'available' || row.isCancelled)) return false
+      if (stallCategoryTab === 'reserved' && (row.status !== 'reserved' || row.isCancelled)) return false
       if (
         stallCategoryTab === 'allotted' &&
         (simplifiedTabs
@@ -730,7 +800,7 @@ const InventoryTable = ({
         const next = new Set(prev)
 
         for (const row of pageRows) {
-          if (row.status !== 'allotted') next.add(row.id)
+          if (!row.isCancelled) next.add(row.id)
         }
 
         return next
@@ -1114,8 +1184,8 @@ const InventoryTable = ({
     }
   }
 
-  const pageSelectableCount = pageRows.filter(r => r.status !== 'allotted').length
-  const pageSelectedCount = pageRows.filter(r => r.status !== 'allotted' && selectedIds.has(r.id)).length
+  const pageSelectableCount = pageRows.filter(r => !r.isCancelled).length
+  const pageSelectedCount = pageRows.filter(r => !r.isCancelled && selectedIds.has(r.id)).length
   const allSelected = pageSelectableCount > 0 && pageSelectedCount === pageSelectableCount
 
   const hasActiveFilters =
@@ -1190,6 +1260,25 @@ const InventoryTable = ({
               {simplifiedTabs ? tabCounts.allottedCombined : tabCounts.allotted}
             </span>
           </button>
+
+          {!simplifiedTabs && (
+            <button
+              type='button'
+              onClick={() => { setStallCategoryTab('reserved'); setPage(1) }}
+              className={`pb-2.5 text-xs sm:text-sm font-semibold transition border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+                stallCategoryTab === 'reserved'
+                  ? 'border-amber-600 text-amber-700 font-bold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Reserved for Payment
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                stallCategoryTab === 'reserved' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {tabCounts.reserved}
+              </span>
+            </button>
+          )}
 
           {!simplifiedTabs && (
             <>
@@ -1402,6 +1491,40 @@ const InventoryTable = ({
                   Set Status ({deletableSelectedIds.length})
                 </Button>
               </div>
+            )}
+
+            {canManage && selectedCancelableIds.length > 0 && (
+              <Dialog open={bulkCancelOverdueDialogOpen} onOpenChange={setBulkCancelOverdueDialogOpen}>
+                <DialogTrigger render={<Button type='button' variant='destructive' size='sm' className='gap-1.5' />}>
+                  <BanIcon className='size-3.5' />
+                  Cancel Allotment ({selectedCancelableIds.length})
+                </DialogTrigger>
+                <DialogContent className='sm:max-w-sm'>
+                  <DialogHeader>
+                    <DialogTitle>Cancel allotment for {selectedCancelableIds.length} stall(s)?</DialogTitle>
+                    <DialogDescription>
+                      This releases each stall back to Available and cancels the applicant&apos;s allotment — the
+                      applicant will be notified by WhatsApp &amp; Email. This cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {bulkCancelOverdueError && (
+                    <Alert variant='destructive'>
+                      <AlertDescription>{bulkCancelOverdueError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <DialogFooter>
+                    <Button type='button' variant='outline' onClick={() => setBulkCancelOverdueDialogOpen(false)} disabled={isBulkCancellingOverdue}>
+                      Cancel
+                    </Button>
+                    <Button type='button' variant='destructive' onClick={handleBulkCancelOverdue} disabled={isBulkCancellingOverdue}>
+                      {isBulkCancellingOverdue && <Loader2Icon className='animate-spin' />}
+                      Confirm Cancel
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             )}
 
             {canManage && deletableSelectedIds.length > 0 && (
@@ -1909,7 +2032,7 @@ const InventoryTable = ({
                 <TableRow key={row.id}>
                   {canManage && (
                     <TableCell>
-                      {row.status !== 'allotted' && !row.isCancelled && (
+                      {!row.isCancelled && (
                         <Checkbox
                           checked={selectedIds.has(row.id)}
                           onCheckedChange={checked => toggleRow(row.id, checked === true)}
@@ -1946,6 +2069,17 @@ const InventoryTable = ({
                           </span>
                         )
                       })()}
+                      {row.allotmentPaymentDeadlineAt && row.status === 'reserved' && (
+                        <span
+                          className={`text-[10px] font-semibold ${row.isPaymentOverdue ? 'text-red-600' : 'text-muted-foreground'}`}
+                        >
+                          Due on {new Date(row.allotmentPaymentDeadlineAt).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      )}
                       {row.isPaymentOverdue && (
                         <Badge variant='destructive' className='bg-red-600 text-white text-[10px] px-1.5 py-0 w-fit gap-1 font-bold animate-pulse'>
                           <ClockIcon className='size-2.5' /> Overdue
