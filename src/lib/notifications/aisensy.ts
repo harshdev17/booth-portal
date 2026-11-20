@@ -45,14 +45,16 @@ const CAMPAIGN_ENV_VAR: Record<NotificationCategory, string> = {
 }
 
 function getCampaignName(category: NotificationCategory): string | null {
-  if (category === 'payment_confirmation') {
-    return (
-      process.env.AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION ||
-      process.env.AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION ||
-      null
-    )
-  }
-
+  // No special-case here: 'payment_confirmation' with no explicit
+  // campaignOverride is always the registration fee (notifyPaymentSuccess),
+  // which must use its own AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION template —
+  // never AISENSY_ALLOTMENT_PAYMENT_CONFIRMATION, which is the
+  // allotment/auction-fee-specific template and is always passed explicitly
+  // as campaignOverride by notifyAllotmentPaymentSuccess/
+  // notifyAuctionFeePaymentSuccess, so it never needs to appear here. A
+  // stale fallback to it here previously sent the wrong (allotment-themed)
+  // WhatsApp message for a plain registration fee payment whenever
+  // AISENSY_CAMPAIGN_PAYMENT_CONFIRMATION itself wasn't set (2026-11-20).
   if (category === 'pay_now_activation') {
     return (
       process.env.AISENSY_CAMPAIGN_DRAW_PAYMENT_ACTIVATION ||
