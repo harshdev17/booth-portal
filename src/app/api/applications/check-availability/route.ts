@@ -79,10 +79,14 @@ export async function POST(request: Request) {
       params.push(applicationId)
     }
 
+    // Kept in sync with hasActiveDuplicateApplication (validate-submission.ts)
+    // and hasActiveDuplicateApplicationExcluding (create-application.ts) —
+    // 'rejected' is NOT excluded here either (2026-11-21): a rejected
+    // application still blocks a fresh one with the same mobile/Aadhaar/email.
     const sql =
       field === 'email'
-        ? `SELECT id FROM applications WHERE LOWER(${column}) = ?${excludeClause} AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected') LIMIT 1`
-        : `SELECT id FROM applications WHERE ${column} = ?${excludeClause} AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected') LIMIT 1`
+        ? `SELECT id FROM applications WHERE LOWER(${column}) = ?${excludeClause} AND status NOT IN ('draft', 'cancelled', 'not_selected') LIMIT 1`
+        : `SELECT id FROM applications WHERE ${column} = ?${excludeClause} AND status NOT IN ('draft', 'cancelled', 'not_selected') LIMIT 1`
 
     const rows = await query<Array<{ id: number }>>(sql, params)
 

@@ -373,7 +373,7 @@ async function hasActiveDuplicateApplicationExcluding(
   const rows = await query<Array<{ id: number }>>(
     `SELECT id FROM applications
      WHERE (mobile_number = ? OR (aadhaar_hash IS NOT NULL AND aadhaar_hash = ?)) AND id != ?
-       AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected')
+       AND status NOT IN ('draft', 'cancelled', 'not_selected')
      LIMIT 1`,
     [mobileNumber, aadhaarHash, excludeApplicationId]
   )

@@ -1072,6 +1072,14 @@ const StatusLookup = () => {
 
   const statusText = STATUS_LABEL[effectiveStatus]?.[lang === 'hi' ? 'hi' : 'en'] ?? effectiveStatus
 
+  // allotmentPaymentEnabled is a category-level "does this category charge
+  // an allotment fee at all" flag, true for EVERY application in that
+  // category regardless of outcome — including a rejected one, which never
+  // owes this fee. Only relevant once a stall is actually on the table
+  // (reserved/allotted) or payment is pending for it.
+  const showAllotmentFeeRow =
+    Boolean(result?.stallNumber) || effectiveStatus === 'payment_required' || effectiveStatus === 'allotted'
+
   // DocumentsStep (shared with the apply form) always allows upload/replace
   // on whatever it's given — it has no concept of "locked unless a query is
   // open," which is correct for the apply form (pre-submission, everything
@@ -1935,7 +1943,7 @@ const StatusLookup = () => {
                     <dd className='text-right font-bold font-mono text-amber-950 text-base'>{result.stallNumber}</dd>
                   </div>
                 )}
-                {result.allotmentPaymentEnabled && result.allotmentAmountPaise !== null && (
+                {result.allotmentPaymentEnabled && result.allotmentAmountPaise !== null && showAllotmentFeeRow && (
                   <div className='flex items-start justify-between gap-4 px-5 py-3.5 hover:bg-slate-50/40 transition-colors'>
                     <dt className='text-slate-500 text-xs font-medium uppercase tracking-wider'>
                       {lang === 'hi' ? 'आवंटन शुल्क' : 'Allotment Fee'}

@@ -180,21 +180,28 @@ export async function validateSubmissionAgainstCategory(
  * `aadhaar_ciphertext` is non-deterministic and cannot be used for equality
  * lookups.
  *
- * 'draft' is deliberately excluded from this check, not just 'rejected' /
- * 'cancelled' / 'not_selected'. Every visitor's draft is created on page
- * load with the SAME placeholder mobile number ('9999999999' — see
- * ApplicationFormOrchestrator.tsx) before they've entered anything real.
- * Treating unfinished drafts as duplicates meant the very first visitor to
- * open a category would permanently block every subsequent visitor from
- * ever creating a draft again — a real bug found in testing, not a
- * hypothetical. Only a genuinely SUBMITTED application (status has left
- * 'draft') represents a real duplicate attempt.
+ * 'draft' is deliberately excluded from this check. Every visitor's draft is
+ * created on page load with the SAME placeholder mobile number
+ * ('9999999999' — see ApplicationFormOrchestrator.tsx) before they've
+ * entered anything real. Treating unfinished drafts as duplicates meant the
+ * very first visitor to open a category would permanently block every
+ * subsequent visitor from ever creating a draft again — a real bug found in
+ * testing, not a hypothetical. Only a genuinely SUBMITTED application
+ * (status has left 'draft') represents a real duplicate attempt.
+ *
+ * 'cancelled' and 'not_selected' stay excluded (an applicant whose earlier
+ * allotment was cancelled, or who wasn't selected in the draw, may submit a
+ * fresh application). 'rejected' does NOT stay excluded (per explicit
+ * request, 2026-11-21) — a rejected application still blocks the same
+ * mobile/Aadhaar from applying again; the applicant must get that
+ * application corrected (query/resubmission flow) rather than filing a new
+ * one with the same details.
  */
 export async function hasActiveDuplicateApplication(mobileNumber: string, aadhaarHash: string): Promise<boolean> {
   const rows = await query<Array<{ id: number }>>(
     `SELECT id FROM applications
      WHERE (mobile_number = ? OR aadhaar_hash = ?)
-       AND status NOT IN ('draft', 'rejected', 'cancelled', 'not_selected')
+       AND status NOT IN ('draft', 'cancelled', 'not_selected')
      LIMIT 1`,
     [mobileNumber, aadhaarHash]
   )
