@@ -4,6 +4,22 @@ import { logAudit } from '@/lib/audit/log'
 import { query } from '@/lib/db/client'
 import { requirePermission } from '@/lib/rbac/authorize'
 
+// The admin UI sends a bare <input type="datetime-local"> value
+// ("2026-11-22T17:30", no timezone/offset) — this is already the IST
+// wall-clock time the admin intends, with no conversion needed (same
+// convention as /api/admin/categories/schedule's nullableDateTime). Using
+// z.string().datetime() here previously rejected that plain value, and the
+// client's own `new Date(...).toISOString()` workaround silently converted
+// it to a UTC instant assuming the ADMIN'S BROWSER runs in UTC — for an
+// India-based admin that shifted every saved deadline by -5:30 (5:30 PM
+// entered, 12:00 PM stored/shown). Confirmed live, 2026-11-22.
+const nullableDateTime = z
+  .string()
+  .trim()
+  .refine(value => value === '' || !Number.isNaN(Date.parse(value)), 'Invalid date/time')
+  .nullable()
+  .transform(value => (value ? `${value.replace('T', ' ').slice(0, 16)}:00` : null))
+
 const schema = z.object({
   categoryId: z.number().int().positive(),
   enabled: z.boolean(),
@@ -14,7 +30,7 @@ const schema = z.object({
   // pricing (most of them) simply never sends these two fields.
   amountSinglePaise: z.number().int().min(0).nullable().optional(),
   amountDoublePaise: z.number().int().min(0).nullable().optional(),
-  deadlineAt: z.string().datetime().nullable()
+  deadlineAt: nullableDateTime
 })
 
 export async function PATCH(request: Request) {
@@ -44,7 +60,7 @@ export async function PATCH(request: Request) {
       value.amountSinglePaise ?? null,
       value.amountDoublePaise ?? null,
       value.enabled ? 1 : 0,
-      value.deadlineAt ? value.deadlineAt.replace('T', ' ').slice(0, 19) : null,
+      value.deadlineAt,
       value.categoryId
     ]
   )

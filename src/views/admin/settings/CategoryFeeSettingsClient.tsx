@@ -295,13 +295,17 @@ export default function CategoryFeeSettingsClient({
         ? Number(cat.auction_participation_fee_paise)
         : null
 
-    const deadlineAt = cat.auction_participation_fee_deadline_at
-      ? new Date(cat.auction_participation_fee_deadline_at).toISOString()
-      : null
-
-    const finalPaymentDeadlineAt = cat.auction_final_payment_deadline_at
-      ? new Date(cat.auction_final_payment_deadline_at).toISOString()
-      : null
+    // cat.auction_participation_fee_deadline_at / auction_final_payment_deadline_at
+    // are already the bare <input type="datetime-local"> string
+    // ("2026-11-22T17:30") set via onChange below — send as-is. Routing it
+    // through `new Date(...).toISOString()` previously converted it to a
+    // UTC instant using the ADMIN'S BROWSER's own timezone, silently
+    // shifting every saved deadline by -5:30 for an India-based admin
+    // (confirmed live, 2026-11-22) — the server already treats this column
+    // as a plain IST wall-clock value (see isCategoryAcceptingApplications /
+    // parseIstDateTime), so no conversion belongs on either side.
+    const deadlineAt = cat.auction_participation_fee_deadline_at || null
+    const finalPaymentDeadlineAt = cat.auction_final_payment_deadline_at || null
 
     try {
       const response = await fetch('/api/admin/categories/auction-fee', {
@@ -392,9 +396,10 @@ export default function CategoryFeeSettingsClient({
       cat.allotment_amount_double_paise !== undefined && cat.allotment_amount_double_paise !== null
         ? Number(cat.allotment_amount_double_paise)
         : null
-    const deadlineAt = cat.allotment_payment_deadline_at
-      ? new Date(cat.allotment_payment_deadline_at).toISOString()
-      : null
+
+    // Sent as-is — see the matching comment on handleSaveAuctionFee above for
+    // why this must not go through new Date(...).toISOString().
+    const deadlineAt = cat.allotment_payment_deadline_at || null
 
     // The flat Default Amount is required UNLESS both the Single and Double
     // overrides are set — in that case every shop_type is already covered
