@@ -31,6 +31,9 @@ const QUICK_FILTERS: Record<string, string[]> = {
   approved: ['approved'],
   query_raised: ['query_raised'],
   selected: ['selected', 'allotted', 're_allotted'],
+  payment_required: ['payment_required'],
+  selected_for_auction: ['selected_for_auction'],
+  auction_fee_paid: ['auction_fee_paid'],
   rejected: ['rejected', 'not_selected', 'cancelled'],
   payment_pending: ['payment_pending', 'payment_failed']
 }
