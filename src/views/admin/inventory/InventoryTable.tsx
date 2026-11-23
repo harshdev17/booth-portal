@@ -237,6 +237,7 @@ const InventoryTable = ({
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [typeFilter, setTypeFilter] = useState(ALL)
   const [directionFilter, setDirectionFilter] = useState(ALL)
+  const [feesPaidOnly, setFeesPaidOnly] = useState(false)
   type SortColumn = 'stallNumber' | 'shopType' | 'categoryName' | 'direction' | 'amount' | 'status' | 'createdAt'
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -250,24 +251,6 @@ const InventoryTable = ({
       setSortDirection('asc')
     }
   }
-
-  const tabCounts = useMemo(() => {
-    const total = rows.length
-    const available = rows.filter(r => r.status === 'available' && !r.isCancelled).length
-    const reserved = rows.filter(r => r.status === 'reserved' && !r.isCancelled).length
-    const allotted = rows.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled).length
-    const direct = rows.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled').length
-    const publicStalls = rows.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
-    const cancelled = rows.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled').length
-
-    // Draw-allotted + direct-allotted combined — simplifiedTabs' single
-    // "Allotted" tab, since police only cares whether a stall is occupied.
-    const allottedCombined = rows.filter(
-      r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled'
-    ).length
-
-    return { total, available, reserved, allotted, direct, public: publicStalls, cancelled, allottedCombined }
-  }, [rows])
 
   type HistoryItem = {
     id: string
@@ -694,11 +677,19 @@ const InventoryTable = ({
     }
   }
 
-  const filteredRows = useMemo(() => {
-    const searchLower = search.trim().toLowerCase()
-
-    const filtered = rows.filter(row => {
-      // Tab filter: all vs available vs allotted by draw vs public/draw vs direct entry vs cancelled
+  // Shared predicate so the KPI tabs, and the category/direction breakdown
+  // lists, can each compute "how many rows would match if every OTHER
+  // currently active filter stayed as-is, ignoring just my own axis" — e.g.
+  // the category list applies the tab/search/status/direction/feesPaid
+  // filters but never categoryFilter itself, so every category stays
+  // visible with an accurate count instead of the non-selected ones
+  // vanishing once you pick one (confirmed live 2026-11-23: picking a
+  // category made every other category disappear from its own list).
+  const matchesFilters = (
+    row: ShopUnitRowData,
+    exclude?: { tab?: boolean; category?: boolean; direction?: boolean }
+  ) => {
+    if (!exclude?.tab) {
       if (stallCategoryTab === 'cancelled' && !row.isCancelled && row.status !== 'cancelled') return false
       if (stallCategoryTab === 'available' && (row.status !== 'available' || row.isCancelled)) return false
       if (stallCategoryTab === 'reserved' && (row.status !== 'reserved' || row.isCancelled)) return false
@@ -711,33 +702,47 @@ const InventoryTable = ({
         return false
       if (stallCategoryTab === 'direct' && (!row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
       if (stallCategoryTab === 'public' && (row.isDirectAllotment || row.isCancelled || row.status === 'cancelled')) return false
+    }
 
-      if (searchLower) {
-        const haystack = [
-          row.stallNumber,
-          row.categoryName,
-          row.direction,
-          row.applicationNumber,
-          row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
-        ]
-          .filter((v): v is string => v !== null)
-          .join(' ')
-          .toLowerCase()
+    const searchLower = search.trim().toLowerCase()
 
-        if (!haystack.includes(searchLower)) return false
-      }
+    if (searchLower) {
+      const haystack = [
+        row.stallNumber,
+        row.categoryName,
+        row.direction,
+        row.applicationNumber,
+        row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
+      ]
+        .filter((v): v is string => v !== null)
+        .join(' ')
+        .toLowerCase()
 
-      if (categoryFilter !== ALL && row.categoryName !== categoryFilter) return false
-      if (statusFilter !== ALL && row.status !== statusFilter) return false
-      if (typeFilter !== ALL && row.shopType !== typeFilter) return false
-      if (
-        directionFilter !== ALL &&
-        (row.direction?.trim().toLowerCase() || 'not specified') !== directionFilter.trim().toLowerCase()
-      )
-        return false
+      if (!haystack.includes(searchLower)) return false
+    }
 
-      return true
-    })
+    if (
+      !exclude?.category &&
+      categoryFilter !== ALL &&
+      row.categoryName.trim().toLowerCase() !== categoryFilter.trim().toLowerCase()
+    )
+      return false
+    if (statusFilter !== ALL && row.status !== statusFilter) return false
+    if (typeFilter !== ALL && row.shopType !== typeFilter) return false
+    if (
+      !exclude?.direction &&
+      directionFilter !== ALL &&
+      (row.direction?.trim().toLowerCase() || 'not specified') !== directionFilter.trim().toLowerCase()
+    )
+      return false
+
+    if (feesPaidOnly && row.paymentStatus !== 'success' && row.paymentStatus !== 'paid') return false
+
+    return true
+  }
+
+  const filteredRows = useMemo(() => {
+    const filtered = rows.filter(row => matchesFilters(row))
 
     const sorted = [...filtered]
     const dir = sortDirection === 'asc' ? 1 : -1
@@ -767,7 +772,87 @@ const InventoryTable = ({
     })
 
     return sorted
-  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, directionFilter, sortColumn, sortDirection])
+  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, directionFilter, feesPaidOnly, sortColumn, sortDirection])
+
+  // Tab badge counts ("Available 0", "Allotted by Draw 258", ...) — each
+  // applies every OTHER active filter (search/category/status/direction/
+  // feesPaid) but ignores the tab selection itself, so e.g. picking a
+  // category updates every tab's badge to that category's breakdown instead
+  // of the badges staying frozen at the whole-inventory totals (per explicit
+  // request — confirmed live 2026-11-23 that these looked "stuck").
+  const tabCounts = useMemo(() => {
+    const base = rows.filter(r => matchesFilters(r, { tab: true }))
+
+    const total = base.length
+    const available = base.filter(r => r.status === 'available' && !r.isCancelled).length
+    const reserved = base.filter(r => r.status === 'reserved' && !r.isCancelled).length
+    const allotted = base.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled).length
+    const direct = base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled').length
+    const publicStalls = base.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
+    const cancelled = base.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled').length
+
+    // Draw-allotted + direct-allotted combined — simplifiedTabs' single
+    // "Allotted" tab, since police only cares whether a stall is occupied.
+    const allottedCombined = base.filter(
+      r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled'
+    ).length
+
+    return { total, available, reserved, allotted, direct, public: publicStalls, cancelled, allottedCombined }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search, categoryFilter, statusFilter, typeFilter, directionFilter, feesPaidOnly, simplifiedTabs])
+
+  // Top KPI strip — mirrors filteredRows: "what matches every currently
+  // active filter right now" (per explicit request). Fees Paid counts by
+  // paymentStatus rather than row.status, since "paid" isn't a shop_units
+  // status value — it's the linked payment's own status.
+  const kpiCounts = useMemo(
+    () => ({
+      total: filteredRows.length,
+      available: filteredRows.filter(r => r.status === 'available' && !r.isCancelled).length,
+      direct: filteredRows.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled).length,
+      reserved: filteredRows.filter(r => r.status === 'reserved' && !r.isCancelled).length,
+      feesPaid: filteredRows.filter(r => r.paymentStatus === 'success' || r.paymentStatus === 'paid').length
+    }),
+    [filteredRows]
+  )
+
+  // "By Category" / "By Direction" summary cards — each ignores its OWN
+  // filter axis (same reasoning as tabCounts above), so every category/
+  // direction stays listed with an accurate count even once one is selected,
+  // instead of the non-selected ones disappearing (confirmed live
+  // 2026-11-23: selecting one category made every other category vanish
+  // from its own breakdown list).
+  const filteredCategoryBreakdown = useMemo(() => {
+    const base = rows.filter(r => matchesFilters(r, { category: true }))
+    const counts = new Map<string, number>()
+
+    for (const row of base) {
+      counts.set(row.categoryName, (counts.get(row.categoryName) ?? 0) + 1)
+    }
+
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, stallCategoryTab, search, statusFilter, typeFilter, directionFilter, feesPaidOnly])
+
+  const filteredDirectionBreakdown = useMemo(() => {
+    const base = rows.filter(r => matchesFilters(r, { direction: true }))
+    const counts = new Map<string, number>()
+    const display = new Map<string, string>()
+
+    for (const row of base) {
+      const raw = row.direction?.trim() || null
+      const key = raw ? raw.toLowerCase() : 'not specified'
+
+      if (!display.has(key)) display.set(key, raw ?? 'Not Specified')
+
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+
+    return Array.from(counts.entries())
+      .map(([key, count]): [string, number] => [display.get(key) ?? key, count])
+      .sort((a, b) => b[1] - a[1])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, feesPaidOnly])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
 
@@ -1194,7 +1279,8 @@ const InventoryTable = ({
     categoryFilter !== ALL ||
     statusFilter !== ALL ||
     typeFilter !== ALL ||
-    directionFilter !== ALL
+    directionFilter !== ALL ||
+    feesPaidOnly
 
   const clearFilters = () => {
     setStallCategoryTab('all')
@@ -1203,9 +1289,189 @@ const InventoryTable = ({
     setStatusFilter(ALL)
     setTypeFilter(ALL)
     setDirectionFilter(ALL)
+    setFeesPaidOnly(false)
   }
 
   return (
+    <div className='flex flex-col gap-4'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
+        <Card
+          role='button'
+          tabIndex={0}
+          onClick={() => { setStallCategoryTab('all'); setPage(1) }}
+          onKeyDown={e => e.key === 'Enter' && (setStallCategoryTab('all'), setPage(1))}
+          className={`shadow-xs border-slate-200/80 cursor-pointer transition hover:shadow-sm ${
+            stallCategoryTab === 'all' ? 'ring-2 ring-[#0c2847]/30' : ''
+          }`}
+        >
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>Total Units</p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-[#0c2847]'>{kpiCounts.total}</p>
+              <span className='text-[11px] text-muted-foreground'>All Booths/Stalls</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          role='button'
+          tabIndex={0}
+          onClick={() => { setStallCategoryTab('available'); setPage(1) }}
+          onKeyDown={e => e.key === 'Enter' && (setStallCategoryTab('available'), setPage(1))}
+          className={`shadow-xs border-emerald-200/60 bg-emerald-50/20 cursor-pointer transition hover:shadow-sm ${
+            stallCategoryTab === 'available' ? 'ring-2 ring-emerald-500/30' : ''
+          }`}
+        >
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-emerald-800'>Available Units</p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-emerald-700'>{kpiCounts.available}</p>
+              <span className='text-[11px] text-emerald-700/80'>Draw / Open</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          role='button'
+          tabIndex={0}
+          onClick={() => { setStallCategoryTab('direct'); setPage(1) }}
+          onKeyDown={e => e.key === 'Enter' && (setStallCategoryTab('direct'), setPage(1))}
+          className={`shadow-xs border-purple-200/70 bg-purple-50/30 cursor-pointer transition hover:shadow-sm ${
+            stallCategoryTab === 'direct' ? 'ring-2 ring-purple-500/30' : ''
+          }`}
+        >
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-purple-800'>Direct Allotment</p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-purple-700'>{kpiCounts.direct}</p>
+              <span className='text-[11px] text-purple-700/80 font-medium'>Admin Allotted</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          role='button'
+          tabIndex={0}
+          onClick={() => { setStallCategoryTab('reserved'); setPage(1) }}
+          onKeyDown={e => e.key === 'Enter' && (setStallCategoryTab('reserved'), setPage(1))}
+          className={`shadow-xs border-amber-200/60 bg-amber-50/20 cursor-pointer transition hover:shadow-sm ${
+            stallCategoryTab === 'reserved' ? 'ring-2 ring-amber-500/30' : ''
+          }`}
+        >
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-amber-800'>Reserved</p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-amber-700'>{kpiCounts.reserved}</p>
+              <span className='text-[11px] text-amber-700/80'>On Hold</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          role='button'
+          tabIndex={0}
+          onClick={() => setFeesPaidOnly(prev => !prev)}
+          onKeyDown={e => e.key === 'Enter' && setFeesPaidOnly(prev => !prev)}
+          className={`shadow-xs border-teal-200/60 bg-teal-50/20 cursor-pointer transition hover:shadow-sm ${
+            feesPaidOnly ? 'ring-2 ring-teal-500/30' : ''
+          }`}
+        >
+          <CardContent className='pt-5 pb-5'>
+            <p className='text-xs font-bold uppercase tracking-wider text-teal-800'>Allotment Payments</p>
+            <div className='flex items-baseline justify-between mt-1'>
+              <p className='text-2xl font-black text-teal-700'>{kpiCounts.feesPaid}</p>
+              <span className='text-[11px] text-teal-700/80'>Fees Paid</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+        <Card className='shadow-xs flex flex-col'>
+          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
+            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Category</CardTitle>
+            <CardDescription className='text-xs'>Reflects the filters applied below. Click a row to filter by it.</CardDescription>
+          </CardHeader>
+          <CardContent className='flex flex-col gap-1 pt-4 max-h-72 overflow-y-auto pr-3'>
+            <button
+              type='button'
+              onClick={() => setCategoryFilter(ALL)}
+              className={`flex items-center justify-between text-sm py-1.5 px-2 rounded-md transition ${
+                categoryFilter === ALL ? 'bg-[#0c2847] text-white font-bold' : 'hover:bg-muted text-slate-700'
+              }`}
+            >
+              <span className='truncate pr-2'>All Categories</span>
+              <span className={`font-bold shrink-0 ${categoryFilter === ALL ? 'text-white' : 'text-[#0c2847]'}`}>
+                {filteredCategoryBreakdown.reduce((sum, [, count]) => sum + count, 0)}
+              </span>
+            </button>
+            {filteredCategoryBreakdown.length === 0 ? (
+              <p className='text-sm text-muted-foreground px-2'>No booth/stall units match these filters.</p>
+            ) : (
+              filteredCategoryBreakdown.map(([name, count]) => {
+                const isSelected = categoryFilter.trim().toLowerCase() === name.trim().toLowerCase()
+
+                return (
+                  <button
+                    type='button'
+                    key={name}
+                    onClick={() => setCategoryFilter(name)}
+                    className={`flex items-center justify-between text-sm py-1.5 px-2 rounded-md transition ${
+                      isSelected ? 'bg-[#0c2847] text-white font-bold' : 'hover:bg-muted text-slate-700'
+                    }`}
+                  >
+                    <span className='truncate pr-2'>{name}</span>
+                    <span className={`font-bold shrink-0 ${isSelected ? 'text-white' : 'text-[#0c2847]'}`}>{count}</span>
+                  </button>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className='shadow-xs flex flex-col'>
+          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
+            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Direction</CardTitle>
+            <CardDescription className='text-xs'>Reflects the filters applied below. Click a row to filter by it.</CardDescription>
+          </CardHeader>
+          <CardContent className='flex flex-col gap-1 pt-4 max-h-72 overflow-y-auto pr-3'>
+            <button
+              type='button'
+              onClick={() => setDirectionFilter(ALL)}
+              className={`flex items-center justify-between text-sm py-1.5 px-2 rounded-md transition ${
+                directionFilter === ALL ? 'bg-[#0c2847] text-white font-bold' : 'hover:bg-muted text-slate-700'
+              }`}
+            >
+              <span className='truncate pr-2'>All Directions</span>
+              <span className={`font-bold shrink-0 ${directionFilter === ALL ? 'text-white' : 'text-[#0c2847]'}`}>
+                {filteredDirectionBreakdown.reduce((sum, [, count]) => sum + count, 0)}
+              </span>
+            </button>
+            {filteredDirectionBreakdown.length === 0 ? (
+              <p className='text-sm text-muted-foreground px-2'>No booth/stall units match these filters.</p>
+            ) : (
+              filteredDirectionBreakdown.map(([direction, count]) => {
+                const isSelected = directionFilter.trim().toLowerCase() === direction.trim().toLowerCase()
+
+                return (
+                  <button
+                    type='button'
+                    key={direction}
+                    onClick={() => setDirectionFilter(direction)}
+                    className={`flex items-center justify-between text-sm py-1.5 px-2 rounded-md transition ${
+                      isSelected ? 'bg-[#0c2847] text-white font-bold' : 'hover:bg-muted text-slate-700'
+                    }`}
+                  >
+                    <span className='truncate pr-2'>{direction}</span>
+                    <span className={`font-bold shrink-0 ${isSelected ? 'text-white' : 'text-[#0c2847]'}`}>{count}</span>
+                  </button>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
     <Card className='shadow-xs w-full min-w-0 overflow-hidden'>
       {/* Navigation Tabs with Live Counts */}
       <div className='border-b bg-muted/20 px-4 pt-2.5 pb-0'>
@@ -1883,14 +2149,20 @@ const InventoryTable = ({
             />
 
             <Select value={categoryFilter} onValueChange={value => setCategoryFilter(value ?? ALL)}>
-              <SelectTrigger size='sm' className='w-44'>
+              <SelectTrigger size='sm' className='w-56' title={categoryFilter === ALL ? undefined : categoryFilter}>
                 {/* Rendering the label explicitly rather than relying on
                     SelectValue's automatic item lookup — that lookup was
                     showing the raw "__all__" sentinel value instead of "All
                     Categories" (reported live), since this base-ui version's
                     internal item registry wasn't resolving it correctly for
-                    dynamically-mapped <SelectItem>s. */}
-                <SelectValue>{categoryFilter === ALL ? 'All Categories' : categoryFilter}</SelectValue>
+                    dynamically-mapped <SelectItem>s. Widened from w-44 to
+                    w-56 and truncate added — a long category name like
+                    "Artisan Card Holders" was clipping its last letter,
+                    which looked like the filter had silently selected the
+                    wrong (non-matching) value even though it hadn't. */}
+                <SelectValue>
+                  <span className='block truncate'>{categoryFilter === ALL ? 'All Categories' : categoryFilter}</span>
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All Categories</SelectItem>
@@ -3186,6 +3458,7 @@ const InventoryTable = ({
         </DialogContent>
       </Dialog>
     </Card>
+    </div>
   )
 }
 

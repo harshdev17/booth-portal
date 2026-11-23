@@ -24,6 +24,8 @@ type PaymentDetailRow = {
   amount_paise: number
   status: string
   razorpay_order_id: string | null
+  possible_double_payment: number
+  double_payment_order_ids: string | null
   created_at: string
   updated_at: string
   application_number: string
@@ -68,7 +70,8 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
 
   const [paymentRows, transactions] = await Promise.all([
     query<PaymentDetailRow[]>(
-      `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id, p.created_at, p.updated_at,
+      `SELECT p.id, p.application_id, p.purpose, p.amount_paise, p.status, p.razorpay_order_id,
+              p.possible_double_payment, p.double_payment_order_ids, p.created_at, p.updated_at,
               a.application_number, a.representative_name, a.mobile_number, c.name AS category_name
        FROM payments p
        JOIN applications a ON a.id = p.application_id
@@ -90,6 +93,24 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
   }
 
   const cfg = getPaymentStatusConfig(payment.status)
+
+  // The transaction row that actually proved this payment successful —
+  // whichever came first: a genuine client checkout, a webhook, or an admin
+  // reconcile. This carries the REAL order_id/payment_id Razorpay captured
+  // against, which can differ from payments.razorpay_order_id (that field
+  // only ever holds the LATEST order created — see recordOrderCreated() —
+  // and gets overwritten by every retry, so after a reconcile against an
+  // earlier order it no longer reflects what was actually paid).
+  const matchedTransaction = transactions.find(tx => tx.type === 'checkout_success' || tx.type === 'webhook_confirmed')
+
+  const doublePaymentOrderIds: string[] = (() => {
+    if (!payment.double_payment_order_ids) return []
+    try {
+      return JSON.parse(payment.double_payment_order_ids)
+    } catch {
+      return []
+    }
+  })()
 
   return (
     <div className='flex flex-col gap-6'>
@@ -138,11 +159,29 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
             <p className='text-sm font-black text-[#0c2847]'>₹{(payment.amount_paise / 100).toLocaleString('en-IN')}</p>
           </div>
           <div>
-            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>Razorpay Order ID</p>
-            <p className='font-mono text-sm text-slate-800'>
-              {canReconcile ? payment.razorpay_order_id ?? '—' : maskIdentifier(payment.razorpay_order_id)}
+            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
+              {payment.status === 'success' ? 'Paid Against Order ID' : 'Latest Razorpay Order ID'}
             </p>
+            <p className='font-mono text-sm text-slate-800'>
+              {canReconcile
+                ? matchedTransaction?.razorpay_order_id ?? payment.razorpay_order_id ?? '—'
+                : maskIdentifier(matchedTransaction?.razorpay_order_id ?? payment.razorpay_order_id)}
+            </p>
+            {payment.status === 'success' && matchedTransaction?.razorpay_order_id !== payment.razorpay_order_id && (
+              <p className='mt-0.5 text-[11px] text-amber-700'>
+                This differs from the latest order created on this payment ({canReconcile ? payment.razorpay_order_id : maskIdentifier(payment.razorpay_order_id)}) —
+                an earlier retry's order was the one actually paid; see Transaction History below for every order tried.
+              </p>
+            )}
           </div>
+          {matchedTransaction?.razorpay_payment_id && (
+            <div>
+              <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>Razorpay Payment ID</p>
+              <p className='font-mono text-sm text-slate-800'>
+                {canReconcile ? matchedTransaction.razorpay_payment_id : maskIdentifier(matchedTransaction.razorpay_payment_id)}
+              </p>
+            </div>
+          )}
           <div>
             <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>Created</p>
             <p className='text-sm text-slate-800'>{new Date(payment.created_at).toLocaleString('en-IN')}</p>
@@ -154,6 +193,36 @@ const PaymentDetailPage = async ({ params }: { params: Promise<{ id: string }> }
           </CardContent>
         )}
       </Card>
+
+      {Boolean(payment.possible_double_payment) && (
+        <Card className='shadow-xs border-2 border-red-300 bg-red-50/40'>
+          <CardHeader className='border-b border-red-200 py-4'>
+            <CardTitle className='text-base font-bold text-red-900'>Double Payment Confirmed</CardTitle>
+            <CardDescription className='text-xs text-red-800'>
+              Razorpay confirms more than one order for this payment was genuinely captured — the applicant was
+              charged twice for the same fee. Only one is recorded as the official payment above; the other(s) below
+              need a manual refund decision.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='pt-4'>
+            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2'>Captured Orders</p>
+            <div className='flex flex-col gap-1.5'>
+              {doublePaymentOrderIds.map(orderId => (
+                <div key={orderId} className='flex items-center gap-2'>
+                  <span className='font-mono text-sm text-slate-800'>
+                    {canReconcile ? orderId : maskIdentifier(orderId)}
+                  </span>
+                  {orderId === matchedTransaction?.razorpay_order_id && (
+                    <span className='rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800'>
+                      Recorded as official payment
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className='shadow-xs'>
         <CardHeader className='border-b bg-muted/40 py-4'>

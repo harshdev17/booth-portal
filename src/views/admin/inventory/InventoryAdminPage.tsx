@@ -101,7 +101,7 @@ export default async function InventoryAdminPage() {
   // All 3 queries share ONE pooled connection instead of each checking out
   // its own — see .ai/CHANGELOG.md 2026-11-14 (same pattern as the
   // dashboard/applications-list pages).
-  const [rows, categories, logs, allotmentPaymentRows] = await withPooledConnection(query =>
+  const [rows, categories, logs] = await withPooledConnection(query =>
     Promise.all([
     query<ShopUnitRow[]>(
       `SELECT su.id, su.stall_number, su.shop_type, c.id AS category_id, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
@@ -194,51 +194,23 @@ export default async function InventoryAdminPage() {
            ORDER BY al.created_at DESC
            LIMIT 30`
         )
-      : Promise.resolve([]),
-    query<Array<{ count: number }>>(
-      `SELECT COUNT(*) AS count FROM payments WHERE purpose = 'pay_now' AND status = 'success'`
-    )
+      : Promise.resolve([])
     ])
   )
 
-  const allotmentPaymentsCount = Number(allotmentPaymentRows[0]?.count ?? 0)
-
-  const counts = rows.reduce(
-    (acc, row) => {
-      acc[row.status] = (acc[row.status] ?? 0) + 1
-
-      return acc
-    },
-    {} as Record<string, number>
-  )
-
-  const totalStalls = rows.length
-  const availableCount = counts.available ?? 0
-  const directAllottedCount = rows.filter(r => Boolean(r.is_direct_allotment)).length
-  const reservedCount = counts.reserved ?? 0
-
-  // Category-wise and direction-wise breakdowns, per explicit request
-  // ("kis cat ki kitni shops hai, kis direction mai ye count bhi show
-  // karo") — counted against the full unfiltered inventory, not whatever
-  // the table's own filters currently show, so these stay a stable overview
-  // regardless of what the admin is filtering the table to.
-  const byCategory = new Map<string, number>()
+  // Direction list for the filter dropdown's option set (the actual "by
+  // category"/"by direction" breakdown cards now live inside InventoryTable,
+  // computed live from its own filtered rows — see that component).
   const byDirection = new Map<string, number>()
-
-  for (const cat of categories) {
-    byCategory.set(cat.name, 0)
-  }
 
   // direction is free text entered per-stall (no fixed list), so the same
   // physical direction can be typed with different casing/whitespace across
   // rows (e.g. "North" vs "north "). Group case/whitespace-insensitively and
-  // keep the first-seen casing as the display label, so the breakdown and
-  // filter dropdown each show one entry per direction instead of near-duplicates.
+  // keep the first-seen casing as the display label, so the filter dropdown
+  // shows one entry per direction instead of near-duplicates.
   const directionDisplay = new Map<string, string>()
 
   for (const row of rows) {
-    byCategory.set(row.category_name, (byCategory.get(row.category_name) ?? 0) + 1)
-
     const rawDirection = row.direction?.trim() || null
     const directionKey = rawDirection ? rawDirection.toLowerCase() : 'not specified'
 
@@ -248,8 +220,6 @@ export default async function InventoryAdminPage() {
 
     byDirection.set(directionKey, (byDirection.get(directionKey) ?? 0) + 1)
   }
-
-  const categoryBreakdown = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])
 
   // Overdue unpaid allotments per category, for the super-admin-only
   // "Cancel Overdue & Set New Deadline" action (src/lib/allotment/cancel-and-promote.ts).
@@ -320,68 +290,6 @@ export default async function InventoryAdminPage() {
         </div>
       </div>
 
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
-        <Card className='shadow-xs border-slate-200/80'>
-          <CardContent className='pt-5 pb-5'>
-            <p className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
-              Total Units
-            </p>
-            <div className='flex items-baseline justify-between mt-1'>
-              <p className='text-2xl font-black text-[#0c2847]'>{totalStalls}</p>
-              <span className='text-[11px] text-muted-foreground'>All Booths/Stalls</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='shadow-xs border-emerald-200/60 bg-emerald-50/20'>
-          <CardContent className='pt-5 pb-5'>
-            <p className='text-xs font-bold uppercase tracking-wider text-emerald-800'>
-              Available Units
-            </p>
-            <div className='flex items-baseline justify-between mt-1'>
-              <p className='text-2xl font-black text-emerald-700'>{availableCount}</p>
-              <span className='text-[11px] text-emerald-700/80'>Draw / Open</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='shadow-xs border-purple-200/70 bg-purple-50/30'>
-          <CardContent className='pt-5 pb-5'>
-            <p className='text-xs font-bold uppercase tracking-wider text-purple-800'>
-              Direct Allotment
-            </p>
-            <div className='flex items-baseline justify-between mt-1'>
-              <p className='text-2xl font-black text-purple-700'>{directAllottedCount}</p>
-              <span className='text-[11px] text-purple-700/80 font-medium'>Admin Allotted</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='shadow-xs border-amber-200/60 bg-amber-50/20'>
-          <CardContent className='pt-5 pb-5'>
-            <p className='text-xs font-bold uppercase tracking-wider text-amber-800'>
-              Reserved
-            </p>
-            <div className='flex items-baseline justify-between mt-1'>
-              <p className='text-2xl font-black text-amber-700'>{reservedCount}</p>
-              <span className='text-[11px] text-amber-700/80'>On Hold</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='shadow-xs border-teal-200/60 bg-teal-50/20'>
-          <CardContent className='pt-5 pb-5'>
-            <p className='text-xs font-bold uppercase tracking-wider text-teal-800'>
-              Allotment Payments
-            </p>
-            <div className='flex items-baseline justify-between mt-1'>
-              <p className='text-2xl font-black text-teal-700'>{allotmentPaymentsCount}</p>
-              <span className='text-[11px] text-teal-700/80'>Fees Paid</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {isSuperAdmin && overdueByCategory.size > 0 && (
         <Card className='shadow-xs border-red-200/70 bg-red-50/20'>
           <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
@@ -404,44 +312,6 @@ export default async function InventoryAdminPage() {
           </CardContent>
         </Card>
       )}
-
-      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-        <Card className='shadow-xs flex flex-col'>
-          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
-            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Category</CardTitle>
-          </CardHeader>
-          <CardContent className='flex flex-col gap-1.5 pt-4 max-h-72 overflow-y-auto pr-3'>
-            {categoryBreakdown.length === 0 ? (
-              <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
-            ) : (
-              categoryBreakdown.map(([name, count]) => (
-                <div key={name} className='flex items-center justify-between text-sm py-1 border-b border-slate-100 last:border-0'>
-                  <span className='text-slate-700 truncate pr-2'>{name}</span>
-                  <span className='font-bold text-[#0c2847] shrink-0'>{count}</span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className='shadow-xs flex flex-col'>
-          <CardHeader className='border-b bg-muted/40 py-3 shrink-0'>
-            <CardTitle className='text-sm font-bold text-[#0c2847]'>Booths/Stalls by Direction</CardTitle>
-          </CardHeader>
-          <CardContent className='flex flex-col gap-1.5 pt-4 max-h-72 overflow-y-auto pr-3'>
-            {directionBreakdown.length === 0 ? (
-              <p className='text-sm text-muted-foreground'>No booth/stall units yet.</p>
-            ) : (
-              directionBreakdown.map(([direction, count]) => (
-                <div key={direction} className='flex items-center justify-between text-sm py-1 border-b border-slate-100 last:border-0'>
-                  <span className='text-slate-700 truncate pr-2'>{direction}</span>
-                  <span className='font-bold text-[#0c2847] shrink-0'>{count}</span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       <Tabs defaultValue='units' className='min-w-0 w-full'>
         <TabsList>

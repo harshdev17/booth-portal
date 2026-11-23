@@ -48,6 +48,22 @@ export async function recordRazorpayAttemptStatus(paymentId: number, attemptStat
   )
 }
 
+/**
+ * Flags a payment where Reconcile found MORE THAN ONE of its past Razorpay
+ * orders genuinely captured (migration 0089) — a real double payment, not
+ * just a harmless retry where only the latest order succeeded. Set by both
+ * the single-payment and bulk Reconcile actions whenever they detect this;
+ * never cleared automatically (an admin resolving/refunding the duplicate
+ * manually is outside this app). Shown on the Multiple Payment Attempts page
+ * without needing a live Razorpay call on every page load.
+ */
+export async function recordPossibleDoublePayment(paymentId: number, orderIds: string[]): Promise<void> {
+  await query(
+    `UPDATE payments SET possible_double_payment = 1, double_payment_order_ids = ? WHERE id = ?`,
+    [JSON.stringify(orderIds), paymentId]
+  )
+}
+
 export async function getPaymentForApplication(applicationId: number, purpose: PaymentPurpose): Promise<PaymentRow | null> {
   const rows = await query<PaymentRow[]>(
     `SELECT id, application_id, purpose, amount_paise, status, razorpay_order_id

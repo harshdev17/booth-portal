@@ -8,6 +8,7 @@ import {
   getPaymentForApplication,
   recordAdminReconciled,
   recordAdminReconciledFailure,
+  recordPossibleDoublePayment,
   recordRazorpayAttemptStatus,
   type PaymentPurpose
 } from '@/lib/payments/payment-records'
@@ -30,6 +31,17 @@ export type BulkReconcileActionState = {
  * has a Razorpay order, asks Razorpay's own API what actually happened to
  * that order, and records success/failure accordingly. Never trusts
  * anything other than Razorpay's own response.
+ *
+ * Checks EVERY order_id ever created for the payment (from
+ * payment_transactions), not just the current payments.razorpay_order_id —
+ * each "Pay Now" click that doesn't immediately succeed creates a brand new
+ * Razorpay order and OVERWRITES the payment row's razorpay_order_id
+ * (recordOrderCreated()'s ON DUPLICATE KEY UPDATE). If the applicant's
+ * browser/payment actually completed against an EARLIER order (slow network,
+ * retried the button, reopened the page), the old order is still genuinely
+ * captured on Razorpay's side but the current row no longer points to it —
+ * confirmed live 2026-11-23 across 4 applicants who paid successfully but
+ * stayed "Pending" because reconcile only ever checked the newest order.
  */
 export async function bulkReconcilePaymentsAction(
   _prevState: BulkReconcileActionState,
@@ -67,16 +79,60 @@ export async function bulkReconcilePaymentsAction(
     if (!payment.razorpay_order_id) continue
 
     try {
-      const razorpayPayments = await fetchRazorpayOrderPayments(payment.razorpay_order_id)
+      // Every order_id ever created for this payment, newest first — the
+      // current payments.razorpay_order_id is always included (it was
+      // itself created via an order_created transaction), but so is every
+      // earlier one that got overwritten.
+      const orderIdRows = await query<Array<{ razorpay_order_id: string }>>(
+        `SELECT DISTINCT razorpay_order_id FROM payment_transactions
+         WHERE payment_id = ? AND type = 'order_created' AND razorpay_order_id IS NOT NULL
+         ORDER BY id DESC`,
+        [payment.id]
+      )
 
-      const captured = razorpayPayments.find(p => p.status === 'captured' && p.captured)
-      const failedAttempt = razorpayPayments.find(p => p.status === 'failed')
+      const orderIds = orderIdRows.length > 0 ? orderIdRows.map(r => r.razorpay_order_id) : [payment.razorpay_order_id]
 
-      // Record the raw Razorpay-side status for every row this pass checks,
-      // regardless of whether it ends up captured/failed/still nothing —
-      // lets the admin tell "no attempt made" apart from "in progress".
-      const latestAttempt = razorpayPayments[razorpayPayments.length - 1] ?? null
-      await recordRazorpayAttemptStatus(payment.id, latestAttempt?.status ?? null)
+      let captured: { id: string } | null = null
+      let failedAttempt: { id: string } | null = null
+      let capturedOrderId: string | null = null
+      let latestStatus: string | null = null
+      const capturedOnOtherOrders: string[] = []
+
+      for (const orderId of orderIds) {
+        const razorpayPayments = await fetchRazorpayOrderPayments(orderId)
+
+        if (orderId === payment.razorpay_order_id) {
+          latestStatus = razorpayPayments[razorpayPayments.length - 1]?.status ?? null
+        }
+
+        const thisCaptured = razorpayPayments.find(p => p.status === 'captured' && p.captured)
+
+        if (thisCaptured) {
+          if (!captured) {
+            captured = thisCaptured
+            capturedOrderId = orderId
+          } else if (orderId !== capturedOrderId) {
+            // More than one order for the SAME payment came back captured —
+            // a genuine double payment, not a reconcile artifact. Flagged
+            // for the admin to review/refund manually; the first (most
+            // recent) captured order found still wins for marking success.
+            capturedOnOtherOrders.push(orderId)
+          }
+        }
+
+        if (!failedAttempt) {
+          failedAttempt = razorpayPayments.find(p => p.status === 'failed') ?? null
+        }
+      }
+
+      // Record the raw Razorpay-side status for the row's current order,
+      // regardless of outcome — lets the admin tell "no attempt made" apart
+      // from "in progress".
+      await recordRazorpayAttemptStatus(payment.id, latestStatus)
+
+      if (capturedOnOtherOrders.length > 0 && capturedOrderId) {
+        await recordPossibleDoublePayment(payment.id, [capturedOrderId, ...capturedOnOtherOrders])
+      }
 
       // Re-fetch to guard against a race with a concurrent webhook/client confirmation.
       const current = await getPaymentForApplication(payment.application_id, payment.purpose)
@@ -85,12 +141,12 @@ export async function bulkReconcilePaymentsAction(
         continue
       }
 
-      if (captured) {
+      if (captured && capturedOrderId) {
         const transition = await recordAdminReconciled({
           paymentId: payment.id,
           applicationId: payment.application_id,
           amountPaise: payment.amount_paise,
-          razorpayOrderId: payment.razorpay_order_id,
+          razorpayOrderId: capturedOrderId,
           razorpayPaymentId: captured.id
         })
 
@@ -104,10 +160,14 @@ export async function bulkReconcilePaymentsAction(
           previousValue: transition ? { status: transition.previousStatus } : undefined,
           newValue: {
             applicationId: payment.application_id,
-            razorpayOrderId: payment.razorpay_order_id,
+            razorpayOrderId: capturedOrderId,
             razorpayPaymentId: captured.id,
             amountPaise: payment.amount_paise,
             bulk: true,
+            checkedOrderIds: orderIds,
+            ...(capturedOnOtherOrders.length > 0
+              ? { possibleDoublePayment: true, otherCapturedOrderIds: capturedOnOtherOrders }
+              : {}),
             ...(transition ? { status: transition.newStatus } : {})
           }
         })
@@ -134,14 +194,15 @@ export async function bulkReconcilePaymentsAction(
             applicationId: payment.application_id,
             razorpayOrderId: payment.razorpay_order_id,
             razorpayPaymentId: failedAttempt.id,
-            bulk: true
+            bulk: true,
+            checkedOrderIds: orderIds
           }
         })
 
         markedFailed += 1
       } else {
-        // No attempt recorded yet on Razorpay's side (order created, checkout
-        // never completed) — leave as pending, nothing to reconcile against.
+        // No attempt recorded yet on Razorpay's side on ANY order created for
+        // this payment — leave as pending, nothing to reconcile against.
         stillPending += 1
       }
     } catch {
