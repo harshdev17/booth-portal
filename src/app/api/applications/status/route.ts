@@ -8,6 +8,7 @@ import { generateAccessToken, hashAccessToken } from '@/lib/applications/access-
 import { getApplicantFieldQueries, listApplicantFieldQueryTrail } from '@/lib/applications/field-queries'
 import { isTransientConnectionError, query } from '@/lib/db/client'
 import { requestOtp, verifyOtp } from '@/lib/notifications/otp'
+import { getCurrentUserPermissions } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { isRateLimited, RATE_LIMITS } from '@/lib/security/rate-limit'
@@ -98,15 +99,21 @@ export async function POST(request: Request) {
 
 /**
  * Public status lookup by application number + WhatsApp OTP.
- * When accessed by an authenticated staff/admin session, OTP is bypassed so admins
- * can view anyone's status & download allotment letters directly.
+ * When accessed by an authenticated staff/admin session that holds
+ * 'application:view', OTP is bypassed so admins can view anyone's status &
+ * download allotment letters directly — e.g. on a support call, to see
+ * exactly what the applicant themselves sees. Gated by permission (not just
+ * "is logged in") per CLAUDE.md §11: a lower-privilege admin role with no
+ * application-viewing rights must not get this bypass either, even though
+ * they can still authenticate.
  */
 async function handleStatusLookup(request: Request, requestId: string): Promise<Response> {
   const { ipAddress } = getRequestMeta(request)
   const rateLimitKey = ipAddress ?? 'unknown'
 
   const session = await getSession().catch(() => null)
-  const isAdmin = Boolean(session?.userId)
+  const permissions = session ? await getCurrentUserPermissions().catch(() => null) : null
+  const isAdmin = Boolean(session?.userId) && Boolean(permissions?.has('application:view'))
 
   if (!isAdmin && isRateLimited('applications.status', rateLimitKey, RATE_LIMITS.statusLookup)) {
     return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })

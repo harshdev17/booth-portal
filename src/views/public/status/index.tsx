@@ -284,7 +284,21 @@ const StatusLookup = () => {
 
     if (appNo) {
       form.setValue('applicationNumber', appNo, { shouldDirty: true, shouldTouch: true, shouldValidate: false })
+
+      // Admin's "View as Applicant" link (application detail page) adds
+      // ?admin=1 — auto-submits the lookup immediately instead of making the
+      // admin click "Send Verification Code" themselves. Harmless for a
+      // non-admin visitor who somehow lands on this URL: the backend's own
+      // isAdmin+permission check (api/applications/status/route.ts) is what
+      // actually decides whether OTP gets skipped, this param only saves a
+      // click when it will. The regular public ?appNo= prefill (homepage
+      // search, print/receipt links) is untouched — it still requires the
+      // normal manual submit.
+      if (searchParams.get('admin') === '1') {
+        void requestOtpForLookup({ applicationNumber: appNo })
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, form])
 
   // Restores the verified result on a refresh, for up to 5 minutes after
