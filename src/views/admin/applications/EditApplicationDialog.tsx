@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 
-import { Loader2Icon, PencilIcon } from 'lucide-react'
+import { AlertTriangleIcon, Loader2Icon, PencilIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
 export type EditableField = { key: string; label: string; value: string | null; multiline?: boolean }
 export type EditableCategoryField = { fieldDefinitionId: number; label: string; value: string; inputType: string }
+export type EditableCategoryOption = { id: number; name: string; slug: string }
 
 /**
  * Lets an authorized admin (application:edit) correct an applicant's
@@ -28,11 +30,17 @@ export type EditableCategoryField = { fieldDefinitionId: number; label: string; 
 const EditApplicationDialog = ({
   applicationId,
   fields,
-  categoryFields
+  categoryFields,
+  categories,
+  currentCategoryId,
+  canChangeCategory
 }: {
   applicationId: string
   fields: EditableField[]
   categoryFields: EditableCategoryField[]
+  categories: EditableCategoryOption[]
+  currentCategoryId: number
+  canChangeCategory: boolean
 }) => {
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -41,13 +49,60 @@ const EditApplicationDialog = ({
   const [categoryValues, setCategoryValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(categoryFields.map(f => [String(f.fieldDefinitionId), f.value]))
   )
+  const [selectedCategoryId, setSelectedCategoryId] = useState(currentCategoryId)
+
+  // The category-specific fields currently shown — starts as this
+  // application's own fields, replaced with the picked category's own
+  // (blank) fields once the admin actually changes the dropdown.
+  const [categoryFieldDefs, setCategoryFieldDefs] = useState(categoryFields)
+  const [isLoadingCategoryFields, setIsLoadingCategoryFields] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const resetToCurrent = () => {
     setValues(Object.fromEntries(fields.map(f => [f.key, f.value ?? ''])))
     setCategoryValues(Object.fromEntries(categoryFields.map(f => [String(f.fieldDefinitionId), f.value])))
+    setCategoryFieldDefs(categoryFields)
+    setSelectedCategoryId(currentCategoryId)
     setError(null)
+  }
+
+  const handleCategoryChange = async (nextCategoryId: number) => {
+    setSelectedCategoryId(nextCategoryId)
+    setError(null)
+
+    if (nextCategoryId === currentCategoryId) {
+      // Switched back to the original category — show its real saved values
+      // again, not blank ones.
+      setCategoryFieldDefs(categoryFields)
+      setCategoryValues(Object.fromEntries(categoryFields.map(f => [String(f.fieldDefinitionId), f.value])))
+
+      return
+    }
+
+    setIsLoadingCategoryFields(true)
+
+    try {
+      const response = await fetch(`/api/admin/categories/${nextCategoryId}/fields`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error ?? 'Could not load the fields for that category.')
+
+        return
+      }
+
+      const newDefs: EditableCategoryField[] = (
+        data.fields as Array<{ fieldDefinitionId: number; label: string; inputType: string }>
+      ).map(f => ({ ...f, value: '' }))
+
+      setCategoryFieldDefs(newDefs)
+      setCategoryValues(Object.fromEntries(newDefs.map(f => [String(f.fieldDefinitionId), ''])))
+    } catch {
+      setError('Could not reach the server. Please try again.')
+    } finally {
+      setIsLoadingCategoryFields(false)
+    }
   }
 
   const handleSave = async () => {
@@ -58,7 +113,11 @@ const EditApplicationDialog = ({
       const response = await fetch(`/api/admin/applications/${applicationId}/edit`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: values, categoryFields: categoryValues })
+        body: JSON.stringify({
+          fields: values,
+          categoryFields: categoryValues,
+          ...(selectedCategoryId !== currentCategoryId ? { categoryId: selectedCategoryId } : {})
+        })
       })
 
       const body = await response.json()
@@ -104,8 +163,8 @@ const EditApplicationDialog = ({
           <DialogHeader>
             <DialogTitle>Edit Application Data</DialogTitle>
             <DialogDescription>
-              Correct the applicant&apos;s submitted details. Every change is recorded in the audit trail with the
-              previous and new value.
+              Correct the applicant&apos;s submitted details{canChangeCategory ? ', or move this application to a different category, ' : ' '}
+              — every change is recorded in the audit trail with the previous and new value.
             </DialogDescription>
           </DialogHeader>
 
@@ -113,6 +172,34 @@ const EditApplicationDialog = ({
             <Alert variant='destructive'>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+
+          {canChangeCategory && (
+            <div className='flex flex-col gap-1.5 border-b pb-4'>
+              <Label htmlFor='edit-category'>Category</Label>
+              <Select
+                value={String(selectedCategoryId)}
+                onValueChange={value => value && handleCategoryChange(Number(value))}
+              >
+                <SelectTrigger id='edit-category' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCategoryId !== currentCategoryId && (
+                <p className='mt-1 flex items-start gap-1.5 text-xs font-medium text-amber-700'>
+                  <AlertTriangleIcon className='mt-0.5 size-3.5 shrink-0' />
+                  Changing category clears the fields below for the new category — fill them in before saving. The
+                  applicant&apos;s old category-specific answers are kept but will no longer be shown here.
+                </p>
+              )}
+            </div>
           )}
 
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -137,13 +224,20 @@ const EditApplicationDialog = ({
             ))}
           </div>
 
-          {categoryFields.length > 0 && (
+          {isLoadingCategoryFields && (
+            <div className='mt-2 flex items-center gap-2 border-t pt-4 text-sm text-muted-foreground'>
+              <Loader2Icon className='size-4 animate-spin' />
+              Loading fields for the new category...
+            </div>
+          )}
+
+          {!isLoadingCategoryFields && categoryFieldDefs.length > 0 && (
             <div className='mt-2 border-t pt-4'>
               <p className='mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground'>
                 Category-Specific Fields
               </p>
               <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                {categoryFields.map(field => {
+                {categoryFieldDefs.map(field => {
                   const key = String(field.fieldDefinitionId)
                   const multiline = field.inputType === 'textarea'
 
@@ -175,7 +269,7 @@ const EditApplicationDialog = ({
             <Button type='button' variant='outline' onClick={() => setOpen(false)} disabled={isSaving}>
               Cancel
             </Button>
-            <Button type='button' onClick={handleSave} disabled={isSaving}>
+            <Button type='button' onClick={handleSave} disabled={isSaving || isLoadingCategoryFields}>
               {isSaving && <Loader2Icon className='animate-spin' />}
               Save Changes
             </Button>

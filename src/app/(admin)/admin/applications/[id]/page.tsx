@@ -199,9 +199,9 @@ const ApplicationDetailPage = async ({
       `SELECT cfd.id AS field_definition_id, cfd.field_key, cfd.label, cfd.label_hi, cfd.section, cfd.section_hi, cfd.input_type, cfd.display_order, afv.value
        FROM application_field_values afv
        JOIN category_field_definitions cfd ON cfd.id = afv.field_definition_id
-       WHERE afv.application_id = ?
+       WHERE afv.application_id = ? AND cfd.category_id = ?
        ORDER BY cfd.display_order ASC`,
-      [applicationId]
+      [applicationId, app.category_id]
     )
 
     const checkedFieldRows = await q<Array<{ field_key: string }>>(
@@ -284,6 +284,14 @@ const ApplicationDetailPage = async ({
       [...categoryFilterParams, app.created_at, app.id]
     )
 
+    // For the Edit Application dialog's Category selector (2026-11-24) — an
+    // admin can move this application to a different category while it's
+    // still under review; see EDITABLE_COLUMNS/categoryId handling in
+    // api/admin/applications/[id]/edit/route.ts for which statuses allow it.
+    const allCategories = await q<Array<{ id: number; name: string; slug: string }>>(
+      `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
+    )
+
     return {
       app,
       fieldValues,
@@ -291,6 +299,7 @@ const ApplicationDetailPage = async ({
       documents,
       documentVersionRows,
       fieldQueryRows,
+      allCategories,
       prevApplicationId: prevRows[0]?.id ?? null,
       nextApplicationId: nextRows[0]?.id ?? null
     }
@@ -461,6 +470,7 @@ const ApplicationDetailPage = async ({
     documents,
     documentVersionRows,
     fieldQueryRows,
+    allCategories,
     prevApplicationId,
     nextApplicationId
   } = connectionA
@@ -661,6 +671,17 @@ const ApplicationDetailPage = async ({
     : []
 
   const canEditApplication = !!permissions?.has('application:edit')
+
+  // Category change is only offered while the application hasn't moved past
+  // review yet — approved/payment_required/allotted/auction-flow
+  // applications already have fee/stall/payment state tied to their current
+  // category, which a category swap would leave inconsistent. Per explicit
+  // decision (2026-11-24): under_review, payment_success (legacy "paid,
+  // under review" value) and query_raised only. Mirrors the server-side gate
+  // in api/admin/applications/[id]/edit/route.ts, which is the real check.
+  const canChangeCategory =
+    canEditApplication && ['under_review', 'payment_success', 'query_raised'].includes(app.status)
+
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
 
   // Must stay in sync with EDITABLE_COLUMNS in
@@ -1051,6 +1072,9 @@ const ApplicationDetailPage = async ({
               applicationId={id}
               fields={editableFields}
               categoryFields={editableCategoryFields}
+              categories={allCategories}
+              currentCategoryId={app.category_id}
+              canChangeCategory={canChangeCategory}
             />
           )}
           <MultiFieldQueryDialog applicationId={id} candidates={multiQueryCandidates} />

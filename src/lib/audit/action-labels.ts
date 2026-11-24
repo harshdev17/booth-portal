@@ -17,6 +17,7 @@ const ACTION_LABELS: Record<string, string> = {
   'application.allotment_letter_downloaded': 'Allotment letter downloaded',
   'application.allotment_letter_released': 'Allotment letter released to applicant',
   'application.approved': 'Application approved',
+  'application.category_changed': 'Application category changed',
   'application.edited': 'Application details edited',
   'application.exported': 'Applications exported',
   'application.payment_reminder_sent': 'Payment reminder sent',
