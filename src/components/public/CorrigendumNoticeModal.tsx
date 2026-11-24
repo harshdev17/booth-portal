@@ -9,10 +9,18 @@ import { useLanguage } from '@/context/LanguageContext'
 import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
 import PaymentPendingNotice from '@/components/public/PaymentPendingNotice'
 import type { CorrigendumNoticeRow } from '@/lib/homepage/corrigendum-notice'
+import type { SiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
 
 type Props = {
   enabled: boolean
   rows: CorrigendumNoticeRow[]
+  heading: string
+  headingHi: string
+  subheading: string
+  subheadingHi: string
+  footerText: string
+  footerTextHi: string
+  banners: SiteNoticeBanners
 }
 
 /**
@@ -33,7 +41,17 @@ type Props = {
  * visit), so it's scoped to '/' only; other pages never show it even within
  * the same session.
  */
-const CorrigendumNoticeModal = ({ enabled, rows }: Props) => {
+const CorrigendumNoticeModal = ({
+  enabled,
+  rows,
+  heading,
+  headingHi,
+  subheading,
+  subheadingHi,
+  footerText,
+  footerTextHi,
+  banners
+}: Props) => {
   const { lang, showLanguagePrompt } = useLanguage()
   const pathname = usePathname()
   const [closed, setClosed] = useState(false)
@@ -50,14 +68,27 @@ const CorrigendumNoticeModal = ({ enabled, rows }: Props) => {
       <div className='flex max-h-full w-full max-w-4xl flex-col rounded-2xl border border-[#ebe4db] bg-white shadow-2xl'>
         <div className='overflow-y-auto p-7 sm:p-9'>
           <p className='mb-1.5 text-center text-sm font-bold tracking-wide text-[#b45309] uppercase'>
-            {lang === 'hi' ? 'महत्वपूर्ण सूचना' : 'Important Notice'}
+            {lang === 'hi' ? headingHi : heading}
           </p>
           <p className='mb-5 text-center text-2xl font-black text-[#072448]'>
-            {lang === 'hi' ? 'संशोधित कार्यक्रम' : 'Revised Schedule'}
+            {lang === 'hi' ? subheadingHi : subheading}
           </p>
 
-          <PaymentPendingNotice size='lg' className='mb-3' />
-          <LetterAvailableNotice className='mb-7' />
+          {banners.paymentPendingEnabled && (
+            <PaymentPendingNotice
+              size='lg'
+              className='mb-3'
+              text={banners.paymentPendingText}
+              textHi={banners.paymentPendingTextHi}
+            />
+          )}
+          {banners.letterAvailableEnabled && (
+            <LetterAvailableNotice
+              className='mb-7'
+              text={banners.letterAvailableText}
+              textHi={banners.letterAvailableTextHi}
+            />
+          )}
 
           <div className='mb-7 overflow-x-auto rounded-xl border border-[#e8e2d8]'>
           <table className='w-full min-w-[480px] text-left text-base'>
@@ -93,9 +124,7 @@ const CorrigendumNoticeModal = ({ enabled, rows }: Props) => {
         </div>
 
         <p className='mb-3 text-center text-sm text-[#64748b]'>
-          {lang === 'hi'
-            ? 'जिन आवेदकों ने पहले ही अपना आवेदन सफलतापूर्वक जमा कर दिया है, उन्हें दोबारा आवेदन करने की जरूरत नहीं है।'
-            : 'Applicants who have already submitted their applications successfully need not apply again.'}
+          {lang === 'hi' ? footerTextHi : footerText}
         </p>
 
         <button

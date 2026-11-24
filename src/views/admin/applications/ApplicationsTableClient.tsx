@@ -148,7 +148,6 @@ export default function ApplicationsTableClient({ applications, backToListUrl, s
       <ApplicationsBulkActionsBar
         selectedRows={selectedRows.map(r => ({
           encodedId: r.encodedId,
-          isPaymentPending: r.isPaymentPending,
           canApprove: r.canApprove,
           canReject: r.canReject,
           canSelectForAuction: r.canSelectForAuction,

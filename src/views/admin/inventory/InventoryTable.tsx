@@ -62,6 +62,7 @@ export type ShopUnitRowData = {
   stallNumber: string
   shopType: 'single' | 'double'
   categoryName: string
+
   // false for a category that was auto-created on the fly (status='draft',
   // never shown on the home page / appliable-to) — used to hide "Available"
   // from this row's Status dropdown, since such a category's stalls are for
@@ -200,12 +201,26 @@ const EDITABLE_EDIT_STATUSES: Array<ShopUnitRowData['status']> = ['available', '
 const InventoryTable = ({
   initialRows,
   canManage,
+  canSendReminder = false,
   categoryNames,
   directions,
   simplifiedTabs = false
 }: {
   initialRows: ShopUnitRowData[]
   canManage: boolean
+
+  /**
+   * Gates the bulk "Send Payment Reminder" button on selected stalls'
+   * applicants — moved here from the Applications list per explicit request
+   * (2026-11-25): "ye reminder waala bulk option all applications mai ni
+   * chahiye, inventory mai aayega" (an inventory-first admin wants to pick
+   * stalls with pending fees and remind their applicants directly, rather
+   * than hunting for the same applications on a separate list). Separate
+   * from `canManage` (inventory:manage) since reminders are gated on the
+   * existing payment:reminder permission, same as the Applications list's
+   * removed version of this button.
+   */
+  canSendReminder?: boolean
   categoryNames: string[]
   directions: string[]
 
@@ -238,6 +253,7 @@ const InventoryTable = ({
   const [typeFilter, setTypeFilter] = useState(ALL)
   const [directionFilter, setDirectionFilter] = useState(ALL)
   const [feesPaidOnly, setFeesPaidOnly] = useState(false)
+
   type SortColumn = 'stallNumber' | 'shopType' | 'categoryName' | 'direction' | 'amount' | 'status' | 'createdAt'
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -275,10 +291,13 @@ const InventoryTable = ({
     try {
       const res = await fetch(`/api/admin/inventory/${row.id}/history`)
       const data = await res.json()
+
       if (!res.ok) {
         setHistoryError(data.error ?? 'Failed to load history.')
+
         return
       }
+
       setHistoryEvents(data.history || [])
     } catch {
       setHistoryError('Network error loading history.')
@@ -299,7 +318,9 @@ const InventoryTable = ({
       const res = await fetch(`/api/admin/applications/${row.applicationId}/send-payment-reminder`, {
         method: 'POST'
       })
+
       const data = await res.json()
+
       if (res.ok) {
         setReminderToast(`Payment reminder dispatched to ${row.applicationNumber || 'applicant'}!`)
         setTimeout(() => setReminderToast(null), 4000)
@@ -431,6 +452,7 @@ const InventoryTable = ({
           if (r.id === data.first.shopUnitId) {
             return { ...r, ...firstBundle, categoryName: data.first.categoryName || r.categoryName }
           }
+
           if (r.id === data.second.shopUnitId) {
             return { ...r, ...secondBundle, categoryName: data.second.categoryName || r.categoryName }
           }
@@ -450,6 +472,7 @@ const InventoryTable = ({
 
   // Direct Re-allotment state
   const [allottingRow, setAllottingRow] = useState<ShopUnitRowData | null>(null)
+
   const [allotForm, setAllotForm] = useState({
     allotteeName: '',
     fatherName: '',
@@ -462,6 +485,7 @@ const InventoryTable = ({
     notes: '',
     sendNotification: true
   })
+
   const [isSubmittingAllot, setIsSubmittingAllot] = useState(false)
   const [allotError, setAllotError] = useState<string | null>(null)
 
@@ -481,8 +505,10 @@ const InventoryTable = ({
       })
 
       const data = await res.json()
+
       if (!res.ok) {
         setCancelError(data.error ?? 'Failed to cancel allotment.')
+
         return
       }
 
@@ -526,6 +552,55 @@ const InventoryTable = ({
   const [bulkCancelOverdueDialogOpen, setBulkCancelOverdueDialogOpen] = useState(false)
   const [isBulkCancellingOverdue, setIsBulkCancellingOverdue] = useState(false)
   const [bulkCancelOverdueError, setBulkCancelOverdueError] = useState<string | null>(null)
+
+  const [isSendingBulkReminder, setIsSendingBulkReminder] = useState(false)
+  const [bulkReminderMessage, setBulkReminderMessage] = useState<string | null>(null)
+  const [bulkReminderError, setBulkReminderError] = useState<string | null>(null)
+
+  // Selected stalls with an applicant whose allotment payment isn't settled
+  // yet — same eligibility notion as the single-row reminder button
+  // (line ~294: row.applicationId + paymentStatus not success/paid).
+  const selectedReminderApplicationIds = useMemo(
+    () =>
+      rows
+        .filter(
+          r =>
+            selectedIds.has(r.id) &&
+            r.applicationId &&
+            r.paymentStatus !== 'success' &&
+            r.paymentStatus !== 'paid'
+        )
+        .map(r => r.applicationId as number),
+    [rows, selectedIds]
+  )
+
+  const handleBulkSendReminder = async () => {
+    setIsSendingBulkReminder(true)
+    setBulkReminderError(null)
+    setBulkReminderMessage(null)
+
+    try {
+      const res = await fetch('/api/admin/applications/bulk-payment-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationIds: selectedReminderApplicationIds.map(String) })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setBulkReminderError(data.error ?? 'Failed to send reminders.')
+
+        return
+      }
+
+      setBulkReminderMessage(data.message ?? 'Reminders sent.')
+    } catch {
+      setBulkReminderError('Network error. Please try again.')
+    } finally {
+      setIsSendingBulkReminder(false)
+    }
+  }
 
   // Any selected allotted or reserved-for-payment stall can be bulk
   // cancelled — not just overdue ones (per explicit request: admin wants to
@@ -575,7 +650,9 @@ const InventoryTable = ({
 
       setSelectedIds(prev => {
         const next = new Set(prev)
+
         succeededIds.forEach(id => next.delete(id))
+
         return next
       })
 
@@ -613,30 +690,43 @@ const InventoryTable = ({
 
     if (!allotForm.allotteeName.trim()) {
       setAllotError('Organisation / Allottee name is mandatory.')
+
       return
     }
+
     if (!allotForm.fatherName.trim()) {
       setAllotError("Father's name is mandatory.")
+
       return
     }
+
     if (!/^\d{12}$/.test(allotForm.aadhaarNumber.trim().replace(/\s+/g, ''))) {
       setAllotError('Aadhaar number must be exactly 12 digits.')
+
       return
     }
+
     if (!allotForm.address.trim()) {
       setAllotError('Full address is mandatory.')
+
       return
     }
+
     if (!/^[6-9]\d{9}$/.test(allotForm.mobileNumber.trim().replace(/\D/g, '').slice(-10))) {
       setAllotError('A valid 10-digit mobile number is mandatory.')
+
       return
     }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(allotForm.email.trim())) {
       setAllotError('A valid email address is mandatory.')
+
       return
     }
+
     if (!allotForm.workPurpose.trim()) {
       setAllotError('Purpose of stall / activity is mandatory.')
+
       return
     }
 
@@ -651,8 +741,10 @@ const InventoryTable = ({
       })
 
       const data = await res.json()
+
       if (!res.ok) {
         setAllotError(data.error ?? 'Failed to allot stall.')
+
         return
       }
 
@@ -757,12 +849,14 @@ const InventoryTable = ({
           return dir * a.categoryName.localeCompare(b.categoryName)
         case 'direction':
           return dir * (a.direction ?? '').localeCompare(b.direction ?? '')
+
         case 'amount': {
           const aAmount = a.paymentAmountPaise ?? a.emdAmountPaise ?? 0
           const bAmount = b.paymentAmountPaise ?? b.emdAmountPaise ?? 0
 
           return dir * (aAmount - bAmount)
         }
+
         case 'status':
           return dir * a.status.localeCompare(b.status)
         case 'createdAt':
@@ -1032,31 +1126,37 @@ const InventoryTable = ({
 
         return
       }
+
       if (!addForm.fatherName.trim()) {
         setAddError("Father's / Husband's name is mandatory.")
 
         return
       }
+
       if (!addForm.aadhaarNumber.trim() || !/^\d{12}$/.test(addForm.aadhaarNumber.trim())) {
         setAddError('A valid 12-digit Aadhaar number is mandatory.')
 
         return
       }
+
       if (!addForm.address.trim()) {
         setAddError('Complete postal address is mandatory.')
 
         return
       }
+
       if (!addForm.mobileNumber.trim() || addForm.mobileNumber.trim().replace(/\D/g, '').length !== 10) {
         setAddError('A valid 10-digit mobile number is mandatory.')
 
         return
       }
+
       if (!addForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email.trim())) {
         setAddError('A valid email address is mandatory.')
 
         return
       }
+
       if (!addForm.workPurpose.trim()) {
         setAddError('Purpose of stall / activity is mandatory.')
 
@@ -1137,6 +1237,7 @@ const InventoryTable = ({
 
     if (!editForm.stallNumber.trim() || !editForm.shopType || !editForm.categoryName) {
       setEditError('Booth/Stall number, type, and category are required.')
+
       return
     }
 
@@ -1147,30 +1248,43 @@ const InventoryTable = ({
     if (isDoingDirectAllotment) {
       if (!editForm.allotteeName.trim()) {
         setEditError('Organisation / Allottee name is mandatory.')
+
         return
       }
+
       if (!editForm.fatherName.trim()) {
         setEditError("Father's / Husband's name is mandatory.")
+
         return
       }
+
       if (!editForm.aadhaarNumber.trim() || !/^\d{12}$/.test(editForm.aadhaarNumber.trim())) {
         setEditError('A valid 12-digit Aadhaar number is mandatory.')
+
         return
       }
+
       if (!editForm.address.trim()) {
         setEditError('Complete postal address is mandatory.')
+
         return
       }
+
       if (!editForm.mobileNumber.trim() || editForm.mobileNumber.trim().replace(/\D/g, '').length !== 10) {
         setEditError('A valid 10-digit mobile number is mandatory.')
+
         return
       }
+
       if (!editForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
         setEditError('A valid email address is mandatory.')
+
         return
       }
+
       if (!editForm.workPurpose.trim()) {
         setEditError('Purpose of stall / activity is mandatory.')
+
         return
       }
     }
@@ -1196,6 +1310,7 @@ const InventoryTable = ({
 
       if (!response.ok) {
         setEditError(body.error ?? 'Could not update this booth/stall.')
+
         return
       }
 
@@ -1218,8 +1333,10 @@ const InventoryTable = ({
         })
 
         const allotData = await allotRes.json()
+
         if (!allotRes.ok) {
           setEditError(allotData.error ?? 'Stall updated, but Direct Allotment failed.')
+
           return
         }
 
@@ -1244,6 +1361,7 @@ const InventoryTable = ({
         )
       } else {
         const updatedId = editingRow.id
+
         setRows(prev =>
           prev.map(r =>
             r.id === updatedId
@@ -1725,6 +1843,7 @@ const InventoryTable = ({
                         !interchangeSecondId ||
                         interchangeFirstId === interchangeSecondId ||
                         !interchangeReason.trim() ||
+
                         // Both sides empty: nothing would actually change.
                         (!interchangeEligibleRows.find(r => r.id === interchangeFirstId)?.applicationId &&
                           !interchangeEligibleRows.find(r => r.id === interchangeSecondId)?.applicationId)
@@ -1756,6 +1875,24 @@ const InventoryTable = ({
                   {isBulkUpdatingStatus && <Loader2Icon className='animate-spin' />}
                   Set Status ({deletableSelectedIds.length})
                 </Button>
+              </div>
+            )}
+
+            {canSendReminder && selectedReminderApplicationIds.length > 0 && (
+              <div className='flex items-center gap-1.5'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  className='gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
+                  onClick={handleBulkSendReminder}
+                  disabled={isSendingBulkReminder}
+                >
+                  {isSendingBulkReminder ? <Loader2Icon className='size-3.5 animate-spin' /> : <BellRingIcon className='size-3.5' />}
+                  Send Payment Reminder ({selectedReminderApplicationIds.length})
+                </Button>
+                {bulkReminderError && <span className='text-xs font-semibold text-destructive'>{bulkReminderError}</span>}
+                {bulkReminderMessage && <span className='text-xs font-semibold text-emerald-700'>{bulkReminderMessage}</span>}
               </div>
             )}
 
@@ -2415,6 +2552,7 @@ const InventoryTable = ({
                           const hasReceipt = Boolean(
                             row.applicationId && (row.paymentStatus === 'success' || row.paymentStatus === 'paid')
                           )
+
                           const hasLetter = Boolean(
                             row.applicationId &&
                               !row.isCancelled &&
@@ -2424,6 +2562,7 @@ const InventoryTable = ({
                                 row.paymentStatus === 'paid' ||
                                 (row.isDirectAllotment && !row.paymentAmountPaise))
                           )
+
                           const hasApplication = Boolean(row.applicationId)
                           const canReallocate = row.isCancelled || row.status === 'cancelled'
 
@@ -2437,6 +2576,7 @@ const InventoryTable = ({
                             !row.isCancelled &&
                             row.status !== 'cancelled' &&
                             (row.status === 'allotted' || (row.status === 'reserved' && Boolean(row.applicationId)))
+
                           const canRemind = Boolean(
                             row.applicationId &&
                               !row.isCancelled &&

@@ -18,6 +18,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
+import type { SiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -54,7 +55,7 @@ type StatusApiResponse = {
 
 type Phase = 'lookup' | 'otp' | 'result'
 
-const AllotmentLetterView = () => {
+const AllotmentLetterView = ({ noticeBanners }: { noticeBanners: SiteNoticeBanners }) => {
   const { lang } = useLanguage()
   const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('lookup')
@@ -201,7 +202,13 @@ const AllotmentLetterView = () => {
             ? 'गीता जयंती महोत्सव 2026 के लिए अपना आधिकारिक स्टॉल आबंटन पत्र देखें व डाउनलोड करें।'
             : 'Download and print your official Booth/Stall Allotment Letter for Gita Jayanti Mahotsav 2026.'}
         </p>
-        <LetterAvailableNotice className='mt-4' />
+        {noticeBanners.letterAvailableEnabled && (
+          <LetterAvailableNotice
+            className='mt-4'
+            text={noticeBanners.letterAvailableText}
+            textHi={noticeBanners.letterAvailableTextHi}
+          />
+        )}
       </div>
 
       {phase === 'lookup' && (

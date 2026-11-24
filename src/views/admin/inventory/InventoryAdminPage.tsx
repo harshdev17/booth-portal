@@ -91,6 +91,7 @@ export default async function InventoryAdminPage() {
   const permissions = await getCurrentUserPermissions()
   const canManage = !!permissions?.has('inventory:manage')
   const canViewLogs = !!permissions?.has('audit:view')
+  const canSendReminder = !!permissions?.has('payment:reminder')
 
   // Police sees only All/Allotted/Available tabs, per explicit request
   // (2026-11-04: "isme bas all waala hi dikhe ga police ko to, allotted
@@ -323,6 +324,7 @@ export default async function InventoryAdminPage() {
           <InventoryTable
             initialRows={shopUnitRows}
             canManage={canManage}
+            canSendReminder={canSendReminder}
             categoryNames={categories.map(c => c.name)}
             directions={directionBreakdown.map(([direction]) => direction)}
             simplifiedTabs={simplifiedTabs}

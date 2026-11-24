@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
+import { getSiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
 import AllotmentLetterView from '@/views/public/allotment-letter/AllotmentLetterView'
 
 export const metadata: Metadata = {
@@ -19,13 +20,15 @@ export const metadata: Metadata = {
 // already applied to src/app/(public)/page.tsx and others.
 export const dynamic = 'force-dynamic'
 
-const AllotmentLetterPage = () => {
+const AllotmentLetterPage = async () => {
+  const noticeBanners = await getSiteNoticeBanners()
+
   return (
     <>
       <PublicHeader />
       <main className='min-h-[calc(100vh-280px)] bg-slate-50/50 py-6'>
         <Suspense fallback={<div className='py-20 text-center text-sm text-slate-500'>Loading allotment letter...</div>}>
-          <AllotmentLetterView />
+          <AllotmentLetterView noticeBanners={noticeBanners} />
         </Suspense>
       </main>
       <PublicFooter />

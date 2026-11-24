@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { BellRingIcon, CheckIcon, GavelIcon, Loader2Icon, SendIcon, XIcon } from 'lucide-react'
+import { CheckIcon, GavelIcon, Loader2Icon, SendIcon, XIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -16,7 +16,6 @@ import {
 
 type SelectedRow = {
   encodedId: string
-  isPaymentPending: boolean
   canApprove: boolean
   canReject: boolean
   canSelectForAuction: boolean
@@ -33,12 +32,17 @@ type Props = {
   onDone: () => void
 }
 
-type BusyAction = 'reminder' | 'approve' | 'reject' | 'auction' | null
+type BusyAction = 'approve' | 'reject' | 'auction' | null
 
 /**
  * Toolbar shown above the Applications table once 1+ rows are
- * checkbox-selected — "Send Payment Reminder", "Approve", "Reject" (all per
- * explicit request, 2026-11-05), and "Select for Auction" (2026-11-17).
+ * checkbox-selected — "Approve", "Reject" (per explicit request, 2026-11-05),
+ * and "Select for Auction" (2026-11-17). "Send Payment Reminder" used to live
+ * here too but was moved to the Inventory page's bulk bar per explicit
+ * request (2026-11-25): "ye reminder waala bulk option all applications mai
+ * ni chahiye, inventory mai aayega" — an inventory-first admin wants to pick
+ * stalls with pending fees directly, not hunt for the same applications on a
+ * separate list.
  * Each button is only enabled when at least one SELECTED row is eligible
  * for that specific action; the backend bulk routes independently re-check
  * eligibility per application regardless (never trusts this client-side
@@ -61,7 +65,6 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
 
   if (selectedRows.length === 0) return null
 
-  const reminderEligible = selectedRows.filter(r => r.isPaymentPending)
   const approveEligible = selectedRows.filter(r => r.canApprove)
   const rejectEligible = selectedRows.filter(r => r.canReject)
   const auctionEligible = selectedRows.filter(r => r.canSelectForAuction)
@@ -89,15 +92,6 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
       setBusy(null)
     }
   }
-
-  const sendBulkReminder = () =>
-    runAction('reminder', () =>
-      fetch('/api/admin/applications/bulk-payment-reminder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationIds: reminderEligible.map(r => r.encodedId) })
-      })
-    )
 
   const bulkApprove = () => {
     const confirmed = window.confirm(
@@ -146,20 +140,6 @@ export default function ApplicationsBulkActionsBar({ selectedRows, onDone }: Pro
   return (
     <div className='flex flex-wrap items-center gap-3 border-b bg-amber-50/60 px-4 py-2.5'>
       <span className='text-xs font-bold text-amber-900'>{selectedRows.length} selected</span>
-
-      {reminderEligible.length > 0 && (
-        <Button
-          type='button'
-          size='sm'
-          variant='outline'
-          disabled={busy !== null}
-          onClick={sendBulkReminder}
-          className='gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50'
-        >
-          {busy === 'reminder' ? <Loader2Icon className='size-3.5 animate-spin' /> : <BellRingIcon className='size-3.5' />}
-          Send Payment Reminder ({reminderEligible.length})
-        </Button>
-      )}
 
       {approveEligible.length > 0 && (
         <Button

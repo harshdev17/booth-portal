@@ -7,6 +7,7 @@ import PublicHeader from '@/components/public/PublicHeader'
 import ResultsDeclaredBanner from '@/components/public/ResultsDeclaredBanner'
 import { withPooledConnection } from '@/lib/db/client'
 import { anyDrawCompleted, getResultsBannerSettings } from '@/lib/draw/results-declared'
+import { getSiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
 import StatusLookup from '@/views/public/status'
 
 export const metadata: Metadata = {
@@ -25,9 +26,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const StatusPage = async () => {
-  const [resultsDeclared, bannerSettings] = await withPooledConnection(query =>
-    Promise.all([anyDrawCompleted(query), getResultsBannerSettings(query)])
-  )
+  const [[resultsDeclared, bannerSettings], noticeBanners] = await Promise.all([
+    withPooledConnection(query => Promise.all([anyDrawCompleted(query), getResultsBannerSettings(query)])),
+    getSiteNoticeBanners()
+  ])
 
   return (
     <>
@@ -35,7 +37,7 @@ const StatusPage = async () => {
       <ResultsDeclaredBanner show={resultsDeclared} textEn={bannerSettings.textEn} textHi={bannerSettings.textHi} />
       {/* StatusLookup reads ?appNo= via useSearchParams, which requires a Suspense boundary in the App Router */}
       <Suspense>
-        <StatusLookup />
+        <StatusLookup noticeBanners={noticeBanners} />
       </Suspense>
       <PublicFooter />
     </>

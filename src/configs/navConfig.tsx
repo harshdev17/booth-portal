@@ -174,6 +174,7 @@ export const navItems: NavItem[] = [
           { label: 'WhatsApp / SMS', href: '/admin/settings/notifications' },
           { label: 'Fees / Categories / Event', href: '/admin/settings/general' },
           { label: 'Homepage Notices', href: '/admin/settings/notices' },
+          { label: 'Corrigendum Popup', href: '/admin/settings/corrigendum' },
           { label: 'Notification Board', href: '/admin/settings/notification-board' },
           { label: 'reCAPTCHA', href: '/admin/settings/recaptcha' },
           { label: 'Contact & Social', href: '/admin/settings/contact' },

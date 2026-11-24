@@ -18,6 +18,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+
+export type SiteNoticeBannersItem = {
+  paymentPendingText: string
+  paymentPendingTextHi: string
+  paymentPendingEnabled: boolean
+  letterAvailableText: string
+  letterAvailableTextHi: string
+  letterAvailableEnabled: boolean
+}
 
 export type CorrigendumRowItem = {
   id: number
@@ -50,15 +60,36 @@ const EMPTY_DRAFT: NewRowDraft = { particular: '', particularHi: '', previous: '
  * NoticesSettingsClient.tsx's editing pattern (reorder/save/delete per row),
  * extended to this popup's 3 bilingual columns instead of 1.
  */
+type TextSettings = {
+  heading: string
+  headingHi: string
+  subheading: string
+  subheadingHi: string
+  footerText: string
+  footerTextHi: string
+}
+
 export default function CorrigendumNoticeSettingsClient({
   enabled: initialEnabled,
-  rows: initialRows
+  heading,
+  headingHi,
+  subheading,
+  subheadingHi,
+  footerText,
+  footerTextHi,
+  rows: initialRows,
+  noticeBanners
 }: {
   enabled: boolean
   rows: CorrigendumRowItem[]
-}) {
+  noticeBanners: SiteNoticeBannersItem
+} & TextSettings) {
   const [enabled, setEnabled] = useState(initialEnabled)
   const [isTogglingEnabled, setIsTogglingEnabled] = useState(false)
+  const [text, setText] = useState<TextSettings>({ heading, headingHi, subheading, subheadingHi, footerText, footerTextHi })
+  const [isSavingText, setIsSavingText] = useState(false)
+  const [banners, setBanners] = useState<SiteNoticeBannersItem>(noticeBanners)
+  const [isSavingBanners, setIsSavingBanners] = useState(false)
   const [rows, setRows] = useState(initialRows)
   const [savingId, setSavingId] = useState<number | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -96,6 +127,79 @@ export default function CorrigendumNoticeSettingsClient({
       setErrorMessage('Could not connect to server. Please try again.')
     } finally {
       setIsTogglingEnabled(false)
+    }
+  }
+
+  const handleSaveText = async () => {
+    setIsSavingText(true)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/corrigendum-notice/toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(text)
+      })
+
+      if (response.ok) {
+        showSuccess('Popup text saved.')
+      } else {
+        const data = await response.json()
+
+        setErrorMessage(data.error ?? 'Failed to save text.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setIsSavingText(false)
+    }
+  }
+
+  const saveBanners = async (payload: SiteNoticeBannersItem) => {
+    const response = await fetch('/api/admin/site-notice-banners', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+
+      throw new Error(data.error ?? 'Failed to save.')
+    }
+  }
+
+  const handleSaveBanners = async () => {
+    setIsSavingBanners(true)
+    setErrorMessage(null)
+
+    try {
+      await saveBanners(banners)
+      showSuccess('Notice banner text saved.')
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to save.')
+    } finally {
+      setIsSavingBanners(false)
+    }
+  }
+
+  // Toggling a banner on/off saves immediately (same pattern as the
+  // Corrigendum popup's own enable/disable Switch above) rather than waiting
+  // for the "Save Banners" button — confirmed live (2026-11-25) that leaving
+  // this as local-state-only until a separate click felt like it "wasn't
+  // working" since nothing visibly happened on toggle.
+  const handleToggleBanner = async (field: 'paymentPendingEnabled' | 'letterAvailableEnabled', checked: boolean) => {
+    const next = { ...banners, [field]: checked }
+
+    setBanners(next)
+    setErrorMessage(null)
+
+    try {
+      await saveBanners(next)
+      showSuccess(checked ? 'Banner enabled.' : 'Banner disabled.')
+    } catch (err) {
+      setBanners(banners)
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to update.')
     }
   }
 
@@ -298,6 +402,167 @@ export default function CorrigendumNoticeSettingsClient({
             <Switch checked={enabled} onCheckedChange={handleToggleEnabled} disabled={isTogglingEnabled} />
           </div>
         </CardHeader>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardHeader className='border-b bg-muted/40 py-4'>
+          <CardTitle className='text-base font-bold text-[#0c2847]'>Popup Text</CardTitle>
+          <CardDescription className='text-xs'>
+            The heading, subheading, and closing note shown around the table in the popup.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='flex flex-col gap-4 pt-6'>
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>Heading (English)</label>
+              <Input
+                value={text.heading}
+                onChange={e => setText(prev => ({ ...prev, heading: e.target.value }))}
+                maxLength={255}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>शीर्षक (हिंदी)</label>
+              <Input
+                value={text.headingHi}
+                onChange={e => setText(prev => ({ ...prev, headingHi: e.target.value }))}
+                maxLength={255}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>Subheading (English)</label>
+              <Input
+                value={text.subheading}
+                onChange={e => setText(prev => ({ ...prev, subheading: e.target.value }))}
+                maxLength={255}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>उपशीर्षक (हिंदी)</label>
+              <Input
+                value={text.subheadingHi}
+                onChange={e => setText(prev => ({ ...prev, subheadingHi: e.target.value }))}
+                maxLength={255}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>Footer note (English)</label>
+              <Textarea
+                value={text.footerText}
+                onChange={e => setText(prev => ({ ...prev, footerText: e.target.value }))}
+                maxLength={1000}
+                rows={3}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-xs font-semibold text-muted-foreground'>फुटर नोट (हिंदी)</label>
+              <Textarea
+                value={text.footerTextHi}
+                onChange={e => setText(prev => ({ ...prev, footerTextHi: e.target.value }))}
+                maxLength={1000}
+                rows={3}
+              />
+            </div>
+          </div>
+          <Button
+            onClick={handleSaveText}
+            disabled={isSavingText}
+            className='w-fit bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
+          >
+            {isSavingText ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <SaveIcon className='size-3.5 mr-1.5' />}
+            Save Text
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className='shadow-xs'>
+        <CardHeader className='border-b bg-muted/40 py-4'>
+          <CardTitle className='text-base font-bold text-[#0c2847]'>Shared Notice Banners</CardTitle>
+          <CardDescription className='text-xs'>
+            These two disclaimers also appear on the /status page and the Allotment Letter page — editing here
+            updates all three places at once.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='flex flex-col gap-5 pt-6'>
+          <div className='flex flex-col gap-3'>
+            <div className='flex items-center justify-between'>
+              <p className='text-xs font-bold text-[#0c2847]'>Payment Pending Disclaimer</p>
+              <div className='flex items-center gap-2'>
+                <span className='text-xs font-semibold text-muted-foreground'>
+                  {banners.paymentPendingEnabled ? 'Shown' : 'Hidden'}
+                </span>
+                <Switch
+                  checked={banners.paymentPendingEnabled}
+                  onCheckedChange={checked => handleToggleBanner('paymentPendingEnabled', checked)}
+                />
+              </div>
+            </div>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <div className='flex flex-col gap-1.5'>
+                <label className='text-xs font-semibold text-muted-foreground'>English</label>
+                <Textarea
+                  value={banners.paymentPendingText}
+                  onChange={e => setBanners(prev => ({ ...prev, paymentPendingText: e.target.value }))}
+                  maxLength={1000}
+                  rows={4}
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <label className='text-xs font-semibold text-muted-foreground'>हिंदी</label>
+                <Textarea
+                  value={banners.paymentPendingTextHi}
+                  onChange={e => setBanners(prev => ({ ...prev, paymentPendingTextHi: e.target.value }))}
+                  maxLength={1000}
+                  rows={4}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className='flex flex-col gap-3 border-t pt-5'>
+            <div className='flex items-center justify-between'>
+              <p className='text-xs font-bold text-[#0c2847]'>Allotment Letter Available Disclaimer</p>
+              <div className='flex items-center gap-2'>
+                <span className='text-xs font-semibold text-muted-foreground'>
+                  {banners.letterAvailableEnabled ? 'Shown' : 'Hidden'}
+                </span>
+                <Switch
+                  checked={banners.letterAvailableEnabled}
+                  onCheckedChange={checked => handleToggleBanner('letterAvailableEnabled', checked)}
+                />
+              </div>
+            </div>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <div className='flex flex-col gap-1.5'>
+                <label className='text-xs font-semibold text-muted-foreground'>English</label>
+                <Textarea
+                  value={banners.letterAvailableText}
+                  onChange={e => setBanners(prev => ({ ...prev, letterAvailableText: e.target.value }))}
+                  maxLength={1000}
+                  rows={3}
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <label className='text-xs font-semibold text-muted-foreground'>हिंदी</label>
+                <Textarea
+                  value={banners.letterAvailableTextHi}
+                  onChange={e => setBanners(prev => ({ ...prev, letterAvailableTextHi: e.target.value }))}
+                  maxLength={1000}
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleSaveBanners}
+            disabled={isSavingBanners}
+            className='w-fit bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
+          >
+            {isSavingBanners ? <Loader2Icon className='size-3.5 animate-spin mr-1.5' /> : <SaveIcon className='size-3.5 mr-1.5' />}
+            Save Banners
+          </Button>
+        </CardContent>
       </Card>
 
       <Card className='shadow-xs'>

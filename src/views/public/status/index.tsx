@@ -28,6 +28,7 @@ import { z } from 'zod'
 
 import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
 import PaymentPendingNotice from '@/components/public/PaymentPendingNotice'
+import type { SiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -218,7 +219,7 @@ const STATUS_HINT: Record<string, { en: string; hi: string }> = {
 
 type Phase = 'lookup' | 'otp' | 'result'
 
-const StatusLookup = () => {
+const StatusLookup = ({ noticeBanners }: { noticeBanners: SiteNoticeBanners }) => {
   const { lang } = useLanguage()
   const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('lookup')
@@ -1187,8 +1188,21 @@ const StatusLookup = () => {
                 ? 'गीता जयंती महोत्सव 2026 के लिए अपने स्टॉल/बूथ के आवेदन फॉर्म की नवीनतम स्थिति देखने के लिए अपना आवेदन क्रमांक दर्ज करें। हम आपके पंजीकृत मोबाइल नंबर पर एक सत्यापन कोड भेजेंगे।'
                 : "Enter your application number to check the latest status of your application for Gita Jayanti Mahotsav 2026. We'll send a verification code to your registered mobile number."}
           </p>
-          <PaymentPendingNotice size='lg' className='mt-5 text-left' />
-          <LetterAvailableNotice className='mt-3 text-left' />
+          {noticeBanners.paymentPendingEnabled && (
+            <PaymentPendingNotice
+              size='lg'
+              className='mt-5 text-left'
+              text={noticeBanners.paymentPendingText}
+              textHi={noticeBanners.paymentPendingTextHi}
+            />
+          )}
+          {noticeBanners.letterAvailableEnabled && (
+            <LetterAvailableNotice
+              className='mt-3 text-left'
+              text={noticeBanners.letterAvailableText}
+              textHi={noticeBanners.letterAvailableTextHi}
+            />
+          )}
         </div>
       ) : (
         <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5'>
@@ -1226,10 +1240,18 @@ const StatusLookup = () => {
         </div>
       )}
 
-      {isResult && (
+      {isResult && (noticeBanners.paymentPendingEnabled || noticeBanners.letterAvailableEnabled) && (
         <div className='mb-6 flex flex-col gap-3'>
-          <PaymentPendingNotice size='lg' />
-          <LetterAvailableNotice />
+          {noticeBanners.paymentPendingEnabled && (
+            <PaymentPendingNotice
+              size='lg'
+              text={noticeBanners.paymentPendingText}
+              textHi={noticeBanners.paymentPendingTextHi}
+            />
+          )}
+          {noticeBanners.letterAvailableEnabled && (
+            <LetterAvailableNotice text={noticeBanners.letterAvailableText} textHi={noticeBanners.letterAvailableTextHi} />
+          )}
         </div>
       )}
 

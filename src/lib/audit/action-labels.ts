@@ -54,6 +54,7 @@ const ACTION_LABELS: Record<string, string> = {
   'corrigendum_notice.row_deleted': 'Corrigendum popup row deleted',
   'corrigendum_notice.row_updated': 'Corrigendum popup row updated',
   'corrigendum_notice.toggled': 'Corrigendum popup enabled/disabled',
+  'site_notice_banners.updated': 'Shared notice banner text updated',
   'notice.created': 'Notice created',
   'notice.deleted': 'Notice deleted',
   'notice.updated': 'Notice updated',

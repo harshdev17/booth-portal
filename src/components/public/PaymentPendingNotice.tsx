@@ -12,24 +12,37 @@ import { useLanguage } from '@/context/LanguageContext'
  */
 const PaymentPendingNotice = ({
   className = '',
-  size = 'md'
+  size = 'md',
+  text,
+  textHi
 }: {
   className?: string
+
   /** 'lg' = bold red/urgent styling for the Corrigendum popup's top banner; 'md' = the standard amber inline notice used elsewhere. */
   size?: 'md' | 'lg'
+
+  /**
+   * Main disclaimer text — admin-editable (site_notice_banners, migration
+   * 0092), fetched by each page and passed down here. The shorter
+   * "patience"/signature lines below stay fixed boilerplate; only the main
+   * line (which states the actual wait time/condition) is a business value
+   * worth editing without a deploy.
+   */
+  text: string
+  textHi: string
 }) => {
   const { lang } = useLanguage()
 
   const lines =
     lang === 'hi'
       ? {
-          main: 'यदि आपकी पेमेंट सफल होने के बाद बैंक खाते से पैसे कट गए हैं, लेकिन पोर्टल पर अभी भी Pending Payment दिखा रहा है, तो कृपया 24 घंटे प्रतीक्षा करें। आपकी पेमेंट सफलतापूर्वक अपडेट हो जाएगी।',
+          main: textHi,
           patience: 'कृपया धैर्य बनाए रखें व दोबारा पेमेंट न करें। आपके सहयोग के लिए धन्यवाद।',
           thanks: 'धन्यवाद!',
           board: 'कुरुक्षेत्र डेवलपमेंट बोर्ड'
         }
       : {
-          main: 'If the amount has been deducted from your bank account after a successful payment, but the portal still shows Pending Payment, please wait 24 hours. Your payment will be updated successfully.',
+          main: text,
           patience: 'Please be patient and do not make the payment again. Thank you for your cooperation.',
           thanks: 'Thank you!',
           board: 'Kurukshetra Development Board'
