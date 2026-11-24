@@ -8,20 +8,32 @@ import { usePathname } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import LetterAvailableNotice from '@/components/public/LetterAvailableNotice'
 import PaymentPendingNotice from '@/components/public/PaymentPendingNotice'
+import type { CorrigendumNoticeRow } from '@/lib/homepage/corrigendum-notice'
+
+type Props = {
+  enabled: boolean
+  rows: CorrigendumNoticeRow[]
+}
 
 /**
- * Popup for Corrigendum Notice-02 (revised schedule), shown right after the
+ * Popup for the Corrigendum Notice (revised schedule), shown right after the
  * language-preference modal is dismissed/chosen — never simultaneously with
  * it. Only the dates that actually changed are shown here, not the full
  * corrigendum text; the PDF notice itself still lives on the Notices page
  * for anyone who wants the complete wording.
+ *
+ * `enabled`/`rows` come from the database (corrigendum_notice_settings /
+ * corrigendum_notice_rows), fetched once in the public layout (a Server
+ * Component) and passed down here — editable from
+ * Admin → Settings → Homepage Notices without a code deploy (per explicit
+ * request, 2026-11-24). Previously hardcoded in this component.
  *
  * Deliberately NOT remembered in localStorage — per explicit request, this
  * reappears on every homepage load/refresh (not just a visitor's first
  * visit), so it's scoped to '/' only; other pages never show it even within
  * the same session.
  */
-const CorrigendumNoticeModal = () => {
+const CorrigendumNoticeModal = ({ enabled, rows }: Props) => {
   const { lang, showLanguagePrompt } = useLanguage()
   const pathname = usePathname()
   const [closed, setClosed] = useState(false)
@@ -31,84 +43,7 @@ const CorrigendumNoticeModal = () => {
   // Never stacked with the language prompt — waits for that one to resolve
   // first (same reasoning as its own Coming Soon exclusion: a second
   // blocking popup right on top of the first is just friction).
-  if (closed || showLanguagePrompt || pathname !== '/') return null
-
-  const rows =
-    lang === 'hi'
-      ? [
-          {
-            particular: 'Government Department Category के लिए आवेदन की अंतिम तारीख',
-            previous: '19 नवंबर 2026, शाम 5:00 बजे तक',
-            revised: '20 नवंबर 2026 से 25 नवंबर 2026, रात 11:59 बजे तक'
-          },
-          {
-            particular: 'Social Organizations (पंजीकृत) Category के लिए आवेदन की अंतिम तारीख',
-            previous: '19 नवंबर 2026, रात 11:59 बजे तक',
-            revised: '20 नवंबर 2026 से 23 नवंबर 2026, रात 11:59 बजे तक'
-          },
-          {
-            particular: 'SARAS Category के लिए आवेदन की अंतिम तारीख',
-            previous: '10 नवंबर 2026, शाम 5:00 बजे',
-            revised: '23 नवंबर 2026, रात 11:59 बजे तक'
-          },
-          {
-            particular: 'Brand Promotion Category के लिए आवेदन की अंतिम तारीख',
-            previous: '15 नवंबर 2026, शाम 5:00 बजे',
-            revised: '19 नवंबर 2026, रात 11:59 बजे तक'
-          },
-          {
-            particular: 'Refreshment & Ice Cream Category के लिए आवेदन की अंतिम तारीख',
-            previous: '10 नवंबर 2026, शाम 5:00 बजे',
-            revised: '16 नवंबर 2026, रात 11:59 बजे'
-          },
-          {
-            particular: 'सभी कैटेगरी का रिजल्ट घोषित होना',
-            previous: '12 नवंबर 2026, सुबह 11:00 बजे',
-            revised: '16 नवंबर 2026, सुबह 11:00 बजे'
-          },
-          {
-            particular: 'Refreshment & Ice Cream बूथ/स्टॉल की फिजिकल नीलामी',
-            previous: '16 नवंबर 2026, सुबह 10:00 बजे',
-            revised: '19 नवंबर 2026, सुबह 10:00 बजे'
-          }
-        ]
-      : [
-          {
-            particular: 'Application for Govt. Department Category',
-            previous: '19 November 2026 (5:00 PM)',
-            revised: '20 November 2026 to 25 November 2026 (up to 11:59 PM)'
-          },
-          {
-            particular: 'Application for Social Organizations (Registered) Category',
-            previous: '19 November 2026 (up to 11:59 PM)',
-            revised: '20 November 2026 to 23 November 2026 (up to 11:59 PM)'
-          },
-          {
-            particular: 'Application for SARAS Category',
-            previous: '10 November 2026 (5:00 PM)',
-            revised: '23 November 2026 (up to 11:59 PM)'
-          },
-          {
-            particular: 'Application for Brand Promotion Category',
-            previous: '15 November 2026 (5:00 PM)',
-            revised: '19 November 2026 (up to 11:59 PM)'
-          },
-          {
-            particular: 'Application for Refreshment & Ice Cream Category',
-            previous: '10 November 2026 (5:00 PM)',
-            revised: '16 November 2026 (11:59 PM)'
-          },
-          {
-            particular: 'Declaration of Results for all categories',
-            previous: '12 November 2026 (11:00 AM)',
-            revised: '16 November 2026 (11:00 AM)'
-          },
-          {
-            particular: 'Physical Auction for Refreshment & Ice Cream Booths/Stalls',
-            previous: '16 November 2026 (10:00 AM)',
-            revised: '19 November 2026 (10:00 AM)'
-          }
-        ]
+  if (closed || showLanguagePrompt || pathname !== '/' || !enabled || rows.length === 0) return null
 
   return (
     <div className='fixed inset-0 z-[100] flex items-center justify-center bg-[#071f3a]/60 px-4 py-8 backdrop-blur-sm'>
@@ -140,15 +75,17 @@ const CorrigendumNoticeModal = () => {
               </tr>
             </thead>
             <tbody className='divide-y divide-[#e8e2d8]'>
-              {rows.map(row => (
-                <tr key={row.particular}>
+              {rows.map((row, index) => (
+                <tr key={index}>
                   <td className='bg-[#faf7f1] px-4 py-4 align-top text-[14px] font-semibold text-[#44403c]'>
-                    {row.particular}
+                    {lang === 'hi' ? row.particularHi : row.particular}
                   </td>
                   <td className='px-4 py-4 align-top text-[14px] font-medium text-[#94a3b8] line-through decoration-[#cbd5e1]'>
-                    {row.previous}
+                    {lang === 'hi' ? row.previousHi : row.previous}
                   </td>
-                  <td className='px-4 py-4 align-top text-[14px] font-bold text-[#0c2847]'>{row.revised}</td>
+                  <td className='px-4 py-4 align-top text-[14px] font-bold text-[#0c2847]'>
+                    {lang === 'hi' ? row.revisedHi : row.revised}
+                  </td>
                 </tr>
               ))}
             </tbody>

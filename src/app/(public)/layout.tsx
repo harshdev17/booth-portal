@@ -8,6 +8,7 @@ import FloatingContactButtons from '@/components/public/FloatingContactButtons'
 import LanguagePreferenceModal from '@/components/public/LanguagePreferenceModal'
 import { ContactSettingsProvider } from '@/context/ContactSettingsContext'
 import { LanguageProvider } from '@/context/LanguageContext'
+import { getCorrigendumNoticeData } from '@/lib/homepage/corrigendum-notice'
 import { getContactSettings } from '@/lib/settings/contact-settings'
 import { cn } from '@/lib/utils'
 
@@ -22,14 +23,14 @@ const notoSansDevanagari = Noto_Sans_Devanagari({ subsets: ['devanagari'], varia
  * .ai/landing-page-design/index.html) — see src/components/public/*.
  */
 const PublicLayout = async ({ children }: { children: ReactNode }) => {
-  const contactSettings = await getContactSettings()
+  const [contactSettings, corrigendumNotice] = await Promise.all([getContactSettings(), getCorrigendumNoticeData()])
 
   return (
     <ContactSettingsProvider settings={contactSettings}>
       <LanguageProvider>
         <div className={cn('kdb-public w-full min-w-0 flex-1', inter.variable, notoSansDevanagari.variable)}>
           <LanguagePreferenceModal />
-          <CorrigendumNoticeModal />
+          <CorrigendumNoticeModal enabled={corrigendumNotice.enabled} rows={corrigendumNotice.rows} />
           {children}
           <FloatingContactButtons />
           <FloatingChatbot />
