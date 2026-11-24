@@ -122,6 +122,7 @@ type StatusResult = {
   allotmentPaidAt: string | null
   allotmentLetterReleased: boolean
   auctionParticipationFeePaise: number | null
+  auctionParticipationFeeDeadlineAt: string | null
   auctionFinalAmountPaise: number | null
   auctionFinalPaymentDeadlineAt: string | null
   categoryName: string
@@ -1094,6 +1095,23 @@ const StatusLookup = () => {
   const showAllotmentFeeRow =
     Boolean(result?.stallNumber) || effectiveStatus === 'payment_required' || effectiveStatus === 'allotted'
 
+  // UX-only: the server (POST /api/applications/[id]/payment/order) is the
+  // real, authoritative deadline check — this just disables the button and
+  // explains why, instead of letting the applicant click Pay, sit through
+  // Razorpay's checkout, and only then discover the deadline already
+  // passed. A deadline string with no explicit timezone ("2026-11-24
+  // 15:00:00") is parsed here exactly like the server's own
+  // parseIstDateTime() intends it: IST wall-clock time.
+  const isDeadlinePassed = (deadlineAt: string | null): boolean => {
+    if (!deadlineAt) return false
+
+    return new Date(deadlineAt.replace(' ', 'T')) < new Date()
+  }
+
+  const allotmentDeadlinePassed = isDeadlinePassed(result?.allotmentPaymentDeadlineAt ?? null)
+  const auctionFeeDeadlinePassed = isDeadlinePassed(result?.auctionParticipationFeeDeadlineAt ?? null)
+  const auctionFinalDeadlinePassed = isDeadlinePassed(result?.auctionFinalPaymentDeadlineAt ?? null)
+
   // DocumentsStep (shared with the apply form) always allows upload/replace
   // on whatever it's given — it has no concept of "locked unless a query is
   // open," which is correct for the apply form (pre-submission, everything
@@ -1617,11 +1635,24 @@ const StatusLookup = () => {
                       </div>
                     )}
 
+                    {allotmentDeadlinePassed && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>
+                            {lang === 'hi'
+                              ? 'भुगतान की अंतिम तिथि समाप्त हो चुकी है। कृपया प्रशासन से संपर्क करें।'
+                              : 'The payment deadline has passed. Please contact the administration.'}
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
                     <div className='mt-4'>
                       <Button
                         type='button'
                         onClick={handlePayAllotmentFee}
-                        disabled={isPayingAllotment}
+                        disabled={isPayingAllotment || allotmentDeadlinePassed}
                         className='w-full bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md h-11'
                       >
                         {isPayingAllotment ? (
@@ -1629,6 +1660,8 @@ const StatusLookup = () => {
                             <Loader2Icon className='size-4 animate-spin mr-2' />
                             {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
                           </>
+                        ) : allotmentDeadlinePassed ? (
+                          lang === 'hi' ? 'भुगतान की अंतिम तिथि समाप्त' : 'Payment Deadline Passed'
                         ) : (
                           <>
                             <CreditCardIcon className='size-4 mr-2' />
@@ -1673,6 +1706,21 @@ const StatusLookup = () => {
                         <span className='text-base font-extrabold text-amber-950'>
                           ₹{(Number(result.auctionParticipationFeePaise) / 100).toLocaleString('en-IN')}
                         </span>
+
+                        {result.auctionParticipationFeeDeadlineAt && (
+                          <div className='mt-2 pt-2 border-t border-amber-100 flex items-center justify-between flex-wrap gap-2'>
+                            <span className='text-amber-800 font-semibold text-[11px] flex items-center gap-1.5'>
+                              <ClockIcon className='size-3.5 text-amber-700' />
+                              {lang === 'hi' ? 'भुगतान की अंतिम तिथि:' : 'Payment Deadline:'}
+                            </span>
+                            <span className='text-amber-950 font-bold text-[11px] bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200'>
+                              {new Date(result.auctionParticipationFeeDeadlineAt.replace(' ', 'T')).toLocaleString(
+                                lang === 'hi' ? 'hi-IN' : 'en-IN',
+                                { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1685,11 +1733,24 @@ const StatusLookup = () => {
                       </div>
                     )}
 
+                    {auctionFeeDeadlinePassed && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>
+                            {lang === 'hi'
+                              ? 'भुगतान की अंतिम तिथि समाप्त हो चुकी है। कृपया प्रशासन से संपर्क करें।'
+                              : 'The payment deadline has passed. Please contact the administration.'}
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
                     <div className='mt-4'>
                       <Button
                         type='button'
                         onClick={handlePayAuctionFee}
-                        disabled={isPayingAuctionFee}
+                        disabled={isPayingAuctionFee || auctionFeeDeadlinePassed}
                         className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
                       >
                         {isPayingAuctionFee ? (
@@ -1697,6 +1758,8 @@ const StatusLookup = () => {
                             <Loader2Icon className='size-4 animate-spin mr-2' />
                             {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
                           </>
+                        ) : auctionFeeDeadlinePassed ? (
+                          lang === 'hi' ? 'भुगतान की अंतिम तिथि समाप्त' : 'Payment Deadline Passed'
                         ) : (
                           <>
                             <CreditCardIcon className='size-4 mr-2' />
@@ -1801,11 +1864,24 @@ const StatusLookup = () => {
                       </div>
                     )}
 
+                    {auctionFinalDeadlinePassed && (
+                      <div className='mt-3'>
+                        <Alert variant='destructive'>
+                          <AlertCircleIcon className='size-4' />
+                          <AlertDescription>
+                            {lang === 'hi'
+                              ? 'भुगतान की अंतिम तिथि समाप्त हो चुकी है। कृपया प्रशासन से संपर्क करें।'
+                              : 'The payment deadline has passed. Please contact the administration.'}
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+
                     <div className='mt-4'>
                       <Button
                         type='button'
                         onClick={handlePayAuctionFinal}
-                        disabled={isPayingAuctionFinal}
+                        disabled={isPayingAuctionFinal || auctionFinalDeadlinePassed}
                         className='w-full bg-[#0c2847] hover:bg-[#071a2f] text-white font-bold text-sm shadow-md h-11'
                       >
                         {isPayingAuctionFinal ? (
@@ -1813,6 +1889,8 @@ const StatusLookup = () => {
                             <Loader2Icon className='size-4 animate-spin mr-2' />
                             {lang === 'hi' ? 'पेमेंट गेटवे खुल रहा है...' : 'Opening Payment Gateway...'}
                           </>
+                        ) : auctionFinalDeadlinePassed ? (
+                          lang === 'hi' ? 'भुगतान की अंतिम तिथि समाप्त' : 'Payment Deadline Passed'
                         ) : (
                           <>
                             <CreditCardIcon className='size-4 mr-2' />

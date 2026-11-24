@@ -24,6 +24,7 @@ type StatusRow = {
   allotment_payment_amount_paise: number | null
   allotment_paid_at: string | null
   auction_participation_fee_paise: number | null
+  auction_participation_fee_deadline_at: string | Date | null
   auction_final_amount_paise: number | null
   auction_final_payment_deadline_at: string | Date | null
   allotment_letter_released_at: string | null
@@ -61,7 +62,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
               c.name AS category_name, c.name_hi AS category_name_hi, c.slug AS category_slug,
               c.fee_paise, c.fee_base_paise, c.gst_percent,
               c.allotment_payment_enabled, c.allotment_amount_paise, c.allotment_payment_deadline_at,
-              c.auction_participation_fee_paise, c.auction_final_payment_deadline_at,
+              c.auction_participation_fee_paise, c.auction_participation_fee_deadline_at, c.auction_final_payment_deadline_at,
               a.submitted_at, a.allotment_letter_released_at,
               COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
               COALESCE(allotment_payment.status, da.payment_status) AS allotment_payment_status,
@@ -161,6 +162,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       allotmentPaidAt: application.allotment_paid_at ?? null,
       allotmentLetterReleased: Boolean(application.allotment_letter_released_at),
       auctionParticipationFeePaise: application.auction_participation_fee_paise ?? null,
+      auctionParticipationFeeDeadlineAt: application.auction_participation_fee_deadline_at ?? null,
       auctionFinalAmountPaise: application.auction_final_amount_paise ?? null,
       auctionFinalPaymentDeadlineAt: application.auction_final_payment_deadline_at ?? null,
       categoryName: application.category_name,

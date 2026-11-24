@@ -282,9 +282,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: 'Final auction amount has not been recorded for this application yet.' }, { status: 409 })
       }
 
-      const categoryRows = await query<Array<{ name: string }>>(`SELECT name FROM categories WHERE id = ? LIMIT 1`, [
-        application.category_id
-      ])
+      const categoryRows = await query<Array<{ name: string; auction_final_payment_deadline_at: string | Date | null }>>(
+        `SELECT name, auction_final_payment_deadline_at FROM categories WHERE id = ? LIMIT 1`,
+        [application.category_id]
+      )
+
+      // Same IST wall-clock parsing as the other two deadline checks — this
+      // one had no enforcement at all until now (confirmed live, 2026-11-24).
+      if (categoryRows[0]?.auction_final_payment_deadline_at) {
+        const deadline = parseIstDateTime(categoryRows[0].auction_final_payment_deadline_at)
+
+        if (Date.now() > deadline.getTime()) {
+          return NextResponse.json(
+            { error: 'Final auction payment deadline has passed. Please contact the administration.' },
+            { status: 410 }
+          )
+        }
+      }
 
       const order = await createRazorpayOrder({
         amountPaise,
