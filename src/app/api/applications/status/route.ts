@@ -115,6 +115,18 @@ async function handleStatusLookup(request: Request, requestId: string): Promise<
   const permissions = session ? await getCurrentUserPermissions().catch(() => null) : null
   const isAdmin = Boolean(session?.userId) && Boolean(permissions?.has('application:view'))
 
+  // TEMP DIAGNOSTIC (2026-11-24) — tracing why an admin's /status lookup
+  // still hit the OTP path. Remove once confirmed.
+  console.log('[status-lookup-debug]', {
+    hasSession: Boolean(session),
+    userId: session?.userId ?? null,
+    roleKey: session?.role?.key ?? null,
+    hasPermissionsSet: Boolean(permissions),
+    permissionCount: permissions?.size ?? null,
+    hasApplicationView: permissions?.has('application:view') ?? null,
+    isAdmin
+  })
+
   if (!isAdmin && isRateLimited('applications.status', rateLimitKey, RATE_LIMITS.statusLookup)) {
     return NextResponse.json({ error: 'Too many requests. Please try again shortly.' }, { status: 429 })
   }

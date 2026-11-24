@@ -42,8 +42,17 @@ type QueryFn = <T = unknown>(sql: string, params?: ReadonlyArray<unknown>) => Pr
  * independent of whether that check also changes payments.status.
  */
 export async function recordRazorpayAttemptStatus(paymentId: number, attemptStatus: string | null): Promise<void> {
+  // Explicitly re-assigning updated_at to itself suppresses MySQL's
+  // ON UPDATE CURRENT_TIMESTAMP for this statement — this is a routine
+  // diagnostic check (what does Razorpay currently say about this order?),
+  // not a real change to the payment, and must not make "Last Updated" on
+  // the Payments list look like something happened when the payment is
+  // still sitting in the exact same 'pending' state it always was.
+  // Confirmed live 2026-11-23: a single bulk-reconcile run bumped
+  // updated_at on ~80 still-pending payments seconds apart, with nothing
+  // about them having actually changed.
   await query(
-    `UPDATE payments SET razorpay_attempt_status = ?, razorpay_attempt_checked_at = NOW() WHERE id = ?`,
+    `UPDATE payments SET razorpay_attempt_status = ?, razorpay_attempt_checked_at = NOW(), updated_at = updated_at WHERE id = ?`,
     [attemptStatus, paymentId]
   )
 }
