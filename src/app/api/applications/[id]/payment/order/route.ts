@@ -123,26 +123,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       let amountPaise = existingPayments[0]?.amount_paise ? Number(existingPayments[0].amount_paise) : 0
 
+      // Checked unconditionally — NOT nested inside the `amountPaise <= 0`
+      // branch below. Declare Result and draw-service.ts both pre-seed this
+      // application's `pay_now` payment row with a real amount the moment a
+      // stall is assigned, so for every normally-allotted application
+      // `amountPaise` is already > 0 by the time it gets here — which meant
+      // this deadline check, previously inside that branch, NEVER ran for
+      // the real-world flow and a passed deadline never blocked payment.
+      // Confirmed live, 2026-11-24.
+      if (category?.allotment_payment_deadline_at) {
+        // allotment_payment_deadline_at is a plain DB DATETIME string
+        // already representing IST wall-clock time — must go through
+        // parseIstDateTime, not a bare `new Date(...)`, which parses it
+        // in the server process's own local timezone and was confirmed
+        // live to silently shift this deadline by 5.5 hours on a
+        // UTC-timezone host (same root cause as isCategoryAcceptingApplications).
+        const deadline = parseIstDateTime(category.allotment_payment_deadline_at)
+
+        if (Date.now() > deadline.getTime()) {
+          return NextResponse.json(
+            { error: 'Allotment payment deadline has passed. Please contact the administration.' },
+            { status: 410 }
+          )
+        }
+      }
+
       if (amountPaise <= 0) {
         if (!category || !category.allotment_payment_enabled || !resolvedCategoryAmountPaise || resolvedCategoryAmountPaise <= 0) {
           return NextResponse.json({ error: 'Allotment payment is not enabled for this category.' }, { status: 409 })
-        }
-
-        if (category.allotment_payment_deadline_at) {
-          // allotment_payment_deadline_at is a plain DB DATETIME string
-          // already representing IST wall-clock time — must go through
-          // parseIstDateTime, not a bare `new Date(...)`, which parses it
-          // in the server process's own local timezone and was confirmed
-          // live to silently shift this deadline by 5.5 hours on a
-          // UTC-timezone host (same root cause as isCategoryAcceptingApplications).
-          const deadline = parseIstDateTime(category.allotment_payment_deadline_at)
-
-          if (Date.now() > deadline.getTime()) {
-            return NextResponse.json(
-              { error: 'Allotment payment deadline has passed. Please contact the administration.' },
-              { status: 410 }
-            )
-          }
         }
 
         amountPaise = Number(resolvedCategoryAmountPaise)
@@ -274,9 +282,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: 'Final auction amount has not been recorded for this application yet.' }, { status: 409 })
       }
 
-      const categoryRows = await query<Array<{ name: string }>>(`SELECT name FROM categories WHERE id = ? LIMIT 1`, [
-        application.category_id
-      ])
+      const categoryRows = await query<Array<{ name: string; auction_final_payment_deadline_at: string | Date | null }>>(
+        `SELECT name, auction_final_payment_deadline_at FROM categories WHERE id = ? LIMIT 1`,
+        [application.category_id]
+      )
+
+      // Same IST wall-clock parsing as the other two deadline checks — this
+      // one had no enforcement at all until now (confirmed live, 2026-11-24).
+      if (categoryRows[0]?.auction_final_payment_deadline_at) {
+        const deadline = parseIstDateTime(categoryRows[0].auction_final_payment_deadline_at)
+
+        if (Date.now() > deadline.getTime()) {
+          return NextResponse.json(
+            { error: 'Final auction payment deadline has passed. Please contact the administration.' },
+            { status: 410 }
+          )
+        }
+      }
 
       const order = await createRazorpayOrder({
         amountPaise,
