@@ -957,7 +957,16 @@ const ApplicationDetailPage = async ({
             </p>
           </div>
 
-          <div className='shrink-0'>
+          <div className='shrink-0 flex items-center gap-2'>
+            <Link
+              href={`/status?appNo=${encodeURIComponent(app.application_number)}&admin=1`}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition'
+              title="Opens the exact page the applicant sees — your admin session skips the OTP step automatically."
+            >
+              View as Applicant
+            </Link>
             <ApplicationPdfDownloads
               applicationId={id}
               hasRegistrationReceipt={

@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 
 import Link from 'next/link'
 
-import { ClockIcon, CreditCardIcon, EyeIcon, GavelIcon, IndianRupeeIcon, SearchIcon, XCircleIcon } from 'lucide-react'
+import { AlertTriangleIcon, ClockIcon, CreditCardIcon, EyeIcon, GavelIcon, IndianRupeeIcon, SearchIcon, XCircleIcon } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import KpiCard from '@/components/shared/KpiCard'
 import TablePagination from '@/components/shared/TablePagination'
 import { getPaymentStatusConfig } from '@/lib/applications/status-config'
@@ -14,6 +14,8 @@ import { parsePageSize, resolveLimit } from '@/lib/pagination'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { maskIdentifier } from '@/lib/security/mask'
 import { encodeId } from '@/lib/security/opaque-id'
+import AutoSubmitSearchInput from '@/components/shared/AutoSubmitSearchInput'
+import AutoSubmitSelect from '@/components/shared/AutoSubmitSelect'
 import BulkReconcileButton from '@/views/admin/payments/BulkReconcileButton'
 
 export const metadata: Metadata = {
@@ -60,6 +62,7 @@ const PaymentsAdminPage = async ({
     q?: string
     status?: string
     category?: string
+    purpose?: string
     sort?: string
     dir?: 'asc' | 'desc'
     page?: string
@@ -71,7 +74,7 @@ const PaymentsAdminPage = async ({
   const permissions = await getCurrentUserPermissions()
   const canReconcile = !!permissions?.has('payment:reconcile')
 
-  const { q, status, category, sort = 'date', dir = 'desc', page: pageParam, pageSize: pageSizeParam } =
+  const { q, status, category, purpose, sort = 'date', dir = 'desc', page: pageParam, pageSize: pageSizeParam } =
     await searchParams
 
   const pageSize = parsePageSize(pageSizeParam, DEFAULT_PAGE_SIZE)
@@ -90,6 +93,11 @@ const PaymentsAdminPage = async ({
   if (category && category !== 'all') {
     conditions.push('c.slug = ?')
     params.push(category)
+  }
+
+  if (purpose && purpose !== 'all') {
+    conditions.push('p.purpose = ?')
+    params.push(purpose)
   }
 
   if (q && q.trim()) {
@@ -176,17 +184,19 @@ const PaymentsAdminPage = async ({
     q?: string
     status?: string
     category?: string
+    purpose?: string
     sort?: string
     dir?: string
     page?: number
     pageSize?: number | 'all'
   }) => {
     const sp = new URLSearchParams()
-    const merged = { q, status, category, sort, dir, page, pageSize, ...overrides }
+    const merged = { q, status, category, purpose, sort, dir, page, pageSize, ...overrides }
 
     if (merged.q) sp.set('q', merged.q)
     if (merged.status && merged.status !== 'all') sp.set('status', merged.status)
     if (merged.category && merged.category !== 'all') sp.set('category', merged.category)
+    if (merged.purpose && merged.purpose !== 'all') sp.set('purpose', merged.purpose)
     if (merged.sort) sp.set('sort', merged.sort)
     if (merged.dir) sp.set('dir', merged.dir)
     if (merged.pageSize !== DEFAULT_PAGE_SIZE) sp.set('pageSize', String(merged.pageSize))
@@ -232,7 +242,15 @@ const PaymentsAdminPage = async ({
             dashboard records.
           </p>
         </div>
-        {canReconcile && <BulkReconcileButton />}
+        <div className='flex flex-wrap items-start gap-2'>
+          {canReconcile && (
+            <Button type='button' variant='outline' render={<Link href='/admin/payments/multiple-attempts' />}>
+              <AlertTriangleIcon className='size-4 text-amber-600' />
+              Multiple Payment Attempts
+            </Button>
+          )}
+          {canReconcile && <BulkReconcileButton />}
+        </div>
       </div>
 
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6'>
@@ -337,7 +355,7 @@ const PaymentsAdminPage = async ({
 
             <div className='relative flex-1'>
               <SearchIcon className='absolute left-3 top-3 size-4 text-muted-foreground' />
-              <Input
+              <AutoSubmitSearchInput
                 name='q'
                 defaultValue={q}
                 placeholder='Search by application number, applicant or Razorpay order ID...'
@@ -345,7 +363,7 @@ const PaymentsAdminPage = async ({
               />
             </div>
 
-            <select
+            <AutoSubmitSelect
               name='category'
               defaultValue={category ?? 'all'}
               className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background sm:w-56'
@@ -356,18 +374,24 @@ const PaymentsAdminPage = async ({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </AutoSubmitSelect>
 
-            <button
-              type='submit'
-              className='inline-flex items-center justify-center rounded-md bg-[#0c2847] px-4 py-2 text-sm font-semibold text-white hover:bg-[#071f3a] transition'
+            <AutoSubmitSelect
+              name='purpose'
+              defaultValue={purpose ?? 'all'}
+              className='h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background sm:w-52'
             >
-              Filter
-            </button>
+              <option value='all'>All Payment Types</option>
+              {Object.entries(PURPOSE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </AutoSubmitSelect>
 
-            {(q || (category && category !== 'all')) && (
+            {(q || (category && category !== 'all') || (purpose && purpose !== 'all')) && (
               <Link
-                href={buildUrl({ q: '', category: 'all', page: 1 })}
+                href={buildUrl({ q: '', category: 'all', purpose: 'all', page: 1 })}
                 className='inline-flex items-center justify-center rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted transition'
               >
                 Clear

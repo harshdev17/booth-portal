@@ -284,7 +284,21 @@ const StatusLookup = () => {
 
     if (appNo) {
       form.setValue('applicationNumber', appNo, { shouldDirty: true, shouldTouch: true, shouldValidate: false })
+
+      // Admin's "View as Applicant" link (application detail page) adds
+      // ?admin=1 — auto-submits the lookup immediately instead of making the
+      // admin click "Send Verification Code" themselves. Harmless for a
+      // non-admin visitor who somehow lands on this URL: the backend's own
+      // isAdmin+permission check (api/applications/status/route.ts) is what
+      // actually decides whether OTP gets skipped, this param only saves a
+      // click when it will. The regular public ?appNo= prefill (homepage
+      // search, print/receipt links) is untouched — it still requires the
+      // normal manual submit.
+      if (searchParams.get('admin') === '1') {
+        void requestOtpForLookup({ applicationNumber: appNo })
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, form])
 
   // Restores the verified result on a refresh, for up to 5 minutes after
@@ -1423,8 +1437,15 @@ const StatusLookup = () => {
               </div>
             )}
 
-            {/* Registration Fee Payment Pending Alert Card */}
-            {effectiveStatus === 'payment_pending' && !registrationPaymentSuccess && (
+            {/* Registration Fee Payment Pending/Failed Alert Card — same card
+                for both statuses (payment_failed is just payment_pending
+                after an unsuccessful attempt, same next action: pay again).
+                Previously this only checked for 'payment_pending', so an
+                application that had moved to 'payment_failed' (e.g. after a
+                Reconcile run confirmed Razorpay genuinely rejected the
+                payment) showed no payment card and no way to retry at all —
+                confirmed live 2026-11-23. */}
+            {(effectiveStatus === 'payment_pending' || effectiveStatus === 'payment_failed') && !registrationPaymentSuccess && (
               <div className='overflow-hidden rounded-xl border-2 border-amber-400 bg-linear-to-br from-amber-50 via-orange-50/70 to-amber-50 p-5 sm:p-6 shadow-sm'>
                 <div className='flex items-start gap-4'>
                   <div className='rounded-xl bg-amber-500 p-2.5 text-white shrink-0 shadow-xs'>
@@ -1433,17 +1454,33 @@ const StatusLookup = () => {
                   <div className='flex-1'>
                     <div className='flex flex-wrap items-center justify-between gap-2'>
                       <h2 className='text-lg font-bold text-amber-950'>
-                        {lang === 'hi' ? 'आवेदन शुल्क भुगतान लंबित' : 'Application Fee Payment Pending'}
+                        {effectiveStatus === 'payment_failed'
+                          ? lang === 'hi'
+                            ? 'आवेदन शुल्क भुगतान विफल'
+                            : 'Application Fee Payment Failed'
+                          : lang === 'hi'
+                            ? 'आवेदन शुल्क भुगतान लंबित'
+                            : 'Application Fee Payment Pending'}
                       </h2>
                       <span className='rounded-full bg-amber-200/90 px-3 py-1 text-xs font-extrabold text-amber-900 border border-amber-300 shadow-2xs'>
-                        {lang === 'hi' ? 'भुगतान लंबित' : 'Payment Pending'}
+                        {effectiveStatus === 'payment_failed'
+                          ? lang === 'hi'
+                            ? 'भुगतान विफल'
+                            : 'Payment Failed'
+                          : lang === 'hi'
+                            ? 'भुगतान लंबित'
+                            : 'Payment Pending'}
                       </span>
                     </div>
 
                     <p className='mt-2 text-xs sm:text-sm text-amber-900/95 leading-relaxed'>
-                      {lang === 'hi'
-                        ? 'आपका आवेदन जमा हो चुका है, लेकिन आवेदन शुल्क का भुगतान अभी पूरा नहीं हुआ है। समीक्षा शुरू होने के लिए कृपया नीचे भुगतान पूरा करें।'
-                        : 'Your application has been submitted, but the application fee payment is not complete yet. Please complete the payment below so your application can be reviewed.'}
+                      {effectiveStatus === 'payment_failed'
+                        ? lang === 'hi'
+                          ? 'आपका पिछला भुगतान प्रयास सफल नहीं हो सका। कृपया नीचे दोबारा भुगतान करें।'
+                          : 'Your previous payment attempt was not successful. Please try the payment again below.'
+                        : lang === 'hi'
+                          ? 'आपका आवेदन जमा हो चुका है, लेकिन आवेदन शुल्क का भुगतान अभी पूरा नहीं हुआ है। समीक्षा शुरू होने के लिए कृपया नीचे भुगतान पूरा करें।'
+                          : 'Your application has been submitted, but the application fee payment is not complete yet. Please complete the payment below so your application can be reviewed.'}
                     </p>
 
                     {result.feePaise !== null && (
