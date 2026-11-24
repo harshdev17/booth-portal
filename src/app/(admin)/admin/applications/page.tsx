@@ -562,8 +562,15 @@ const ApplicationsAdminPage = async ({
                 app.registration_payment_status !== 'paid' &&
                 app.registration_payment_status !== 'exempt'
 
+              // Previously only direct allotments counted — a normal
+              // draw/Declare-Result "payment_required" application (the
+              // common case) never showed its checkbox or counted toward
+              // the bulk "Send Payment Reminder" button, even though the
+              // backend route (bulk-payment-reminder) already supports it
+              // (keyed on payments.purpose = 'pay_now', not restricted to
+              // direct allotments). Confirmed live, 2026-11-24.
               const allotmentPending =
-                Boolean(app.is_direct_allotment) &&
+                (app.status === 'payment_required' || Boolean(app.is_direct_allotment)) &&
                 app.allotment_payment_status !== 'success' &&
                 app.allotment_payment_status !== 'paid'
 
