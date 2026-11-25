@@ -8,14 +8,6 @@ import { logServerError } from '@/lib/security/error-log'
 import { getRequestMeta } from '@/lib/security/request-meta'
 import { decodeId } from '@/lib/security/opaque-id'
 
-// Category change allowed only while the application hasn't moved past
-// review — once approved/payment_required/allotted/in the auction flow, its
-// fee/stall/payment state is already tied to the current category and a
-// swap would leave that inconsistent. Mirrors canChangeCategory in
-// app/(admin)/admin/applications/[id]/page.tsx, which is only the UX gate;
-// this is the real one. Per explicit decision (2026-11-24).
-const CATEGORY_CHANGE_ALLOWED_STATUSES = ['under_review', 'payment_success', 'query_raised'] as const
-
 // Only the applicant-supplied text fields an admin would plausibly need to
 // correct (typos, a misheard phone number, an address the applicant typed
 // wrong) — deliberately excludes: status/access_token_hash (changed only
@@ -90,6 +82,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const fieldEntries = Object.entries(parsed.data.fields ?? {}).filter(
     (entry): entry is [(typeof EDITABLE_COLUMNS)[number], string | null] => entry[1] !== undefined
   )
+
   const categoryFieldEntries = Object.entries(parsed.data.categoryFields ?? {})
   const requestedCategoryId = parsed.data.categoryId
 
@@ -112,13 +105,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     let categoryChange: { previousId: number; previousName: string; nextId: number; nextName: string } | null = null
 
     if (requestedCategoryId !== undefined && requestedCategoryId !== Number(existing.category_id)) {
-      if (!CATEGORY_CHANGE_ALLOWED_STATUSES.includes(existing.status as (typeof CATEGORY_CHANGE_ALLOWED_STATUSES)[number])) {
-        return NextResponse.json(
-          { error: `This application is "${existing.status}" — category can only be changed while it's still under review.` },
-          { status: 409 }
-        )
-      }
-
+      // Allowed in any application status, per explicit request (2026-11-25):
+      // "koi bhi status ho change ho paaye". Previously restricted to
+      // pre-payment statuses (under_review/payment_success/query_raised)
+      // since a post-payment/allotted application already has fee/stall/
+      // payment records tied to the OLD category that a swap doesn't
+      // automatically reconcile — the admin is now trusted to check/fix
+      // those manually when changing category on such an application (the
+      // UI surfaces a warning for this case — see EditApplicationForm.tsx).
       const categoryRows = await query<Array<{ id: number; name: string; status: string }>>(
         `SELECT id, name, status FROM categories WHERE id = ? LIMIT 1`,
         [requestedCategoryId]

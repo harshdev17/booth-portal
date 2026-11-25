@@ -197,7 +197,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const fullInput = { ...parsed.data, declaration: { informationCorrect: true as const, agreedToTerms: true as const } }
-    const validated = await validateSubmissionAgainstCategory(fullInput)
+    const validated = await validateSubmissionAgainstCategory(fullInput, { bypassToken: fullInput.bypassToken })
 
     await updateDraftApplication(applicationId, fullInput, validated)
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { consumeBypassToken } from '@/lib/applications/bypass-link'
 import { createDraftApplication, DuplicateApplicationError } from '@/lib/applications/create-application'
 import { applicationSubmissionSchema } from '@/lib/applications/schema'
 import { SubmissionValidationError, validateSubmissionAgainstCategory } from '@/lib/applications/validate-submission'
@@ -64,8 +65,19 @@ export async function POST(request: Request) {
     // category-specific required fields are enforced for real on the
     // PATCH (pre-review save) and finalize steps, which run this same
     // validator WITHOUT this flag.
-    const validated = await validateSubmissionAgainstCategory(parsed.data, { skipCategoryFieldRequiredCheck: true })
+    const validated = await validateSubmissionAgainstCategory(parsed.data, {
+      skipCategoryFieldRequiredCheck: true,
+      bypassToken: parsed.data.bypassToken
+    })
+
     const result = await createDraftApplication(parsed.data, validated, { ipAddress })
+
+    // Consumed only now that the draft genuinely exists — a submission that
+    // failed for some other reason after a successful bypass check must not
+    // burn a limited-use link.
+    if (validated.bypassLinkId !== undefined) {
+      await consumeBypassToken(validated.bypassLinkId)
+    }
 
     return NextResponse.json(
       {

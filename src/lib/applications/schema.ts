@@ -197,7 +197,12 @@ export const applicationSubmissionSchema = z.object({
   shopOptionId: z.number().int().positive().optional(),
   common: applicationCommonFieldsSchema,
   categoryFields: categoryFieldValueSchema.default({}),
-  declaration: declarationSchema
+  declaration: declarationSchema,
+
+  // Present only when arriving via an admin-generated "apply anyway" link
+  // (migration 0094) — lets one specific recipient submit while the
+  // category is otherwise closed. See validate-submission.ts.
+  bypassToken: z.string().trim().min(1).max(64).optional()
 })
 
 export type ApplicationSubmissionInput = z.infer<typeof applicationSubmissionSchema>

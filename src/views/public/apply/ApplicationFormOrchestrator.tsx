@@ -57,11 +57,13 @@ function loadRazorpayCheckoutScript(): Promise<boolean> {
   return new Promise(resolve => {
     if (typeof window === 'undefined') {
       resolve(false)
+
       return
     }
 
     if (window.Razorpay) {
       resolve(true)
+
       return
     }
 
@@ -70,10 +72,12 @@ function loadRazorpayCheckoutScript(): Promise<boolean> {
     if (existing) {
       existing.addEventListener('load', () => resolve(true))
       existing.addEventListener('error', () => resolve(false))
+
       return
     }
 
     const script = document.createElement('script')
+
     script.src = RAZORPAY_CHECKOUT_SCRIPT_SRC
     script.onload = () => resolve(true)
     script.onerror = () => resolve(false)
@@ -85,10 +89,12 @@ function highlightElement(el: HTMLElement) {
   // If it's a section card container (like documents-section or declarations-section):
   if (el.id === 'documents-section' || el.id === 'declarations-section') {
     const card = (el.querySelector('.rounded-2xl') as HTMLElement | null) ?? el
+
     card.classList.add('ring-2', 'ring-red-400', 'border-red-400', 'transition-all', 'duration-300')
     setTimeout(() => {
       card.classList.remove('ring-2', 'ring-red-400', 'border-red-400')
     }, 3500)
+
     return
   }
 
@@ -246,10 +252,18 @@ type DraftState = { applicationId: number; applicationNumber: string; accessToke
 // the access token itself is never put in the URL, only this id.
 const ApplicationFormOrchestrator = ({
   config,
-  editApplicationId
+  editApplicationId,
+  bypassToken
 }: {
   config: CategoryConfigResponse
   editApplicationId?: number
+
+  // Admin-generated "apply anyway" link token (migration 0094) — present
+  // only when this category is otherwise closed and the applicant arrived
+  // via ?bypass=<token>. Passed through to every validation-gated request
+  // (draft create, pre-review PATCH, finalize) so it survives the whole
+  // multi-step flow, not just the initial page load.
+  bypassToken?: string
 }) => {
   const { lang } = useLanguage()
   const router = useRouter()
@@ -336,7 +350,8 @@ const ApplicationFormOrchestrator = ({
             mobileNumber: '9123456780'
           },
           categoryFields: shopOptionPayload,
-          declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true }
+          declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true },
+          bypassToken
         })
       })
 
@@ -517,6 +532,7 @@ const ApplicationFormOrchestrator = ({
             documentId: body.documentId
           }
         }
+
         const allUploaded = config.documents
           .filter(d => d.required)
           .every(d => next[d.key]?.status === 'uploaded')
@@ -641,7 +657,8 @@ const ApplicationFormOrchestrator = ({
         body: JSON.stringify({
           accessToken: draft.accessToken,
           declaration: { informationCorrect: true, agreedToTerms: true, kdbRights: true },
-          recaptchaToken
+          recaptchaToken,
+          bypassToken
         })
       })
 
@@ -896,7 +913,8 @@ const ApplicationFormOrchestrator = ({
             categorySlug: config.category.slug,
             shopOptionId: values.shopOptionId,
             common: values.common,
-            categoryFields: values.categoryFields
+            categoryFields: values.categoryFields,
+            bypassToken
           })
         })
 
@@ -943,9 +961,11 @@ const ApplicationFormOrchestrator = ({
       if (!requiredDocsUploaded) {
         setShowMissingDocErrors(true)
       }
+
       if (!declarationsAccepted) {
         setShowMissingDeclarationErrors(true)
       }
+
       scrollToFirstError(errors, hasDuplicateField, duplicateFields, requiredDocsUploaded, declarationsAccepted)
       setSubmitError(
         lang === 'hi'
@@ -1302,6 +1322,7 @@ const ApplicationFormOrchestrator = ({
                 value={declarations}
                 onChange={next => {
                   setDeclarations(next)
+
                   const allAccepted =
                     next.informationCorrect &&
                     next.agreedToTerms &&

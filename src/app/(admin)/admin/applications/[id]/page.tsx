@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 
 import { notFound } from 'next/navigation'
 
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon } from 'lucide-react'
 import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
@@ -28,7 +28,6 @@ import ApplicationPdfDownloads from '@/views/admin/applications/ApplicationPdfDo
 import ApplicationRegistrationPaymentTab from '@/views/admin/applications/ApplicationRegistrationPaymentTab'
 import ApplicationDocumentsSection from '@/views/admin/documents/ApplicationDocumentsSection'
 import PersonalDocumentCard from '@/views/admin/documents/PersonalDocumentCard'
-import EditApplicationDialog, { type EditableCategoryField, type EditableField } from '@/views/admin/applications/EditApplicationDialog'
 import ApplicationTabsNav, { type ApplicationTabOrderItem } from '@/views/admin/applications/ApplicationTabsNav'
 
 export const metadata: Metadata = {
@@ -284,14 +283,6 @@ const ApplicationDetailPage = async ({
       [...categoryFilterParams, app.created_at, app.id]
     )
 
-    // For the Edit Application dialog's Category selector (2026-11-24) — an
-    // admin can move this application to a different category while it's
-    // still under review; see EDITABLE_COLUMNS/categoryId handling in
-    // api/admin/applications/[id]/edit/route.ts for which statuses allow it.
-    const allCategories = await q<Array<{ id: number; name: string; slug: string }>>(
-      `SELECT id, name, slug FROM categories WHERE status != 'archived' ORDER BY display_order ASC`
-    )
-
     return {
       app,
       fieldValues,
@@ -299,7 +290,6 @@ const ApplicationDetailPage = async ({
       documents,
       documentVersionRows,
       fieldQueryRows,
-      allCategories,
       prevApplicationId: prevRows[0]?.id ?? null,
       nextApplicationId: nextRows[0]?.id ?? null
     }
@@ -470,7 +460,6 @@ const ApplicationDetailPage = async ({
     documents,
     documentVersionRows,
     fieldQueryRows,
-    allCategories,
     prevApplicationId,
     nextApplicationId
   } = connectionA
@@ -676,42 +665,7 @@ const ApplicationDetailPage = async ({
   // review yet — approved/payment_required/allotted/auction-flow
   // applications already have fee/stall/payment state tied to their current
   // category, which a category swap would leave inconsistent. Per explicit
-  // decision (2026-11-24): under_review, payment_success (legacy "paid,
-  // under review" value) and query_raised only. Mirrors the server-side gate
-  // in api/admin/applications/[id]/edit/route.ts, which is the real check.
-  const canChangeCategory =
-    canEditApplication && ['under_review', 'payment_success', 'query_raised'].includes(app.status)
-
   const checkedFieldKeys = new Set(checkedFieldRows.map(r => r.field_key))
-
-  // Must stay in sync with EDITABLE_COLUMNS in
-  // api/admin/applications/[id]/edit/route.ts — the route is the
-  // authoritative allow-list; this just needs to offer the matching inputs.
-  const editableFields: EditableField[] = [
-    { key: 'representative_name', label: 'Representative Name', value: app.representative_name },
-    { key: 'organisation_name', label: 'Organisation / Firm Name', value: app.organisation_name },
-    { key: 'father_name', label: "Father's Name", value: app.father_name },
-    { key: 'email', label: 'Email', value: app.email },
-    { key: 'mobile_number', label: 'Mobile Number', value: app.mobile_number },
-    { key: 'alternate_mobile', label: 'Alternate Mobile', value: app.alternate_mobile },
-    { key: 'address', label: 'Address', value: app.address, multiline: true },
-    { key: 'state', label: 'State', value: app.state },
-    { key: 'district', label: 'District', value: app.district },
-    { key: 'pin_code', label: 'PIN Code', value: app.pin_code },
-    { key: 'police_station_name', label: 'Police Station Name', value: app.police_station_name },
-    { key: 'police_station_address', label: 'Police Station Address', value: app.police_station_address, multiline: true },
-    { key: 'work_purpose', label: 'Work Purpose', value: app.work_purpose, multiline: true },
-    { key: 'achievement_experience', label: 'Achievement / Experience', value: app.achievement_experience, multiline: true },
-    { key: 'remarks', label: 'Remarks', value: app.remarks, multiline: true }
-  ]
-
-  const editableCategoryFields: EditableCategoryField[] = fieldValues.map(f => ({
-    fieldDefinitionId: f.field_definition_id,
-    label: f.label,
-    value: f.value,
-    inputType: f.input_type
-  }))
-
 
   // documents now includes a row per required document DEFINITION (not
   // just actually-uploaded ones, see the LEFT JOIN above) — a document the
@@ -1068,14 +1022,13 @@ const ApplicationDetailPage = async ({
             canRevertToReview={canRevertToReview}
           />
           {canEditApplication && (
-            <EditApplicationDialog
-              applicationId={id}
-              fields={editableFields}
-              categoryFields={editableCategoryFields}
-              categories={allCategories}
-              currentCategoryId={app.category_id}
-              canChangeCategory={canChangeCategory}
-            />
+            <Link
+              href={`/admin/applications/${id}/edit`}
+              className='inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground'
+            >
+              <PencilIcon className='size-3.5' />
+              Edit Application Data
+            </Link>
           )}
           <MultiFieldQueryDialog applicationId={id} candidates={multiQueryCandidates} />
         </div>

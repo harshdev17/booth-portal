@@ -12,6 +12,7 @@ import {
   getShopOptionsForCategory,
   isCategoryAcceptingApplications
 } from '@/lib/applications/categories'
+import { checkBypassToken } from '@/lib/applications/bypass-link'
 import { withPooledConnection } from '@/lib/db/client'
 import { getCategoryMapBySlug } from '@/lib/settings/category-maps'
 import ApplicationFormOrchestrator from '@/views/public/apply/ApplicationFormOrchestrator'
@@ -75,10 +76,10 @@ const ApplyPage = async ({
   searchParams
 }: {
   params: Promise<{ category: string }>
-  searchParams: Promise<{ edit?: string }>
+  searchParams: Promise<{ edit?: string; bypass?: string }>
 }) => {
   const { category: slug } = await params
-  const { edit } = await searchParams
+  const { edit, bypass } = await searchParams
   const parsedEditId = edit ? Number(edit) : NaN
   const editApplicationId = Number.isInteger(parsedEditId) && parsedEditId > 0 ? parsedEditId : undefined
 
@@ -110,7 +111,19 @@ const ApplyPage = async ({
 
   if (!category) notFound()
 
-  if (!isCategoryAcceptingApplications(category)) {
+  // An admin-generated "apply anyway" link (migration 0094, bypass-link.ts)
+  // lets this ONE specific recipient see and submit the form even while the
+  // category is otherwise closed to everyone else — per explicit request
+  // (2026-11-25): "band form ka link kisi ko share kare to vo fill kar
+  // paaye". Only checked here (not consumed) — consuming happens once at
+  // actual draft creation (see api/applications/route.ts), since this page
+  // can render more than once (refresh, back button) without that counting
+  // as a second use.
+  const categoryAccepting =
+    isCategoryAcceptingApplications(category) ||
+    (bypass ? (await checkBypassToken(bypass, category.slug)).ok : false)
+
+  if (!categoryAccepting) {
     return (
       <>
         <PublicHeader />
@@ -188,7 +201,7 @@ const ApplyPage = async ({
     <>
       <PublicHeader />
       <div className='kdb-form-scale'>
-        <ApplicationFormOrchestrator config={config} editApplicationId={editApplicationId} />
+        <ApplicationFormOrchestrator config={config} editApplicationId={editApplicationId} bypassToken={bypass} />
       </div>
       <PublicFooter />
     </>

@@ -16,7 +16,14 @@ const finalizeSchema = z.object({
     informationCorrect: z.literal(true),
     agreedToTerms: z.literal(true)
   }),
-  recaptchaToken: z.string().trim().min(1).max(4096).nullable().optional()
+  recaptchaToken: z.string().trim().min(1).max(4096).nullable().optional(),
+
+  // Present only when this application was started via an admin-generated
+  // "apply anyway" link (migration 0094) — the category may still be closed
+  // by the time the applicant reaches this final step (minutes/hours can
+  // pass between the earlier draft/PATCH steps and clicking Submit), so the
+  // same bypass must be re-checked here too. See bypass-link.ts.
+  bypassToken: z.string().trim().min(1).max(64).optional()
 })
 
 /**
@@ -60,7 +67,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const result = await finalizeApplication(applicationId, parsed.data.accessToken, { ipAddress })
+    const result = await finalizeApplication(applicationId, parsed.data.accessToken, {
+      ipAddress,
+      bypassToken: parsed.data.bypassToken
+    })
 
     // No fee -> no payment step, so the applicant gets their confirmation now.
     if (!result.feePaise) void notifyPaymentSuccess(applicationId, 0)

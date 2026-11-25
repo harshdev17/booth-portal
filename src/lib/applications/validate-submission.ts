@@ -11,6 +11,7 @@ import {
   type FieldDefinitionRow,
   type ShopOptionRow
 } from '@/lib/applications/categories'
+import { checkBypassToken } from '@/lib/applications/bypass-link'
 import { isBannedFieldKey, type ApplicationSubmissionInput } from '@/lib/applications/schema'
 import { query } from '@/lib/db/client'
 
@@ -18,6 +19,13 @@ export type ValidatedSubmission = {
   category: CategoryRow
   shopOption: ShopOptionRow | null
   fieldValues: Array<{ definition: FieldDefinitionRow; value: string }>
+
+  // Set only when this submission was validated via an admin-generated
+  // "apply anyway" link (migration 0094) — the caller (draft-creation route)
+  // consumes it (increments use_count) ONLY after the draft is actually
+  // created, never here, so a submission that fails for some other reason
+  // doesn't burn a limited-use link.
+  bypassLinkId?: number
 }
 
 export class SubmissionValidationError extends Error {
@@ -41,7 +49,7 @@ export class SubmissionValidationError extends Error {
  */
 export async function validateSubmissionAgainstCategory(
   input: ApplicationSubmissionInput,
-  options: { skipCategoryFieldRequiredCheck?: boolean } = {}
+  options: { skipCategoryFieldRequiredCheck?: boolean; bypassToken?: string } = {}
 ): Promise<ValidatedSubmission> {
   const category = await getCategoryBySlug(input.categorySlug)
 
@@ -49,11 +57,25 @@ export async function validateSubmissionAgainstCategory(
     throw new SubmissionValidationError('The selected category does not exist.', 'category_not_found')
   }
 
+  let bypassLinkId: number | undefined
+
   if (!isCategoryAcceptingApplications(category)) {
-    throw new SubmissionValidationError(
-      'This category is not currently accepting applications.',
-      'category_closed'
-    )
+    // An admin-generated "apply anyway" link (migration 0094) lets ONE
+    // specific recipient submit while the category is otherwise closed to
+    // everyone else — per explicit request (2026-11-25). Checked here (not
+    // consumed yet — see consumeBypassToken, called only once the draft
+    // actually gets created) rather than skipped entirely, so a stale/wrong
+    // token still correctly fails closed.
+    const bypass = options.bypassToken ? await checkBypassToken(options.bypassToken, category.slug) : null
+
+    if (!bypass?.ok) {
+      throw new SubmissionValidationError(
+        'This category is not currently accepting applications.',
+        'category_closed'
+      )
+    }
+
+    bypassLinkId = bypass.linkId
   }
 
   if (!options.skipCategoryFieldRequiredCheck && !(await emailDomainCanReceiveMail(input.common.email))) {
@@ -167,7 +189,7 @@ export async function validateSubmissionAgainstCategory(
     }
   }
 
-  return { category, shopOption, fieldValues }
+  return { category, shopOption, fieldValues, bypassLinkId }
 }
 
 /**
