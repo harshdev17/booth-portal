@@ -93,7 +93,8 @@ const STATUS_CONFIG: Record<ShopUnitRowData['status'], { label: string; color: s
 }
 
 const ALL = '__all__'
-const PAGE_SIZE = 25
+const DEFAULT_PAGE_SIZE = 25
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
 
 type StallFormState = {
   stallNumber: string
@@ -258,6 +259,11 @@ const InventoryTable = ({
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
+
+  // 'all' is a real option here (not just a large page size) — "all" option
+  // requested explicitly, so it's tracked separately rather than picking some
+  // very large number for PAGE_SIZE.
+  const [pageSize, setPageSize] = useState<number | 'all'>(DEFAULT_PAGE_SIZE)
 
   const toggleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -948,14 +954,15 @@ const InventoryTable = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, stallCategoryTab, search, categoryFilter, statusFilter, typeFilter, feesPaidOnly])
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(filteredRows.length / pageSize))
 
   // Clamped rather than reset via an effect: changing a filter can shrink
   // totalPages below whatever `page` currently is, and clamping here
   // computes the valid page directly during render instead of needing a
   // setState-in-effect round-trip just to correct it afterward.
   const currentPage = Math.min(page, totalPages)
-  const pageRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const pageRows =
+    pageSize === 'all' ? filteredRows : filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   const deletableSelectedIds = useMemo(
     () => rows.filter(r => selectedIds.has(r.id) && r.status !== 'allotted').map(r => r.id),
@@ -2737,35 +2744,69 @@ const InventoryTable = ({
           </Table>
         )}
 
-        {filteredRows.length > PAGE_SIZE && (
-          <div className='flex items-center justify-between border-t px-4 py-3 text-sm'>
+        {filteredRows.length > 0 && (
+          <div className='flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm'>
             <p className='text-xs text-muted-foreground'>
-              Showing <span className='font-semibold text-slate-700'>{(currentPage - 1) * PAGE_SIZE + 1}</span>–
-              <span className='font-semibold text-slate-700'>{Math.min(currentPage * PAGE_SIZE, filteredRows.length)}</span> of{' '}
-              <span className='font-semibold text-slate-700'>{filteredRows.length}</span>
-            </p>
-            <div className='flex items-center gap-2'>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                disabled={currentPage <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-              >
-                <ChevronLeftIcon className='size-3.5' /> Previous
-              </Button>
-              <span className='px-2 text-xs font-semibold text-muted-foreground'>
-                Page {currentPage} of {totalPages}
+              Showing{' '}
+              <span className='font-semibold text-slate-700'>
+                {pageSize === 'all' ? 1 : (currentPage - 1) * pageSize + 1}
               </span>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              >
-                Next <ChevronRightIcon className='size-3.5' />
-              </Button>
+              –
+              <span className='font-semibold text-slate-700'>
+                {pageSize === 'all' ? filteredRows.length : Math.min(currentPage * pageSize, filteredRows.length)}
+              </span>{' '}
+              of <span className='font-semibold text-slate-700'>{filteredRows.length}</span>
+            </p>
+
+            <div className='flex items-center gap-3'>
+              <div className='flex items-center gap-1.5'>
+                <span className='text-xs text-muted-foreground'>Rows per page</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={value => {
+                    setPageSize(value === 'all' ? 'all' : Number(value))
+                    setPage(1)
+                  }}
+                >
+                  <SelectTrigger size='sm' className='h-8 w-[84px]'>
+                    <SelectValue>{pageSize === 'all' ? 'All' : String(pageSize)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map(size => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value='all'>All</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {pageSize !== 'all' && totalPages > 1 && (
+                <div className='flex items-center gap-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeftIcon className='size-3.5' /> Previous
+                  </Button>
+                  <span className='px-2 text-xs font-semibold text-muted-foreground'>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  >
+                    Next <ChevronRightIcon className='size-3.5' />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
