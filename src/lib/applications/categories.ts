@@ -12,6 +12,17 @@ export type CategoryRow = {
   description: string | null
   description_hi: string | null
   selection_method: 'draw' | 'manual' | 'auction' | 'tender' | 'application_fee'
+
+  /** When set, this category's "Apply Now" bypasses the in-app /apply/[slug] form entirely and links straight here (an external Google Form, typically) — migration 0096. */
+  external_apply_url: string | null
+  pdf_path: string | null
+  pdf_original_filename: string | null
+
+  /** Plain admin-entered booth count for an external-apply category — deliberately NOT sourced from shop_units (see migration 0096). */
+  total_booths: number | null
+
+  /** Plain display date shown on the card for an external-apply category, independent of application_opens_at/closes_at (migration 0096). */
+  last_date: string | null
   fee_paise: number | null
   fee_base_paise: number | null
   gst_percent: number | string | null // MySQL DECIMAL columns arrive as strings via mysql2

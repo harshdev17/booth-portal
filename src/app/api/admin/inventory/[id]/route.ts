@@ -112,6 +112,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       `SELECT id, payment_status FROM direct_allotments WHERE shop_unit_id = ? AND status = 'active' LIMIT 1`,
       [shopUnitId]
     )
+
     if (activeDa.length > 0 && emdAmountPaise !== null && emdAmountPaise !== existingUnit.emd_amount_paise) {
       return NextResponse.json(
         { error: 'Payment amount cannot be modified after stall has been allotted/assigned.' },
@@ -203,8 +204,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Invalid booth/stall unit.' }, { status: 400 })
     }
 
-    const rows = await query<Array<{ id: number; stall_number: string; status: string }>>(
-      `SELECT id, stall_number, status FROM shop_units WHERE id = ? LIMIT 1`,
+    const rows = await query<Array<{ id: number; stall_number: string; status: string; allotted_to_application_id: number | null }>>(
+      `SELECT id, stall_number, status, allotted_to_application_id FROM shop_units WHERE id = ? LIMIT 1`,
       [shopUnitId]
     )
 
@@ -214,9 +215,22 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Booth/Stall unit not found.' }, { status: 404 })
     }
 
-    if (shopUnit.status === 'allotted') {
+    // 'allotted' alone is NOT the only status a real applicant can be linked
+    // to — declareResult()'s admin-controlled Pay Now flow (migration
+    // 0053/src/lib/allotment/declare-result.ts:1093) sets the shop_unit to
+    // 'reserved' (awaiting payment), not 'allotted', while
+    // allotted_to_application_id is already set. This guard previously only
+    // checked status === 'allotted' and missed that case entirely — a
+    // 'reserved' stall with a live application attached could be deleted
+    // with no warning, silently orphaning that applicant's allotment
+    // (confirmed live, 2026-11-26: a result-declared Punjab National Bank
+    // application's stall was deleted this way and the applicant was left
+    // with no stall number at all). Checking allotted_to_application_id
+    // directly, regardless of which status string it's paired with, is the
+    // actual one-active-allotment-per-shop invariant (CLAUDE.md §13).
+    if (shopUnit.allotted_to_application_id !== null) {
       return NextResponse.json(
-        { error: 'This booth/stall is currently allotted and cannot be deleted. Cancel the allotment first.' },
+        { error: 'This booth/stall is currently allotted (or reserved for a specific applicant) and cannot be deleted. Cancel the allotment first.' },
         { status: 409 }
       )
     }

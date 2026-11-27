@@ -41,12 +41,18 @@ export async function POST(request: Request) {
 
     const ids = shopUnitIds as number[]
 
-    const rows = await query<Array<{ id: number; stall_number: string; status: string }>>(
-      `SELECT id, stall_number, status FROM shop_units WHERE id IN (${ids.map(() => '?').join(', ')})`,
+    const rows = await query<Array<{ id: number; stall_number: string; status: string; allotted_to_application_id: number | null }>>(
+      `SELECT id, stall_number, status, allotted_to_application_id FROM shop_units WHERE id IN (${ids.map(() => '?').join(', ')})`,
       ids
     )
 
-    const deletable = rows.filter(r => r.status !== 'allotted')
+    // Guard on allotted_to_application_id directly, not status === 'allotted'
+    // — declareResult()'s Pay Now flow leaves a linked stall 'reserved'
+    // (awaiting payment), which this check previously let through
+    // unprotected. Same fix as the single-delete route
+    // (/api/admin/inventory/[id], see its DELETE handler for the full
+    // explanation) — confirmed live, 2026-11-26.
+    const deletable = rows.filter(r => r.allotted_to_application_id === null)
     const skippedAllotted = rows.length - deletable.length
     const deletableIds = deletable.map(r => r.id)
 

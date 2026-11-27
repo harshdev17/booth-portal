@@ -39,6 +39,43 @@ type AuditRow = {
 const DEFAULT_PAGE_SIZE = 40
 
 /**
+ * Surfaces the booth/stall number (and a short summary for interchanges) for
+ * every inventory.* action directly in the table, instead of leaving it
+ * buried inside the raw previous_value/new_value JSON — per explicit
+ * request (2026-11-27): "audit logs mein booth number waali entries nahi aa
+ * rahi, add/cancel/interchange jo ho raha hai wo aana chahiye". The data was
+ * always being logged (see logAudit() calls in inventory routes/
+ * interchange-stalls.ts/declare-result.ts), just never rendered here.
+ */
+function getInventoryDetail(entry: Pick<AuditRow, 'action' | 'previous_value' | 'new_value'>): string | null {
+  if (!entry.action.startsWith('inventory.') && entry.action !== 'allotment.cancelled') return null
+
+  let prev: Record<string, unknown> | null = null
+  let next: Record<string, unknown> | null = null
+
+  try {
+    prev = entry.previous_value ? JSON.parse(entry.previous_value) : null
+    next = entry.new_value ? JSON.parse(entry.new_value) : null
+  } catch {
+    return null
+  }
+
+  const stallNumber = (next?.stallNumber ?? prev?.stallNumber) as string | undefined
+
+  if (!stallNumber) return null
+
+  if (entry.action === 'inventory.interchanged') {
+    const otherStall = (next?.interchangedWithStallNumber ?? prev?.interchangedWithStallNumber) as string | undefined
+
+    return otherStall ? `Booth #${stallNumber} ↔ Booth #${otherStall}` : `Booth #${stallNumber}`
+  }
+
+  const applicationNumber = (next?.applicationNumber ?? prev?.applicationNumber) as string | null | undefined
+
+  return applicationNumber ? `Booth #${stallNumber} (${applicationNumber})` : `Booth #${stallNumber}`
+}
+
+/**
  * Read-only audit trail viewer per .ai/AUDIT_LOGS.md — this table is
  * append-only everywhere else in the codebase (src/lib/audit/log.ts), and
  * this page deliberately exposes no edit/delete action, only view + module
@@ -214,6 +251,7 @@ const AuditLogsPage = async ({
                       </Link>
                     </th>
                     <th className='py-3 px-4'>Entity</th>
+                    <th className='py-3 px-4'>Details</th>
                   </tr>
                 </thead>
                 <tbody className='divide-y'>
@@ -237,6 +275,7 @@ const AuditLogsPage = async ({
                       <td className='py-3 px-4 text-xs text-muted-foreground'>
                         {entry.entity_type ? `${entry.entity_type} #${entry.entity_id}` : '—'}
                       </td>
+                      <td className='py-3 px-4 text-xs font-medium text-slate-700'>{getInventoryDetail(entry) ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

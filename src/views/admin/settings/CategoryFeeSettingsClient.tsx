@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 
 import {
   AlertCircleIcon,
@@ -9,9 +9,12 @@ import {
   ChevronDownIcon,
   CoinsIcon,
   CopyIcon,
+  ExternalLinkIcon,
   FileTextIcon,
   Loader2Icon,
-  SaveIcon
+  SaveIcon,
+  Trash2Icon,
+  UploadIcon
 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -58,6 +61,13 @@ type CategoryFeeItem = {
   important_dates_note: string | null
   important_dates_note_hi: string | null
   show_on_homepage: number | boolean
+
+  /** "Apply Now" opens this link instead of this portal's own form when set — e.g. Saras Jyotisar, Mela Ground (migration 0096). */
+  external_apply_url: string | null
+  pdf_path: string | null
+  pdf_original_filename: string | null
+  total_booths: number | null
+  last_date: string | null
 }
 
 /** MySQL DATETIME ("2026-11-10 23:59:00") -> <input type="datetime-local"> value ("2026-11-10T23:59"). */
@@ -65,6 +75,21 @@ function toDatetimeLocalValue(value: string | null): string {
   if (!value) return ''
 
   return value.replace(' ', 'T').slice(0, 16)
+}
+
+/**
+ * True only for a category already designated "external apply" (Saras
+ * Jyotisar, Mela Ground) — detected by already having one of the migration
+ * 0096 fields set, so the "External Apply" button/section doesn't show on
+ * every ordinary category.
+ */
+function isExternalApplyCategory(cat: CategoryFeeItem): boolean {
+  return (
+    cat.external_apply_url !== null ||
+    cat.pdf_path !== null ||
+    cat.total_booths !== null ||
+    cat.last_date !== null
+  )
 }
 
 export default function CategoryFeeSettingsClient({
@@ -84,6 +109,9 @@ export default function CategoryFeeSettingsClient({
   const [expandedAuctionFeeId, setExpandedAuctionFeeId] = useState<number | null>(null)
   const [expandedContentId, setExpandedContentId] = useState<number | null>(null)
   const [expandedDatesId, setExpandedDatesId] = useState<number | null>(null)
+  const [expandedExternalApplyId, setExpandedExternalApplyId] = useState<number | null>(null)
+  const [uploadingPdfId, setUploadingPdfId] = useState<number | null>(null)
+  const externalApplyFileInputs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const [bulkFee, setBulkFee] = useState({ baseRs: '', gstPercent: '' })
 
@@ -384,14 +412,17 @@ export default function CategoryFeeSettingsClient({
     setErrorMessage(null)
 
     const enabled = Boolean(cat.allotment_payment_enabled)
+
     const amountPaise =
       cat.allotment_amount_paise !== undefined && cat.allotment_amount_paise !== null
         ? Number(cat.allotment_amount_paise)
         : null
+
     const amountSinglePaise =
       cat.allotment_amount_single_paise !== undefined && cat.allotment_amount_single_paise !== null
         ? Number(cat.allotment_amount_single_paise)
         : null
+
     const amountDoublePaise =
       cat.allotment_amount_double_paise !== undefined && cat.allotment_amount_double_paise !== null
         ? Number(cat.allotment_amount_double_paise)
@@ -407,6 +438,7 @@ export default function CategoryFeeSettingsClient({
     // resolveAllotmentAmountPaise()), so it shouldn't block saving.
     const hasBothOverrides =
       amountSinglePaise !== null && amountSinglePaise > 0 && amountDoublePaise !== null && amountDoublePaise > 0
+
     const hasValidDefault = amountPaise !== null && amountPaise > 0
 
     if (enabled && (!deadlineAt || (!hasValidDefault && !hasBothOverrides))) {
@@ -414,6 +446,7 @@ export default function CategoryFeeSettingsClient({
         'A payment deadline is required, along with either the Default Amount or both Single and Double amounts.'
       )
       setSavingId(null)
+
       return
     }
 
@@ -449,6 +482,7 @@ export default function CategoryFeeSettingsClient({
   const handleSaveContent = async (cat: CategoryFeeItem) => {
     if (!cat.name.trim() || !cat.name_hi?.trim()) {
       setErrorMessage('Category name (English and Hindi) cannot be empty.')
+
       return
     }
 
@@ -486,6 +520,96 @@ export default function CategoryFeeSettingsClient({
       setErrorMessage('Could not connect to server. Please try again.')
     } finally {
       setSavingId(null)
+    }
+  }
+
+  const handleSaveExternalApply = async (cat: CategoryFeeItem) => {
+    setSavingId(cat.id)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/categories/external-apply', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: cat.id,
+          externalApplyUrl: cat.external_apply_url?.trim() || null,
+          totalBooths: cat.total_booths !== null && cat.total_booths !== undefined ? Number(cat.total_booths) : null,
+          lastDate: cat.last_date || null
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccessMessage(`External Apply settings for "${cat.name}" updated successfully!`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        setErrorMessage(data.error ?? 'Failed to update External Apply settings.')
+      }
+    } catch {
+      setErrorMessage('Could not connect to server. Please try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const handleUploadExternalApplyPdf = async (cat: CategoryFeeItem, file: File) => {
+    setUploadingPdfId(cat.id)
+    setErrorMessage(null)
+
+    try {
+      const formData = new FormData()
+
+      formData.set('file', file)
+      formData.set('categoryId', String(cat.id))
+
+      const response = await fetch('/api/admin/categories/external-apply', { method: 'POST', body: formData })
+      const data = await response.json()
+
+      if (!response.ok) {
+        setErrorMessage(data.error ?? 'Upload failed.')
+
+        return
+      }
+
+      setCategories(prev =>
+        prev.map(c => (c.id === cat.id ? { ...c, pdf_path: data.pdfPath, pdf_original_filename: data.originalFilename } : c))
+      )
+      setSuccessMessage(`PDF uploaded for "${cat.name}"!`)
+      setTimeout(() => setSuccessMessage(null), 4000)
+    } catch {
+      setErrorMessage('Could not reach the server. Please try again.')
+    } finally {
+      setUploadingPdfId(null)
+    }
+  }
+
+  const handleRemoveExternalApplyPdf = async (cat: CategoryFeeItem) => {
+    setUploadingPdfId(cat.id)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/categories/external-apply', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: cat.id })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setErrorMessage(data.error ?? 'Failed to remove the PDF.')
+
+        return
+      }
+
+      setCategories(prev => prev.map(c => (c.id === cat.id ? { ...c, pdf_path: null, pdf_original_filename: null } : c)))
+    } catch {
+      setErrorMessage('Could not reach the server. Please try again.')
+    } finally {
+      setUploadingPdfId(null)
     }
   }
 
@@ -666,6 +790,7 @@ export default function CategoryFeeSettingsClient({
                   const isAuctionFeeExpanded = expandedAuctionFeeId === cat.id
                   const hasAuctionFee = Boolean(cat.auction_participation_fee_paise)
                   const isDatesExpanded = expandedDatesId === cat.id
+                  const isExternalApplyExpanded = expandedExternalApplyId === cat.id
 
                   return (
                     <Fragment key={cat.id}>
@@ -761,6 +886,31 @@ export default function CategoryFeeSettingsClient({
                                 className={`size-3.5 ml-1 transition-transform ${isContentExpanded ? 'rotate-180' : ''}`}
                               />
                             </Button>
+                            {/* Only for the handful of categories whose "Apply Now"
+                                links to an external Google Form instead of this
+                                portal's own apply flow — Saras Jyotisar, Mela Ground
+                                (migration 0096). Detected by already having one of
+                                these fields set, not shown for every category, per
+                                explicit request (2026-11-27): "only jo 2 cat ke card
+                                bane hain unmein hi external ka option dena hai bas". */}
+                            {isExternalApplyCategory(cat) && (
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                onClick={() => setExpandedExternalApplyId(isExternalApplyExpanded ? null : cat.id)}
+                                className={`text-xs font-bold rounded-lg border ${
+                                  cat.external_apply_url
+                                    ? 'border-emerald-500 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50'
+                                    : 'border-slate-300'
+                                }`}
+                              >
+                                <ExternalLinkIcon className='size-3.5 mr-1.5' />
+                                External Apply
+                                <ChevronDownIcon
+                                  className={`size-3.5 ml-1 transition-transform ${isExternalApplyExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </Button>
+                            )}
                             {/* This fixed-amount + deadline flow doesn't apply to an
                                 auction category — its final allotment amount
                                 varies per winner and is only known after the
@@ -1079,6 +1229,152 @@ export default function CategoryFeeSettingsClient({
                         </tr>
                       )}
 
+                      {isExternalApplyExpanded && (
+                        <tr key={`${cat.id}-external-apply`} className='bg-slate-50/80'>
+                          <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
+                            <div className='flex flex-col gap-3'>
+                              <div>
+                                <h4 className='text-xs font-bold uppercase tracking-wider text-[#0c2847] flex items-center gap-1.5'>
+                                  <ExternalLinkIcon className='size-3.5 text-slate-600' />
+                                  External Apply for &ldquo;{cat.name}&rdquo;
+                                </h4>
+                                <p className='text-xs text-muted-foreground'>
+                                  When a Google Form / External Apply URL is set, &ldquo;Apply Now&rdquo; on this category&apos;s
+                                  home page card opens that link in a new tab instead of this portal&apos;s own application
+                                  form. Total Booths / Last Date, if set, are shown on the card too.
+                                </p>
+                              </div>
+
+                              <div className='grid gap-4 sm:grid-cols-3'>
+                                <div className='flex flex-col gap-1.5 sm:col-span-3'>
+                                  <label className='text-xs font-semibold text-slate-700'>Google Form / External Apply URL</label>
+                                  <Input
+                                    type='text'
+                                    placeholder='https://forms.gle/...'
+                                    value={cat.external_apply_url ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, external_apply_url: e.target.value } : c))
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Total Booths</label>
+                                  <Input
+                                    type='number'
+                                    min={0}
+                                    placeholder='e.g. 50'
+                                    value={cat.total_booths ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c =>
+                                          c.id === cat.id
+                                            ? { ...c, total_booths: e.target.value === '' ? null : Number(e.target.value) }
+                                            : c
+                                        )
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>Last Date</label>
+                                  <Input
+                                    type='date'
+                                    value={cat.last_date ?? ''}
+                                    onChange={e =>
+                                      setCategories(prev =>
+                                        prev.map(c => (c.id === cat.id ? { ...c, last_date: e.target.value } : c))
+                                      )
+                                    }
+                                    className='h-9 text-sm'
+                                  />
+                                </div>
+                                <div className='flex flex-col gap-1.5'>
+                                  <label className='text-xs font-semibold text-slate-700'>View Details PDF</label>
+                                  {cat.pdf_path ? (
+                                    <a
+                                      href={cat.pdf_path}
+                                      target='_blank'
+                                      rel='noopener noreferrer'
+                                      className='truncate text-xs text-blue-700 hover:underline'
+                                    >
+                                      {cat.pdf_original_filename ?? cat.pdf_path}
+                                    </a>
+                                  ) : (
+                                    <p className='text-xs text-muted-foreground'>No PDF uploaded.</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-2'>
+                                  <input
+                                    ref={el => {
+                                      externalApplyFileInputs.current[cat.id] = el
+                                    }}
+                                    type='file'
+                                    accept='application/pdf,image/jpeg,image/png'
+                                    className='hidden'
+                                    onChange={e => {
+                                      const file = e.target.files?.[0]
+
+                                      if (file) handleUploadExternalApplyPdf(cat, file)
+
+                                      e.target.value = ''
+                                    }}
+                                  />
+                                  <Button
+                                    type='button'
+                                    size='sm'
+                                    variant='outline'
+                                    disabled={uploadingPdfId === cat.id}
+                                    onClick={() => externalApplyFileInputs.current[cat.id]?.click()}
+                                    className='text-xs font-bold rounded-lg border border-slate-300'
+                                  >
+                                    {uploadingPdfId === cat.id ? (
+                                      <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                    ) : (
+                                      <UploadIcon className='size-3.5 mr-1.5' />
+                                    )}
+                                    {cat.pdf_path ? 'Replace PDF' : 'Upload PDF'}
+                                  </Button>
+                                  {cat.pdf_path && (
+                                    <Button
+                                      type='button'
+                                      size='sm'
+                                      variant='outline'
+                                      disabled={uploadingPdfId === cat.id}
+                                      onClick={() => handleRemoveExternalApplyPdf(cat)}
+                                      className='text-xs font-bold rounded-lg border border-slate-300 text-destructive hover:text-destructive'
+                                    >
+                                      <Trash2Icon className='size-3.5 mr-1.5' />
+                                      Remove PDF
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <Button
+                                  size='sm'
+                                  disabled={isSaving}
+                                  onClick={() => handleSaveExternalApply(cat)}
+                                  className='bg-[#0c2847] hover:bg-[#071f3a] text-xs font-bold rounded-lg text-white'
+                                >
+                                  {isSaving ? (
+                                    <Loader2Icon className='size-3.5 animate-spin mr-1.5' />
+                                  ) : (
+                                    <SaveIcon className='size-3.5 mr-1.5' />
+                                  )}
+                                  Save External Apply
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
                       {isExpanded && (
                         <tr key={`${cat.id}-allotment`} className='bg-slate-50/80'>
                           <td colSpan={6} className='px-6 py-4 border-y border-slate-200'>
@@ -1130,6 +1426,7 @@ export default function CategoryFeeSettingsClient({
                                       }
                                       onChange={e => {
                                         const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+
                                         setCategories(prev =>
                                           prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_paise: val } : c))
                                         )
@@ -1147,6 +1444,7 @@ export default function CategoryFeeSettingsClient({
                                     value={toDatetimeLocalValue(cat.allotment_payment_deadline_at ?? null)}
                                     onChange={e => {
                                       const val = e.target.value ? e.target.value.replace('T', ' ') + ':00' : null
+
                                       setCategories(prev =>
                                         prev.map(c => (c.id === cat.id ? { ...c, allotment_payment_deadline_at: val } : c))
                                       )
@@ -1191,6 +1489,7 @@ export default function CategoryFeeSettingsClient({
                                         }
                                         onChange={e => {
                                           const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+
                                           setCategories(prev =>
                                             prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_single_paise: val } : c))
                                           )
@@ -1215,6 +1514,7 @@ export default function CategoryFeeSettingsClient({
                                         }
                                         onChange={e => {
                                           const val = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100)
+
                                           setCategories(prev =>
                                             prev.map(c => (c.id === cat.id ? { ...c, allotment_amount_double_paise: val } : c))
                                           )

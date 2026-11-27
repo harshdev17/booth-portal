@@ -3,9 +3,11 @@ import type { Metadata } from 'next'
 import ComingSoonSection from '@/components/public/ComingSoonSection'
 import PublicFooter from '@/components/public/PublicFooter'
 import PublicHeader from '@/components/public/PublicHeader'
+import { getAuctionPaymentSettings } from '@/lib/settings/auction-payment'
+import AuctionPaymentView from '@/views/public/auction-payment'
 
 export const metadata: Metadata = {
-  title: 'Draw Payment | International Geeta Jayanti Mahotsav 2026'
+  title: 'Auction Payment | International Geeta Jayanti Mahotsav 2026'
 }
 
 // Forced dynamic — see src/app/(public)/allotment-letter/page.tsx for why a
@@ -13,16 +15,29 @@ export const metadata: Metadata = {
 // page (it gets stuck on load with every inline script silently blocked).
 export const dynamic = 'force-dynamic'
 
-const AuctionPaymentPage = () => {
+/**
+ * `enabled` (auction_payment_settings, migration 0097) gates whether this
+ * page shows its real admin-configured content or falls back to the
+ * existing Coming Soon notice — kept rather than removed, since the admin
+ * may still want this exact "not live yet" state before a Google Form link
+ * is actually in hand.
+ */
+const AuctionPaymentPage = async () => {
+  const settings = await getAuctionPaymentSettings()
+
   return (
     <>
       <PublicHeader />
-      <ComingSoonSection
-        titleEn='Draw Payment'
-        titleHi='ड्रॉ भुगतान'
-        messageEn='Draw payment will be available after the result is declared.'
-        messageHi='ड्रॉ भुगतान परिणाम घोषित होने के बाद उपलब्ध होगा।'
-      />
+      {settings.enabled ? (
+        <AuctionPaymentView settings={settings} />
+      ) : (
+        <ComingSoonSection
+          titleEn='Auction Payment'
+          titleHi='नीलामी भुगतान'
+          messageEn='Auction payment details will be available soon.'
+          messageHi='नीलामी भुगतान का विवरण शीघ्र ही उपलब्ध होगा।'
+        />
+      )}
       <PublicFooter />
     </>
   )

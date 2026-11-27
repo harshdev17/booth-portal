@@ -176,6 +176,7 @@ export const navItems: NavItem[] = [
           { label: 'Homepage Notices', href: '/admin/settings/notices' },
           { label: 'Corrigendum Popup', href: '/admin/settings/corrigendum' },
           { label: 'Apply-Anyway Links', href: '/admin/settings/apply-links' },
+          { label: 'Auction Payment', href: '/admin/settings/auction-payment' },
           { label: 'Notification Board', href: '/admin/settings/notification-board' },
           { label: 'reCAPTCHA', href: '/admin/settings/recaptcha' },
           { label: 'Contact & Social', href: '/admin/settings/contact' },

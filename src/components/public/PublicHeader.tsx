@@ -11,12 +11,14 @@ import { MailIcon, MenuIcon, PhoneIcon } from 'lucide-react'
 import HeaderMarquee from '@/components/public/HeaderMarquee'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useShowAuctionPaymentLink } from '@/context/AuctionPaymentLinkContext'
 import { useContactSettings } from '@/context/ContactSettingsContext'
 import { useLanguage } from '@/context/LanguageContext'
 
 const PublicHeader = () => {
   const { lang, setLang, t } = useLanguage()
   const { phone, email } = useContactSettings()
+  const showAuctionPaymentLink = useShowAuctionPaymentLink()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -34,7 +36,6 @@ const PublicHeader = () => {
     { label: t('nav.home'), href: '/' },
     { label: lang === 'hi' ? 'दिशा-निर्देश' : 'Guidelines', href: '/guidelines' },
     { label: lang === 'hi' ? 'आवेदन की स्थिति ट्रैक करें' : 'Track Application Status', href: '/status' },
-    { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'परिणाम' : 'Result', href: '/result' },
     { label: lang === 'hi' ? 'श्रेणी विवरण' : 'Category Details', href: '/#categories' },
     { label: lang === 'hi' ? 'आबंटन पत्र डाउनलोड करें' : 'Download Allotment Letter', href: '/allotment-letter' },
@@ -42,7 +43,15 @@ const PublicHeader = () => {
     // Links to the Stall/Booth Locations page (Full Map + category-wise
     // maps), not directly to a PDF — a normal in-app route.
     { label: lang === 'hi' ? 'स्टॉल/बूथ लोकेशन' : 'Stall/Booth Locations', href: '/stall-booth-locations' },
-    { label: lang === 'hi' ? 'संशोधन/सूचनाएं' : 'Corrigendum/Notices', href: '/notifications' }
+    { label: lang === 'hi' ? 'संशोधन/सूचनाएं' : 'Corrigendum/Notices', href: '/notifications' },
+
+    // Admin-controlled visibility (auction_payment_settings.show_in_header,
+    // migration 0097) — per explicit request: "link hide karna ho to hed
+    // ruska control bhi admin se ho jaaye ga". The page itself stays
+    // reachable by direct URL even while hidden here.
+    ...(showAuctionPaymentLink
+      ? [{ label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' }]
+      : [])
   ]
 
   const navItems = navItemDefs.map(item => ({

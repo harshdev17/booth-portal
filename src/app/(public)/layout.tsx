@@ -6,10 +6,12 @@ import CorrigendumNoticeModal from '@/components/public/CorrigendumNoticeModal'
 import FloatingChatbot from '@/components/public/FloatingChatbot'
 import FloatingContactButtons from '@/components/public/FloatingContactButtons'
 import LanguagePreferenceModal from '@/components/public/LanguagePreferenceModal'
+import { AuctionPaymentLinkProvider } from '@/context/AuctionPaymentLinkContext'
 import { ContactSettingsProvider } from '@/context/ContactSettingsContext'
 import { LanguageProvider } from '@/context/LanguageContext'
 import { getCorrigendumNoticeData } from '@/lib/homepage/corrigendum-notice'
 import { getSiteNoticeBanners } from '@/lib/homepage/site-notice-banners'
+import { getAuctionPaymentSettings } from '@/lib/settings/auction-payment'
 import { getContactSettings } from '@/lib/settings/contact-settings'
 import { cn } from '@/lib/utils'
 
@@ -24,23 +26,26 @@ const notoSansDevanagari = Noto_Sans_Devanagari({ subsets: ['devanagari'], varia
  * .ai/landing-page-design/index.html) — see src/components/public/*.
  */
 const PublicLayout = async ({ children }: { children: ReactNode }) => {
-  const [contactSettings, corrigendumNotice, noticeBanners] = await Promise.all([
+  const [contactSettings, corrigendumNotice, noticeBanners, auctionPaymentSettings] = await Promise.all([
     getContactSettings(),
     getCorrigendumNoticeData(),
-    getSiteNoticeBanners()
+    getSiteNoticeBanners(),
+    getAuctionPaymentSettings()
   ])
 
   return (
     <ContactSettingsProvider settings={contactSettings}>
-      <LanguageProvider>
-        <div className={cn('kdb-public w-full min-w-0 flex-1', inter.variable, notoSansDevanagari.variable)}>
-          <LanguagePreferenceModal />
-          <CorrigendumNoticeModal {...corrigendumNotice} banners={noticeBanners} />
-          {children}
-          <FloatingContactButtons />
-          <FloatingChatbot />
-        </div>
-      </LanguageProvider>
+      <AuctionPaymentLinkProvider showInHeader={auctionPaymentSettings.showInHeader}>
+        <LanguageProvider>
+          <div className={cn('kdb-public w-full min-w-0 flex-1', inter.variable, notoSansDevanagari.variable)}>
+            <LanguagePreferenceModal />
+            <CorrigendumNoticeModal {...corrigendumNotice} banners={noticeBanners} />
+            {children}
+            <FloatingContactButtons />
+            <FloatingChatbot />
+          </div>
+        </LanguageProvider>
+      </AuctionPaymentLinkProvider>
     </ContactSettingsProvider>
   )
 }

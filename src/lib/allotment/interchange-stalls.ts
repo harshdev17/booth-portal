@@ -27,6 +27,7 @@ type AppContact = {
   mobile_number: string
   email: string | null
   representative_name: string
+  status: string
 }
 
 export type InterchangeStallsResult = {
@@ -115,7 +116,7 @@ export async function interchangeStalls(params: InterchangeStallsParams): Promis
       if (!applicationId) return null
 
       const apps = await tx<AppContact[]>(
-        `SELECT id, application_number, mobile_number, email, representative_name
+        `SELECT id, application_number, mobile_number, email, representative_name, status
          FROM applications WHERE id = ? FOR UPDATE`,
         [applicationId]
       )
@@ -126,21 +127,25 @@ export async function interchangeStalls(params: InterchangeStallsParams): Promis
     const firstApp = await loadApp(first.allotted_to_application_id)
     const secondApp = await loadApp(second.allotted_to_application_id)
 
-    // A stall keeps 'reserved'/'reserved_for_direct_allotment' if it was
-    // already in one of those holds independent of having an application
-    // (e.g. awaiting an allotment-payment deadline on the SAME application
-    // that is about to move with it); otherwise it becomes 'allotted' when
-    // it gains a link, 'available' when it loses one.
-    const nextStatus = (unit: UnitRow, incomingAppId: number | null): UnitRow['status'] => {
-      if (incomingAppId) {
-        return unit.status === 'reserved' || unit.status === 'reserved_for_direct_allotment' ? unit.status : 'allotted'
-      }
+    // A stall's post-swap status must track the INCOMING application's own
+    // state, never the destination stall's pre-swap status — a stall that
+    // was sitting 'reserved' (payment pending) before the swap must NOT keep
+    // that label once it receives an application that has already paid
+    // (status 'allotted'), or the admin UI shows a self-contradictory
+    // "Reserved for Payment" + "Paid" combination (confirmed live
+    // 2026-11-26: interchanging an allotted/paid application onto a
+    // previously-reserved stall left it stuck showing both). An incoming
+    // application that is itself still 'payment_pending'/awaiting payment
+    // keeps the stall 'reserved' so the payment-deadline flow still applies;
+    // one that is already 'allotted' (paid) makes the stall 'allotted'.
+    const nextStatus = (incomingApp: AppContact | null): UnitRow['status'] => {
+      if (!incomingApp) return 'available'
 
-      return 'available'
+      return incomingApp.status === 'allotted' ? 'allotted' : 'reserved'
     }
 
-    const firstNextStatus = nextStatus(first, second.allotted_to_application_id)
-    const secondNextStatus = nextStatus(second, first.allotted_to_application_id)
+    const firstNextStatus = nextStatus(secondApp)
+    const secondNextStatus = nextStatus(firstApp)
 
     // Two-step swap: `shop_units.allotted_to_application_id` has a UNIQUE
     // constraint (uq_shop_units_allotted_application, enforcing the

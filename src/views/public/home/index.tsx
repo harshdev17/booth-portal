@@ -22,6 +22,10 @@ interface CachedHomeData {
     allotmentAmountNoteHi: string | null
     availableShopsCount: number
     isApplicationClosed: boolean
+    externalApplyUrl: string | null
+    pdfPath: string | null
+    totalBooths: number | null
+    lastDate: string | null
   }>
   eventStartsOn: string | null
   eventEndsOn: string | null
@@ -115,7 +119,11 @@ const PublicHome = async () => {
       // isCategoryAcceptingApplications in this same file.
       isApplicationClosed: Boolean(
         category.application_closes_at && parseIstDateTime(category.application_closes_at) < new Date()
-      )
+      ),
+      externalApplyUrl: category.external_apply_url,
+      pdfPath: category.pdf_path,
+      totalBooths: category.total_booths,
+      lastDate: category.last_date
     }
   })
 

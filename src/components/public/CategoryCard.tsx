@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import {
   ArmchairIcon,
+  FileTextIcon,
   HeartHandshakeIcon,
   LandmarkIcon,
   MegaphoneIcon,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react'
 
 import { useLanguage } from '@/context/LanguageContext'
+import { formatDate } from '@/lib/format-date'
 import { getCategoryGuideline } from '@/lib/content/category-guidelines'
 
 export type CategoryCardData = {
@@ -36,6 +38,18 @@ export type CategoryCardData = {
   allotmentAmountNoteHi: string | null
   availableShopsCount: number
   isApplicationClosed: boolean
+
+  /** When set, "Apply Now" links straight here (an external Google Form) instead of this app's own /apply/[slug] form — migration 0096. */
+  externalApplyUrl: string | null
+
+  /** Admin-uploaded PDF served via /api/category-documents/[key] — drives the "View Details (PDF)" button. */
+  pdfPath: string | null
+
+  /** Plain admin-entered booth count, shown only when set — not every category configures this. */
+  totalBooths: number | null
+
+  /** Plain display date (YYYY-MM-DD from MySQL), shown only when set. */
+  lastDate: string | null
 }
 
 // Solid coloured circle + white glyph per category, matching the home-page
@@ -185,6 +199,26 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
           </dt>
           <dd className='text-lg font-black text-[var(--kdb-primary)]'>{feeText}</dd>
         </div>
+
+        {/* Total Booths / Last Date — only set on the admin-configured
+            external-apply categories (e.g. Saras Jyotisar, Mela Ground); a
+            normal category has both null and shows neither row. */}
+        {category.totalBooths !== null && (
+          <div>
+            <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
+              {lang === 'hi' ? 'कुल बूथ' : 'Total Booths'}
+            </dt>
+            <dd className='text-base font-bold text-[#072448]'>{category.totalBooths}</dd>
+          </div>
+        )}
+        {category.lastDate && (
+          <div>
+            <dt className='text-xs font-extrabold tracking-wide text-[#b8761b] uppercase'>
+              {lang === 'hi' ? 'अंतिम तिथि' : 'Last Date'}
+            </dt>
+            <dd className='text-base font-bold text-[#072448]'>{formatDate(category.lastDate, lang === 'hi' ? 'hi' : 'en')}</dd>
+          </div>
+        )}
       </dl>
 
       {/* Description — clamped to 3 lines. A "Read more" link to the category
@@ -211,7 +245,12 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         </p>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons. For an external-apply category (external_apply_url
+          set — e.g. Saras Jyotisar, Mela Ground), "Apply Now" bypasses this
+          app's own /apply/[slug] form entirely and opens the admin-
+          configured external URL (a Google Form) in a new tab; the second
+          button becomes "View Details (PDF)" opening the admin-uploaded PDF,
+          since there's no in-app category-detail content for these. */}
       <div className='mt-auto grid grid-cols-2 gap-2.5 border-t border-[#f0eae1] pt-4'>
         {category.isApplicationClosed ? (
           <span
@@ -220,6 +259,16 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
           >
             {lang === 'hi' ? 'आवेदन बंद' : 'Applications Closed'}
           </span>
+        ) : category.externalApplyUrl ? (
+          <a
+            href={category.externalApplyUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='flex items-center justify-center gap-1.5 rounded-xl bg-[#092b52] px-3 py-3 text-center text-sm font-bold text-white shadow-2xs transition hover:bg-[#061e3a] active:scale-[0.98]'
+          >
+            <span>{lang === 'hi' ? 'आवेदन करें' : 'Apply Now'}</span>
+            <span className='text-sm font-black'>→</span>
+          </a>
         ) : (
           <Link
             href={`/apply/${category.slug}`}
@@ -229,12 +278,24 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
             <span className='text-sm font-black'>→</span>
           </Link>
         )}
-        <Link
-          href={`/categories/${category.slug}`}
-          className='flex items-center justify-center rounded-xl border border-[#d6dfe6] bg-white px-3 py-3 text-center text-sm font-bold text-[#092b52] transition hover:border-[#b4c5d5] hover:bg-[#f5f8fb] active:scale-[0.98]'
-        >
-          <span>{lang === 'hi' ? 'विवरण देखें' : 'View Details'}</span>
-        </Link>
+        {category.pdfPath ? (
+          <a
+            href={category.pdfPath}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='flex items-center justify-center gap-1.5 rounded-xl border border-[#d6dfe6] bg-white px-3 py-3 text-center text-sm font-bold text-[#092b52] transition hover:border-[#b4c5d5] hover:bg-[#f5f8fb] active:scale-[0.98]'
+          >
+            <FileTextIcon className='size-4' aria-hidden='true' />
+            <span>{lang === 'hi' ? 'विवरण देखें (PDF)' : 'View Details (PDF)'}</span>
+          </a>
+        ) : (
+          <Link
+            href={`/categories/${category.slug}`}
+            className='flex items-center justify-center rounded-xl border border-[#d6dfe6] bg-white px-3 py-3 text-center text-sm font-bold text-[#092b52] transition hover:border-[#b4c5d5] hover:bg-[#f5f8fb] active:scale-[0.98]'
+          >
+            <span>{lang === 'hi' ? 'विवरण देखें' : 'View Details'}</span>
+          </Link>
+        )}
       </div>
     </div>
   )

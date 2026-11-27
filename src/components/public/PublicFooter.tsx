@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 
+import { useShowAuctionPaymentLink } from '@/context/AuctionPaymentLinkContext'
 import { useContactSettings } from '@/context/ContactSettingsContext'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -40,6 +41,7 @@ const XIcon = ({ className }: { className?: string }) => (
 const PublicFooter = () => {
   const { lang } = useLanguage()
   const { phone, email, address, addressHi, facebookUrl, instagramUrl, youtubeUrl, twitterUrl } = useContactSettings()
+  const showAuctionPaymentLink = useShowAuctionPaymentLink()
 
   const socialLinks = [
     { href: facebookUrl, icon: FacebookIcon, label: 'Facebook' },
@@ -53,9 +55,17 @@ const PublicFooter = () => {
     { label: lang === 'hi' ? 'हमारे बारे में' : 'About Us', href: '/about-us' },
     { label: lang === 'hi' ? 'बूथ/स्टॉल श्रेणियां' : 'Booth/Stall Categories', href: '/#categories' },
     { label: lang === 'hi' ? 'आवेदन की स्थिति' : 'Track Application Status', href: '/#status-check' },
+    { label: lang === 'hi' ? 'आवेदन प्रिंट करें' : 'Print Application', href: '/print-application' },
     { label: lang === 'hi' ? 'आबंटन प्रक्रिया' : 'Allotment Procedure', href: '/#how-it-works' },
     { label: lang === 'hi' ? 'सामान्य प्रश्न' : 'Frequently Asked Questions', href: '/#faq' },
-    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact-us' }
+    { label: lang === 'hi' ? 'संपर्क करें' : 'Contact Us', href: '/contact-us' },
+
+    // Admin-controlled visibility (auction_payment_settings.show_in_header,
+    // migration 0097) — same flag that gates the header nav link, so the
+    // footer stays consistent with it.
+    ...(showAuctionPaymentLink
+      ? [{ label: lang === 'hi' ? 'नीलामी भुगतान' : 'Auction Payment', href: '/auction-payment' }]
+      : [])
   ]
 
   const relatedPortals = [

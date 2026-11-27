@@ -38,6 +38,11 @@ type CategoryRow = {
   important_dates_note: string | null
   important_dates_note_hi: string | null
   show_on_homepage: number
+  external_apply_url: string | null
+  pdf_path: string | null
+  pdf_original_filename: string | null
+  total_booths: number | null
+  last_date: string | null
 }
 
 const GeneralSettingsPage = async () => {
@@ -51,7 +56,8 @@ const GeneralSettingsPage = async () => {
             allotment_payment_enabled, allotment_payment_deadline_at,
             auction_participation_fee_paise, auction_participation_fee_deadline_at, auction_final_payment_deadline_at,
             description, description_hi, allotment_amount_note, allotment_amount_note_hi,
-            important_dates_note, important_dates_note_hi, show_on_homepage
+            important_dates_note, important_dates_note_hi, show_on_homepage,
+            external_apply_url, pdf_path, pdf_original_filename, total_booths, last_date
      FROM categories
      WHERE status != 'archived'
      ORDER BY display_order ASC`
