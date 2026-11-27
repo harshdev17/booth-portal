@@ -480,8 +480,8 @@ export default function CategoryFeeSettingsClient({
   }
 
   const handleSaveContent = async (cat: CategoryFeeItem) => {
-    if (!cat.name.trim() || !cat.name_hi?.trim()) {
-      setErrorMessage('Category name (English and Hindi) cannot be empty.')
+    if (!cat.name.trim()) {
+      setErrorMessage('Category name (English) cannot be empty.')
 
       return
     }
@@ -497,7 +497,7 @@ export default function CategoryFeeSettingsClient({
         body: JSON.stringify({
           categoryId: cat.id,
           name: cat.name.trim(),
-          nameHi: cat.name_hi.trim(),
+          nameHi: cat.name_hi?.trim() || cat.name.trim(),
           description: cat.description,
           descriptionHi: cat.description_hi,
           allotmentAmountNote: cat.allotment_amount_note,
