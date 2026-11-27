@@ -14,6 +14,7 @@ interface CachedHomeData {
     descriptionHi: string | null
     selectionMethod: 'draw' | 'manual' | 'auction' | 'tender' | 'application_fee'
     displayIndex: number
+    badgeLabel: string
     feePaise: number | null
     feeBasePaise: number | null
     gstPercent: number | null
@@ -100,6 +101,36 @@ const PublicHome = async () => {
 
   const availableCountByCategory = new Map(availableCounts.map(row => [row.category_id, Number(row.available_count)]))
 
+  // Shared-slot "(A)"/"(B)" badge numbering applies ONLY to Refreshment and
+  // Sweets/Bakers — the two categories sharing the same stall type at
+  // Brahma Sarovar — never to whichever category happens to land in
+  // display position 2/3 (previously purely positional, which mislabeled
+  // Artisan Card Holders "2(A)" once display_order put it there; confirmed
+  // live, 2026-11-27). Every other category gets a plain sequential number.
+  const SHARED_SLOT_SLUGS = new Set(['refreshment-stalls', 'sweets-special-items'])
+
+  const badgeLabels = rawCategories.reduce<{ labels: string[]; seq: number; sharedSlot: number | null }>(
+    (acc, category) => {
+      if (SHARED_SLOT_SLUGS.has(category.slug)) {
+        // Both categories in the pair get the same number — whichever of
+        // the two appears FIRST in display order is the one that "spends"
+        // the next sequence number; the other just reuses it.
+        const slot = acc.sharedSlot ?? acc.seq + 1
+
+        return {
+          labels: [...acc.labels, `${slot}(${category.slug === 'refreshment-stalls' ? 'A' : 'B'})`],
+          seq: acc.sharedSlot === null ? slot : acc.seq,
+          sharedSlot: slot
+        }
+      }
+
+      const next = acc.seq + 1
+
+      return { labels: [...acc.labels, String(next)], seq: next, sharedSlot: acc.sharedSlot }
+    },
+    { labels: [], seq: 0, sharedSlot: null }
+  ).labels
+
   const categories = rawCategories.map((category, index) => {
     const fee = getFeeBreakdown(category)
 
@@ -111,6 +142,7 @@ const PublicHome = async () => {
       descriptionHi: category.description_hi,
       selectionMethod: category.selection_method,
       displayIndex: index + 1,
+      badgeLabel: badgeLabels[index],
       feePaise: fee?.totalPaise ?? null,
       feeBasePaise: fee?.basePaise ?? null,
       gstPercent: fee?.gstPercent ?? null,

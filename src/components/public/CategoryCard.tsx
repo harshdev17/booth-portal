@@ -30,6 +30,7 @@ export type CategoryCardData = {
   descriptionHi: string | null
   selectionMethod: 'draw' | 'manual' | 'auction' | 'tender' | 'application_fee'
   displayIndex: number
+  badgeLabel: string
   feePaise: number | null
   feeBasePaise: number | null
   gstPercent: number | null
@@ -102,18 +103,6 @@ function formatRupees(paise: number): string {
   return `₹${(paise / 100).toLocaleString('en-IN')}`
 }
 
-// Every card shows a serial number badge. The 2nd and 3rd cards (in display
-// order) share slot "2" — shown as "2(A)" and "2(B)" respectively, per
-// explicit request — so every card after them is numbered one lower than
-// its raw displayIndex (4th card -> "3", 5th card -> "4", etc.).
-function getCardBadgeLabel(displayIndex: number): string {
-  if (displayIndex === 2) return '2(A)'
-  if (displayIndex === 3) return '2(B)'
-  if (displayIndex > 3) return String(displayIndex - 1)
-
-  return String(displayIndex)
-}
-
 const CategoryCard = ({ category }: { category: CategoryCardData }) => {
   const { lang } = useLanguage()
 
@@ -167,11 +156,11 @@ const CategoryCard = ({ category }: { category: CategoryCardData }) => {
         </div>
       </div>
 
-      {/* Title — the 2nd/3rd cards show "2(A)"/"2(B)" (shared slot) next to
-          the name, every later card numbered one lower than its raw
-          displayIndex to account for that. */}
+      {/* Title — badgeLabel is computed server-side (views/public/home/index.tsx)
+          from category identity (Refreshment/Sweets only share "N(A)"/"N(B)"),
+          not from raw card position. */}
       <h3 className='mb-2 flex items-baseline gap-1.5 text-xl font-black leading-snug text-[#072448] transition-colors group-hover:text-[var(--kdb-primary)]'>
-        <span className='shrink-0 text-base font-black text-[#072448]'>{getCardBadgeLabel(category.displayIndex)}.</span>
+        <span className='shrink-0 text-base font-black text-[#072448]'>{category.badgeLabel}.</span>
         <span>{title}</span>
       </h3>
 
