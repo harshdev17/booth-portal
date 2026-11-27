@@ -2,7 +2,7 @@ import 'server-only'
 
 import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer'
 
-import { getLogoBase64 } from '@/lib/pdf/assets'
+import { getElectricalArrangementsHiBase64, getLogoBase64, getTentArrangementsHiBase64 } from '@/lib/pdf/assets'
 
 // English-only PDF generation via @react-pdf/renderer, a pure-JS layout
 // engine that needs no browser process — unlike the earlier Playwright/
@@ -84,7 +84,35 @@ const styles = StyleSheet.create({
     borderBottomColor: '#888',
     paddingBottom: 4,
     marginBottom: 8
-  }
+  },
+  subjectLine: { fontSize: 11, fontWeight: 700, textDecoration: 'underline', marginBottom: 10 },
+  congratsBanner: {
+    backgroundColor: '#f0f7f2',
+    borderWidth: 1,
+    borderColor: '#1a7d42',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 10
+  },
+  congratsText: { fontSize: 11, fontWeight: 700, color: '#1a7d42' },
+  bodyParagraph: { fontSize: 9.5, lineHeight: 1.5, marginBottom: 10 },
+  dataTable: { borderWidth: 1, borderColor: '#000', marginBottom: 14 },
+  dataTableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+  dataTableRowLast: { flexDirection: 'row' },
+  dataTableLabelCell: {
+    width: '45%',
+    padding: 6,
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    backgroundColor: '#f5f3ee'
+  },
+  dataTableValueCell: { width: '55%', padding: 6 },
+  dataTableLabel: { fontSize: 8.5, fontWeight: 700 },
+  dataTableValue: { fontSize: 9.5, fontWeight: 700 },
+  bulletList: { marginBottom: 10 },
+  bulletItem: { flexDirection: 'row', marginBottom: 4, paddingRight: 4 },
+  bulletMarker: { fontSize: 9.5, width: 12 },
+  bulletText: { fontSize: 9.5, lineHeight: 1.4, flex: 1 }
 })
 
 const Watermark = () => <Image src={`data:image/png;base64,${getLogoBase64()}`} style={styles.watermark} fixed />
@@ -275,15 +303,49 @@ export type AllotmentLetterPdfData = {
   fatherName?: string | null
   organisationName?: string | null
   categoryName: string
+  workPurpose?: string | null
   stallNumber: string
   stallDirection?: string | null
   mobileNumber?: string | null
   email?: string | null
   address?: string | null
+  aadhaarLast4?: string | null
   allotmentAmountPaise?: number | null
   allotmentPaidAt?: string | null
 }
 
+const DataTableRow = ({ label, value, last }: { label: string; value: string; last?: boolean }) => (
+  <View style={last ? styles.dataTableRowLast : styles.dataTableRow}>
+    <View style={styles.dataTableLabelCell}>
+      <Text style={styles.dataTableLabel}>{label}</Text>
+    </View>
+    <View style={styles.dataTableValueCell}>
+      <Text style={styles.dataTableValue}>{value}</Text>
+    </View>
+  </View>
+)
+
+const INSTRUCTIONS = [
+  'Please carry a printed copy of this letter during the event setup.',
+  'Ensure all necessary original documents (Aadhaar Card and Category Specific Document i.e. Artisan Card / National Awardee Certificate / SHG Certificate / NGO Registration) are available for verification.',
+  'Follow all guidelines provided by KDB Kurukshetra.',
+  'Setup and teardown must be completed as per the schedule.',
+  'You are allowed only to execute the work allotted to you. Otherwise, your allotment shall be cancelled without any notice and the paid amount shall not be refunded.'
+]
+
+/**
+ * Format mirrors the official Allotment Letter template supplied 2026-11-27
+ * (Allotment_Letter.docx) as closely as @react-pdf/renderer allows. Two
+ * deliberate differences from that source document:
+ *  - The Hindi "companion/staff detail — scan this barcode" notice is
+ *    omitted: no feature exists yet to collect that data or generate a
+ *    working QR for it (per explicit decision, adding a fake/non-functional
+ *    QR code would be worse than leaving the section out).
+ *  - Hindi text elsewhere (Arrangement Contact labels) is rendered as a
+ *    pre-rendered image, not <Text> — see the comment on
+ *    getElectricalArrangementsHiBase64/getTentArrangementsHiBase64 in
+ *    lib/pdf/assets.ts for why.
+ */
 export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Promise<Buffer> {
   const isPaid = (data.allotmentAmountPaise ?? 0) > 0
   const feeLabel = isPaid ? formatRupees(data.allotmentAmountPaise!) : 'Exempt / Free'
@@ -293,52 +355,74 @@ export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Pr
       <Page size='A4' style={styles.page}>
         <Watermark />
         <Letterhead />
-        <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.titleHeading}>Official Booth / Stall Allotment Order</Text>
-            <Text style={styles.letterheadSubtitle}>
-              International Geeta Jayanti Mahotsav 2026 — Kurukshetra Development Board
-            </Text>
-          </View>
-          <Text style={styles.badge}>STALL: {data.stallNumber}</Text>
+
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 9.5, fontWeight: 700 }}>To,</Text>
+          <Text style={{ fontSize: 10, fontWeight: 700, marginTop: 2 }}>{data.representativeName}</Text>
+          {data.mobileNumber && <Text style={{ fontSize: 9 }}>WhatsApp Mobile Number: {data.mobileNumber}</Text>}
         </View>
-        <View style={styles.grid}>
-          <Field label='Reference Number' value={`KDB/IGM-2026/ALLOT/${data.applicationNumber}`} />
-          <Field label='Allotment Date' value={new Date().toLocaleDateString('en-IN')} />
-          <Field label='Application Number' value={data.applicationNumber} />
-          <Field label='Allotted Booth / Stall No.' value={data.stallNumber} />
-          {data.stallDirection && <Field label='Stall Location / Direction' value={data.stallDirection} />}
-          <Field label='Category' value={data.categoryName} />
-          {data.organisationName && <Field label='Organisation / Firm Name' value={data.organisationName} />}
-          <Field label='Allottee Name' value={data.representativeName} />
-          {data.fatherName && <Field label="Father's / Husband's Name" value={data.fatherName} />}
-          {data.mobileNumber && <Field label='Mobile Number' value={data.mobileNumber} />}
-          {data.email && <Field label='Email Address' value={data.email} />}
-          {data.address && <Field label='Postal Address' value={data.address} full />}
-          <Field label='Stall Allotment Fee' value={feeLabel} />
+
+        <Text style={styles.subjectLine}>
+          Subject: Allotment of Booth/Stall during International Geeta Jayanti Mahotsav 2026
+        </Text>
+
+        <View style={styles.congratsBanner}>
+          <Text style={styles.congratsText}>Congratulations! You have been successfully allocated a booth/shop.</Text>
+        </View>
+
+        <Text style={styles.bodyParagraph}>
+          We are pleased to inform you that based on your application, you have been allocated a booth/stall for the
+          International Geeta Jayanti Mahotsav 2026.
+        </Text>
+
+        <View style={styles.dataTable}>
+          <DataTableRow label='Registration Number (IGM-2026)' value={data.applicationNumber} />
+          {data.organisationName && <DataTableRow label='Organisation / Firm Name' value={data.organisationName} />}
+          <DataTableRow label='Applicant Name' value={data.representativeName} />
+          <DataTableRow label="Father's Name" value={data.fatherName || '—'} />
+          <DataTableRow label='Category' value={data.categoryName} />
+          <DataTableRow label='Work Category' value={data.workPurpose || '—'} />
+          <DataTableRow label='Allocated Booth/Stall Number' value={data.stallNumber} />
+          <DataTableRow label='WhatsApp Mobile Number' value={data.mobileNumber || '—'} />
+          <DataTableRow label='Aadhaar Number' value={data.aadhaarLast4 ? `XXXX-XXXX-${data.aadhaarLast4}` : '—'} last />
+        </View>
+
+        <View style={styles.dataTable}>
+          <DataTableRow label='Stall Allotment Fee' value={feeLabel} />
           {data.allotmentPaidAt && (
-            <Field label='Paid At' value={new Date(data.allotmentPaidAt).toLocaleString('en-IN')} />
+            <DataTableRow
+              label='Paid At'
+              value={new Date(data.allotmentPaidAt).toLocaleString('en-IN')}
+              last
+            />
           )}
         </View>
-        <View style={styles.noteBox}>
-          <Text style={styles.noteBoxTitle}>Important Terms & Instructions:</Text>
-          <Text style={styles.noteBoxItem}>
-            1. This allotment order is valid exclusively for the official duration of International Geeta Jayanti
-            Mahotsav 2026.
-          </Text>
-          <Text style={styles.noteBoxItem}>
-            2. The allottee must occupy only the allocated booth/stall and conduct only approved activities.
-          </Text>
-          <Text style={styles.noteBoxItem}>
-            3. Compliance with fire safety regulations, waste management, and KDB fair bylaws is mandatory.
-          </Text>
-          <Text style={styles.noteBoxItem}>
-            4. Please carry this original allotment letter along with a valid Government Photo ID at the time of
-            taking stall possession.
-          </Text>
+
+        <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 6 }}>Important Instructions:</Text>
+        <View style={styles.bulletList}>
+          {INSTRUCTIONS.map((item, i) => (
+            <View key={i} style={styles.bulletItem}>
+              <Text style={styles.bulletMarker}>•</Text>
+              <Text style={styles.bulletText}>{item}</Text>
+            </View>
+          ))}
         </View>
-        <Text style={{ marginTop: 24, fontSize: 8, color: '#555' }}>
-          Generated on: {new Date().toLocaleDateString('en-IN')}
+
+        <View style={{ marginTop: 6 }}>
+          <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 6 }}>Arrangement Contact:</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Image src={`data:image/png;base64,${getElectricalArrangementsHiBase64()}`} style={{ height: 10, width: 46 }} />
+            <Text style={{ fontSize: 9 }}>/ Electrical Arrangements: 98120-26070</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Image src={`data:image/png;base64,${getTentArrangementsHiBase64()}`} style={{ height: 10, width: 33 }} />
+            <Text style={{ fontSize: 9 }}>/ Tent Arrangements: 85718-08210</Text>
+          </View>
+        </View>
+
+        <Text style={{ marginTop: 20, fontSize: 8, color: '#555' }}>
+          Generated on: {new Date().toLocaleDateString('en-IN')} — This is a computer-generated document and does
+          not require a signature.
         </Text>
       </Page>
     </Document>
