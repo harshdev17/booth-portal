@@ -107,7 +107,12 @@ const PublicHome = async () => {
   // display position 2/3 (previously purely positional, which mislabeled
   // Artisan Card Holders "2(A)" once display_order put it there; confirmed
   // live, 2026-11-27). Every other category gets a plain sequential number.
-  const SHARED_SLOT_SLUGS = new Set(['refreshment-stalls', 'sweets-special-items'])
+  // Also only applies when BOTH of the pair are actually showing on the
+  // homepage (e.g. both open for applications) — if only one of them is
+  // listed, it gets a plain number too, not a lone "(A)" with no "(B)".
+  const SHARED_SLOT_SLUGS_ALL = new Set(['refreshment-stalls', 'sweets-special-items'])
+  const presentSharedSlugs = rawCategories.filter(c => SHARED_SLOT_SLUGS_ALL.has(c.slug)).map(c => c.slug)
+  const SHARED_SLOT_SLUGS = presentSharedSlugs.length === 2 ? SHARED_SLOT_SLUGS_ALL : new Set<string>()
 
   const badgeLabels = rawCategories.reduce<{ labels: string[]; seq: number; sharedSlot: number | null }>(
     (acc, category) => {
