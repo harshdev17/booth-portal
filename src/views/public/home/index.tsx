@@ -38,7 +38,14 @@ interface CachedHomeData {
 
 let cachedHomeData: CachedHomeData | null = null
 let homeDataCachedAt = 0
-const HOME_CACHE_TTL_MS = 30_000
+
+// Temporarily dropped to effectively "off" (2026-11-27) while diagnosing a
+// report that a category's show_on_homepage=0 change wasn't reflecting live
+// on production for several minutes, well past the old 30s window —
+// confirmed the DB value itself was correct the whole time via direct query,
+// so this in-memory cache (or a stale server process holding it) was the
+// remaining suspect. Revert to 30_000 once confirmed this was the cause.
+const HOME_CACHE_TTL_MS = 1
 
 /**
  * PublicHome server component that fetches category and event data from the DB
