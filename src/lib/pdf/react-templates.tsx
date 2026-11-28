@@ -1,8 +1,16 @@
 import 'server-only'
 
-import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { Document, Image, Link, Page, renderToBuffer, StyleSheet, Text, View } from '@react-pdf/renderer'
 
-import { getElectricalArrangementsHiBase64, getLogoBase64, getTentArrangementsHiBase64 } from '@/lib/pdf/assets'
+import {
+  getArrangementContactHeadingHiBase64,
+  getCompanionDetailsQrBase64,
+  getElectricalArrangementsHiBase64,
+  getImportantNoticeHeadingHiBase64,
+  getImportantNoticeParagraphHiBase64,
+  getLogoBase64,
+  getTentArrangementsHiBase64
+} from '@/lib/pdf/assets'
 
 // English-only PDF generation via @react-pdf/renderer, a pure-JS layout
 // engine that needs no browser process — unlike the earlier Playwright/
@@ -334,17 +342,14 @@ const INSTRUCTIONS = [
 ]
 
 /**
- * Format mirrors the official Allotment Letter template supplied 2026-11-27
- * (Allotment_Letter.docx) as closely as @react-pdf/renderer allows. Two
- * deliberate differences from that source document:
- *  - The Hindi "companion/staff detail — scan this barcode" notice is
- *    omitted: no feature exists yet to collect that data or generate a
- *    working QR for it (per explicit decision, adding a fake/non-functional
- *    QR code would be worse than leaving the section out).
- *  - Hindi text elsewhere (Arrangement Contact labels) is rendered as a
- *    pre-rendered image, not <Text> — see the comment on
- *    getElectricalArrangementsHiBase64/getTentArrangementsHiBase64 in
- *    lib/pdf/assets.ts for why.
+ * Format mirrors the official Allotment Letter template supplied 2026-11-28
+ * (Allotment_Letter-1.docx) as closely as @react-pdf/renderer allows. The
+ * companion/staff-detail notice (omitted in the previous version, which had
+ * no real destination) now links to the organiser's actual Google Form —
+ * both the QR image and the form URL come straight from that docx. All
+ * Hindi text (headings + the notice paragraph) is a pre-rendered image, not
+ * <Text> — see the comment above getPdfLabelBase64 in lib/pdf/assets.ts for
+ * why (@react-pdf/renderer has no Indic-script shaping engine).
  */
 export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Promise<Buffer> {
   const isPaid = (data.allotmentAmountPaise ?? 0) > 0
@@ -408,8 +413,30 @@ export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Pr
           ))}
         </View>
 
+        <View style={{ marginTop: 4, marginBottom: 10, borderWidth: 1, borderColor: '#000', borderRadius: 4, padding: 8 }}>
+          <Image
+            src={`data:image/png;base64,${getImportantNoticeHeadingHiBase64()}`}
+            style={{ height: 11, width: (128.77 / 28) * 11, marginBottom: 2 }}
+          />
+          <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 6 }}>/ Important Notice:</Text>
+          <Image
+            src={`data:image/png;base64,${getImportantNoticeParagraphHiBase64()}`}
+            style={{ height: 42.75, width: 500, marginBottom: 8 }}
+          />
+          <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+            <Image src={`data:image/png;base64,${getCompanionDetailsQrBase64()}`} style={{ height: 75, width: 75 }} />
+          </View>
+          <Link src='https://forms.gle/CagqfddzNtx1nK126' style={{ fontSize: 9, marginTop: 4, textAlign: 'center' }}>
+            https://forms.gle/CagqfddzNtx1nK126
+          </Link>
+        </View>
+
         <View style={{ marginTop: 6 }}>
-          <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 6 }}>Arrangement Contact:</Text>
+          <Image
+            src={`data:image/png;base64,${getArrangementContactHeadingHiBase64()}`}
+            style={{ height: 10.5, width: (102.86 / 25) * 10.5, marginBottom: 2 }}
+          />
+          <Text style={{ fontSize: 9.5, fontWeight: 700, marginBottom: 6 }}>/ Arrangement Contact:</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <Image src={`data:image/png;base64,${getElectricalArrangementsHiBase64()}`} style={{ height: 10, width: 46 }} />
             <Text style={{ fontSize: 9 }}>/ Electrical Arrangements: 98120-26070</Text>
