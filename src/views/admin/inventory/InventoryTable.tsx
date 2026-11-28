@@ -70,6 +70,9 @@ export type ShopUnitRowData = {
   // from this row's Status dropdown, since such a category's stalls are for
   // direct allotment only by definition (see the 2026-10-28 changelog entry).
   categoryIsPublic?: boolean
+
+  /** This stall's category's selection_method — drives which payment column(s) the CSV export shows when filtered to one category. */
+  categorySelectionMethod?: string
   direction: string | null
   emdAmountPaise: number | null
   status: 'available' | 'reserved' | 'reserved_for_direct_allotment' | 'allotted' | 'cancelled' | 'rejected'
@@ -78,6 +81,14 @@ export type ShopUnitRowData = {
   isDirectAllotment?: boolean
   paymentStatus?: string | null
   paymentAmountPaise?: number | null
+
+  /** Completion date of the pay_now/auction_final payment (or the direct-allotment record's own date) shown in "Stall Amount" — CSV export's "Payment Date" column. */
+  paymentDate?: string | null
+
+  /** Latest successful payment amount for this application, per purpose — independent of paymentAmountPaise. Used only by the CSV export's category-specific payment columns. */
+  allotmentPaymentPaise?: number | null
+  auctionParticipationPaymentPaise?: number | null
+  auctionFinalPaymentPaise?: number | null
   isCancelled?: boolean
   cancelReason?: string | null
   allotmentPaymentDeadlineAt?: string | null
@@ -829,18 +840,37 @@ const InventoryTable = ({
 
         if (stallNumeric === null || stallNumeric < lo || stallNumeric > hi) return false
       } else {
-        const haystack = [
-          row.stallNumber,
-          row.categoryName,
-          row.direction,
-          row.applicationNumber,
-          row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
-        ]
-          .filter((v): v is string => v !== null)
-          .join(' ')
-          .toLowerCase()
+        // A plain single-number search (e.g. "672") must also match a row
+        // whose OWN stall_number is a combined range (e.g. "670-675") when
+        // the searched number falls inside that range — not just an exact
+        // substring of the range text itself, which "672" never is.
+        // Reuses the same single-number-vs-range distinction as
+        // getPhysicalBoothCount (lib/inventory/stall-range.ts): only a
+        // genuine ascending "N-M" range (M > N) is treated as a range here.
+        const searchNumeric = /^\d+$/.test(searchLower) ? Number(searchLower) : null
+        const stallRangeMatch = row.stallNumber?.match(/^(\d+)\s*-\s*(\d+)$/)
 
-        if (!haystack.includes(searchLower)) return false
+        const isWithinStallRange =
+          searchNumeric !== null &&
+          stallRangeMatch !== null &&
+          Number(stallRangeMatch[2]) > Number(stallRangeMatch[1]) &&
+          searchNumeric >= Number(stallRangeMatch[1]) &&
+          searchNumeric <= Number(stallRangeMatch[2])
+
+        if (!isWithinStallRange) {
+          const haystack = [
+            row.stallNumber,
+            row.categoryName,
+            row.direction,
+            row.applicationNumber,
+            row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
+          ]
+            .filter((v): v is string => v !== null)
+            .join(' ')
+            .toLowerCase()
+
+          if (!haystack.includes(searchLower)) return false
+        }
       }
     }
 
@@ -1000,6 +1030,7 @@ const InventoryTable = ({
   // computes the valid page directly during render instead of needing a
   // setState-in-effect round-trip just to correct it afterward.
   const currentPage = Math.min(page, totalPages)
+
   const pageRows =
     pageSize === 'all' ? filteredRows : filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
@@ -1462,6 +1493,24 @@ const InventoryTable = ({
   // tab/search/category/status/type/direction/fees-paid filter (reported
   // live 2026-11-28). filteredRows already carries every field needed.
   const handleExportCsv = () => {
+    // Payment columns are conditional on the active category filter, per
+    // explicit request (2026-11-28): "if only refreshment filter ki export
+    // ki to ye sab, else sabke to ye sab" — a single non-auction category
+    // only needs "Allotment Payment"; a single auction category only needs
+    // the two auction columns; "All Categories" always shows all three
+    // (blank per row where not applicable), since rows from different
+    // selection methods are mixed together.
+    const categoryMethods =
+      categoryFilter === ALL
+        ? null
+        : new Set(filteredRows.filter(r => r.categoryName === categoryFilter).map(r => r.categorySelectionMethod))
+
+    const showAllotmentPaymentCol = categoryFilter === ALL || !categoryMethods || [...categoryMethods].some(m => m !== 'auction')
+    const showAuctionPaymentCols = categoryFilter === ALL || !categoryMethods || [...categoryMethods].some(m => m === 'auction')
+
+    const formatRupees = (paise: number | null | undefined) =>
+      paise !== null && paise !== undefined ? String(paise / 100) : ''
+
     const header = [
       'Booth/Stall No.',
       'Single/Double',
@@ -1469,7 +1518,9 @@ const InventoryTable = ({
       'Direction',
       'Stall Amount',
       'Status',
-      'Allotment Type',
+      'Payment Date',
+      ...(showAllotmentPaymentCol ? ['Allotment Payment'] : []),
+      ...(showAuctionPaymentCols ? ['Auction Participation Payment', 'Auction Final Payment'] : []),
       'Organisation/Allottee Name',
       'Representative/Contact Person',
       "Father's Name",
@@ -1482,24 +1533,42 @@ const InventoryTable = ({
 
     // Allottee columns only have data for a row that's actually allotted
     // (draw or direct) — an available/reserved stall has no applicant yet,
-    // so those columns are correctly left blank for it.
-    const body = filteredRows.map(row => [
-      row.stallNumber,
-      row.shopType === 'single' ? 'Single' : 'Double',
-      row.categoryName,
-      row.direction ?? '',
-      row.emdAmountPaise !== null && row.emdAmountPaise !== undefined ? String(row.emdAmountPaise / 100) : '',
-      STATUS_CONFIG[row.status]?.label ?? row.status,
-      row.applicationId ? (row.isDirectAllotment ? 'Direct Allotment' : 'Public Draw') : '',
-      row.allotteeOrganisationName ?? '',
-      row.allotteeRepresentativeName ?? '',
-      row.allotteeFatherName ?? '',
-      row.allotteeMobileNumber ?? '',
-      row.allotteeEmail ?? '',
-      row.allotteeAddress ?? '',
-      row.allotteeAadhaarLast4 ?? '',
-      row.allotteeWorkPurpose ?? ''
-    ])
+    // so those columns are correctly left blank for it. Stall Amount mirrors
+    // the on-screen column's own fallback (emdAmountPaise, then
+    // paymentAmountPaise) — the export previously used emdAmountPaise alone,
+    // which is null once a stall is allotted and its real amount only lives
+    // in paymentAmountPaise, so this column exported blank for every
+    // allotted row (reported live, 2026-11-28).
+    const body = filteredRows.map(row => {
+      const stallAmount =
+        row.emdAmountPaise && row.emdAmountPaise > 0
+          ? row.emdAmountPaise
+          : row.paymentAmountPaise && row.paymentAmountPaise > 0
+            ? row.paymentAmountPaise
+            : null
+
+      return [
+        row.stallNumber,
+        row.shopType === 'single' ? 'Single' : 'Double',
+        row.categoryName,
+        row.direction ?? '',
+        formatRupees(stallAmount),
+        STATUS_CONFIG[row.status]?.label ?? row.status,
+        row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-IN') : '',
+        ...(showAllotmentPaymentCol ? [formatRupees(row.allotmentPaymentPaise)] : []),
+        ...(showAuctionPaymentCols
+          ? [formatRupees(row.auctionParticipationPaymentPaise), formatRupees(row.auctionFinalPaymentPaise)]
+          : []),
+        row.allotteeOrganisationName ?? '',
+        row.allotteeRepresentativeName ?? '',
+        row.allotteeFatherName ?? '',
+        row.allotteeMobileNumber ?? '',
+        row.allotteeEmail ?? '',
+        row.allotteeAddress ?? '',
+        row.allotteeAadhaarLast4 ?? '',
+        row.allotteeWorkPurpose ?? ''
+      ]
+    })
 
     const csv = [header, ...body].map(line => line.map(toCsvField).join(',')).join('\r\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })

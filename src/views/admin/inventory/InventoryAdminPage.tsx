@@ -18,6 +18,7 @@ type ShopUnitRow = {
   category_id: number
   category_name: string
   category_status: string
+  category_selection_method: string
   direction: string | null
   emd_amount_paise: number | null
   status: 'available' | 'reserved' | 'reserved_for_direct_allotment' | 'allotted' | 'cancelled' | 'rejected'
@@ -26,6 +27,16 @@ type ShopUnitRow = {
   is_direct_allotment: number | boolean
   payment_status: string | null
   payment_amount_paise: number | null
+  payment_date: string | null
+
+  // Latest payment amount per purpose, for the CSV export's per-category
+  // payment columns (Allotment Payment / Auction Participation Payment /
+  // Auction Final Payment) — each independent of `payment_amount_paise`
+  // above, which only ever reflects the single pay_now/auction_final row
+  // used for the on-screen "Stall Amount" column.
+  allotment_payment_paise: number | null
+  auction_participation_payment_paise: number | null
+  auction_final_payment_paise: number | null
   is_cancelled: number | boolean | null
   cancel_reason: string | null
   allotment_payment_deadline_at: string | null
@@ -113,7 +124,8 @@ export default async function InventoryAdminPage() {
   const [rows, categories, logs] = await withPooledConnection(query =>
     Promise.all([
     query<ShopUnitRow[]>(
-      `SELECT su.id, su.stall_number, su.shop_type, c.id AS category_id, c.name AS category_name, c.status AS category_status, su.direction, su.emd_amount_paise,
+      `SELECT su.id, su.stall_number, su.shop_type, c.id AS category_id, c.name AS category_name, c.status AS category_status,
+              c.selection_method AS category_selection_method, su.direction, su.emd_amount_paise,
               su.status,
               COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
               COALESCE(a.id, da.application_id) AS application_id,
@@ -142,6 +154,22 @@ export default async function InventoryAdminPage() {
               (da.id IS NOT NULL) AS is_direct_allotment,
               COALESCE(p.status, da.payment_status) AS payment_status,
               COALESCE(p.amount_paise, da.payment_amount_paise, su.emd_amount_paise, c.allotment_amount_paise) AS payment_amount_paise,
+
+              -- Completion date of a successful pay_now/auction_final
+              -- payment — updated_at (not created_at), since created_at is
+              -- when the Razorpay order was first created, not when it was
+              -- actually confirmed paid. direct_allotments has no separate
+              -- payment-recorded timestamp of its own, so it falls back to
+              -- the direct_allotments row's own created_at.
+              CASE WHEN p.status IN ('paid', 'success') THEN p.updated_at ELSE da.created_at END AS payment_date,
+
+              -- Per-purpose latest payment amounts for the CSV export's
+              -- category-specific columns — independent of payment_amount_paise
+              -- above (which only reflects whichever single pay_now/
+              -- auction_final row this stall's own join picked).
+              allotment_pay.amount_paise AS allotment_payment_paise,
+              auction_fee_pay.amount_paise AS auction_participation_payment_paise,
+              auction_final_pay.amount_paise AS auction_final_payment_paise,
               (da.id IS NULL AND (
                 su.status = 'cancelled' OR a.status = 'cancelled' OR
                 -- A direct-allotment cancellation only still counts as "this
@@ -182,7 +210,7 @@ export default async function InventoryAdminPage() {
          ) da_max ON da_max.max_id = da1.id
        ) da ON da.shop_unit_id = su.id
        LEFT JOIN (
-         SELECT p1.application_id, p1.status, p1.amount_paise
+         SELECT p1.application_id, p1.status, p1.amount_paise, p1.updated_at
          FROM payments p1
          JOIN (
            SELECT application_id, MAX(id) AS max_id
@@ -191,6 +219,31 @@ export default async function InventoryAdminPage() {
            GROUP BY application_id
          ) p_max ON p_max.max_id = p1.id
        ) p ON p.application_id = COALESCE(a.id, da.application_id)
+       -- One join per purpose for the CSV export's per-category payment
+       -- columns -- each independently picks that application's latest
+       -- payment row of that specific purpose, regardless of which purpose
+       -- the "p" join above picked for the on-screen "Stall Amount" column.
+       LEFT JOIN (
+         SELECT p1.application_id, p1.amount_paise
+         FROM payments p1
+         JOIN (
+           SELECT application_id, MAX(id) AS max_id FROM payments WHERE purpose = 'pay_now' AND status IN ('paid', 'success') GROUP BY application_id
+         ) p_max ON p_max.max_id = p1.id
+       ) allotment_pay ON allotment_pay.application_id = COALESCE(a.id, da.application_id)
+       LEFT JOIN (
+         SELECT p1.application_id, p1.amount_paise
+         FROM payments p1
+         JOIN (
+           SELECT application_id, MAX(id) AS max_id FROM payments WHERE purpose = 'auction_fee' AND status IN ('paid', 'success') GROUP BY application_id
+         ) p_max ON p_max.max_id = p1.id
+       ) auction_fee_pay ON auction_fee_pay.application_id = COALESCE(a.id, da.application_id)
+       LEFT JOIN (
+         SELECT p1.application_id, p1.amount_paise
+         FROM payments p1
+         JOIN (
+           SELECT application_id, MAX(id) AS max_id FROM payments WHERE purpose = 'auction_final' AND status IN ('paid', 'success') GROUP BY application_id
+         ) p_max ON p_max.max_id = p1.id
+       ) auction_final_pay ON auction_final_pay.application_id = COALESCE(a.id, da.application_id)
        LEFT JOIN (
          SELECT shop_unit_id, MAX(id) AS max_id
          FROM direct_allotments
@@ -272,6 +325,7 @@ export default async function InventoryAdminPage() {
     shopType: row.shop_type,
     categoryName: row.category_name,
     categoryIsPublic: row.category_status === 'open',
+    categorySelectionMethod: row.category_selection_method,
     direction: row.direction,
     emdAmountPaise: row.emd_amount_paise,
     status: row.status,
@@ -280,6 +334,10 @@ export default async function InventoryAdminPage() {
     isDirectAllotment: Boolean(row.is_direct_allotment),
     paymentStatus: row.payment_status,
     paymentAmountPaise: row.payment_amount_paise,
+    paymentDate: row.payment_date,
+    allotmentPaymentPaise: row.allotment_payment_paise,
+    auctionParticipationPaymentPaise: row.auction_participation_payment_paise,
+    auctionFinalPaymentPaise: row.auction_final_payment_paise,
     isCancelled: Boolean(row.is_cancelled),
     cancelReason: row.cancel_reason,
     allotmentPaymentDeadlineAt: row.allotment_payment_deadline_at,
