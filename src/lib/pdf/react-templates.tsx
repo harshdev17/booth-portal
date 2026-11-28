@@ -317,9 +317,10 @@ export type AllotmentLetterPdfData = {
   mobileNumber?: string | null
   email?: string | null
   address?: string | null
-  aadhaarLast4?: string | null
+  aadhaarNumber?: string | null
   allotmentAmountPaise?: number | null
   allotmentPaidAt?: string | null
+  allotmentPaymentId?: string | null
 }
 
 const DataTableRow = ({ label, value, last }: { label: string; value: string; last?: boolean }) => (
@@ -389,18 +390,19 @@ export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Pr
           <DataTableRow label='Work Category' value={data.workPurpose || '—'} />
           <DataTableRow label='Allocated Booth/Stall Number' value={data.stallNumber} />
           <DataTableRow label='WhatsApp Mobile Number' value={data.mobileNumber || '—'} />
-          <DataTableRow label='Aadhaar Number' value={data.aadhaarLast4 ? `XXXX-XXXX-${data.aadhaarLast4}` : '—'} last />
+          <DataTableRow label='Aadhaar Number' value={data.aadhaarNumber ?? '—'} last />
         </View>
 
         <View style={styles.dataTable}>
-          <DataTableRow label='Stall Allotment Fee' value={feeLabel} />
+          <DataTableRow label='Stall Allotment Fee' value={feeLabel} last={!data.allotmentPaidAt && !data.allotmentPaymentId} />
           {data.allotmentPaidAt && (
             <DataTableRow
               label='Paid At'
               value={new Date(data.allotmentPaidAt).toLocaleString('en-IN')}
-              last
+              last={!data.allotmentPaymentId}
             />
           )}
+          {data.allotmentPaymentId && <DataTableRow label='Payment ID' value={data.allotmentPaymentId} last />}
         </View>
 
         <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 6 }}>Important Instructions:</Text>
@@ -413,7 +415,12 @@ export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Pr
           ))}
         </View>
 
-        <View style={{ marginTop: 4, marginBottom: 10, borderWidth: 1, borderColor: '#000', borderRadius: 4, padding: 8 }}>
+        {/* wrap={false} on both blocks (2026-11-28 fix): @react-pdf/renderer
+            splits a View across a page boundary by default, which was
+            cutting the Important Notice box and/or the Arrangement Contact
+            block in half between pages instead of moving the whole thing to
+            the next page together. */}
+        <View wrap={false} style={{ marginTop: 4, marginBottom: 10, borderWidth: 1, borderColor: '#000', borderRadius: 4, padding: 8 }}>
           <Image
             src={`data:image/png;base64,${getImportantNoticeHeadingHiBase64()}`}
             style={{ height: 11, width: (128.77 / 28) * 11, marginBottom: 2 }}
@@ -431,7 +438,7 @@ export async function renderAllotmentLetterPdf(data: AllotmentLetterPdfData): Pr
           </Link>
         </View>
 
-        <View style={{ marginTop: 6 }}>
+        <View wrap={false} style={{ marginTop: 6 }}>
           <Image
             src={`data:image/png;base64,${getArrangementContactHeadingHiBase64()}`}
             style={{ height: 10.5, width: (102.86 / 25) * 10.5, marginBottom: 2 }}

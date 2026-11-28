@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { decryptAadhaar } from '@/lib/applications/aadhaar-crypto'
 import { query } from '@/lib/db/client'
 import { renderAllotmentLetterPdf } from '@/lib/pdf/react-templates'
 
@@ -14,6 +15,7 @@ export type AllotmentLetterRow = {
   email: string
   address: string
   aadhaar_last4: string
+  aadhaar_ciphertext: Buffer
   work_purpose: string
   submitted_at: string | null
   status: string
@@ -24,6 +26,7 @@ export type AllotmentLetterRow = {
   allotment_amount_paise: number | null
   allotment_payment_status: string | null
   allotment_paid_at: string | null
+  allotment_payment_id: string | null
   allotment_letter_released_at: string | null
 }
 
@@ -36,7 +39,7 @@ export type AllotmentLetterRow = {
 export async function findAllotmentLetterRow(where: 'a.id = ?' | 'a.application_number = ?', value: number | string) {
   const rows = await query<AllotmentLetterRow[]>(
     `SELECT a.id, a.application_number, a.access_token_hash, a.organisation_name, a.representative_name, a.father_name,
-            a.mobile_number, a.email, a.address, a.aadhaar_last4, a.work_purpose,
+            a.mobile_number, a.email, a.address, a.aadhaar_last4, a.aadhaar_ciphertext, a.work_purpose,
             a.submitted_at, a.status, a.allotment_letter_released_at,
             c.name AS category_name, c.name_hi AS category_name_hi,
             COALESCE(su.stall_number, da_su.stall_number) AS stall_number,
@@ -45,7 +48,11 @@ export async function findAllotmentLetterRow(where: 'a.id = ?' | 'a.application_
             COALESCE(p.status, da.payment_status) AS allotment_payment_status,
             (SELECT pt.created_at FROM payment_transactions pt
               WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
-              ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at
+              ORDER BY pt.created_at DESC LIMIT 1) AS allotment_paid_at,
+            (SELECT pt.razorpay_payment_id FROM payment_transactions pt
+              WHERE pt.payment_id = p.id AND pt.type IN ('checkout_success', 'webhook_confirmed')
+                AND pt.razorpay_payment_id IS NOT NULL
+              ORDER BY pt.created_at DESC LIMIT 1) AS allotment_payment_id
      FROM applications a
      JOIN categories c ON c.id = a.category_id
      LEFT JOIN shop_units su ON su.allotted_to_application_id = a.id
@@ -65,6 +72,11 @@ export async function findAllotmentLetterRow(where: 'a.id = ?' | 'a.application_
 // see react-templates.tsx) — matching the already-English-by-default
 // convention these PDFs settled on.
 export async function renderAllotmentLetterPdfResponse(row: AllotmentLetterRow, _lang: 'en' | 'hi'): Promise<Response> {
+  // Full Aadhaar (not the masked last-4) shown here per explicit confirmation
+  // (2026-11-28) — this PDF is only ever reached by the applicant's own
+  // access token or an admin with the application's own permission, same
+  // authenticated-context precedent as the admin detail page / Print
+  // Application PDF (see decryptAadhaar's own doc comment).
   const buffer = await renderAllotmentLetterPdf({
     applicationNumber: row.application_number,
     organisationName: row.organisation_name,
@@ -77,9 +89,10 @@ export async function renderAllotmentLetterPdfResponse(row: AllotmentLetterRow, 
     mobileNumber: row.mobile_number,
     email: row.email,
     address: row.address,
-    aadhaarLast4: row.aadhaar_last4,
+    aadhaarNumber: decryptAadhaar(row.aadhaar_ciphertext),
     allotmentAmountPaise: row.allotment_amount_paise,
-    allotmentPaidAt: row.allotment_paid_at
+    allotmentPaidAt: row.allotment_paid_at,
+    allotmentPaymentId: row.allotment_payment_id
   })
 
   return new Response(new Uint8Array(buffer), {
