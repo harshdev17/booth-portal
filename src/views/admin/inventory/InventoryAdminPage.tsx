@@ -160,8 +160,8 @@ export default async function InventoryAdminPage() {
               -- when the Razorpay order was first created, not when it was
               -- actually confirmed paid. direct_allotments has no separate
               -- payment-recorded timestamp of its own, so it falls back to
-              -- the direct_allotments row's own created_at.
-              CASE WHEN p.status IN ('paid', 'success') THEN p.updated_at ELSE da.created_at END AS payment_date,
+              -- the direct_allotments row's own allotted_at.
+              CASE WHEN p.status IN ('paid', 'success') THEN p.updated_at ELSE da.allotted_at END AS payment_date,
 
               -- Per-purpose latest payment amounts for the CSV export's
               -- category-specific columns — independent of payment_amount_paise
