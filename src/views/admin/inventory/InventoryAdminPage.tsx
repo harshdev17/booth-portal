@@ -31,6 +31,14 @@ type ShopUnitRow = {
   allotment_payment_deadline_at: string | null
   is_payment_overdue: number | boolean
   created_at: string
+  allottee_organisation_name: string | null
+  allottee_representative_name: string | null
+  allottee_father_name: string | null
+  allottee_mobile_number: string | null
+  allottee_email: string | null
+  allottee_address: string | null
+  allottee_aadhaar_last4: string | null
+  allottee_work_purpose: string | null
 }
 
 type InventoryLogRow = {
@@ -109,6 +117,19 @@ export default async function InventoryAdminPage() {
               su.status,
               COALESCE(a.application_number, da.application_number, da.allottee_name) AS application_number,
               COALESCE(a.id, da.application_id) AS application_id,
+              -- Allottee details for CSV export (and any future detail view)
+              -- — draw/auction allotments come from applications, direct
+              -- allotments from direct_allotments; never the full Aadhaar
+              -- number, only its last 4 digits, matching the
+              -- allotment-letter/masking convention used everywhere else.
+              COALESCE(a.organisation_name, da.allottee_name) AS allottee_organisation_name,
+              COALESCE(a.representative_name, da.contact_person) AS allottee_representative_name,
+              COALESCE(a.father_name, da.father_name) AS allottee_father_name,
+              COALESCE(a.mobile_number, da.mobile_number) AS allottee_mobile_number,
+              COALESCE(a.email, da.email) AS allottee_email,
+              COALESCE(a.address, da.address) AS allottee_address,
+              COALESCE(a.aadhaar_last4, RIGHT(da.aadhaar_number, 4)) AS allottee_aadhaar_last4,
+              COALESCE(a.work_purpose, da.work_purpose) AS allottee_work_purpose,
               -- Whether THIS stall was actually allotted via the Direct
               -- Allotment flow — driven solely by a real direct_allotments
               -- row, never by categories.is_direct_allotment (that flag only
@@ -263,7 +284,15 @@ export default async function InventoryAdminPage() {
     cancelReason: row.cancel_reason,
     allotmentPaymentDeadlineAt: row.allotment_payment_deadline_at,
     isPaymentOverdue: Boolean(row.is_payment_overdue),
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    allotteeOrganisationName: row.allottee_organisation_name,
+    allotteeRepresentativeName: row.allottee_representative_name,
+    allotteeFatherName: row.allottee_father_name,
+    allotteeMobileNumber: row.allottee_mobile_number,
+    allotteeEmail: row.allottee_email,
+    allotteeAddress: row.allottee_address,
+    allotteeAadhaarLast4: row.allottee_aadhaar_last4,
+    allotteeWorkPurpose: row.allottee_work_purpose
   }))
 
   return (

@@ -82,6 +82,14 @@ export type ShopUnitRowData = {
   cancelReason?: string | null
   allotmentPaymentDeadlineAt?: string | null
   isPaymentOverdue?: boolean
+  allotteeOrganisationName?: string | null
+  allotteeRepresentativeName?: string | null
+  allotteeFatherName?: string | null
+  allotteeMobileNumber?: string | null
+  allotteeEmail?: string | null
+  allotteeAddress?: string | null
+  allotteeAadhaarLast4?: string | null
+  allotteeWorkPurpose?: string | null
   createdAt: string
 }
 
@@ -1454,15 +1462,43 @@ const InventoryTable = ({
   // tab/search/category/status/type/direction/fees-paid filter (reported
   // live 2026-11-28). filteredRows already carries every field needed.
   const handleExportCsv = () => {
-    const header = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Stall Amount', 'Status']
+    const header = [
+      'Booth/Stall No.',
+      'Single/Double',
+      'Category',
+      'Direction',
+      'Stall Amount',
+      'Status',
+      'Allotment Type',
+      'Organisation/Allottee Name',
+      'Representative/Contact Person',
+      "Father's Name",
+      'Mobile Number',
+      'Email',
+      'Address',
+      'Aadhaar (Last 4)',
+      'Work Purpose'
+    ]
 
+    // Allottee columns only have data for a row that's actually allotted
+    // (draw or direct) — an available/reserved stall has no applicant yet,
+    // so those columns are correctly left blank for it.
     const body = filteredRows.map(row => [
       row.stallNumber,
       row.shopType === 'single' ? 'Single' : 'Double',
       row.categoryName,
       row.direction ?? '',
       row.emdAmountPaise !== null && row.emdAmountPaise !== undefined ? String(row.emdAmountPaise / 100) : '',
-      STATUS_CONFIG[row.status]?.label ?? row.status
+      STATUS_CONFIG[row.status]?.label ?? row.status,
+      row.applicationId ? (row.isDirectAllotment ? 'Direct Allotment' : 'Public Draw') : '',
+      row.allotteeOrganisationName ?? '',
+      row.allotteeRepresentativeName ?? '',
+      row.allotteeFatherName ?? '',
+      row.allotteeMobileNumber ?? '',
+      row.allotteeEmail ?? '',
+      row.allotteeAddress ?? '',
+      row.allotteeAadhaarLast4 ?? '',
+      row.allotteeWorkPurpose ?? ''
     ])
 
     const csv = [header, ...body].map(line => line.map(toCsvField).join(',')).join('\r\n')
