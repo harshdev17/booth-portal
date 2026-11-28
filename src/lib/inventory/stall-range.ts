@@ -4,6 +4,16 @@
 // an admin (KPI cards, tab badges, category/direction breakdowns) must count
 // physical booths, not rows, or a combined "103-105" row silently undercounts
 // by 2.
+//
+// NOT every "N-M" looking string is a real range, though — "270-1" and
+// "442-1" are single booths using a "<main number>-<sub number>" suffix
+// convention (confirmed live, 2026-11-28: these inflated the Total Units KPI
+// from ~387 to 1097, since `|1 - 270| + 1 = 270` was being counted for what
+// is really one booth). A genuine combined range always counts UP (the
+// second number is the larger one, e.g. "396-401", "670-675", "91-92") —
+// "270-1"'s second number being smaller than the first is exactly what
+// distinguishes a suffix from a real range, confirmed by the admin: "270-1
+// hai to ye single hai ... if 270-272 hai to ye range hai".
 export function getPhysicalBoothCount(stallNumber: string | null | undefined): number {
   if (!stallNumber) return 0
 
@@ -11,5 +21,10 @@ export function getPhysicalBoothCount(stallNumber: string | null | undefined): n
 
   if (!match) return 1
 
-  return Math.abs(Number(match[2]) - Number(match[1])) + 1
+  const first = Number(match[1])
+  const second = Number(match[2])
+
+  if (second <= first) return 1
+
+  return second - first + 1
 }
