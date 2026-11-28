@@ -5,6 +5,7 @@ import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { getCategoryById } from '@/lib/applications/categories'
 import { query } from '@/lib/db/client'
 import { parseIstDateTime } from '@/lib/format-date'
+import { getPhysicalBoothCount } from '@/lib/inventory/stall-range'
 import { createRazorpayOrder, getRazorpayKeyId, RazorpayApiError } from '@/lib/payments/razorpay'
 import { recordOrderCreated } from '@/lib/payments/payment-records'
 import { hasRecentVerifiedOtp } from '@/lib/notifications/otp'
@@ -107,13 +108,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       const category = categoryRows[0]
 
-      const stallRows = await query<Array<{ shop_type: 'single' | 'double' }>>(
-        `SELECT shop_type FROM shop_units WHERE allotted_to_application_id = ? LIMIT 1`,
+      const stallRows = await query<Array<{ shop_type: 'single' | 'double'; stall_number: string }>>(
+        `SELECT shop_type, stall_number FROM shop_units WHERE allotted_to_application_id = ? LIMIT 1`,
         [applicationId]
       )
-      const resolvedCategoryAmountPaise = category
-        ? resolveAllotmentAmountPaise(category, stallRows[0]?.shop_type)
-        : null
+
+      // Multiplied by physical booth count (e.g. "101-104" = 4 single
+      // booths given to one applicant) for the same reason declareResult()
+      // does — this fallback only ever runs when no payments row was
+      // already seeded with the correct amount (see below), but it would
+      // otherwise under-charge for a combined stall in that edge case too.
+      const perBoothAmountPaise = category ? resolveAllotmentAmountPaise(category, stallRows[0]?.shop_type) : null
+
+      const resolvedCategoryAmountPaise =
+        perBoothAmountPaise !== null ? perBoothAmountPaise * getPhysicalBoothCount(stallRows[0]?.stall_number) : null
 
       // Check seeded payment record first (for direct allotments or pre-configured amounts)
       const existingPayments = await query<Array<{ amount_paise: number }>>(

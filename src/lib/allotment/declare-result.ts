@@ -6,7 +6,7 @@ import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
 import { buildCsv, parseCsvLine } from '@/lib/inventory/shop-units-csv'
-import { stallSpansOverlap } from '@/lib/inventory/stall-range'
+import { getPhysicalBoothCount, stallSpansOverlap } from '@/lib/inventory/stall-range'
 import { sendNotification } from '@/lib/notifications/service'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -30,6 +30,7 @@ export type ResultSheetRow = {
   categoryName: string | null
   direction: string | null
   applicationNumber: string
+
   // Only present for an 'auction_result' sheet — see AUCTION_RESULT_SHEET_COLUMNS.
   finalAmountPaise: number | null
 }
@@ -286,9 +287,11 @@ export async function previewResultSheet(
 
   const stallCountInSheet = new Map<string, number>()
   const appCountInSheet = new Map<string, number>()
+
   for (const r of rows) {
     const sKey = r.stallNumber.trim().toLowerCase()
     const aKey = r.applicationNumber.trim().toUpperCase()
+
     stallCountInSheet.set(sKey, (stallCountInSheet.get(sKey) ?? 0) + 1)
     appCountInSheet.set(aKey, (appCountInSheet.get(aKey) ?? 0) + 1)
   }
@@ -308,6 +311,7 @@ export async function previewResultSheet(
     if ((stallCountInSheet.get(sKey) ?? 0) > 1) {
       issues.push(`Booth "${row.stallNumber}" appears multiple times in this sheet.`)
     }
+
     if ((appCountInSheet.get(aKey) ?? 0) > 1) {
       issues.push(`Application "${row.applicationNumber}" appears multiple times in this sheet.`)
     }
@@ -320,12 +324,15 @@ export async function previewResultSheet(
       if (app.status !== 'auction_fee_paid' && !alreadyWon) {
         issues.push(`Application status is "${app.status}" (must be "Auction Fee Paid" before results can be recorded).`)
       }
+
       if (app.selection_method !== 'auction') {
         issues.push(`Category "${app.category_name}" is not an auction category — use the draw/manual result flow.`)
       }
+
       if (row.categoryName && row.categoryName.trim().toLowerCase() !== app.category_name.toLowerCase()) {
         issues.push(`Sheet category "${row.categoryName}" does not match applicant category "${app.category_name}".`)
       }
+
       if (!alreadyWon && (app.existing_stall || app.existing_direct_allotment)) {
         issues.push(`Applicant already allotted a stall (${app.existing_stall ? `Stall #${app.existing_stall}` : 'Direct Allotment'}).`)
       }
@@ -333,22 +340,27 @@ export async function previewResultSheet(
       if (app.status !== 'approved') {
         issues.push(`Application status is "${app.status}" (must be "approved" to allot).`)
       }
+
       if (app.selection_method === 'auction') {
         issues.push(`Category "${app.category_name}" uses auction allotment, not result declaration.`)
       }
+
       if (row.categoryName && row.categoryName.trim().toLowerCase() !== app.category_name.toLowerCase()) {
         issues.push(`Sheet category "${row.categoryName}" does not match applicant category "${app.category_name}".`)
       }
+
       if (app.existing_stall || app.existing_direct_allotment) {
         issues.push(`Applicant already allotted a stall (${app.existing_stall ? `Stall #${app.existing_stall}` : 'Direct Allotment'}).`)
       }
     }
 
     let isNewStall = false
+
     if (stall) {
       if (app && stall.category_id !== app.category_id) {
         issues.push(`Existing booth "${row.stallNumber}" belongs to a different category.`)
       }
+
       if (stall.status !== 'available' || stall.allotted_to_application_id !== null) {
         issues.push(`Booth "${row.stallNumber}" is currently "${stall.status}" (not available).`)
       }
@@ -368,6 +380,7 @@ export async function previewResultSheet(
     }
 
     const isValid = issues.length === 0
+
     if (isValid) {
       validCount++
     } else {
@@ -623,8 +636,14 @@ function isMissingTable(error: unknown): boolean {
 }
 
 function toResultRowView(row: ResultRowViewQuery): ResultRowView {
+  const perBoothAmountPaise = resolveAllotmentAmountPaise(row, row.shopType)
+
   const allotmentAmountPaise =
-    row.purpose === 'auction_result' ? row.final_amount_paise : resolveAllotmentAmountPaise(row, row.shopType)
+    row.purpose === 'auction_result'
+      ? row.final_amount_paise
+      : perBoothAmountPaise !== null
+        ? perBoothAmountPaise * getPhysicalBoothCount(row.stallNumber)
+        : null
 
   return {
     id: row.id,
@@ -923,6 +942,7 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
 
         if (isNewStall) {
           const newSet = newStallsByBatch.get(row.batch_id) ?? []
+
           if (!newSet.includes(row.stall_number)) {
             newSet.push(row.stall_number)
             newStallsByBatch.set(row.batch_id, newSet)
@@ -956,9 +976,11 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
     const currBatchId = curr.entity_id
     const currStalls = currBatchId ? batchRowsMap.get(currBatchId) ?? [] : []
     const parsedNext = (parse(curr.new_value) as Record<string, unknown>) ?? {}
+
     const createdFromAudit = Array.isArray(parsedNext.createdStallNumbers)
       ? (parsedNext.createdStallNumbers as string[])
       : null
+
     const newBoothsCreated = createdFromAudit ?? (currBatchId ? newStallsByBatch.get(currBatchId) ?? [] : [])
 
     if (i === 0) {
@@ -982,6 +1004,7 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
 
     for (const currStall of currStalls) {
       const p = prevMap.get(currStall.stall.toLowerCase())
+
       if (p && p.applicationNumber.toUpperCase() !== currStall.applicationNumber.toUpperCase()) {
         changedBooths.push({
           stall: currStall.stall,
@@ -1009,6 +1032,7 @@ export async function listResultHistory(): Promise<ResultHistoryEntry[]> {
 
     if ((!stalls || stalls.length === 0) && nextVal && typeof nextVal === 'object' && 'stalls' in (nextVal as object)) {
       const nextStalls = (nextVal as { stalls?: Array<{ stall: string; applicationNumber: string }> }).stalls
+
       if (Array.isArray(nextStalls)) {
         stalls = nextStalls.map(s => ({
           stall: s.stall,
@@ -1162,7 +1186,17 @@ export async function declareResult(batchId: string, declaredByUserId: number, i
         continue
       }
 
-      const resolvedAmountPaise = resolveAllotmentAmountPaise(row, row.shop_type)
+      // A combined stall (e.g. "101-104" = 4 physical single booths given
+      // to one applicant) must charge per-booth-type fee × physical booth
+      // count, not the flat per-booth fee — per explicit confirmation
+      // (2026-11-28): "1 artisan 14k ka hai ... range se 101-104 de diya to
+      // 4 ki payment karega, 56000 ho show hoga" (example figures vary by
+      // category's own single/double amount, same multiplication rule).
+      const perBoothAmountPaise = resolveAllotmentAmountPaise(row, row.shop_type)
+
+      const resolvedAmountPaise =
+        perBoothAmountPaise !== null ? perBoothAmountPaise * getPhysicalBoothCount(row.stall_number) : null
+
       const isPaymentRequired = Boolean(row.allotment_payment_enabled && Number(resolvedAmountPaise) > 0)
 
 

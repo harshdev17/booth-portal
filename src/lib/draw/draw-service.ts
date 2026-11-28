@@ -6,6 +6,7 @@ import type { PoolConnection } from 'mysql2/promise'
 
 import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { getPool } from '@/lib/db/client'
+import { getPhysicalBoothCount } from '@/lib/inventory/stall-range'
 import { ProvablyFairRandom } from '@/lib/draw/provably-fair'
 import { logAudit } from '@/lib/audit/log'
 import { sendNotification } from '@/lib/notifications/service'
@@ -434,11 +435,15 @@ export class LuckyDrawService {
           // required — the amount can differ by the actual stall's shop_type
           // (Single vs. Double), per resolveAllotmentAmountPaise(), so this
           // reads each winner's own assigned stall rather than one flat
-          // category-wide figure.
+          // category-wide figure. Also multiplied by physical booth count
+          // (e.g. a combined "101-104" stall = 4 single booths) — same fix
+          // as declareResult()'s manual result-upload flow, confirmed live
+          // 2026-11-28.
           for (let idx = 0; idx < allottedCount; idx++) {
             const stall = shuffledStalls[idx]
             const candidate = shuffledCandidates[idx]
-            const amountPaise = Number(resolveAllotmentAmountPaise(category, stall.shopType) ?? 0)
+            const perBoothAmountPaise = Number(resolveAllotmentAmountPaise(category, stall.shopType) ?? 0)
+            const amountPaise = perBoothAmountPaise * getPhysicalBoothCount(stall.stallNumber)
 
             await conn.query(
               `INSERT INTO payments (application_id, purpose, amount_paise, status)
@@ -467,6 +472,7 @@ export class LuckyDrawService {
       await Promise.allSettled(
         shuffledCandidates.slice(0, allottedCount).map((candidate, idx) => {
           const assignedStall = shuffledStalls[idx]
+
           const destination = candidate.mobileNumber.startsWith('+')
             ? candidate.mobileNumber
             : `+91${candidate.mobileNumber}`
