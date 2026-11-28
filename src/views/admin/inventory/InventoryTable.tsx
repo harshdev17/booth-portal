@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toCsvField } from '@/lib/export/csv'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -916,20 +917,26 @@ const InventoryTable = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, search, categoryFilter, statusFilter, typeFilter, directionFilter, feesPaidOnly, simplifiedTabs])
 
-  // Top KPI strip — mirrors filteredRows: "what matches every currently
-  // active filter right now" (per explicit request). Fees Paid counts by
-  // paymentStatus rather than row.status, since "paid" isn't a shop_units
-  // status value — it's the linked payment's own status.
-  const kpiCounts = useMemo(
-    () => ({
-      total: filteredRows.length,
-      available: filteredRows.filter(r => r.status === 'available' && !r.isCancelled).length,
-      direct: filteredRows.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled).length,
-      reserved: filteredRows.filter(r => r.status === 'reserved' && !r.isCancelled).length,
-      feesPaid: filteredRows.filter(r => r.paymentStatus === 'success' || r.paymentStatus === 'paid').length
-    }),
-    [filteredRows]
-  )
+  // Top KPI strip — mirrors tabCounts' base: every active filter EXCEPT the
+  // tab itself. Using filteredRows (tab included) made these collapse to 0
+  // whenever a status-based tab was selected, since e.g. "Allotted by Draw"
+  // already excludes "available"/"reserved"/"direct" rows by construction —
+  // fixed 2026-11-28 per explicit report that the cards went to 0 on tab
+  // select. Fees Paid counts by paymentStatus rather than row.status, since
+  // "paid" isn't a shop_units status value — it's the linked payment's own
+  // status.
+  const kpiCounts = useMemo(() => {
+    const base = rows.filter(r => matchesFilters(r, { tab: true }))
+
+    return {
+      total: base.length,
+      available: base.filter(r => r.status === 'available' && !r.isCancelled).length,
+      direct: base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled).length,
+      reserved: base.filter(r => r.status === 'reserved' && !r.isCancelled).length,
+      feesPaid: base.filter(r => r.paymentStatus === 'success' || r.paymentStatus === 'paid').length
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search, categoryFilter, statusFilter, typeFilter, directionFilter, feesPaidOnly])
 
   // "By Category" / "By Direction" summary cards — each ignores its OWN
   // filter axis (same reasoning as tabCounts above), so every category/
@@ -1430,6 +1437,52 @@ const InventoryTable = ({
     setTypeFilter(ALL)
     setDirectionFilter(ALL)
     setFeesPaidOnly(false)
+  }
+
+  // Client-side, from filteredRows — the same rows currently on screen —
+  // rather than the server /api/admin/inventory/export route, which always
+  // ran one unfiltered query over the whole table and ignored every active
+  // tab/search/category/status/type/direction/fees-paid filter (reported
+  // live 2026-11-28). filteredRows already carries every field needed.
+  const handleExportCsv = () => {
+    const header = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Stall Amount', 'Status']
+
+    const body = filteredRows.map(row => [
+      row.stallNumber,
+      row.shopType === 'single' ? 'Single' : 'Double',
+      row.categoryName,
+      row.direction ?? '',
+      row.emdAmountPaise !== null && row.emdAmountPaise !== undefined ? String(row.emdAmountPaise / 100) : '',
+      STATUS_CONFIG[row.status]?.label ?? row.status
+    ])
+
+    const csv = [header, ...body].map(line => line.map(toCsvField).join(',')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `booth-stall-inventory-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+
+    // Fire-and-forget audit record — never blocks or fails the download.
+    fetch('/api/admin/inventory/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rowCount: filteredRows.length,
+        filters: {
+          tab: stallCategoryTab,
+          search,
+          category: categoryFilter === ALL ? null : categoryFilter,
+          status: statusFilter === ALL ? null : statusFilter,
+          type: typeFilter === ALL ? null : typeFilter,
+          direction: directionFilter === ALL ? null : directionFilter,
+          feesPaidOnly
+        }
+      })
+    }).catch(() => {})
   }
 
   return (
@@ -2381,6 +2434,11 @@ const InventoryTable = ({
                 Clear
               </Button>
             )}
+
+            <Button type='button' variant='outline' size='sm' onClick={handleExportCsv} className='ml-auto'>
+              <DownloadIcon />
+              Export to CSV
+            </Button>
           </div>
         )}
       </CardHeader>

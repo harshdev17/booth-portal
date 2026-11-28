@@ -36,7 +36,6 @@ export const DIRECT_ALLOTMENT_CSV_COLUMNS = [
 ] as const
 
 export const IMPORT_CSV_COLUMNS = DIRECT_ALLOTMENT_CSV_COLUMNS
-export const EXPORT_CSV_COLUMNS = ['Booth/Stall No.', 'Single/Double', 'Category', 'Direction', 'Stall Amount', 'Status'] as const
 
 export type ShopUnitStatus = 'available' | 'reserved_for_direct_allotment' | 'allotted' | 'reserved'
 
@@ -444,35 +443,3 @@ export function parseShopUnitsCsv(text: string): ParsedCsv {
   return { rows, errors, warnings }
 }
 
-export type ShopUnitExportRow = {
-  stall_number: string
-  shop_type: 'single' | 'double'
-  category_name: string
-  direction: string | null
-  emd_amount_paise: number | null
-  status: string
-}
-
-const EXPORT_STATUS_LABEL: Record<string, string> = {
-  available: 'Available',
-  reserved: 'Reserved for Payment',
-  reserved_for_direct_allotment: 'Reserved for Direct Allotment',
-  allotted: 'Allotted',
-  cancelled: 'Cancelled',
-  rejected: 'Rejected'
-}
-
-export function buildExportCsv(rows: ShopUnitExportRow[]): string {
-  const header = [...EXPORT_CSV_COLUMNS]
-
-  const body = rows.map(row => [
-    row.stall_number,
-    row.shop_type === 'single' ? 'Single' : 'Double',
-    row.category_name,
-    row.direction ?? '',
-    row.emd_amount_paise !== null ? (row.emd_amount_paise / 100).toString() : '',
-    EXPORT_STATUS_LABEL[row.status] ?? row.status
-  ])
-
-  return buildCsv([header, ...body])
-}

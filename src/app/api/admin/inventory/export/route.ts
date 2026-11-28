@@ -1,26 +1,22 @@
 import { logAudit } from '@/lib/audit/log'
-import { query } from '@/lib/db/client'
-import { buildExportCsv, type ShopUnitExportRow } from '@/lib/inventory/shop-units-csv'
 import { requirePermission } from '@/lib/rbac/authorize'
 import { logServerError } from '@/lib/security/error-log'
 
 /**
- * Exports the current shop inventory as CSV. Permission-gated and
- * audit-logged on every export, matching the applications report export
- * pattern (CLAUDE.md §12, .ai/AUDIT_LOGS.md "data exports").
+ * Audit-only endpoint. The CSV itself is now built client-side in
+ * InventoryTable.tsx from the admin's currently filtered rows (so the
+ * export actually respects the active tab/search/category/status/type/
+ * direction/fees-paid filters — the old server route always ran one
+ * unfiltered query, per explicit report 2026-11-28). This route just
+ * records the export in the audit log (CLAUDE.md §12 / .ai/AUDIT_LOGS.md
+ * "data exports"), fired alongside the client-side download.
  */
-export async function GET() {
+export async function POST(request: Request) {
   try {
     const session = await requirePermission('inventory:view')
-
-    const rows = await query<ShopUnitExportRow[]>(
-      `SELECT su.stall_number, su.shop_type, c.name AS category_name, su.direction, su.emd_amount_paise, su.status
-       FROM shop_units su
-       JOIN categories c ON c.id = su.category_id
-       ORDER BY su.stall_number ASC`
-    )
-
-    const csv = buildExportCsv(rows)
+    const body = await request.json().catch(() => ({}))
+    const rowCount = typeof body?.rowCount === 'number' ? body.rowCount : null
+    const filters = body?.filters && typeof body.filters === 'object' ? body.filters : null
 
     await logAudit({
       actorUserId: session.userId,
@@ -28,19 +24,14 @@ export async function GET() {
       action: 'inventory.exported',
       module: 'inventory',
       entityType: 'shop_unit',
-      entityId: 'all',
-      newValue: { row_count: rows.length }
+      entityId: 'filtered',
+      newValue: { row_count: rowCount, filters }
     })
 
-    return new Response(csv, {
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="booth-stall-inventory-${new Date().toISOString().slice(0, 10)}.csv"`
-      }
-    })
+    return new Response(null, { status: 204 })
   } catch (error) {
     logServerError('api.admin.inventory.export', error)
 
-    return new Response('Failed to generate export.', { status: 500 })
+    return new Response('Failed to record export.', { status: 500 })
   }
 }

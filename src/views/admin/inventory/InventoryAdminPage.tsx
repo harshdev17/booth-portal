@@ -1,6 +1,5 @@
-import { DownloadIcon, HistoryIcon } from 'lucide-react'
+import { HistoryIcon } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSession } from '@/lib/auth/session'
@@ -277,16 +276,10 @@ export default async function InventoryAdminPage() {
         </div>
 
         <div className='flex items-center gap-2'>
-          {/* Export only needs inventory:view server-side (confirmed in
-              api/admin/inventory/export/route.ts) — was previously hidden
-              behind canManage along with Import, which left a view-only
-              role (e.g. police_user) with no way to export despite having
-              the permission the route itself requires. Import still needs
-              inventory:manage, since it writes. */}
-          <Button variant='outline' render={<a href='/api/admin/inventory/export' />}>
-            <DownloadIcon />
-            Export to CSV
-          </Button>
+          {/* Export to CSV moved into InventoryTable (2026-11-28) — it now
+              builds the CSV client-side from filteredRows so it honours
+              every active tab/search/category/status/type/direction/fees
+              filter, which this static unfiltered-route link never could. */}
           {canManage && <ImportInventoryDialog validCategoryNames={categories.map(c => c.name)} />}
         </div>
       </div>
