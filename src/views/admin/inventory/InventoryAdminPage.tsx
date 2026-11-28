@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSession } from '@/lib/auth/session'
 import { withPooledConnection } from '@/lib/db/client'
+import { getPhysicalBoothCount } from '@/lib/inventory/stall-range'
 import { getCurrentUserPermissions, requirePermission } from '@/lib/rbac/authorize'
 import { encodeId } from '@/lib/security/opaque-id'
 import CancelOverdueAndPromoteDialog from '@/views/admin/inventory/CancelOverdueAndPromoteDialog'
@@ -234,7 +235,7 @@ export default async function InventoryAdminPage() {
 
     overdueByCategory.set(row.category_id, {
       categoryName: row.category_name,
-      count: (existing?.count ?? 0) + 1
+      count: (existing?.count ?? 0) + getPhysicalBoothCount(row.stall_number)
     })
   }
 

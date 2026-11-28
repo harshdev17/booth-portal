@@ -53,6 +53,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toCsvField } from '@/lib/export/csv'
+import { getPhysicalBoothCount } from '@/lib/inventory/stall-range'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -896,22 +897,30 @@ const InventoryTable = ({
   // category updates every tab's badge to that category's breakdown instead
   // of the badges staying frozen at the whole-inventory totals (per explicit
   // request — confirmed live 2026-11-23 that these looked "stuck").
+  // Every count below sums physical booths (getPhysicalBoothCount), not
+  // rows — a stall_number can itself be a range like "103-105" (several
+  // adjacent booths combined into one shop_units row), which previously
+  // counted as 1 instead of 3 everywhere on this page (fixed 2026-11-28
+  // per explicit report).
+  const sumBooths = (sumRows: ShopUnitRowData[]) =>
+    sumRows.reduce((sum, r) => sum + getPhysicalBoothCount(r.stallNumber), 0)
+
   const tabCounts = useMemo(() => {
     const base = rows.filter(r => matchesFilters(r, { tab: true }))
 
-    const total = base.length
-    const available = base.filter(r => r.status === 'available' && !r.isCancelled).length
-    const reserved = base.filter(r => r.status === 'reserved' && !r.isCancelled).length
-    const allotted = base.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled).length
-    const direct = base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled').length
-    const publicStalls = base.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled').length
-    const cancelled = base.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled').length
+    const total = sumBooths(base)
+    const available = sumBooths(base.filter(r => r.status === 'available' && !r.isCancelled))
+    const reserved = sumBooths(base.filter(r => r.status === 'reserved' && !r.isCancelled))
+    const allotted = sumBooths(base.filter(r => r.status === 'allotted' && !r.isDirectAllotment && !r.isCancelled))
+    const direct = sumBooths(base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled && r.status !== 'cancelled'))
+    const publicStalls = sumBooths(base.filter(r => !r.isDirectAllotment && !r.isCancelled && r.status !== 'cancelled'))
+    const cancelled = sumBooths(base.filter(r => Boolean(r.isCancelled) || r.status === 'cancelled'))
 
     // Draw-allotted + direct-allotted combined — simplifiedTabs' single
     // "Allotted" tab, since police only cares whether a stall is occupied.
-    const allottedCombined = base.filter(
-      r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled'
-    ).length
+    const allottedCombined = sumBooths(
+      base.filter(r => (r.status === 'allotted' || Boolean(r.isDirectAllotment)) && !r.isCancelled && r.status !== 'cancelled')
+    )
 
     return { total, available, reserved, allotted, direct, public: publicStalls, cancelled, allottedCombined }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -929,11 +938,11 @@ const InventoryTable = ({
     const base = rows.filter(r => matchesFilters(r, { tab: true }))
 
     return {
-      total: base.length,
-      available: base.filter(r => r.status === 'available' && !r.isCancelled).length,
-      direct: base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled).length,
-      reserved: base.filter(r => r.status === 'reserved' && !r.isCancelled).length,
-      feesPaid: base.filter(r => r.paymentStatus === 'success' || r.paymentStatus === 'paid').length
+      total: sumBooths(base),
+      available: sumBooths(base.filter(r => r.status === 'available' && !r.isCancelled)),
+      direct: sumBooths(base.filter(r => Boolean(r.isDirectAllotment) && !r.isCancelled)),
+      reserved: sumBooths(base.filter(r => r.status === 'reserved' && !r.isCancelled)),
+      feesPaid: sumBooths(base.filter(r => r.paymentStatus === 'success' || r.paymentStatus === 'paid'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, search, categoryFilter, statusFilter, typeFilter, directionFilter, feesPaidOnly])
@@ -949,7 +958,7 @@ const InventoryTable = ({
     const counts = new Map<string, number>()
 
     for (const row of base) {
-      counts.set(row.categoryName, (counts.get(row.categoryName) ?? 0) + 1)
+      counts.set(row.categoryName, (counts.get(row.categoryName) ?? 0) + getPhysicalBoothCount(row.stallNumber))
     }
 
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
@@ -967,7 +976,7 @@ const InventoryTable = ({
 
       if (!display.has(key)) display.set(key, raw ?? 'Not Specified')
 
-      counts.set(key, (counts.get(key) ?? 0) + 1)
+      counts.set(key, (counts.get(key) ?? 0) + getPhysicalBoothCount(row.stallNumber))
     }
 
     return Array.from(counts.entries())
