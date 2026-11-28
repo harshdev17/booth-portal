@@ -14,17 +14,55 @@
 // "270-1"'s second number being smaller than the first is exactly what
 // distinguishes a suffix from a real range, confirmed by the admin: "270-1
 // hai to ye single hai ... if 270-272 hai to ye range hai".
+/**
+ * Parses a stall_number into its numeric span: a plain value like "101"
+ * is the single-point span [101, 101]; a genuine combined range like
+ * "103-105" is [103, 105]. A "<main>-<sub>" suffix like "270-1" (second
+ * number not larger than the first) is NOT a range — see the note above —
+ * so it's also treated as a single-point span at its first number.
+ */
+export function parseStallSpan(stallNumber: string | null | undefined): { start: number; end: number } | null {
+  if (!stallNumber) return null
+
+  const trimmed = stallNumber.trim()
+  const rangeMatch = trimmed.match(/^(\d+)\s*-\s*(\d+)$/)
+
+  if (rangeMatch) {
+    const first = Number(rangeMatch[1])
+    const second = Number(rangeMatch[2])
+
+    if (second > first) return { start: first, end: second }
+
+    return { start: first, end: first }
+  }
+
+  const singleMatch = trimmed.match(/^(\d+)$/)
+
+  if (singleMatch) {
+    const value = Number(singleMatch[1])
+
+    return { start: value, end: value }
+  }
+
+  return null
+}
+
+/** Whether two stall_number values' numeric spans overlap at all. */
+export function stallSpansOverlap(a: string | null | undefined, b: string | null | undefined): boolean {
+  const spanA = parseStallSpan(a)
+  const spanB = parseStallSpan(b)
+
+  if (!spanA || !spanB) return false
+
+  return spanA.start <= spanB.end && spanB.start <= spanA.end
+}
+
 export function getPhysicalBoothCount(stallNumber: string | null | undefined): number {
   if (!stallNumber) return 0
 
-  const match = stallNumber.trim().match(/^(\d+)\s*-\s*(\d+)$/)
+  const span = parseStallSpan(stallNumber)
 
-  if (!match) return 1
+  if (!span) return 1
 
-  const first = Number(match[1])
-  const second = Number(match[2])
-
-  if (second <= first) return 1
-
-  return second - first + 1
+  return span.end - span.start + 1
 }

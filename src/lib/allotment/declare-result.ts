@@ -6,6 +6,7 @@ import { resolveAllotmentAmountPaise } from '@/lib/applications/category-amount'
 import { logAudit } from '@/lib/audit/log'
 import { query, withTransaction } from '@/lib/db/client'
 import { buildCsv, parseCsvLine } from '@/lib/inventory/shop-units-csv'
+import { stallSpansOverlap } from '@/lib/inventory/stall-range'
 import { sendNotification } from '@/lib/notifications/service'
 import { logServerError } from '@/lib/security/error-log'
 
@@ -179,6 +180,27 @@ type StallLookup = {
   allotted_to_application_id: number | null
 }
 
+/**
+ * A sheet row's stall number can numerically overlap an EXISTING, different
+ * shop_units row without being an exact string match — e.g. uploading "104"
+ * when "103-105" already exists as a combined stall, or uploading "103-105"
+ * as a new combined stall when "104" already exists on its own. An exact
+ * match is validated separately (category/availability); this only guards
+ * against silently creating/allotting a second row for a physical booth
+ * that's already accounted for under a different stall_number string
+ * (confirmed live 2026-11-28 as a real gap — no warning existed at all).
+ */
+function findOverlappingStall(stallNumber: string, allStalls: StallLookup[]): StallLookup | null {
+  const normalized = stallNumber.trim().toLowerCase()
+
+  for (const other of allStalls) {
+    if (other.stall_number.trim().toLowerCase() === normalized) continue
+    if (stallSpansOverlap(stallNumber, other.stall_number)) return other
+  }
+
+  return null
+}
+
 export type ResultPreviewRow = {
   rowNumber: number
   stallNumber: string
@@ -254,6 +276,11 @@ export async function previewResultSheet(
     rows.map(r => r.stallNumber)
   )
 
+  // Every existing shop_unit, not just exact string matches — needed to
+  // catch a sheet row whose NUMBER overlaps a different, already-existing
+  // stall_number string (see findOverlappingStall above).
+  const allStalls = await query<StallLookup[]>(`SELECT id, stall_number, category_id, status, allotted_to_application_id FROM shop_units`)
+
   const applicationByNumber = new Map(applications.map(a => [a.application_number.toUpperCase(), a]))
   const stallByNumber = new Map(stalls.map(s => [s.stall_number.toLowerCase(), s]))
 
@@ -326,8 +353,18 @@ export async function previewResultSheet(
         issues.push(`Booth "${row.stallNumber}" is currently "${stall.status}" (not available).`)
       }
     } else {
-      isNewStall = true
-      newStallsCount++
+      const overlapping = findOverlappingStall(row.stallNumber, allStalls)
+
+      if (overlapping) {
+        issues.push(
+          `Booth "${row.stallNumber}" overlaps with existing booth/stall "${overlapping.stall_number}" ` +
+            `(currently "${overlapping.status}"${overlapping.allotted_to_application_id ? ', already allotted' : ''}) — ` +
+            `it's part of that combined stall, not a separate one.`
+        )
+      } else {
+        isNewStall = true
+        newStallsCount++
+      }
     }
 
     const isValid = issues.length === 0
@@ -400,6 +437,11 @@ export async function stageResultSheet(
     rows.map(r => r.stallNumber)
   )
 
+  // Every existing shop_unit — same reasoning as previewResultSheet's
+  // allStalls: catches a sheet row whose number overlaps a different,
+  // already-existing stall_number string before it gets auto-created below.
+  const allStalls = await query<StallLookup[]>(`SELECT id, stall_number, category_id, status, allotted_to_application_id FROM shop_units`)
+
   const applicationByNumber = new Map(applications.map(a => [a.application_number.toUpperCase(), a]))
   const stallByNumber = new Map(stalls.map(s => [s.stall_number.toLowerCase(), s]))
   const errors: RowError[] = []
@@ -412,6 +454,19 @@ export async function stageResultSheet(
     if (!app) {
       fail(`Application ${row.applicationNumber} not found.`)
       continue
+    }
+
+    if (!stall) {
+      const overlapping = findOverlappingStall(row.stallNumber, allStalls)
+
+      if (overlapping) {
+        fail(
+          `Booth "${row.stallNumber}" overlaps with existing booth/stall "${overlapping.stall_number}" ` +
+            `(currently "${overlapping.status}"${overlapping.allotted_to_application_id ? ', already allotted' : ''}) — ` +
+            `it's part of that combined stall, not a separate one.`
+        )
+        continue
+      }
     }
 
     if (purpose === 'auction_result') {
