@@ -2399,7 +2399,7 @@ const InventoryTable = ({
         {rows.length > 0 && (
           <div className='mt-3 flex flex-wrap items-center gap-2'>
             <Input
-              placeholder='Search… (e.g. 120-124)'
+              placeholder='Search stall, category, application no… (e.g. 120-124)'
               value={search}
               onChange={e => setSearch(e.target.value)}
               className='h-8 w-52 text-sm'
