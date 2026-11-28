@@ -805,18 +805,33 @@ const InventoryTable = ({
     const searchLower = search.trim().toLowerCase()
 
     if (searchLower) {
-      const haystack = [
-        row.stallNumber,
-        row.categoryName,
-        row.direction,
-        row.applicationNumber,
-        row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
-      ]
-        .filter((v): v is string => v !== null)
-        .join(' ')
-        .toLowerCase()
+      // "120-124" style range query: match by numeric portion of the stall
+      // number falling within the range, rather than a literal substring
+      // (which would never match individual numbers like "121").
+      const rangeMatch = searchLower.match(/^(\d+)\s*-\s*(\d+)$/)
 
-      if (!haystack.includes(searchLower)) return false
+      if (rangeMatch) {
+        const rangeStart = Number(rangeMatch[1])
+        const rangeEnd = Number(rangeMatch[2])
+        const [lo, hi] = rangeStart <= rangeEnd ? [rangeStart, rangeEnd] : [rangeEnd, rangeStart]
+        const stallNumericMatch = row.stallNumber?.match(/\d+/)
+        const stallNumeric = stallNumericMatch ? Number(stallNumericMatch[0]) : null
+
+        if (stallNumeric === null || stallNumeric < lo || stallNumeric > hi) return false
+      } else {
+        const haystack = [
+          row.stallNumber,
+          row.categoryName,
+          row.direction,
+          row.applicationNumber,
+          row.isDirectAllotment ? 'direct allotment direct entry' : 'public draw'
+        ]
+          .filter((v): v is string => v !== null)
+          .join(' ')
+          .toLowerCase()
+
+        if (!haystack.includes(searchLower)) return false
+      }
     }
 
     if (
@@ -2286,10 +2301,10 @@ const InventoryTable = ({
         {rows.length > 0 && (
           <div className='mt-3 flex flex-wrap items-center gap-2'>
             <Input
-              placeholder='Search…'
+              placeholder='Search… (e.g. 120-124)'
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className='h-8 w-44 text-sm'
+              className='h-8 w-52 text-sm'
             />
 
             <Select value={categoryFilter} onValueChange={value => setCategoryFilter(value ?? ALL)}>
